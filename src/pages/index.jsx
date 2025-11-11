@@ -1,5 +1,8 @@
 import Layout from "./Layout.jsx";
 
+import Login from "./Login";
+import Register from "./Register";
+
 import Upload from "./Upload";
 
 import Dashboard from "./Dashboard";
@@ -75,40 +78,55 @@ function _getCurrentPage(url) {
 function PagesContent() {
     const location = useLocation();
     const currentPage = _getCurrentPage(location.pathname);
-    
+
+    // Routes without layout (Login/Register)
+    const noLayoutRoutes = ['/login', '/register'];
+    const isNoLayoutRoute = noLayoutRoutes.some(route =>
+        location.pathname.toLowerCase() === route
+    );
+
+    if (isNoLayoutRoute) {
+        return (
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+            </Routes>
+        );
+    }
+
     return (
         <Layout currentPageName={currentPage}>
-            <Routes>            
-                
+            <Routes>
+
                     <Route path="/" element={<Upload />} />
-                
-                
+
+
                 <Route path="/Upload" element={<Upload />} />
-                
+
                 <Route path="/Dashboard" element={<Dashboard />} />
-                
+
                 <Route path="/Pricing" element={<Pricing />} />
-                
+
                 <Route path="/PDFEditor" element={<PDFEditor />} />
-                
+
                 <Route path="/Privacy" element={<Privacy />} />
-                
+
                 <Route path="/Disclaimer" element={<Disclaimer />} />
-                
+
                 <Route path="/FilenameCleaner" element={<FilenameCleaner />} />
-                
+
                 <Route path="/AdminDashboard" element={<AdminDashboard />} />
-                
+
                 <Route path="/ActivityDashboard" element={<ActivityDashboard />} />
-                
+
                 <Route path="/DownloadCode" element={<DownloadCode />} />
-                
+
                 <Route path="/StripeSuccess" element={<StripeSuccess />} />
-                
+
                 <Route path="/AgenticAI" element={<AgenticAI />} />
-                
+
                 <Route path="/FileToPPT" element={<FileToPPT />} />
-                
+
             </Routes>
         </Layout>
     );

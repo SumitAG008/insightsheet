@@ -13,6 +13,8 @@ import PDFEditor from "./PDFEditor";
 
 import Privacy from "./Privacy";
 
+import Security from "./Security";
+
 import Disclaimer from "./Disclaimer";
 
 import FilenameCleaner from "./FilenameCleaner";
@@ -42,7 +44,9 @@ const PAGES = {
     PDFEditor: PDFEditor,
     
     Privacy: Privacy,
-    
+
+    Security: Security,
+
     Disclaimer: Disclaimer,
     
     FilenameCleaner: FilenameCleaner,

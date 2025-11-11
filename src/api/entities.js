@@ -1,13 +1,13 @@
-import { base44 } from './base44Client';
+import { meldraAi } from './base44Client';
 
 
-export const Subscription = base44.entities.Subscription;
+export const Subscription = meldraAi.entities.Subscription;
 
-export const LoginHistory = base44.entities.LoginHistory;
+export const LoginHistory = meldraAi.entities.LoginHistory;
 
-export const UserActivity = base44.entities.UserActivity;
+export const UserActivity = meldraAi.entities.UserActivity;
 
 
 
 // auth sdk:
-export const User = base44.auth;
+export const User = meldraAi.auth;

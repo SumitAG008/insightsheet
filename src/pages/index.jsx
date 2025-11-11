@@ -115,6 +115,8 @@ function PagesContent() {
 
                 <Route path="/Privacy" element={<Privacy />} />
 
+                <Route path="/Security" element={<Security />} />
+
                 <Route path="/Disclaimer" element={<Disclaimer />} />
 
                 <Route path="/FilenameCleaner" element={<FilenameCleaner />} />

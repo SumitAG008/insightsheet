@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # InsightSheet-lite Backend 🚀
 
 Privacy-first data analysis platform backend with AI-powered insights and ZERO data storage.
@@ -32,7 +31,38 @@ Privacy-first data analysis platform backend with AI-powered insights and ZERO d
 
 ## 🚀 Quick Start
 
-### Option 1: Local Development (SQLite)
+### Option 1: PostgreSQL Installation
+
+#### macOS:
+```bash
+brew install postgresql@15
+brew services start postgresql@15
+createdb insightsheet
+```
+
+#### Ubuntu/Debian:
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+sudo -u postgres createdb insightsheet
+```
+
+#### Windows:
+- Download from [PostgreSQL.org](https://www.postgresql.org/download/windows/)
+- Run installer
+- Use pgAdmin to create database `insightsheet`
+
+#### Docker (Easiest!):
+```bash
+docker run --name postgres \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=insightsheet \
+  -p 5432:5432 \
+  -d postgres:15
+```
+
+### Option 2: Local Development (SQLite)
 
 ```bash
 # 1. Clone the repository
@@ -69,7 +99,7 @@ The API will be available at:
 - **Docs**: http://localhost:8000/docs
 - **Health**: http://localhost:8000/health
 
-### Option 2: Docker Compose (PostgreSQL)
+### Option 3: Docker Compose (PostgreSQL)
 
 ```bash
 # 1. Set up environment variables
@@ -89,7 +119,7 @@ docker-compose logs -f backend
 docker-compose down
 ```
 
-### Option 3: Docker Only
+### Option 4: Docker Only
 
 ```bash
 # Build image
@@ -107,76 +137,11 @@ docker run -d \
 # View logs
 docker logs -f insightsheet-backend
 ```
-=======
-# InsightSheet Backend (Meldra AI)
-
-FastAPI + PostgreSQL Backend for InsightSheet-lite
-
-## 🚀 Quick Start (3 Steps)
-
-### 1. Install PostgreSQL
-
-**macOS:**
-```bash
-brew install postgresql@15
-brew services start postgresql@15
-createdb insightsheet
-```
-
-**Ubuntu/Debian:**
-```bash
-sudo apt update
-sudo apt install postgresql postgresql-contrib
-sudo systemctl start postgresql
-sudo -u postgres createdb insightsheet
-```
-
-**Windows:**
-- Download from [PostgreSQL.org](https://www.postgresql.org/download/windows/)
-- Run installer
-- Use pgAdmin to create database `insightsheet`
-
-**Docker (Easiest!):**
-```bash
-docker run --name postgres \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=insightsheet \
-  -p 5432:5432 \
-  -d postgres:15
-```
-
-### 2. Setup Backend
-
-```bash
-cd backend
-
-# Create .env file
-cp .env.example .env
-
-# Edit .env with your database URL
-# DATABASE_URL=postgresql://postgres:password@localhost:5432/insightsheet
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Setup database (creates tables + admin user)
-python setup_database.py
-```
-
-### 3. Start Server
-
-```bash
-uvicorn main:app --reload --port 8000
-```
-
-Visit: http://localhost:8000/docs for API documentation
->>>>>>> 58194c7fbb5d6cfa982aaf3d15ce3ba47988e1ba
 
 ## 📁 Project Structure
 
 ```
 backend/
-<<<<<<< HEAD
 ├── app/
 │   ├── __init__.py
 │   ├── main.py                 # FastAPI application
@@ -239,6 +204,9 @@ SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASSWORD=your-app-password
 
+# SendGrid (alternative email)
+SENDGRID_API_KEY=your-sendgrid-key
+
 # Logging
 LOG_LEVEL=INFO
 LOG_FILE=logs/app.log
@@ -259,6 +227,16 @@ LOG_FILE=logs/app.log
 - ✅ All features
 - ✅ Image generation (DALL-E)
 - ✅ Priority support
+
+### Default Admin Account
+
+After running database initialization:
+
+- **Email:** sumitagaria@gmail.com
+- **Password:** admin123
+- **Plan:** Premium (unlimited)
+
+⚠️ **IMPORTANT:** Change this password after first login!
 
 ## 📚 API Endpoints
 
@@ -298,6 +276,17 @@ Response:
 ```http
 GET /api/auth/me
 Authorization: Bearer {token}
+```
+
+#### Update Current User
+```http
+PUT /api/auth/me
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "full_name": "Updated Name"
+}
 ```
 
 ### AI/LLM Endpoints
@@ -470,14 +459,20 @@ Response:
 - hashed_password
 - role (user/admin)
 - is_active
+- is_verified
 - created_date
 - updated_date
+- last_login
 
 ### Subscription
 - id (Primary Key)
 - user_email
 - plan (free/premium)
 - status (active/cancelled/expired)
+- trial_start_date
+- trial_end_date
+- subscription_start_date
+- subscription_end_date
 - ai_queries_used
 - ai_queries_limit
 - files_uploaded
@@ -497,6 +492,7 @@ Response:
 - location
 - browser
 - device
+- os
 - session_duration
 - created_date
 
@@ -539,6 +535,17 @@ Response:
 ## 🧪 Testing
 
 ```bash
+# Test database connection
+python -c "from database import test_connection; test_connection()"
+
+# Test API health
+curl http://localhost:8000/health
+
+# Test login
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"sumitagaria@gmail.com","password":"admin123"}'
+
 # Run tests (when implemented)
 pytest
 
@@ -565,277 +572,6 @@ tail -f logs/app.log
 - Logs automatically rotate at 10MB
 - Keeps last 5 log files
 - Location: `logs/app.log`
-
-## 🚀 Deployment
-
-### Deploy to Heroku
-
-```bash
-# Install Heroku CLI
-# https://devcenter.heroku.com/articles/heroku-cli
-
-# Login
-heroku login
-
-# Create app
-heroku create insightsheet-backend
-
-# Set environment variables
-heroku config:set OPENAI_API_KEY=sk-...
-heroku config:set JWT_SECRET_KEY=your-secret
-heroku config:set DATABASE_URL=postgresql://...
-
-# Add PostgreSQL addon
-heroku addons:create heroku-postgresql:hobby-dev
-
-# Deploy
-git push heroku main
-
-# View logs
-heroku logs --tail
-```
-
-### Deploy to Railway
-
-```bash
-# Install Railway CLI
-npm install -g @railway/cli
-
-# Login
-railway login
-
-# Initialize project
-railway init
-
-# Add PostgreSQL
-railway add postgres
-
-# Set environment variables
-railway variables set OPENAI_API_KEY=sk-...
-railway variables set JWT_SECRET_KEY=your-secret
-
-# Deploy
-railway up
-```
-
-### Deploy to DigitalOcean App Platform
-
-1. Connect GitHub repository
-2. Configure environment variables
-3. Add PostgreSQL database
-4. Deploy from `main` branch
-
-## 🛠️ Development
-
-### Code Style
-
-```bash
-# Format code
-black app/
-
-# Lint code
-flake8 app/
-
-# Type checking
-mypy app/
-```
-
-### Database Migrations (Future)
-
-```bash
-# Create migration
-alembic revision --autogenerate -m "Add new table"
-
-# Apply migrations
-alembic upgrade head
-
-# Rollback
-alembic downgrade -1
-```
-
-## 🤝 Integration with Frontend
-
-### Frontend Setup
-
-Update frontend API client to point to your backend:
-
-```javascript
-// src/api/backendClient.js
-const API_URL = process.env.VITE_API_URL || 'http://localhost:8000';
-
-export const api = {
-  auth: {
-    login: (email, password) =>
-      fetch(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      }),
-
-    me: (token) =>
-      fetch(`${API_URL}/api/auth/me`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      })
-  },
-
-  llm: {
-    invoke: (token, prompt) =>
-      fetch(`${API_URL}/api/integrations/llm/invoke`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ prompt })
-      })
-  }
-};
-```
-
-## 📞 Support
-
-- **Admin Email**: sumitagaria@gmail.com
-- **Domain**: meldra.ai
-- **Documentation**: `/docs` endpoint
-- **Health Check**: `/health` endpoint
-
-## 📄 License
-
-Proprietary - InsightSheet-lite
-
-## 🎯 Roadmap
-
-- [ ] Implement Stripe payment integration
-- [ ] Add rate limiting middleware
-- [ ] Implement Redis caching
-- [ ] Add WebSocket support for real-time updates
-- [ ] Implement email notifications
-- [ ] Add PDF to PPT conversion
-- [ ] Multi-language support for UI
-- [ ] Advanced analytics dashboard
-- [ ] API usage metrics
-- [ ] Automated testing suite
-
----
-
-**Made with ❤️ for Privacy-First Data Analysis**
-=======
-├── main.py              # FastAPI application
-├── database.py          # SQLAlchemy models
-├── setup_database.py    # Database initialization
-├── requirements.txt     # Python dependencies
-├── .env                 # Environment variables
-└── README.md           # This file
-```
-
-## 🗄️ Database Schema
-
-### Tables
-
-1. **users** - User accounts
-   - id, email, full_name, hashed_password
-   - role (user/admin), is_active, is_verified
-   - created_date, updated_date, last_login
-
-2. **subscriptions** - User subscriptions
-   - id, user_email, plan (free/premium)
-   - status, trial dates, subscription dates
-   - ai_queries_used, ai_queries_limit
-   - stripe_customer_id, stripe_subscription_id
-
-3. **login_history** - Login tracking
-   - id, user_email, event_type
-   - ip_address, location, browser, device, os
-   - session_duration, created_date
-
-4. **user_activities** - Activity logs (metadata only!)
-   - id, user_email, activity_type
-   - page_name, details (JSON)
-   - created_date
-
-## 🔑 Default Admin Account
-
-After running `setup_database.py`:
-
-- **Email:** sumitagaria@gmail.com
-- **Password:** admin123
-- **Plan:** Premium (unlimited)
-
-⚠️ **IMPORTANT:** Change this password after first login!
-
-## 🌐 API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `GET /api/auth/me` - Get current user
-- `PUT /api/auth/me` - Update current user
-
-### Subscriptions
-- `GET /api/subscriptions/me` - Get my subscription
-- `POST /api/subscriptions/upgrade` - Upgrade to premium
-
-### Activity
-- `POST /api/activity/log` - Log activity
-- `GET /api/activity/history` - Get activity history
-
-### Admin
-- `GET /api/admin/users` - Get all users (admin only)
-- `GET /api/admin/subscriptions` - Get all subscriptions (admin only)
-
-### AI/LLM (Placeholder)
-- `POST /api/integrations/llm/invoke` - Invoke LLM
-- `POST /api/integrations/image/generate` - Generate image
-
-## 🔧 Environment Variables
-
-Create `.env` file with:
-
-```bash
-# Database
-DATABASE_URL=postgresql://postgres:password@localhost:5432/insightsheet
-
-# JWT Secret
-JWT_SECRET_KEY=your-secret-key-change-in-production
-
-# OpenAI
-OPENAI_API_KEY=sk-your-openai-key
-
-# SendGrid (Email)
-SENDGRID_API_KEY=your-sendgrid-key
-
-# Stripe (Payments)
-STRIPE_SECRET_KEY=sk_test_your-key
-STRIPE_PUBLISHABLE_KEY=pk_test_your-key
-```
-
-## 🐳 Docker Setup (Alternative)
-
-```bash
-# Start PostgreSQL
-docker-compose up -d
-
-# Setup database
-python setup_database.py
-
-# Start backend
-uvicorn main:app --reload --port 8000
-```
-
-## 🧪 Testing
-
-```bash
-# Test database connection
-python -c "from database import test_connection; test_connection()"
-
-# Test API health
-curl http://localhost:8000/health
-
-# Test login
-curl -X POST http://localhost:8000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"sumitagaria@gmail.com","password":"admin123"}'
-```
 
 ## 📊 PostgreSQL Commands
 
@@ -909,7 +645,66 @@ createdb insightsheet
 psql postgres -c "ALTER USER postgres PASSWORD 'newpassword';"
 ```
 
-## 📝 Production Deployment
+## 🚀 Deployment
+
+### Deploy to Heroku
+
+```bash
+# Install Heroku CLI
+# https://devcenter.heroku.com/articles/heroku-cli
+
+# Login
+heroku login
+
+# Create app
+heroku create insightsheet-backend
+
+# Set environment variables
+heroku config:set OPENAI_API_KEY=sk-...
+heroku config:set JWT_SECRET_KEY=your-secret
+heroku config:set DATABASE_URL=postgresql://...
+
+# Add PostgreSQL addon
+heroku addons:create heroku-postgresql:hobby-dev
+
+# Deploy
+git push heroku main
+
+# View logs
+heroku logs --tail
+```
+
+### Deploy to Railway
+
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
+
+# Login
+railway login
+
+# Initialize project
+railway init
+
+# Add PostgreSQL
+railway add postgres
+
+# Set environment variables
+railway variables set OPENAI_API_KEY=sk-...
+railway variables set JWT_SECRET_KEY=your-secret
+
+# Deploy
+railway up
+```
+
+### Deploy to DigitalOcean App Platform
+
+1. Connect GitHub repository
+2. Configure environment variables
+3. Add PostgreSQL database
+4. Deploy from `main` branch
+
+### Production Deployment Checklist
 
 1. **Set secure JWT_SECRET_KEY**
 2. **Use strong database password**
@@ -918,6 +713,73 @@ psql postgres -c "ALTER USER postgres PASSWORD 'newpassword';"
 5. **Use environment variables**
 6. **Enable database backups**
 7. **Monitor database performance**
+
+## 🛠️ Development
+
+### Code Style
+
+```bash
+# Format code
+black app/
+
+# Lint code
+flake8 app/
+
+# Type checking
+mypy app/
+```
+
+### Database Migrations (Future)
+
+```bash
+# Create migration
+alembic revision --autogenerate -m "Add new table"
+
+# Apply migrations
+alembic upgrade head
+
+# Rollback
+alembic downgrade -1
+```
+
+## 🤝 Integration with Frontend
+
+### Frontend Setup
+
+Update frontend API client to point to your backend:
+
+```javascript
+// src/api/backendClient.js
+const API_URL = process.env.VITE_API_URL || 'http://localhost:8000';
+
+export const api = {
+  auth: {
+    login: (email, password) =>
+      fetch(`${API_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      }),
+
+    me: (token) =>
+      fetch(`${API_URL}/api/auth/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+  },
+
+  llm: {
+    invoke: (token, prompt) =>
+      fetch(`${API_URL}/api/integrations/llm/invoke`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ prompt })
+      })
+  }
+};
+```
 
 ## 📚 Resources
 
@@ -928,13 +790,34 @@ psql postgres -c "ALTER USER postgres PASSWORD 'newpassword';"
 
 ## 📞 Support
 
+- **Admin Email**: sumitagaria@gmail.com
+- **Domain**: meldra.ai
+- **Documentation**: `/docs` endpoint
+- **Health Check**: `/health` endpoint
+
 For issues:
 1. Check backend logs
 2. Verify DATABASE_URL in .env
 3. Test database connection
 4. Check API docs at /docs
 
+## 📄 License
+
+Proprietary - InsightSheet-lite
+
+## 🎯 Roadmap
+
+- [ ] Implement Stripe payment integration
+- [ ] Add rate limiting middleware
+- [ ] Implement Redis caching
+- [ ] Add WebSocket support for real-time updates
+- [ ] Implement email notifications
+- [ ] Add PDF to PPT conversion
+- [ ] Multi-language support for UI
+- [ ] Advanced analytics dashboard
+- [ ] API usage metrics
+- [ ] Automated testing suite
+
 ---
 
-**Meldra AI** - Built with ❤️ using FastAPI + PostgreSQL
->>>>>>> 58194c7fbb5d6cfa982aaf3d15ce3ba47988e1ba
+**Made with ❤️ for Privacy-First Data Analysis by Meldra AI**

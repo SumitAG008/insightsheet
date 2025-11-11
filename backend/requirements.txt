@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Web Framework
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
@@ -56,3 +57,31 @@ flake8==7.0.0
 
 # CORS & Middleware
 python-cors==1.0.0
+=======
+# FastAPI and Server
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+
+# Database
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+alembic==1.14.0
+
+# Authentication
+PyJWT==2.10.1
+passlib[bcrypt]==1.7.4
+cryptography==44.0.0
+python-dotenv==1.0.1
+pydantic==2.9.2
+pydantic-settings==2.6.1
+
+# AI/OpenAI
+openai==1.54.5
+
+# Email (commented out - install manually if needed)
+# sendgrid==6.11.0
+
+# Utilities
+python-dateutil==2.9.0.post0
+>>>>>>> 58194c7fbb5d6cfa982aaf3d15ce3ba47988e1ba

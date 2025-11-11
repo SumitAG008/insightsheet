@@ -1,11 +1,24 @@
-import { createClient } from '@base44/sdk';
-// import { getAccessToken } from '@base44/sdk/utils/auth-utils';
-
-// Create a Meldra AI client with authentication required
-export const meldraAi = createClient({
+// Meldra AI client - placeholder for SDK features
+// TODO: Implement full SDK when @meldra-ai/sdk is published
+export const meldraAi = {
   appId: "68dec14952c191b56537bc60",
-  requiresAuth: true // Ensure authentication is required for all operations
-});
+  requiresAuth: true,
+  // Placeholder for SDK features - currently using backendApi
+  integrations: {
+    Core: {
+      SendEmail: null,
+      UploadFile: null,
+      ExtractDataFromUploadedFile: null,
+      CreateFileSignedUrl: null,
+      UploadPrivateFile: null,
+    }
+  },
+  entities: {
+    LoginHistory: null,
+    UserActivity: null,
+  },
+  auth: null
+};
 
 
 /**

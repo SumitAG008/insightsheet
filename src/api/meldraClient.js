@@ -1,3 +1,26 @@
+// Meldra AI client - placeholder for SDK features
+// TODO: Implement full SDK when @meldra-ai/sdk is published
+export const meldraAi = {
+  appId: "68dec14952c191b56537bc60",
+  requiresAuth: true,
+  // Placeholder for SDK features - currently using backendApi
+  integrations: {
+    Core: {
+      SendEmail: null,
+      UploadFile: null,
+      ExtractDataFromUploadedFile: null,
+      CreateFileSignedUrl: null,
+      UploadPrivateFile: null,
+    }
+  },
+  entities: {
+    LoginHistory: null,
+    UserActivity: null,
+  },
+  auth: null
+};
+
+
 /**
  * Backend API Client for InsightSheet-lite
  * Connects to Python FastAPI backend
@@ -96,22 +119,6 @@ export const backendApi = {
 
     isAuthenticated: () => {
       return !!getToken();
-    },
-
-    forgotPassword: async (email) => {
-      const response = await apiCall('/api/auth/forgot-password', {
-        method: 'POST',
-        body: { email },
-      });
-      return response.json();
-    },
-
-    resetPassword: async (token, newPassword) => {
-      const response = await apiCall('/api/auth/reset-password', {
-        method: 'POST',
-        body: { token, new_password: newPassword },
-      });
-      return response.json();
     },
   },
 
@@ -261,8 +268,8 @@ export const auth = {
   setToken,
 };
 
-// Backward compatibility with Base44 client (for gradual migration)
-export const base44 = {
+// Main Meldra SDK client with backward compatibility layer
+export const meldra = {
   auth: backendApi.auth,
   integrations: {
     Core: {
@@ -274,6 +281,11 @@ export const base44 = {
         const result = await backendApi.llm.generateImage(prompt);
         return result.image_url;
       },
+      SendEmail: meldraAi.integrations?.Core?.SendEmail,
+      UploadFile: meldraAi.integrations?.Core?.UploadFile,
+      ExtractDataFromUploadedFile: meldraAi.integrations?.Core?.ExtractDataFromUploadedFile,
+      CreateFileSignedUrl: meldraAi.integrations?.Core?.CreateFileSignedUrl,
+      UploadPrivateFile: meldraAi.integrations?.Core?.UploadPrivateFile,
     },
   },
   entities: {
@@ -286,8 +298,17 @@ export const base44 = {
         }
         return [];
       },
+      create: async (data) => {
+        // For new subscription creation
+        return backendApi.subscriptions.upgrade();
+      },
     },
+    LoginHistory: meldraAi.entities?.LoginHistory,
+    UserActivity: meldraAi.entities?.UserActivity,
   },
 };
+
+// Backward compatibility - deprecated, use meldra instead
+export const base44 = meldra;
 
 export default backendApi;

@@ -133,6 +133,29 @@ class ActivityLog(BaseModel):
 
 
 # ============================================================================
+# CORS TEST ENDPOINT
+# ============================================================================
+
+@app.get("/api/cors-test")
+async def cors_test():
+    """Simple endpoint to test CORS configuration"""
+    return {
+        "message": "CORS is working!",
+        "cors_configured": True,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+@app.options("/api/auth/register")
+async def register_options():
+    """Handle OPTIONS preflight for register endpoint"""
+    return JSONResponse(content={}, status_code=200)
+
+@app.options("/api/auth/login")
+async def login_options():
+    """Handle OPTIONS preflight for login endpoint"""
+    return JSONResponse(content={}, status_code=200)
+
+# ============================================================================
 # AUTHENTICATION ENDPOINTS
 # ============================================================================
 

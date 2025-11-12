@@ -87,7 +87,7 @@ class WindowsExcelToPPT:
         p.font.color.rgb = RGBColor(167, 139, 250)
         p.alignment = PP_ALIGN.CENTER
 
-    def add_section_slide(self, sheet_name, chart_count):
+    def add_section_slide(self, sheet_name, chart_count, row_count):
         """Add section slide for worksheet"""
         blank_slide = self.prs.slide_layouts[6]
         slide = self.prs.slides.add_slide(blank_slide)
@@ -111,11 +111,84 @@ class WindowsExcelToPPT:
         # Stats
         stats_box = slide.shapes.add_textbox(Inches(0.5), Inches(3.8), Inches(9), Inches(0.5))
         stats_frame = stats_box.text_frame
-        stats_frame.text = f"{chart_count} chart(s) in this sheet"
+        stats_frame.text = f"{chart_count} chart(s) • {row_count} rows"
         p = stats_frame.paragraphs[0]
         p.font.size = Pt(20)
         p.font.color.rgb = RGBColor(167, 139, 250)
         p.alignment = PP_ALIGN.CENTER
+
+    def add_data_table_slide(self, sheet_name, sheet):
+        """Add slide with data table from worksheet"""
+        blank_slide = self.prs.slide_layouts[6]
+        slide = self.prs.slides.add_slide(blank_slide)
+
+        # Title
+        title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.3), Inches(9), Inches(0.5))
+        title_frame = title_box.text_frame
+        title_frame.text = f"{sheet_name} - Data Overview"
+        p = title_frame.paragraphs[0]
+        p.font.size = Pt(24)
+        p.font.bold = True
+        p.font.color.rgb = RGBColor(30, 41, 59)
+
+        # Get data from Excel using COM
+        try:
+            used_range = sheet.UsedRange
+            max_rows = min(used_range.Rows.Count, 20)  # Limit to 20 rows
+            max_cols = min(used_range.Columns.Count, 10)  # Limit to 10 columns
+
+            if max_rows == 0 or max_cols == 0:
+                return
+
+            # Extract data
+            data = []
+            for row_idx in range(1, max_rows + 1):
+                row_data = []
+                for col_idx in range(1, max_cols + 1):
+                    try:
+                        cell_value = sheet.Cells(row_idx, col_idx).Value
+                        if cell_value is None:
+                            cell_value = ""
+                        else:
+                            cell_value = str(cell_value)[:50]  # Limit cell content
+                        row_data.append(cell_value)
+                    except:
+                        row_data.append("")
+                data.append(row_data)
+
+            if not data:
+                return
+
+            # Create table
+            x, y, cx, cy = Inches(0.4), Inches(1), Inches(9.2), Inches(5.5)
+            table = slide.shapes.add_table(max_rows, max_cols, x, y, cx, cy).table
+
+            # Fill table
+            for row_idx in range(max_rows):
+                for col_idx in range(max_cols):
+                    if row_idx < len(data) and col_idx < len(data[row_idx]):
+                        cell = table.cell(row_idx, col_idx)
+                        cell.text = data[row_idx][col_idx]
+                        cell.text_frame.paragraphs[0].font.size = Pt(9)
+
+                        # Header row styling
+                        if row_idx == 0:
+                            cell.fill.solid()
+                            cell.fill.fore_color.rgb = RGBColor(241, 245, 249)
+                            cell.text_frame.paragraphs[0].font.bold = True
+
+            # Add note if data was truncated
+            if used_range.Rows.Count > max_rows:
+                note_box = slide.shapes.add_textbox(Inches(0.4), Inches(6.6), Inches(9.2), Inches(0.3))
+                note_frame = note_box.text_frame
+                note_frame.text = f"Showing {max_rows} of {used_range.Rows.Count} rows"
+                p = note_frame.paragraphs[0]
+                p.font.size = Pt(10)
+                p.font.color.rgb = RGBColor(100, 116, 139)
+                p.font.italic = True
+
+        except Exception as e:
+            print(f"    Warning: Could not create data table - {e}")
 
     def export_chart_as_image(self, chart_obj, temp_path):
         """Export Excel chart as image"""
@@ -189,37 +262,51 @@ class WindowsExcelToPPT:
                 sheet_name = sheet.Name
                 print(f"Processing sheet {sheet_idx}/{self.wb.Worksheets.Count}: {sheet_name}")
 
-                # Count charts
+                # Count charts and get row count
                 chart_count = sheet.ChartObjects().Count
+                try:
+                    row_count = sheet.UsedRange.Rows.Count
+                except:
+                    row_count = 0
 
-                if chart_count == 0:
-                    print(f"  No charts found")
+                # Skip completely empty sheets
+                if chart_count == 0 and row_count == 0:
+                    print(f"  Empty sheet, skipping")
                     continue
 
                 # Section slide
-                self.add_section_slide(sheet_name, chart_count)
+                self.add_section_slide(sheet_name, chart_count, row_count)
                 total_slides += 1
 
+                # Add data table slide
+                if row_count > 0:
+                    print(f"  Adding data table ({row_count} rows)")
+                    self.add_data_table_slide(sheet_name, sheet)
+                    total_slides += 1
+
                 # Export each chart
-                print(f"  Found {chart_count} chart(s)")
-                for chart_idx in range(1, chart_count + 1):
-                    try:
-                        chart_obj = sheet.ChartObjects(chart_idx)
-                        temp_img = temp_dir / f"chart_{sheet_idx}_{chart_idx}.png"
+                if chart_count > 0:
+                    print(f"  Found {chart_count} chart(s)")
+                    for chart_idx in range(1, chart_count + 1):
+                        try:
+                            chart_obj = sheet.ChartObjects(chart_idx)
+                            temp_img = temp_dir / f"chart_{sheet_idx}_{chart_idx}.png"
 
-                        print(f"    Exporting chart {chart_idx}...")
+                            print(f"    Exporting chart {chart_idx}...")
 
-                        # Export chart as image
-                        if self.export_chart_as_image(chart_obj.Chart, temp_img):
-                            # Add to presentation
-                            self.add_chart_slide(sheet_name, chart_obj.Chart, chart_idx, temp_img)
-                            total_charts += 1
-                            total_slides += 1
-                            print(f"    ✅ Chart {chart_idx} exported successfully")
+                            # Export chart as image
+                            if self.export_chart_as_image(chart_obj.Chart, temp_img):
+                                # Add to presentation
+                                self.add_chart_slide(sheet_name, chart_obj.Chart, chart_idx, temp_img)
+                                total_charts += 1
+                                total_slides += 1
+                                print(f"    ✅ Chart {chart_idx} exported successfully")
 
-                    except Exception as e:
-                        print(f"    ⚠️ Error processing chart {chart_idx}: {e}")
-                        continue
+                        except Exception as e:
+                            print(f"    ⚠️ Error processing chart {chart_idx}: {e}")
+                            continue
+                else:
+                    print(f"  No charts in this sheet")
 
         finally:
             # Cleanup temp directory

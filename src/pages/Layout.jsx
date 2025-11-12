@@ -3,7 +3,7 @@
 import React, { useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain } from 'lucide-react';
+import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, FileSpreadsheet, GitCompare, Calculator, Calendar, BookOpen } from 'lucide-react';
 import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
 import Logo from '@/components/branding/Logo';
 import { backendApi } from '@/api/backendClient';
@@ -197,7 +197,67 @@ export default function Layout({ children }) {
                 <span>ZIP Cleaner</span>
               </Link>
 
-              <Link 
+              <Link
+                to={createPageUrl('SheetManager')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('SheetManager'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
+                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                }`}
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Sheets</span>
+              </Link>
+
+              <Link
+                to={createPageUrl('Reconciliation')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('Reconciliation'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
+                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                }`}
+              >
+                <GitCompare className="w-4 h-4" />
+                <span>Reconcile</span>
+              </Link>
+
+              <Link
+                to={createPageUrl('AccountingToolkit')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('AccountingToolkit'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
+                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                }`}
+              >
+                <Calculator className="w-4 h-4" />
+                <span>Accounting</span>
+              </Link>
+
+              <Link
+                to={createPageUrl('ProjectTracker')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('ProjectTracker'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
+                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                }`}
+              >
+                <Calendar className="w-4 h-4" />
+                <span>Projects</span>
+              </Link>
+
+              <Link
+                to={createPageUrl('UserGuide')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('UserGuide'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
+                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                }`}
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>Guide</span>
+              </Link>
+
+              <Link
                 to={createPageUrl('Pricing')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('Pricing'))

@@ -33,6 +33,16 @@ import AgenticAI from "./AgenticAI";
 
 import FileToPPT from "./FileToPPT";
 
+import SheetManager from "./SheetManager";
+
+import Reconciliation from "./Reconciliation";
+
+import AccountingToolkit from "./AccountingToolkit";
+
+import ProjectTracker from "./ProjectTracker";
+
+import UserGuide from "./UserGuide";
+
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
@@ -62,9 +72,19 @@ const PAGES = {
     StripeSuccess: StripeSuccess,
     
     AgenticAI: AgenticAI,
-    
+
     FileToPPT: FileToPPT,
-    
+
+    SheetManager: SheetManager,
+
+    Reconciliation: Reconciliation,
+
+    AccountingToolkit: AccountingToolkit,
+
+    ProjectTracker: ProjectTracker,
+
+    UserGuide: UserGuide,
+
 }
 
 function _getCurrentPage(url) {
@@ -136,6 +156,16 @@ function PagesContent() {
                 <Route path="/AgenticAI" element={<AgenticAI />} />
 
                 <Route path="/FileToPPT" element={<FileToPPT />} />
+
+                <Route path="/SheetManager" element={<SheetManager />} />
+
+                <Route path="/Reconciliation" element={<Reconciliation />} />
+
+                <Route path="/AccountingToolkit" element={<AccountingToolkit />} />
+
+                <Route path="/ProjectTracker" element={<ProjectTracker />} />
+
+                <Route path="/UserGuide" element={<UserGuide />} />
 
             </Routes>
         </Layout>

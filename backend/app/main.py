@@ -28,7 +28,7 @@ from app.services.ai_service import (
     invoke_llm, generate_image, generate_formula, analyze_data, suggest_chart_type
 )
 from app.services.zip_processor import ZipProcessorService
-from app.services.excel_to_ppt import ExcelToPPTService
+from app.services.excel_converter_factory import get_excel_to_ppt_service
 
 load_dotenv()
 
@@ -474,8 +474,8 @@ async def excel_to_ppt(
         if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
             raise HTTPException(status_code=400, detail="Invalid file type")
 
-        # Convert to PPT
-        ppt_service = ExcelToPPTService()
+        # Convert to PPT (auto-detects best service: Windows COM or openpyxl)
+        ppt_service = get_excel_to_ppt_service()
         ppt_data = await ppt_service.convert_excel_to_ppt(
             io.BytesIO(file_content),
             file.filename

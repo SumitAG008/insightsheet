@@ -183,9 +183,14 @@ export default function Layout({ children }) {
             {/* Logo */}
             <Link to={createPageUrl('Upload')} className="group">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/50">
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
+                <img
+                  src="https://base44.com/logo_v2.svg"
+                  alt="Company Logo"
+                  className="h-10 w-auto object-contain group-hover:scale-110 transition-transform"
+                  onError={(e) => {
+                    e.target.src = '/logo.png';
+                  }}
+                />
                 <div>
                   <h1 className="text-xl font-bold bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-700 bg-clip-text text-transparent">
                     InsightSheet<span className="text-blue-600">-lite</span>

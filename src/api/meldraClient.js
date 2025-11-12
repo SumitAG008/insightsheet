@@ -268,9 +268,8 @@ export const auth = {
   setToken,
 };
 
-// Backward compatibility with Meldra AI client (for gradual migration)
-// Legacy export name for compatibility
-export const base44 = {
+// Main Meldra SDK client with backward compatibility layer
+export const meldra = {
   auth: backendApi.auth,
   integrations: {
     Core: {
@@ -299,10 +298,17 @@ export const base44 = {
         }
         return [];
       },
+      create: async (data) => {
+        // For new subscription creation
+        return backendApi.subscriptions.upgrade();
+      },
     },
     LoginHistory: meldraAi.entities?.LoginHistory,
     UserActivity: meldraAi.entities?.UserActivity,
   },
 };
+
+// Backward compatibility - deprecated, use meldra instead
+export const base44 = meldra;
 
 export default backendApi;

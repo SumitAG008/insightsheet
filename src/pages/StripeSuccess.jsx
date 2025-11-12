@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { base44 } from '@/api/base44Client';
+import { meldra } from '@/api/meldraClient';
 import { CheckCircle, Loader2, Sparkles, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -21,10 +21,10 @@ export default function StripeSuccess() {
       const urlParams = new URLSearchParams(window.location.search);
       const sessionId = urlParams.get('session_id');
       
-      const currentUser = await base44.auth.me();
+      const currentUser = await meldra.auth.me();
 
       // Find pending subscription
-      const subscriptions = await base44.entities.Subscription.filter({
+      const subscriptions = await meldra.entities.Subscription.filter({
         user_email: currentUser.email,
         payment_status: 'pending'
       });
@@ -33,7 +33,7 @@ export default function StripeSuccess() {
         const subscription = subscriptions[0];
         
         // Update subscription to active
-        await base44.entities.Subscription.update(subscription.id, {
+        await meldra.entities.Subscription.update(subscription.id, {
           status: 'active',
           payment_status: 'paid',
           subscription_start_date: new Date().toISOString(),
@@ -47,7 +47,7 @@ export default function StripeSuccess() {
 
         // Send welcome email
         try {
-          await base44.integrations.Core.SendEmail({
+          await meldra.integrations.Core.SendEmail({
             to: currentUser.email,
             from_name: 'InsightSheet-lite',
             subject: '🎉 Welcome to InsightSheet Premium!',

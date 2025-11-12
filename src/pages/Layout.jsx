@@ -5,12 +5,12 @@ import React, { useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain } from 'lucide-react';
-import SubscriptionChecker from './components/subscription/SubscriptionChecker';
-import Logo from './components/branding/Logo';
-import { base44 } from '@/api/base44Client';
+import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
+import Logo from '@/components/branding/Logo';
+import { meldra } from '@/api/meldraClient';
 import { LoginHistory } from '@/api/entities';
-import { getIPAndLocation, getBrowserInfo } from './components/tracking/ActivityLogger';
-import ActivityLogger from './components/tracking/ActivityLogger';
+import { getIPAndLocation, getBrowserInfo } from '@/components/tracking/ActivityLogger';
+import ActivityLogger from '@/components/tracking/ActivityLogger';
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -19,7 +19,7 @@ export default function Layout({ children }) {
   
   const loadUser = useCallback(async () => {
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await meldra.auth.me();
       setUser(currentUser);
       
       const loginTimestamp = Date.now();
@@ -82,7 +82,7 @@ export default function Layout({ children }) {
       }
     }
     
-    await base44.auth.logout();
+    await meldra.auth.logout();
     window.location.reload();
   };
   
@@ -233,7 +233,7 @@ export default function Layout({ children }) {
                 </div>
               ) : (
                 <button
-                  onClick={() => base44.auth.redirectToLogin()}
+                  onClick={() => meldra.auth.redirectToLogin()}
                   className="ml-4 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-purple-500/50 font-medium"
                 >
                   Login

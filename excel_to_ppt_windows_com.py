@@ -205,13 +205,24 @@ class WindowsExcelToPPT:
         try:
             # Export chart to temp image file
             chart_obj.Export(str(temp_path))
-            return True
+
+            # Verify the file was created and has content
+            if temp_path.exists() and temp_path.stat().st_size > 0:
+                return True
+            else:
+                print(f"    Warning: Chart export created empty or missing file")
+                return False
         except Exception as e:
             print(f"    Warning: Could not export chart - {e}")
             return False
 
     def add_chart_slide(self, sheet_name, chart_obj, chart_idx, temp_img):
         """Add slide with chart image"""
+        # IMPORTANT: Only create slide if image exists and has content
+        if not temp_img.exists() or temp_img.stat().st_size == 0:
+            print(f"    ⚠️ Skipping slide - image file missing or empty: {temp_img}")
+            return False
+
         blank_slide = self.prs.slide_layouts[6]
         slide = self.prs.slides.add_slide(blank_slide)
 
@@ -235,7 +246,7 @@ class WindowsExcelToPPT:
         p.font.color.rgb = RGBColor(30, 41, 59)
 
         # Add chart image
-        if temp_img.exists():
+        try:
             left = Inches(0.5)
             top = Inches(1)
             height = Inches(5.5)
@@ -245,6 +256,12 @@ class WindowsExcelToPPT:
                 left, top,
                 height=height
             )
+            return True
+        except Exception as e:
+            print(f"    ⚠️ Error adding chart image to slide: {e}")
+            # Remove the slide we just created since image addition failed
+            rId = slide.part.package.relate_to(slide.part, 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide')
+            return False
 
     def convert(self, output_path=None):
         """Convert Excel to PowerPoint with actual chart images"""
@@ -309,11 +326,15 @@ class WindowsExcelToPPT:
 
                             # Export chart as image
                             if self.export_chart_as_image(chart_obj.Chart, temp_img):
-                                # Add to presentation
-                                self.add_chart_slide(sheet_name, chart_obj.Chart, chart_idx, temp_img)
-                                total_charts += 1
-                                total_slides += 1
-                                print(f"    ✅ Chart {chart_idx} exported successfully")
+                                # Add to presentation (only if image is valid)
+                                if self.add_chart_slide(sheet_name, chart_obj.Chart, chart_idx, temp_img):
+                                    total_charts += 1
+                                    total_slides += 1
+                                    print(f"    ✅ Chart {chart_idx} exported successfully")
+                                else:
+                                    print(f"    ⚠️ Chart {chart_idx} exported but slide creation failed")
+                            else:
+                                print(f"    ⚠️ Chart {chart_idx} export failed - skipping slide")
 
                         except Exception as e:
                             print(f"    ⚠️ Error processing chart {chart_idx}: {e}")

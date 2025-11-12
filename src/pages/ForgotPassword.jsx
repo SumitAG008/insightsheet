@@ -38,19 +38,19 @@ export default function ForgotPassword() {
         {/* Back to Login */}
         <Link
           to="/login"
-          className="inline-flex items-center gap-2 text-purple-400 hover:text-purple-300 mb-6 transition-colors"
+          className="inline-flex items-center gap-2 text-slate-800 hover:text-slate-800 mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Login
         </Link>
 
         {/* Card */}
-        <div className="bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-800/30 p-8">
+        <div className="bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-300/30 p-8">
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-slate-800 to-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
               <Mail className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-700 bg-clip-text text-transparent">
               Forgot Password
             </h1>
             <p className="text-gray-400 mt-2">
@@ -99,14 +99,14 @@ export default function ForgotPassword() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@example.com"
-                className="w-full px-4 py-3 bg-slate-800/50 border border-purple-500/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-500"
+                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-300/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-500"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-purple-500/50 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-lg hover:from-slate-800 hover:to-slate-700 transition-all shadow-lg shadow-purple-500/50 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -123,7 +123,7 @@ export default function ForgotPassword() {
           <div className="mt-6 text-center">
             <p className="text-gray-400 text-sm">
               Remember your password?{' '}
-              <Link to="/login" className="text-purple-400 hover:text-purple-300 font-medium">
+              <Link to="/login" className="text-slate-800 hover:text-slate-800 font-medium">
                 Sign in
               </Link>
             </p>

@@ -518,7 +518,7 @@ Create a clear, business-ready summary.`;
                     </div>
                     <div className="bg-slate-800/50 rounded-lg p-3">
                       <p className="text-xs text-slate-400 mb-1">Actions Taken</p>
-                      <p className="text-2xl font-bold text-purple-400">{agent.results.filter(r => r.success).length}</p>
+                      <p className="text-2xl font-bold text-slate-800">{agent.results.filter(r => r.success).length}</p>
                     </div>
                   </div>
 
@@ -529,7 +529,7 @@ Create a clear, business-ready summary.`;
                       <div key={idx} className="bg-slate-800/50 rounded-lg p-4">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <Badge className="bg-purple-500/20 text-purple-300">
+                            <Badge className="bg-slate-800/20 text-slate-800">
                               Step {result.step}
                             </Badge>
                             <span className="text-white font-semibold">{result.description}</span>
@@ -542,8 +542,8 @@ Create a clear, business-ready summary.`;
                   </div>
 
                   {/* Final Report */}
-                  <div className="bg-gradient-to-br from-purple-900/30 to-indigo-900/30 border border-purple-500/30 rounded-lg p-6">
-                    <h4 className="text-lg font-bold text-purple-200 mb-3 flex items-center gap-2">
+                  <div className="bg-gradient-to-br from-slate-800/30 to-indigo-900/30 border border-slate-300/30 rounded-lg p-6">
+                    <h4 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
                       <TrendingUp className="w-5 h-5" />
                       Final Report
                     </h4>
@@ -610,7 +610,7 @@ Create a clear, business-ready summary.`;
               {history.slice(0, 5).map((execution, idx) => (
                 <div
                   key={execution.id}
-                  className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:border-purple-500/50 transition-colors cursor-pointer"
+                  className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:border-slate-300/50 transition-colors cursor-pointer"
                   onClick={() => setAgent({ phase: 'completed', ...execution })}
                 >
                   <div className="flex items-start justify-between">

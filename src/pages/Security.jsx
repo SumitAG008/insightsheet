@@ -11,14 +11,14 @@ export default function Security() {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/50">
+            <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/50">
               <Shield className="w-10 h-10 text-white" />
             </div>
           </div>
           <h1 className="text-5xl font-bold text-white mb-4">
             Security & Compliance
           </h1>
-          <p className="text-xl text-purple-200">
+          <p className="text-xl text-slate-800">
             Your privacy is our priority. Here's how we protect your data.
           </p>
         </div>
@@ -33,7 +33,7 @@ export default function Security() {
             <CheckCircle className="w-4 h-4 mr-2" />
             CCPA Compliant
           </Badge>
-          <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-sm py-2 px-4">
+          <Badge className="bg-slate-800/20 text-slate-800 border-slate-300/30 text-sm py-2 px-4">
             <CheckCircle className="w-4 h-4 mr-2" />
             Zero Data Storage
           </Badge>
@@ -47,8 +47,8 @@ export default function Security() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
             <CardHeader>
-              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-                <FileCheck className="w-6 h-6 text-purple-400" />
+              <div className="w-12 h-12 bg-slate-800/20 rounded-lg flex items-center justify-center mb-4">
+                <FileCheck className="w-6 h-6 text-slate-800" />
               </div>
               <CardTitle className="text-white">ZERO File Storage</CardTitle>
             </CardHeader>
@@ -59,8 +59,8 @@ export default function Security() {
 
           <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
             <CardHeader>
-              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-                <Eye className="w-6 h-6 text-purple-400" />
+              <div className="w-12 h-12 bg-slate-800/20 rounded-lg flex items-center justify-center mb-4">
+                <Eye className="w-6 h-6 text-slate-800" />
               </div>
               <CardTitle className="text-white">ZERO AI Data Storage</CardTitle>
             </CardHeader>
@@ -71,8 +71,8 @@ export default function Security() {
 
           <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
             <CardHeader>
-              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-                <Lock className="w-6 h-6 text-purple-400" />
+              <div className="w-12 h-12 bg-slate-800/20 rounded-lg flex items-center justify-center mb-4">
+                <Lock className="w-6 h-6 text-slate-800" />
               </div>
               <CardTitle className="text-white">Password Security</CardTitle>
             </CardHeader>
@@ -83,8 +83,8 @@ export default function Security() {
 
           <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
             <CardHeader>
-              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-                <Database className="w-6 h-6 text-purple-400" />
+              <div className="w-12 h-12 bg-slate-800/20 rounded-lg flex items-center justify-center mb-4">
+                <Database className="w-6 h-6 text-slate-800" />
               </div>
               <CardTitle className="text-white">Encrypted Database</CardTitle>
             </CardHeader>
@@ -95,8 +95,8 @@ export default function Security() {
 
           <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
             <CardHeader>
-              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-                <Globe className="w-6 h-6 text-purple-400" />
+              <div className="w-12 h-12 bg-slate-800/20 rounded-lg flex items-center justify-center mb-4">
+                <Globe className="w-6 h-6 text-slate-800" />
               </div>
               <CardTitle className="text-white">GDPR & CCPA</CardTitle>
             </CardHeader>
@@ -107,8 +107,8 @@ export default function Security() {
 
           <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
             <CardHeader>
-              <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
-                <Shield className="w-6 h-6 text-purple-400" />
+              <div className="w-12 h-12 bg-slate-800/20 rounded-lg flex items-center justify-center mb-4">
+                <Shield className="w-6 h-6 text-slate-800" />
               </div>
               <CardTitle className="text-white">Admin-Only Logs</CardTitle>
             </CardHeader>
@@ -158,10 +158,10 @@ export default function Security() {
         </div>
 
         {/* Security Notice */}
-        <Alert className="mb-12 bg-purple-500/10 border-purple-500/30">
-          <Shield className="h-5 w-5 text-purple-400" />
+        <Alert className="mb-12 bg-slate-800/10 border-slate-300/30">
+          <Shield className="h-5 w-5 text-slate-800" />
           <AlertDescription className="text-slate-300 ml-2">
-            <strong className="text-purple-300">Privacy-First Architecture:</strong> We built InsightSheet-lite so that your sensitive data never touches our servers. Files are processed in-memory and immediately discarded. We only store what's essential for authentication and billing.
+            <strong className="text-slate-800">Privacy-First Architecture:</strong> We built InsightSheet-lite so that your sensitive data never touches our servers. Files are processed in-memory and immediately discarded. We only store what's essential for authentication and billing.
           </AlertDescription>
         </Alert>
 
@@ -200,7 +200,7 @@ export default function Security() {
 
             <div>
               <h3 className="text-xl font-semibold text-white mb-2 flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2 text-purple-400" />
+                <CheckCircle className="w-5 h-5 mr-2 text-slate-800" />
                 PCI-DSS (Payment Security)
               </h3>
               <ul className="list-disc ml-6 space-y-1">
@@ -241,14 +241,14 @@ export default function Security() {
         </Card>
 
         {/* Contact */}
-        <Card className="bg-gradient-to-br from-purple-900/20 to-pink-900/20 backdrop-blur-xl border-purple-500/30">
+        <Card className="bg-gradient-to-br from-slate-800/20 to-slate-700/20 backdrop-blur-xl border-slate-300/30">
           <CardHeader>
             <CardTitle className="text-white text-2xl">Security Contact</CardTitle>
           </CardHeader>
           <CardContent className="text-slate-300 space-y-3">
             <p><strong className="text-white">Report Security Issues:</strong> security@meldra.ai</p>
             <p><strong className="text-white">General Questions:</strong> sumitagaria@gmail.com</p>
-            <p><strong className="text-white">Privacy Policy:</strong> <a href="/privacy" className="text-purple-400 hover:text-purple-300 underline">/privacy</a></p>
+            <p><strong className="text-white">Privacy Policy:</strong> <a href="/privacy" className="text-slate-800 hover:text-slate-800 underline">/privacy</a></p>
             <p className="text-sm text-slate-400 mt-4">
               We take security seriously. If you find a vulnerability, please report it responsibly and we'll respond within 24 hours.
             </p>
@@ -259,9 +259,9 @@ export default function Security() {
         <div className="text-center mt-12 text-slate-400 text-sm">
           <p>Last Updated: January 15, 2025 • Version 1.0</p>
           <p className="mt-2">
-            <a href="/privacy" className="text-purple-400 hover:text-purple-300">Privacy Policy</a>
+            <a href="/privacy" className="text-slate-800 hover:text-slate-800">Privacy Policy</a>
             {' • '}
-            <a href="/disclaimer" className="text-purple-400 hover:text-purple-300">Terms of Service</a>
+            <a href="/disclaimer" className="text-slate-800 hover:text-slate-800">Terms of Service</a>
           </p>
         </div>
       </div>

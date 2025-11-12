@@ -99,7 +99,7 @@ export default function Pricing() {
       totalDisplay: pricing.total,
       savings: pricing.savings,
       icon: Crown,
-      color: 'from-purple-600 to-indigo-600',
+      color: 'from-slate-800 to-indigo-600',
       popular: true,
       processing: {
         method: 'Browser + Backend',

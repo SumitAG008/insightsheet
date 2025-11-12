@@ -147,7 +147,7 @@ export default function Demo() {
               {/* Left: Instructions */}
               <Card className="bg-slate-900/50 border-slate-300">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 text-2xl flex items-center gap-3">
+                  <CardTitle className="text-slate-800 text-2xl flex items-center gap-3">
                     <currentDemo.icon className={`w-8 h-8 text-${currentDemo.color}-400`} />
                     {currentDemo.title}
                   </CardTitle>
@@ -157,7 +157,7 @@ export default function Demo() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-semibold text-purple-300 mb-4">
+                    <h3 className="text-lg font-semibold text-slate-800 mb-4">
                       How It Works:
                     </h3>
                     <div className="space-y-3">
@@ -185,13 +185,13 @@ export default function Demo() {
               {/* Right: Preview/Demo */}
               <Card className="bg-slate-900/50 border-slate-300">
                 <CardHeader>
-                  <CardTitle className="text-purple-200">Live Preview</CardTitle>
+                  <CardTitle className="text-slate-800">Live Preview</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="bg-slate-800/50 rounded-lg p-8 min-h-[400px] flex items-center justify-center">
                     <div className="text-center">
                       <currentDemo.icon className={`w-24 h-24 text-${currentDemo.color}-400 mx-auto mb-6`} />
-                      <h3 className="text-2xl font-bold text-purple-200 mb-3">
+                      <h3 className="text-2xl font-bold text-slate-800 mb-3">
                         Interactive Preview
                       </h3>
                       <p className="text-slate-400 mb-6">
@@ -213,7 +213,7 @@ export default function Demo() {
 
         {/* Feature Grid */}
         <div className="mt-12">
-          <h2 className="text-3xl font-bold text-purple-200 mb-6 text-center">
+          <h2 className="text-3xl font-bold text-slate-800 mb-6 text-center">
             All Features at a Glance
           </h2>
           <div className="grid md:grid-cols-3 gap-6">
@@ -222,12 +222,12 @@ export default function Demo() {
               return (
                 <Card
                   key={demo.id}
-                  className="bg-slate-900/50 border-slate-300 hover:border-purple-500/50 transition-all cursor-pointer"
+                  className="bg-slate-900/50 border-slate-300 hover:border-slate-300/50 transition-all cursor-pointer"
                   onClick={() => setActiveDemo(demo.id)}
                 >
                   <CardContent className="pt-6">
                     <Icon className={`w-12 h-12 text-${demo.color}-400 mb-4`} />
-                    <h3 className="text-xl font-bold text-purple-200 mb-2">
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">
                       {demo.title}
                     </h3>
                     <p className="text-sm text-slate-400 mb-4">
@@ -239,7 +239,7 @@ export default function Demo() {
                         navigate(createPageUrl(demo.route));
                       }}
                       variant="outline"
-                      className="w-full border-purple-600 text-purple-300 hover:bg-purple-900/50"
+                      className="w-full border-slate-300 text-slate-800 hover:bg-slate-800/50"
                     >
                       Try Now
                     </Button>
@@ -249,18 +249,18 @@ export default function Demo() {
             })}
 
             {/* User Guide Card */}
-            <Card className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 border-purple-500/30">
+            <Card className="bg-gradient-to-br from-slate-800/50 to-slate-700/50 border-slate-300/30">
               <CardContent className="pt-6">
-                <BookOpen className="w-12 h-12 text-purple-300 mb-4" />
-                <h3 className="text-xl font-bold text-purple-200 mb-2">
+                <BookOpen className="w-12 h-12 text-slate-800 mb-4" />
+                <h3 className="text-xl font-bold text-slate-800 mb-2">
                   Complete Guide
                 </h3>
-                <p className="text-sm text-purple-100 mb-4">
+                <p className="text-sm text-slate-800 mb-4">
                   Comprehensive documentation with step-by-step workflows
                 </p>
                 <Button
                   onClick={() => navigate(createPageUrl('UserGuide'))}
-                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                  className="w-full bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-800 hover:to-slate-700"
                 >
                   Read Guide
                 </Button>
@@ -270,9 +270,9 @@ export default function Demo() {
         </div>
 
         {/* Bottom CTA */}
-        <Card className="mt-12 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border-purple-500/30">
+        <Card className="mt-12 bg-gradient-to-r from-slate-800/20 to-slate-700/20 border-slate-300/30">
           <CardContent className="pt-8 pb-8 text-center">
-            <h2 className="text-3xl font-bold text-purple-200 mb-3">
+            <h2 className="text-3xl font-bold text-slate-800 mb-3">
               Ready to Get Started?
             </h2>
             <p className="text-slate-300 mb-6 max-w-2xl mx-auto">
@@ -282,7 +282,7 @@ export default function Demo() {
             <div className="flex gap-4 justify-center">
               <Button
                 onClick={() => navigate(createPageUrl('Upload'))}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-6 text-lg"
+                className="bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-800 hover:to-slate-700 px-8 py-6 text-lg"
               >
                 <Upload className="w-5 h-5 mr-2" />
                 Upload File Now
@@ -290,7 +290,7 @@ export default function Demo() {
               <Button
                 onClick={() => navigate(createPageUrl('UserGuide'))}
                 variant="outline"
-                className="border-purple-600 text-purple-300 hover:bg-purple-900/50 px-8 py-6 text-lg"
+                className="border-slate-300 text-slate-800 hover:bg-slate-800/50 px-8 py-6 text-lg"
               >
                 <BookOpen className="w-5 h-5 mr-2" />
                 View Documentation

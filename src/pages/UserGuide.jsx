@@ -60,7 +60,7 @@ export default function UserGuide() {
                     1
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-purple-300 mb-2">Upload Your File</h3>
+                    <h3 className="text-xl font-semibold text-slate-800 mb-2">Upload Your File</h3>
                     <p className="text-slate-400 mb-3">
                       Go to the <strong>Upload</strong> page and drag & drop your Excel (.xlsx, .xls) or CSV file.
                       Files up to 5MB process instantly. No signup required.
@@ -68,7 +68,7 @@ export default function UserGuide() {
                     <div className="bg-slate-800/50 rounded-lg p-4">
                       <p className="text-sm text-emerald-400">✓ Supported: .xlsx, .xls, .csv</p>
                       <p className="text-sm text-blue-400">✓ File size: Up to 5MB (free) | 50MB (Pro)</p>
-                      <p className="text-sm text-purple-400">✓ Privacy: Processed locally in your browser</p>
+                      <p className="text-sm text-slate-800">✓ Privacy: Processed locally in your browser</p>
                     </div>
                   </div>
                 </div>
@@ -105,7 +105,7 @@ export default function UserGuide() {
                     </p>
                     <div className="grid md:grid-cols-2 gap-3">
                       <div className="bg-slate-800/50 rounded-lg p-3">
-                        <p className="text-sm text-purple-300 font-semibold mb-1">Analysis & Cleaning</p>
+                        <p className="text-sm text-slate-800 font-semibold mb-1">Analysis & Cleaning</p>
                         <p className="text-xs text-slate-400">Remove duplicates, handle missing values, format data</p>
                       </div>
                       <div className="bg-slate-800/50 rounded-lg p-3">
@@ -126,7 +126,7 @@ export default function UserGuide() {
 
                 {/* Step 4 */}
                 <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-pink-600 to-rose-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-slate-800 to-rose-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
                     4
                   </div>
                   <div className="flex-1">
@@ -138,7 +138,7 @@ export default function UserGuide() {
                     <div className="bg-slate-800/50 rounded-lg p-4">
                       <p className="text-sm text-emerald-400">✓ Export to Excel (.xlsx)</p>
                       <p className="text-sm text-blue-400">✓ Export to CSV</p>
-                      <p className="text-sm text-purple-400">✓ Original formatting preserved</p>
+                      <p className="text-sm text-slate-800">✓ Original formatting preserved</p>
                     </div>
                   </div>
                 </div>
@@ -152,14 +152,14 @@ export default function UserGuide() {
               {/* Upload Page */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-800 flex items-center gap-2">
                     <Upload className="w-5 h-5" />
                     Upload Page
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-purple-300">Key Features:</h4>
+                    <h4 className="font-semibold text-slate-800">Key Features:</h4>
                     <ul className="space-y-1 text-sm text-slate-400">
                       <li className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-emerald-400" />
@@ -181,7 +181,7 @@ export default function UserGuide() {
                   </div>
                   <div className="bg-slate-800/50 rounded-lg p-3">
                     <p className="text-xs text-slate-300">
-                      <strong className="text-purple-400">Pro tip:</strong> Use AI Formula Assistant to describe
+                      <strong className="text-slate-800">Pro tip:</strong> Use AI Formula Assistant to describe
                       operations before uploading. Formulas will be ready to apply on the Dashboard!
                     </p>
                   </div>
@@ -191,14 +191,14 @@ export default function UserGuide() {
               {/* Dashboard */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-800 flex items-center gap-2">
                     <LayoutDashboard className="w-5 h-5" />
                     Dashboard
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-purple-300">Key Features:</h4>
+                    <h4 className="font-semibold text-slate-800">Key Features:</h4>
                     <ul className="space-y-1 text-sm text-slate-400">
                       <li className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-emerald-400" />
@@ -228,14 +228,14 @@ export default function UserGuide() {
               {/* Sheet Manager */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-800 flex items-center gap-2">
                     <FileSpreadsheet className="w-5 h-5" />
                     Sheet Manager
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-purple-300">Key Features:</h4>
+                    <h4 className="font-semibold text-slate-800">Key Features:</h4>
                     <ul className="space-y-1 text-sm text-slate-400">
                       <li className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-emerald-400" />
@@ -261,7 +261,7 @@ export default function UserGuide() {
                   </div>
                   <div className="bg-slate-800/50 rounded-lg p-3">
                     <p className="text-xs text-slate-300">
-                      <strong className="text-purple-400">Use case:</strong> Manage quarterly reports (Q1, Q2, Q3, Q4)
+                      <strong className="text-slate-800">Use case:</strong> Manage quarterly reports (Q1, Q2, Q3, Q4)
                       in one workbook with linked consolidation sheet.
                     </p>
                   </div>
@@ -271,14 +271,14 @@ export default function UserGuide() {
               {/* Reconciliation */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-800 flex items-center gap-2">
                     <GitCompare className="w-5 h-5" />
                     Reconciliation Tool
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-purple-300">Key Features:</h4>
+                    <h4 className="font-semibold text-slate-800">Key Features:</h4>
                     <ul className="space-y-1 text-sm text-slate-400">
                       <li className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-emerald-400" />
@@ -304,7 +304,7 @@ export default function UserGuide() {
                   </div>
                   <div className="bg-slate-800/50 rounded-lg p-3">
                     <p className="text-xs text-slate-300">
-                      <strong className="text-purple-400">Perfect for:</strong> Bank reconciliation, inventory
+                      <strong className="text-slate-800">Perfect for:</strong> Bank reconciliation, inventory
                       matching, invoice verification, data quality checks.
                     </p>
                   </div>
@@ -314,14 +314,14 @@ export default function UserGuide() {
               {/* Accounting Toolkit */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-800 flex items-center gap-2">
                     <Calculator className="w-5 h-5" />
                     Accounting Toolkit
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-purple-300">Key Features:</h4>
+                    <h4 className="font-semibold text-slate-800">Key Features:</h4>
                     <ul className="space-y-1 text-sm text-slate-400">
                       <li className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-emerald-400" />
@@ -351,14 +351,14 @@ export default function UserGuide() {
               {/* Project Tracker */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-800 flex items-center gap-2">
                     <Calendar className="w-5 h-5" />
                     Project Tracker
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-2">
-                    <h4 className="font-semibold text-purple-300">Key Features:</h4>
+                    <h4 className="font-semibold text-slate-800">Key Features:</h4>
                     <ul className="space-y-1 text-sm text-slate-400">
                       <li className="flex items-center gap-2">
                         <CheckCircle className="w-4 h-4 text-emerald-400" />
@@ -384,7 +384,7 @@ export default function UserGuide() {
                   </div>
                   <div className="bg-slate-800/50 rounded-lg p-3">
                     <p className="text-xs text-slate-300">
-                      <strong className="text-purple-400">PMP Certified:</strong> Includes all PMBOK Earned
+                      <strong className="text-slate-800">PMP Certified:</strong> Includes all PMBOK Earned
                       Value formulas for professional project management.
                     </p>
                   </div>
@@ -397,34 +397,34 @@ export default function UserGuide() {
           <TabsContent value="workflows" className="space-y-6">
             <Card className="bg-slate-900/50 border-slate-700/50">
               <CardHeader>
-                <CardTitle className="text-purple-200 text-2xl">Common Workflows</CardTitle>
+                <CardTitle className="text-slate-800 text-2xl">Common Workflows</CardTitle>
                 <CardDescription className="text-slate-400 text-lg">
                   Step-by-step guides for common tasks
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-8">
                 {/* Workflow 1 */}
-                <div className="border-l-4 border-purple-500 pl-6">
-                  <h3 className="text-xl font-bold text-purple-300 mb-4">1. Analyze & Clean Excel Data</h3>
+                <div className="border-l-4 border-slate-300 pl-6">
+                  <h3 className="text-xl font-bold text-slate-800 mb-4">1. Analyze & Clean Excel Data</h3>
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
-                      <Badge className="bg-purple-600 shrink-0">Step 1</Badge>
-                      <p className="text-slate-400">Go to <strong className="text-purple-300">Upload</strong> page → Upload your Excel/CSV file</p>
+                      <Badge className="bg-slate-800 shrink-0">Step 1</Badge>
+                      <p className="text-slate-400">Go to <strong className="text-slate-800">Upload</strong> page → Upload your Excel/CSV file</p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Badge className="bg-purple-600 shrink-0">Step 2</Badge>
+                      <Badge className="bg-slate-800 shrink-0">Step 2</Badge>
                       <p className="text-slate-400">Dashboard loads automatically → Click <strong className="text-blue-300">"Analysis & Cleaning"</strong> tab</p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Badge className="bg-purple-600 shrink-0">Step 3</Badge>
+                      <Badge className="bg-slate-800 shrink-0">Step 3</Badge>
                       <p className="text-slate-400">Use cleaning tools: Remove duplicates, Handle nulls, Fix formatting</p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Badge className="bg-purple-600 shrink-0">Step 4</Badge>
+                      <Badge className="bg-slate-800 shrink-0">Step 4</Badge>
                       <p className="text-slate-400">Review AI insights → Check charts for data patterns</p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Badge className="bg-purple-600 shrink-0">Step 5</Badge>
+                      <Badge className="bg-slate-800 shrink-0">Step 5</Badge>
                       <p className="text-slate-400">Click <strong className="text-emerald-300">"Export"</strong> → Choose Excel or CSV → Done!</p>
                     </div>
                   </div>
@@ -463,7 +463,7 @@ export default function UserGuide() {
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
                       <Badge className="bg-emerald-600 shrink-0">Step 1</Badge>
-                      <p className="text-slate-400">Upload your main dataset from <strong className="text-purple-300">Upload</strong> page</p>
+                      <p className="text-slate-400">Upload your main dataset from <strong className="text-slate-800">Upload</strong> page</p>
                     </div>
                     <div className="flex items-start gap-3">
                       <Badge className="bg-emerald-600 shrink-0">Step 2</Badge>
@@ -500,14 +500,14 @@ export default function UserGuide() {
             <div className="grid md:grid-cols-2 gap-6">
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-800 flex items-center gap-2">
                     <Sparkles className="w-5 h-5" />
                     Pro Tips
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-3">
-                    <h4 className="font-semibold text-purple-300 mb-1">AI Formula Assistant</h4>
+                  <div className="bg-slate-800/20 border border-slate-300/30 rounded-lg p-3">
+                    <h4 className="font-semibold text-slate-800 mb-1">AI Formula Assistant</h4>
                     <p className="text-sm text-slate-400">
                       Describe what you want before uploading your file. The AI will generate formulas
                       that are ready to apply on the Dashboard.
@@ -538,39 +538,39 @@ export default function UserGuide() {
 
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-800 flex items-center gap-2">
                     <AlertCircle className="w-5 h-5" />
                     Common Questions
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div>
-                    <h4 className="font-semibold text-purple-300 mb-1">Q: Where is my data stored?</h4>
+                    <h4 className="font-semibold text-slate-800 mb-1">Q: Where is my data stored?</h4>
                     <p className="text-sm text-slate-400">
                       A: Only in your browser's memory. Nothing goes to servers. Close tab = data gone.
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-purple-300 mb-1">Q: Can I use this offline?</h4>
+                    <h4 className="font-semibold text-slate-800 mb-1">Q: Can I use this offline?</h4>
                     <p className="text-sm text-slate-400">
                       A: Yes! After loading the page once, most features work offline (except AI).
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-purple-300 mb-1">Q: How do I save my work?</h4>
+                    <h4 className="font-semibold text-slate-800 mb-1">Q: How do I save my work?</h4>
                     <p className="text-sm text-slate-400">
                       A: Export your data as Excel or CSV. Use Sheet Manager to save snapshots locally.
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-purple-300 mb-1">Q: Can AI see my data?</h4>
+                    <h4 className="font-semibold text-slate-800 mb-1">Q: Can AI see my data?</h4>
                     <p className="text-sm text-slate-400">
                       A: AI processes data locally when possible. For specific questions, only the
                       relevant data is sent (never full dataset).
                     </p>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-purple-300 mb-1">Q: What Excel functions are supported?</h4>
+                    <h4 className="font-semibold text-slate-800 mb-1">Q: What Excel functions are supported?</h4>
                     <p className="text-sm text-slate-400">
                       A: 50+ functions including VLOOKUP, XLOOKUP, SUMIF, NPV, IRR, WORKDAY, and more.
                     </p>
@@ -580,14 +580,14 @@ export default function UserGuide() {
             </div>
 
             {/* Feature Summary */}
-            <Card className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 border-purple-500/30">
+            <Card className="bg-gradient-to-br from-slate-800/50 to-slate-700/50 border-slate-300/30">
               <CardHeader>
-                <CardTitle className="text-purple-200 text-2xl">What InsightSheet-lite Can Do</CardTitle>
+                <CardTitle className="text-slate-800 text-2xl">What InsightSheet-lite Can Do</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <h4 className="font-bold text-purple-300">Data Management</h4>
+                    <h4 className="font-bold text-slate-800">Data Management</h4>
                     <ul className="space-y-1 text-sm text-slate-300">
                       <li>✓ Excel & CSV support</li>
                       <li>✓ Multi-sheet workbooks</li>

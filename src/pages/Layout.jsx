@@ -321,24 +321,49 @@ export default function Layout({ children }) {
                 </>
               )}
 
-              {user ? (
-                <div className="ml-4 flex items-center gap-3">
-                  <span className="text-sm text-purple-300">{user.email}</span>
-                  <button
-                    onClick={handleLogout}
-                    className="text-sm text-purple-400 hover:text-purple-200 font-medium"
+              {/* Logo and Tagline - Top Right */}
+              <div className="ml-4 flex items-center gap-4">
+                <div className="flex items-center gap-3">
+                  <img
+                    src="/logo.png"
+                    alt="Company Logo"
+                    className="h-10 w-auto object-contain"
+                    onError={(e) => {
+                      // Fallback to gradient icon if logo not found
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                  <div
+                    className="hidden w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl items-center justify-center shadow-lg shadow-purple-500/50"
                   >
-                    Logout
-                  </button>
+                    <Sparkles className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <h2 className="text-lg font-bold text-white">InsightSheet-lite</h2>
+                    <p className="text-xs text-purple-300 font-semibold tracking-wide">DATA MADE SIMPLE</p>
+                  </div>
                 </div>
-              ) : (
-                <Link
-                  to={createPageUrl('Login')}
-                  className="ml-4 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-purple-500/50 font-medium"
-                >
-                  Login
-                </Link>
-              )}
+
+                {user ? (
+                  <div className="flex items-center gap-3 ml-4 pl-4 border-l border-purple-700/50">
+                    <span className="text-sm text-purple-300">{user.email}</span>
+                    <button
+                      onClick={handleLogout}
+                      className="text-sm text-purple-400 hover:text-purple-200 font-medium"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <Link
+                    to={createPageUrl('Login')}
+                    className="ml-4 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-purple-500/50 font-medium"
+                  >
+                    Login
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </div>

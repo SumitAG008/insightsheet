@@ -58,8 +58,9 @@ class WindowsExcelToPPT:
             pass
 
     def clean_sheet_name(self, sheet_name):
-        """Clean sheet name by removing special characters and control codes"""
+        """Clean sheet/chart names by removing special characters and control codes"""
         # Remove carriage returns, line feeds, and other control characters
+        # _x000D_ is a hex-encoded carriage return that appears in some Excel files
         cleaned = sheet_name.replace('\r', '').replace('\n', '').replace('_x000D_', '')
         # Remove other common problematic characters
         cleaned = cleaned.replace('\t', ' ').strip()
@@ -223,6 +224,9 @@ class WindowsExcelToPPT:
             chart_title = chart_obj.ChartTitle.Text if chart_obj.HasTitle else f"Chart {chart_idx}"
         except:
             chart_title = f"Chart {chart_idx}"
+
+        # Clean chart title to remove special characters
+        chart_title = self.clean_sheet_name(chart_title)
 
         title_frame.text = f"{sheet_name} - {chart_title}"
         p = title_frame.paragraphs[0]

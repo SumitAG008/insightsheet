@@ -1,0 +1,14 @@
+# Excel to PPT Converter Requirements
+# Install with: pip install -r requirements-excel-converter.txt
+
+# Core dependencies
+openpyxl>=3.1.0
+python-pptx>=0.6.21
+Pillow>=10.0.0
+
+# Data processing
+numpy>=1.24.0
+xlrd>=2.0.1
+
+# Windows-only (for advanced Windows COM conversion)
+pywin32>=305; sys_platform == 'win32'

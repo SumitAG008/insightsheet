@@ -257,36 +257,36 @@ export default function FileToPPT() {
   const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-12">
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/50">
+            <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center shadow-2xl shadow-slate-500/50">
               <FileText className="w-10 h-10 text-white" />
             </div>
           </div>
 
-          <h1 className="text-5xl font-bold text-blue-900 mb-4">
+          <h1 className="text-5xl font-bold text-slate-800 mb-4">
             Advanced Excel to PowerPoint
           </h1>
-          <p className="text-xl text-blue-700 mb-4">
+          <p className="text-xl text-slate-700 font-bold mb-4">
             Professional presentations with charts, tables & statistics
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+            <Badge className="bg-slate-100 text-slate-800 border-slate-300 font-bold">
               <BarChart3 className="w-4 h-4 mr-1" />
               Multiple Charts
             </Badge>
-            <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200">
+            <Badge className="bg-slate-100 text-slate-800 border-slate-300 font-bold">
               <Table className="w-4 h-4 mr-1" />
               Data Tables
             </Badge>
-            <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-300 font-bold">
               <TrendingUp className="w-4 h-4 mr-1" />
               Statistics
             </Badge>
-            <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+            <Badge className="bg-slate-100 text-slate-800 border-slate-300 font-bold">
               <PieChart className="w-4 h-4 mr-1" />
               Bar/Line/Pie
             </Badge>
@@ -294,10 +294,10 @@ export default function FileToPPT() {
         </div>
 
         {/* FILE SIZE LIMIT WARNING */}
-        <Alert className={`mb-6 ${subscription?.plan === 'premium' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
-          <Lock className={`h-5 w-5 ${subscription?.plan === 'premium' ? 'text-emerald-400' : 'text-amber-400'}`} />
-          <AlertDescription className="text-slate-300">
-            <strong className={subscription?.plan === 'premium' ? 'text-emerald-300' : 'text-amber-300'}>
+        <Alert className={`mb-6 ${subscription?.plan === 'premium' ? 'bg-emerald-50 border-emerald-300' : 'bg-amber-50 border-amber-300'}`}>
+          <Lock className={`h-5 w-5 ${subscription?.plan === 'premium' ? 'text-emerald-600' : 'text-amber-600'}`} />
+          <AlertDescription className="text-slate-800 font-bold">
+            <strong className={subscription?.plan === 'premium' ? 'text-emerald-700' : 'text-amber-700'}>
               {subscription?.plan === 'premium' ? '✨ Premium: Up to 500MB files' : `⚠️ File Size Limit: ${maxSize}MB (Free Plan)`}
             </strong>
             <br />
@@ -310,10 +310,10 @@ export default function FileToPPT() {
         </Alert>
 
         {/* Features */}
-        <Alert className="mb-6 bg-emerald-500/10 border-emerald-500/30">
-          <Sparkles className="h-5 w-5 text-emerald-400" />
-          <AlertDescription className="text-slate-300">
-            <strong className="text-emerald-300">✨ Advanced Conversion Features:</strong>
+        <Alert className="mb-6 bg-emerald-50 border-emerald-300">
+          <Sparkles className="h-5 w-5 text-emerald-600" />
+          <AlertDescription className="text-slate-800 font-bold">
+            <strong className="text-emerald-700">✨ Advanced Conversion Features:</strong>
             <ul className="list-disc ml-5 mt-2 space-y-1 text-sm">
               <li><strong>Section Slides:</strong> Overview for each worksheet</li>
               <li><strong>Data Tables:</strong> Full data display (up to 20 rows)</li>
@@ -327,7 +327,7 @@ export default function FileToPPT() {
 
         {/* Upload Area */}
         {!file && (
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-12 mb-6">
+          <div className="bg-white border-2 border-dashed border-slate-300 rounded-2xl p-12 mb-6 shadow-lg hover:border-slate-400 transition-colors">
             <label className="flex flex-col items-center justify-center cursor-pointer">
               <input
                 type="file"
@@ -338,29 +338,29 @@ export default function FileToPPT() {
                 disabled={converting}
               />
               <div className="text-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Upload className="w-10 h-10 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-2">
+                <h3 className="text-2xl font-bold text-slate-800 mb-2">
                   Upload Excel or PDF File
                 </h3>
-                <p className="text-slate-400 mb-2">
+                <p className="text-slate-700 font-bold mb-2">
                   Click to select file or drag & drop
                 </p>
-                <p className="text-slate-500 text-sm mb-4">
+                <p className="text-slate-600 font-bold text-sm mb-4">
                   Max {maxSize}MB {subscription?.plan !== 'premium' && '(Free Plan)'}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Badge variant="outline" className="border-purple-500/50 text-purple-300">
+                  <Badge variant="outline" className="border-slate-400 text-slate-800 font-bold">
                     .XLSX
                   </Badge>
-                  <Badge variant="outline" className="border-purple-500/50 text-purple-300">
+                  <Badge variant="outline" className="border-slate-400 text-slate-800 font-bold">
                     .XLS
                   </Badge>
-                  <Badge variant="outline" className="border-purple-500/50 text-purple-300">
+                  <Badge variant="outline" className="border-slate-400 text-slate-800 font-bold">
                     .CSV
                   </Badge>
-                  <Badge variant="outline" className="border-purple-500/50 text-purple-300">
+                  <Badge variant="outline" className="border-slate-400 text-slate-800 font-bold">
                     .PDF
                   </Badge>
                 </div>
@@ -371,22 +371,22 @@ export default function FileToPPT() {
 
         {/* File Info & Convert */}
         {file && !result && (
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 mb-6">
+          <div className="bg-white border border-slate-300 rounded-2xl p-6 mb-6 shadow-lg">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <FileSpreadsheet className="w-8 h-8 text-purple-400" />
+                <FileSpreadsheet className="w-8 h-8 text-slate-700" />
                 <div>
-                  <p className="text-white font-semibold">{file.name}</p>
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-slate-800 font-bold">{file.name}</p>
+                  <p className="text-slate-700 text-sm font-bold">
                     {(file.size / 1024 / 1024).toFixed(2)} MB • {fileType.toUpperCase()}
                     {subscription?.plan !== 'premium' && (file.size / (1024 * 1024)) > 5 && (
-                      <span className="ml-2 text-amber-400">⚠️ Large file for free plan</span>
+                      <span className="ml-2 text-amber-600 font-bold">⚠️ Large file for free plan</span>
                     )}
                   </p>
                 </div>
               </div>
               {!converting && (
-                <Button onClick={handleReset} variant="outline" size="sm">
+                <Button onClick={handleReset} variant="outline" size="sm" className="border-slate-300 text-slate-800 font-bold">
                   Remove
                 </Button>
               )}
@@ -394,13 +394,13 @@ export default function FileToPPT() {
 
             {progress > 0 && (
               <div className="mb-4">
-                <div className="flex justify-between text-sm text-slate-400 mb-2">
+                <div className="flex justify-between text-sm text-slate-700 font-bold mb-2">
                   <span>{progressMessage}</span>
                   <span>{progress}%</span>
                 </div>
-                <div className="w-full bg-slate-800 rounded-full h-3">
+                <div className="w-full bg-slate-200 rounded-full h-3">
                   <div
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 h-3 rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-slate-800 to-slate-700 h-3 rounded-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -408,9 +408,9 @@ export default function FileToPPT() {
             )}
 
             {error && (
-              <Alert className="mb-4 bg-red-500/10 border-red-500/30">
-                <AlertCircle className="h-4 w-4 text-red-400" />
-                <AlertDescription className="text-red-300">
+              <Alert className="mb-4 bg-red-50 border-red-300">
+                <AlertCircle className="h-4 w-4 text-red-600" />
+                <AlertDescription className="text-red-700 font-bold">
                   {error}
                 </AlertDescription>
               </Alert>
@@ -419,7 +419,7 @@ export default function FileToPPT() {
             <Button
               onClick={handleConvert}
               disabled={converting || !!error}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-3"
+              className="w-full bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-900 hover:to-slate-800 text-white font-bold py-3"
             >
               {converting ? (
                 <>
@@ -438,34 +438,34 @@ export default function FileToPPT() {
 
         {/* Success Result */}
         {result && (
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-emerald-500/30 rounded-2xl p-8 text-center">
-            <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-10 h-10 text-emerald-400" />
+          <div className="bg-white border border-emerald-300 rounded-2xl p-8 text-center shadow-lg">
+            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-10 h-10 text-emerald-600" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-slate-800 mb-2">
               ✅ Conversion Successful!
             </h2>
-            <p className="text-slate-300 mb-6">
+            <p className="text-slate-700 font-bold mb-6">
               {result.message}
             </p>
             <div className="grid grid-cols-2 gap-4 mb-6">
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <p className="text-slate-400 text-sm">File Created</p>
-                <p className="text-white font-semibold text-sm">{result.fileName}</p>
+              <div className="bg-slate-50 border border-slate-300 rounded-lg p-4">
+                <p className="text-slate-600 text-sm font-bold">File Created</p>
+                <p className="text-slate-800 font-bold text-sm">{result.fileName}</p>
               </div>
-              <div className="bg-slate-800/50 rounded-lg p-4">
-                <p className="text-slate-400 text-sm">Slides Created</p>
-                <p className="text-white font-semibold text-2xl">{result.slidesCreated}</p>
+              <div className="bg-slate-50 border border-slate-300 rounded-lg p-4">
+                <p className="text-slate-600 text-sm font-bold">Slides Created</p>
+                <p className="text-slate-800 font-bold text-2xl">{result.slidesCreated}</p>
               </div>
               {result.chartsCreated > 0 && (
                 <>
-                  <div className="bg-slate-800/50 rounded-lg p-4">
-                    <p className="text-slate-400 text-sm">Charts Created</p>
-                    <p className="text-purple-400 font-semibold text-2xl">{result.chartsCreated}</p>
+                  <div className="bg-slate-50 border border-slate-300 rounded-lg p-4">
+                    <p className="text-slate-600 text-sm font-bold">Charts Created</p>
+                    <p className="text-slate-800 font-bold text-2xl">{result.chartsCreated}</p>
                   </div>
-                  <div className="bg-slate-800/50 rounded-lg p-4">
-                    <p className="text-slate-400 text-sm">Chart Types</p>
-                    <p className="text-purple-400 font-semibold text-sm">Bar, Line, Pie</p>
+                  <div className="bg-slate-50 border border-slate-300 rounded-lg p-4">
+                    <p className="text-slate-600 text-sm font-bold">Chart Types</p>
+                    <p className="text-slate-800 font-bold text-sm">Bar, Line, Pie</p>
                   </div>
                 </>
               )}
@@ -473,25 +473,25 @@ export default function FileToPPT() {
             <div className="flex gap-3">
               <Button
                 onClick={handleReset}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600"
+                className="flex-1 bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-900 hover:to-slate-800 font-bold"
               >
                 Convert Another File
               </Button>
             </div>
-            <p className="text-xs text-slate-500 mt-4">
+            <p className="text-xs text-slate-600 font-bold mt-4">
               PowerPoint file downloaded to your computer
             </p>
           </div>
         )}
 
         {/* How it Works */}
-        <div className="mt-12 bg-slate-900/50 rounded-xl p-6 border border-slate-700/30">
-          <h3 className="text-lg font-bold text-white mb-4">📊 What Gets Created</h3>
-          <div className="space-y-3 text-sm text-slate-300">
+        <div className="mt-12 bg-white border border-slate-300 rounded-xl p-6 shadow-lg">
+          <h3 className="text-lg font-bold text-slate-800 mb-4">📊 What Gets Created</h3>
+          <div className="space-y-3 text-sm text-slate-800 font-bold">
             <div className="flex gap-3">
-              <span className="font-bold text-purple-400">1️⃣</span>
+              <span className="font-bold text-slate-700">1️⃣</span>
               <div>
-                <strong className="text-white">Title Slide:</strong>
+                <strong className="text-slate-800">Title Slide:</strong>
                 <p>Professional cover page with file name and timestamp</p>
               </div>
             </div>

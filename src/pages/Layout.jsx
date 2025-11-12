@@ -1,9 +1,9 @@
 
-// Layout.jsx - Remove Workflow, Excel-to-PPT, add Agentic AI
-import React, { useCallback } from 'react';
+// Layout.jsx - Clean navigation with dropdown menus
+import React, { useCallback, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, FileSpreadsheet, GitCompare, Calculator, Calendar, BookOpen, Play } from 'lucide-react';
+import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, FileSpreadsheet, GitCompare, Calculator, Calendar, BookOpen, Play, ChevronDown } from 'lucide-react';
 import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
 import Logo from '@/components/branding/Logo';
 import { backendApi } from '@/api/backendClient';
@@ -15,6 +15,7 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const [user, setUser] = React.useState(null);
   const [loginTime, setLoginTime] = React.useState(null);
+  const [openDropdown, setOpenDropdown] = useState(null);
 
   const loadUser = useCallback(async () => {
     try {
@@ -116,12 +117,70 @@ export default function Layout({ children }) {
 
   const isActive = (path) => location.pathname === path;
 
+  const toggleDropdown = (name) => {
+    setOpenDropdown(openDropdown === name ? null : name);
+  };
+
+  const DropdownMenu = ({ name, icon: Icon, items }) => (
+    <div className="relative">
+      <button
+        onClick={() => toggleDropdown(name)}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-blue-700 hover:bg-blue-100 hover:text-blue-900"
+      >
+        <Icon className="w-4 h-4" />
+        <span>{name}</span>
+        <ChevronDown className={`w-4 h-4 transition-transform ${openDropdown === name ? 'rotate-180' : ''}`} />
+      </button>
+
+      {openDropdown === name && (
+        <div className="absolute top-full left-0 mt-1 bg-white border border-blue-200 rounded-lg shadow-xl min-w-[200px] py-2 z-50">
+          {items.map((item, idx) => (
+            <Link
+              key={idx}
+              to={createPageUrl(item.page)}
+              onClick={() => setOpenDropdown(null)}
+              className="flex items-center gap-3 px-4 py-2 text-blue-700 hover:bg-blue-50 hover:text-blue-900 transition-colors"
+            >
+              <item.icon className="w-4 h-4" />
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const fileMenuItems = [
+    { icon: Upload, label: 'CSV Upload', page: 'Upload' },
+    { icon: FileText, label: 'File to PPT', page: 'FileToPPT' },
+    { icon: FileArchive, label: 'ZIP Cleaner', page: 'FilenameCleaner' },
+  ];
+
+  const excelMenuItems = [
+    { icon: FileSpreadsheet, label: 'Sheet Manager', page: 'SheetManager' },
+    { icon: GitCompare, label: 'Reconciliation', page: 'Reconciliation' },
+    { icon: Calculator, label: 'Accounting', page: 'AccountingToolkit' },
+    { icon: Calendar, label: 'Projects', page: 'ProjectTracker' },
+  ];
+
+  const helpMenuItems = [
+    { icon: BookOpen, label: 'User Guide', page: 'UserGuide' },
+    { icon: Play, label: 'Demo', page: 'Demo' },
+  ];
+
+  const adminMenuItems = [
+    { icon: LayoutDashboard, label: 'Admin Dashboard', page: 'AdminDashboard' },
+    { icon: Users, label: 'User Management', page: 'UserManagement' },
+    { icon: Download, label: 'Backup Code', page: 'DownloadCode' },
+  ];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
       {/* Navigation */}
       <nav className="border-b border-blue-200 backdrop-blur-xl bg-white/95 sticky top-0 z-50 shadow-lg shadow-blue-200/50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
+            {/* Logo */}
             <Link to={createPageUrl('Upload')} className="group">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/50">
@@ -136,19 +195,9 @@ export default function Layout({ children }) {
               </div>
             </Link>
 
-            <div className="hidden md:flex items-center gap-2">
-              <Link
-                to={createPageUrl('Upload')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                  isActive(createPageUrl('Upload'))
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
-                    : 'text-blue-700 hover:bg-blue-100 hover:text-blue-900'
-                }`}
-              >
-                <Upload className="w-4 h-4" />
-                <span>CSV Upload</span>
-              </Link>
-
+            {/* Main Navigation */}
+            <div className="hidden md:flex items-center gap-1">
+              {/* Dashboard */}
               <Link
                 to={createPageUrl('Dashboard')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
@@ -161,6 +210,13 @@ export default function Layout({ children }) {
                 <span>Dashboard</span>
               </Link>
 
+              {/* Files Dropdown */}
+              <DropdownMenu name="Files" icon={FileText} items={fileMenuItems} />
+
+              {/* Excel Tools Dropdown */}
+              <DropdownMenu name="Excel Tools" icon={FileSpreadsheet} items={excelMenuItems} />
+
+              {/* AI Tools */}
               <Link
                 to={createPageUrl('AgenticAI')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
@@ -170,105 +226,13 @@ export default function Layout({ children }) {
                 }`}
               >
                 <Brain className="w-4 h-4" />
-                <span>Agentic AI</span>
+                <span>AI Tools</span>
               </Link>
 
-              <Link
-                to={createPageUrl('FileToPPT')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                  isActive(createPageUrl('FileToPPT'))
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
-                    : 'text-blue-700 hover:bg-blue-100 hover:text-blue-900'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                <span>File to PPT</span>
-              </Link>
+              {/* Help Dropdown */}
+              <DropdownMenu name="Help" icon={BookOpen} items={helpMenuItems} />
 
-              <Link
-                to={createPageUrl('FilenameCleaner')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                  isActive(createPageUrl('FilenameCleaner'))
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
-                    : 'text-blue-700 hover:bg-blue-100 hover:text-blue-900'
-                }`}
-              >
-                <FileArchive className="w-4 h-4" />
-                <span>ZIP Cleaner</span>
-              </Link>
-
-              <Link
-                to={createPageUrl('SheetManager')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                  isActive(createPageUrl('SheetManager'))
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
-                    : 'text-blue-700 hover:bg-blue-100 hover:text-blue-900'
-                }`}
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>Sheets</span>
-              </Link>
-
-              <Link
-                to={createPageUrl('Reconciliation')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                  isActive(createPageUrl('Reconciliation'))
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
-                    : 'text-blue-700 hover:bg-blue-100 hover:text-blue-900'
-                }`}
-              >
-                <GitCompare className="w-4 h-4" />
-                <span>Reconcile</span>
-              </Link>
-
-              <Link
-                to={createPageUrl('AccountingToolkit')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                  isActive(createPageUrl('AccountingToolkit'))
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
-                    : 'text-blue-700 hover:bg-blue-100 hover:text-blue-900'
-                }`}
-              >
-                <Calculator className="w-4 h-4" />
-                <span>Accounting</span>
-              </Link>
-
-              <Link
-                to={createPageUrl('ProjectTracker')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                  isActive(createPageUrl('ProjectTracker'))
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
-                    : 'text-blue-700 hover:bg-blue-100 hover:text-blue-900'
-                }`}
-              >
-                <Calendar className="w-4 h-4" />
-                <span>Projects</span>
-              </Link>
-
-              <Link
-                to={createPageUrl('UserGuide')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                  isActive(createPageUrl('UserGuide'))
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
-                    : 'text-blue-700 hover:bg-blue-100 hover:text-blue-900'
-                }`}
-              >
-                <BookOpen className="w-4 h-4" />
-                <span>Guide</span>
-              </Link>
-
-              <Link
-                to={createPageUrl('Demo')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                  isActive(createPageUrl('Demo'))
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
-                    : 'text-blue-700 hover:bg-blue-100 hover:text-blue-900'
-                }`}
-              >
-                <Play className="w-4 h-4" />
-                <span>Demo</span>
-              </Link>
-
+              {/* Pricing */}
               <Link
                 to={createPageUrl('Pricing')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
@@ -281,89 +245,55 @@ export default function Layout({ children }) {
                 <span>Pricing</span>
               </Link>
 
+              {/* Admin Dropdown (for admin only) */}
               {user && user.email === 'sumit@meldra.ai' && (
-                <>
-                  <Link
-                    to={createPageUrl('AdminDashboard')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                      isActive(createPageUrl('AdminDashboard'))
-                        ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg shadow-amber-500/50'
-                        : 'text-amber-700 hover:bg-amber-100 hover:text-amber-900'
-                    }`}
-                  >
-                    <DollarSign className="w-4 h-4" />
-                    <span>Admin</span>
-                  </Link>
-
-                  <Link
-                    to={createPageUrl('UserManagement')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                      isActive(createPageUrl('UserManagement'))
-                        ? 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg shadow-amber-500/50'
-                        : 'text-amber-700 hover:bg-amber-100 hover:text-amber-900'
-                    }`}
-                  >
-                    <Users className="w-4 h-4" />
-                    <span>Users</span>
-                  </Link>
-
-                  <Link
-                    to={createPageUrl('DownloadCode')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
-                      isActive(createPageUrl('DownloadCode'))
-                        ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-500/50'
-                        : 'text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900'
-                    }`}
-                  >
-                    <Download className="w-4 h-4" />
-                    <span>Backup Code</span>
-                  </Link>
-                </>
+                <DropdownMenu name="Admin" icon={Shield} items={adminMenuItems} />
               )}
+            </div>
 
+            {/* User Section */}
+            <div className="flex items-center gap-4">
               {/* Logo and Tagline - Top Right */}
-              <div className="ml-4 flex items-center gap-4">
-                <div className="flex items-center gap-3">
-                  <img
-                    src="/logo.png"
-                    alt="Company Logo"
-                    className="h-10 w-auto object-contain"
-                    onError={(e) => {
-                      // Fallback to gradient icon if logo not found
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
-                  />
-                  <div
-                    className="hidden w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl items-center justify-center shadow-lg shadow-blue-500/50"
-                  >
-                    <Sparkles className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="text-right">
-                    <h2 className="text-lg font-bold text-blue-900">InsightSheet-lite</h2>
-                    <p className="text-xs text-blue-600 font-semibold tracking-wide">DATA MADE SIMPLE</p>
-                  </div>
+              <div className="hidden lg:flex items-center gap-3 border-l border-blue-200 pl-4">
+                <img
+                  src="/logo.png"
+                  alt="Company Logo"
+                  className="h-10 w-auto object-contain"
+                  onError={(e) => {
+                    // Fallback to gradient icon if logo not found
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+                <div
+                  className="hidden w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl items-center justify-center shadow-lg shadow-blue-500/50"
+                >
+                  <Sparkles className="w-6 h-6 text-white" />
                 </div>
-
-                {user ? (
-                  <div className="flex items-center gap-3 ml-4 pl-4 border-l border-blue-300">
-                    <span className="text-sm text-blue-700">{user.email}</span>
-                    <button
-                      onClick={handleLogout}
-                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                ) : (
-                  <Link
-                    to={createPageUrl('Login')}
-                    className="ml-4 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/50 font-medium"
-                  >
-                    Login
-                  </Link>
-                )}
               </div>
+
+              {/* User Auth */}
+              {user ? (
+                <div className="flex items-center gap-3 border-l border-blue-200 pl-4">
+                  <div className="text-right">
+                    <p className="text-sm font-semibold text-blue-900">{user.email}</p>
+                    <p className="text-xs text-blue-600">Logged in</p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="px-4 py-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-900 rounded-lg font-medium transition-colors"
+                  >
+                    Logout
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to={createPageUrl('Login')}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/50 font-medium"
+                >
+                  Login
+                </Link>
+              )}
             </div>
           </div>
         </div>

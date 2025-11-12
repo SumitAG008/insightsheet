@@ -176,35 +176,35 @@ export default function Pricing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-12">
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-12">
-          <Badge className="mb-4 bg-purple-500/20 text-purple-300 border-purple-500/30">
+          <Badge className="mb-4 bg-blue-500/20 text-blue-700 border-blue-500/30">
             <Star className="w-4 h-4 mr-1" />
             Choose Your Plan
           </Badge>
-          <h1 className="text-5xl font-bold text-white mb-2">
+          <h1 className="text-5xl font-bold text-blue-900 mb-2">
             Simple, Transparent Pricing
           </h1>
-          <p className="text-lg text-purple-300 font-semibold mb-4">
+          <p className="text-lg text-blue-700 font-semibold mb-4">
             InsightSheet-lite
           </p>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto mb-8">
+          <p className="text-xl text-blue-600 max-w-2xl mx-auto mb-8">
             Start free, upgrade when you need more power
           </p>
 
           {/* Billing Cycle Toggle */}
           <Tabs value={billingCycle} onValueChange={setBillingCycle} className="max-w-md mx-auto mb-8">
-            <TabsList className="grid w-full grid-cols-3 bg-slate-900/80">
+            <TabsList className="grid w-full grid-cols-3 bg-white border border-blue-200">
               <TabsTrigger value="monthly">Monthly</TabsTrigger>
               <TabsTrigger value="quarterly">
                 Quarterly
-                <Badge className="ml-2 bg-emerald-500/20 text-emerald-300 text-xs">Save 5%</Badge>
+                <Badge className="ml-2 bg-emerald-500/20 text-emerald-700 text-xs">Save 5%</Badge>
               </TabsTrigger>
               <TabsTrigger value="yearly">
                 Yearly
-                <Badge className="ml-2 bg-emerald-500/20 text-emerald-300 text-xs">Save 10%</Badge>
+                <Badge className="ml-2 bg-emerald-500/20 text-emerald-700 text-xs">Save 10%</Badge>
               </TabsTrigger>
             </TabsList>
           </Tabs>
@@ -212,9 +212,9 @@ export default function Pricing() {
 
         {/* Admin Notice */}
         {user && user.email === 'sumit@meldra.ai' && (
-          <Alert className="mb-8 max-w-4xl mx-auto bg-amber-500/10 border-amber-500/30">
-            <AlertCircle className="h-5 w-5 text-amber-400" />
-            <AlertDescription className="text-amber-200">
+          <Alert className="mb-8 max-w-4xl mx-auto bg-amber-50 border-amber-300">
+            <AlertCircle className="h-5 w-5 text-amber-600" />
+            <AlertDescription className="text-amber-800">
               <strong>Admin Notice:</strong> Stripe payment links need to be configured for monthly, quarterly, and yearly billing.
               Click "Subscribe Now" to see the setup guide.
             </AlertDescription>
@@ -230,29 +230,29 @@ export default function Pricing() {
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-1">
+                  <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-1">
                     Most Popular
                   </Badge>
                 </div>
               )}
 
               <div className="relative group h-full">
-                <div className={`absolute inset-0 bg-gradient-to-r ${plan.color} rounded-2xl blur-xl opacity-30`} />
+                <div className={`absolute inset-0 bg-gradient-to-r ${plan.color} rounded-2xl blur-xl opacity-20`} />
 
-                <div className="relative bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 h-full flex flex-col">
+                <div className="relative bg-white backdrop-blur-xl border border-blue-200 rounded-2xl p-8 h-full flex flex-col shadow-lg">
                   {/* Plan Header */}
                   <div className="text-center mb-6">
-                    <plan.icon className="w-12 h-12 mx-auto mb-4 text-purple-400" />
-                    <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                    <plan.icon className="w-12 h-12 mx-auto mb-4 text-blue-600" />
+                    <h3 className="text-2xl font-bold text-blue-900 mb-2">{plan.name}</h3>
                     <div className="flex items-baseline justify-center gap-2">
-                      <span className="text-4xl font-bold text-white">{plan.priceDisplay}</span>
-                      <span className="text-slate-400">{plan.period}</span>
+                      <span className="text-4xl font-bold text-blue-900">{plan.priceDisplay}</span>
+                      <span className="text-blue-600">{plan.period}</span>
                     </div>
                     {plan.totalDisplay && (
-                      <p className="text-sm text-slate-400 mt-2">{plan.totalDisplay}</p>
+                      <p className="text-sm text-blue-600 mt-2">{plan.totalDisplay}</p>
                     )}
                     {plan.savings && (
-                      <Badge className="mt-2 bg-emerald-500/20 text-emerald-300">
+                      <Badge className="mt-2 bg-emerald-500/20 text-emerald-700">
                         {plan.savings}
                       </Badge>
                     )}
@@ -260,36 +260,36 @@ export default function Pricing() {
 
                   {/* Processing Method - NEW */}
                   {plan.processing && (
-                    <div className="mb-6 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                    <div className="mb-6 bg-blue-50 rounded-xl p-4 border border-blue-200">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold text-slate-400">Processing Method</span>
+                        <span className="text-sm font-semibold text-blue-700">Processing Method</span>
                         <Badge className={`${
-                          plan.id === 'free' ? 'bg-purple-600/20 text-purple-300' :
-                          plan.id === 'premium' ? 'bg-blue-600/20 text-blue-300' :
-                          'bg-amber-600/20 text-amber-300'
+                          plan.id === 'free' ? 'bg-blue-600/20 text-blue-700' :
+                          plan.id === 'premium' ? 'bg-indigo-600/20 text-indigo-700' :
+                          'bg-amber-600/20 text-amber-700'
                         }`}>
                           {plan.processing.badge}
                         </Badge>
                       </div>
-                      <p className="text-white font-bold mb-1">{plan.processing.method}</p>
-                      <p className="text-xs text-slate-400">{plan.processing.description}</p>
+                      <p className="text-blue-900 font-bold mb-1">{plan.processing.method}</p>
+                      <p className="text-xs text-blue-600">{plan.processing.description}</p>
                     </div>
                   )}
 
                   {/* Limits - NEW */}
                   {plan.limits && (
                     <div className="mb-6 space-y-2">
-                      <div className="flex items-center justify-between py-2 border-b border-slate-700/30">
-                        <span className="text-sm text-slate-400">Max File Size</span>
-                        <span className="text-sm font-bold text-white">{plan.limits.fileSize}</span>
+                      <div className="flex items-center justify-between py-2 border-b border-blue-200">
+                        <span className="text-sm text-blue-700">Max File Size</span>
+                        <span className="text-sm font-bold text-blue-900">{plan.limits.fileSize}</span>
                       </div>
-                      <div className="flex items-center justify-between py-2 border-b border-slate-700/30">
-                        <span className="text-sm text-slate-400">Max Rows</span>
-                        <span className="text-sm font-bold text-white">{plan.limits.rows}</span>
+                      <div className="flex items-center justify-between py-2 border-b border-blue-200">
+                        <span className="text-sm text-blue-700">Max Rows</span>
+                        <span className="text-sm font-bold text-blue-900">{plan.limits.rows}</span>
                       </div>
                       <div className="flex items-center justify-between py-2">
-                        <span className="text-sm text-slate-400">Data Storage</span>
-                        <span className="text-sm font-bold text-emerald-400">{plan.limits.storage}</span>
+                        <span className="text-sm text-blue-700">Data Storage</span>
+                        <span className="text-sm font-bold text-emerald-600">{plan.limits.storage}</span>
                       </div>
                     </div>
                   )}
@@ -298,8 +298,8 @@ export default function Pricing() {
                   <ul className="space-y-3 mb-8 flex-grow">
                     {plan.features.map((feature, idx) => (
                       <li key={idx} className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-slate-300 text-sm">{feature}</span>
+                        <Check className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                        <span className="text-blue-800 text-sm">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -307,14 +307,14 @@ export default function Pricing() {
                   {/* CTA Button */}
                   {plan.id === 'free' ? (
                     <Button
-                      className="w-full bg-slate-700 hover:bg-slate-600 text-white"
+                      className="w-full bg-blue-200 hover:bg-blue-300 text-blue-900 font-semibold"
                     >
                       Current Plan
                     </Button>
                   ) : (
                     <Button
                       onClick={() => handleSubscribe(plan)}
-                      className={`w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white font-bold`}
+                      className={`w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white font-bold shadow-lg`}
                     >
                       <CreditCard className="w-4 h-4 mr-2" />
                       Subscribe Now
@@ -328,18 +328,18 @@ export default function Pricing() {
 
         {/* Payment Modal */}
         {selectedPlan && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-900 rounded-2xl p-8 max-w-md w-full border border-slate-700">
-              <h2 className="text-2xl font-bold text-white mb-4">
+          <div className="fixed inset-0 bg-blue-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-blue-200 shadow-2xl">
+              <h2 className="text-2xl font-bold text-blue-900 mb-4">
                 Subscribe to {selectedPlan.name}
               </h2>
-              <p className="text-slate-300 mb-2">
+              <p className="text-blue-700 mb-2 font-semibold">
                 {selectedPlan.priceDisplay}{selectedPlan.period}
               </p>
-              <p className="text-slate-400 text-sm mb-6">
+              <p className="text-blue-600 text-sm mb-6">
                 {selectedPlan.totalDisplay}
                 {billingCycle === 'yearly' && (
-                  <span className="block text-emerald-400 mt-1">
+                  <span className="block text-emerald-600 mt-1">
                     ✓ Auto-renews annually after first year
                   </span>
                 )}
@@ -359,7 +359,7 @@ export default function Pricing() {
               <Button
                 onClick={() => setSelectedPlan(null)}
                 variant="outline"
-                className="w-full mt-4 border-slate-700 text-slate-300"
+                className="w-full mt-4 border-blue-300 text-blue-700 hover:bg-blue-50"
               >
                 Cancel
               </Button>
@@ -369,28 +369,28 @@ export default function Pricing() {
 
         {/* Feature Comparison */}
         <div className="mt-16 max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-white text-center mb-8">
+          <h2 className="text-2xl font-bold text-blue-900 text-center mb-8">
             Why upgrade to Premium?
           </h2>
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6">
-              <Zap className="w-10 h-10 text-purple-400 mb-4" />
-              <h3 className="text-lg font-bold text-white mb-2">Unlimited Everything</h3>
-              <p className="text-slate-400 text-sm">
+            <div className="bg-white border border-blue-200 rounded-xl p-6 shadow-md">
+              <Zap className="w-10 h-10 text-blue-600 mb-4" />
+              <h3 className="text-lg font-bold text-blue-900 mb-2">Unlimited Everything</h3>
+              <p className="text-blue-700 text-sm">
                 No file size limits, unlimited transactions, unlimited AI queries
               </p>
             </div>
-            <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6">
-              <Crown className="w-10 h-10 text-purple-400 mb-4" />
-              <h3 className="text-lg font-bold text-white mb-2">Excel Support</h3>
-              <p className="text-slate-400 text-sm">
+            <div className="bg-white border border-blue-200 rounded-xl p-6 shadow-md">
+              <Crown className="w-10 h-10 text-indigo-600 mb-4" />
+              <h3 className="text-lg font-bold text-blue-900 mb-2">Excel Support</h3>
+              <p className="text-blue-700 text-sm">
                 Import .XLS, .XLSX files directly. Export to Excel format
               </p>
             </div>
-            <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6">
-              <Star className="w-10 h-10 text-purple-400 mb-4" />
-              <h3 className="text-lg font-bold text-white mb-2">Save More</h3>
-              <p className="text-slate-400 text-sm">
+            <div className="bg-white border border-blue-200 rounded-xl p-6 shadow-md">
+              <Star className="w-10 h-10 text-blue-600 mb-4" />
+              <h3 className="text-lg font-bold text-blue-900 mb-2">Save More</h3>
+              <p className="text-blue-700 text-sm">
                 Get 5% off with quarterly billing, 10% off with yearly billing
               </p>
             </div>

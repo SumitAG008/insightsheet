@@ -253,23 +253,17 @@ export default function Layout({ children }) {
 
             {/* User Section */}
             <div className="flex items-center gap-4">
-              {/* Logo and Tagline - Top Right */}
+              {/* Company Logo - Top Right */}
               <div className="hidden lg:flex items-center gap-3 border-l border-blue-200 pl-4">
                 <img
-                  src="/logo.png"
+                  src="https://base44.com/logo_v2.svg"
                   alt="Company Logo"
                   className="h-10 w-auto object-contain"
                   onError={(e) => {
-                    // Fallback to gradient icon if logo not found
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
+                    // Fallback to local logo if CDN fails
+                    e.target.src = '/logo.png';
                   }}
                 />
-                <div
-                  className="hidden w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl items-center justify-center shadow-lg shadow-blue-500/50"
-                >
-                  <Sparkles className="w-6 h-6 text-white" />
-                </div>
               </div>
 
               {/* User Auth */}

@@ -25,6 +25,7 @@ xlrd==2.0.1  # Old Excel format
 pandas==2.1.4  # Data processing
 python-pptx==0.6.23  # PowerPoint generation
 Pillow==10.2.0  # Image processing
+pywin32==306; sys_platform == 'win32'  # Windows COM automation (Windows only)
 
 # PDF Processing
 PyPDF2==3.0.1

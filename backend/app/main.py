@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 
 # Import local modules
-from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, init_db
+from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, CustomerFeedback, init_db
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -128,6 +128,17 @@ class ActivityLog(BaseModel):
     activity_type: str
     page_name: Optional[str] = None
     details: Optional[str] = None
+
+
+class FeedbackCreate(BaseModel):
+    feedback_text: str
+    rating: Optional[int] = None
+    user_name: Optional[str] = None
+
+
+class FeedbackUpdate(BaseModel):
+    is_published: bool
+    page_shown: Optional[str] = "homepage"
 
 
 # ============================================================================
@@ -756,6 +767,204 @@ async def get_all_subscriptions(
         }
         for s in subscriptions
     ]
+
+
+# ============================================================================
+# CUSTOMER FEEDBACK ENDPOINTS
+# ============================================================================
+
+@app.post("/api/feedback/submit")
+async def submit_feedback(
+    feedback: FeedbackCreate,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Submit customer feedback (awaits admin approval)"""
+    try:
+        # Get user details
+        user = db.query(User).filter(User.email == current_user["email"]).first()
+
+        new_feedback = CustomerFeedback(
+            user_email=current_user["email"],
+            user_name=feedback.user_name or user.full_name or current_user["email"].split("@")[0],
+            feedback_text=feedback.feedback_text,
+            rating=feedback.rating,
+            is_published=False  # Admin must approve
+        )
+
+        db.add(new_feedback)
+        db.commit()
+        db.refresh(new_feedback)
+
+        logger.info(f"Feedback submitted by {current_user['email']}")
+
+        return {
+            "message": "Thank you for your feedback! It will be reviewed by our team.",
+            "feedback_id": new_feedback.id
+        }
+
+    except Exception as e:
+        logger.error(f"Feedback submission error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to submit feedback")
+
+
+@app.get("/api/feedback/published")
+async def get_published_feedback(
+    page: Optional[str] = "all",
+    db: Session = Depends(get_db)
+):
+    """Get all published feedback (public endpoint)"""
+    try:
+        query = db.query(CustomerFeedback).filter(CustomerFeedback.is_published == True)
+
+        if page and page != "all":
+            query = query.filter((CustomerFeedback.page_shown == page) | (CustomerFeedback.page_shown == "all"))
+
+        feedbacks = query.order_by(CustomerFeedback.published_date.desc()).all()
+
+        return [
+            {
+                "id": f.id,
+                "user_name": f.user_name,
+                "feedback_text": f.feedback_text,
+                "rating": f.rating,
+                "published_date": f.published_date,
+                "page_shown": f.page_shown
+            }
+            for f in feedbacks
+        ]
+
+    except Exception as e:
+        logger.error(f"Error fetching feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch feedback")
+
+
+@app.get("/api/feedback/my")
+async def get_my_feedback(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get current user's feedback submissions"""
+    try:
+        feedbacks = db.query(CustomerFeedback).filter(
+            CustomerFeedback.user_email == current_user["email"]
+        ).order_by(CustomerFeedback.created_date.desc()).all()
+
+        return [
+            {
+                "id": f.id,
+                "feedback_text": f.feedback_text,
+                "rating": f.rating,
+                "is_published": f.is_published,
+                "published_date": f.published_date,
+                "created_date": f.created_date
+            }
+            for f in feedbacks
+        ]
+
+    except Exception as e:
+        logger.error(f"Error fetching user feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch feedback")
+
+
+@app.get("/api/admin/feedback/all")
+async def get_all_feedback(
+    current_user: dict = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Get all feedback submissions (admin only)"""
+    try:
+        feedbacks = db.query(CustomerFeedback).order_by(
+            CustomerFeedback.created_date.desc()
+        ).all()
+
+        return [
+            {
+                "id": f.id,
+                "user_email": f.user_email,
+                "user_name": f.user_name,
+                "feedback_text": f.feedback_text,
+                "rating": f.rating,
+                "is_published": f.is_published,
+                "published_date": f.published_date,
+                "page_shown": f.page_shown,
+                "created_date": f.created_date
+            }
+            for f in feedbacks
+        ]
+
+    except Exception as e:
+        logger.error(f"Error fetching all feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch feedback")
+
+
+@app.put("/api/admin/feedback/{feedback_id}/publish")
+async def publish_feedback(
+    feedback_id: int,
+    update: FeedbackUpdate,
+    current_user: dict = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Publish or unpublish feedback (admin only)"""
+    try:
+        feedback = db.query(CustomerFeedback).filter(
+            CustomerFeedback.id == feedback_id
+        ).first()
+
+        if not feedback:
+            raise HTTPException(status_code=404, detail="Feedback not found")
+
+        feedback.is_published = update.is_published
+        feedback.page_shown = update.page_shown or "homepage"
+
+        if update.is_published and not feedback.published_date:
+            feedback.published_date = datetime.utcnow()
+        elif not update.is_published:
+            feedback.published_date = None
+
+        db.commit()
+
+        logger.info(f"Feedback {feedback_id} {'published' if update.is_published else 'unpublished'} by {current_user['email']}")
+
+        return {
+            "message": f"Feedback {'published' if update.is_published else 'unpublished'} successfully",
+            "feedback_id": feedback_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update feedback")
+
+
+@app.delete("/api/admin/feedback/{feedback_id}")
+async def delete_feedback(
+    feedback_id: int,
+    current_user: dict = Depends(get_current_admin_user),
+    db: Session = Depends(get_db)
+):
+    """Delete feedback (admin only)"""
+    try:
+        feedback = db.query(CustomerFeedback).filter(
+            CustomerFeedback.id == feedback_id
+        ).first()
+
+        if not feedback:
+            raise HTTPException(status_code=404, detail="Feedback not found")
+
+        db.delete(feedback)
+        db.commit()
+
+        logger.info(f"Feedback {feedback_id} deleted by {current_user['email']}")
+
+        return {"message": "Feedback deleted successfully"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete feedback")
 
 
 # ============================================================================

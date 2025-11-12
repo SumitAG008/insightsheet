@@ -12,11 +12,19 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./insightsheet.db")
 
-# Create engine
+# Create engine with connection pooling
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 else:
-    engine = create_engine(DATABASE_URL)
+    # PostgreSQL with connection pooling and auto-reconnect
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=10,
+        max_overflow=20,
+        pool_pre_ping=True,  # Verify connections before using
+        pool_recycle=3600,   # Recycle connections after 1 hour
+        echo=False
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -114,6 +122,22 @@ class FileProcessingHistory(Base):
     status = Column(String(50), default="success")  # success, failed
     error_message = Column(Text, nullable=True)
     created_date = Column(DateTime, default=datetime.utcnow)
+
+
+class CustomerFeedback(Base):
+    """Customer feedback/testimonials with admin approval"""
+    __tablename__ = "customer_feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    user_name = Column(String(255), nullable=True)
+    feedback_text = Column(Text, nullable=False)
+    rating = Column(Integer, nullable=True)  # 1-5 stars
+    is_published = Column(Boolean, default=False)  # Admin controls this
+    published_date = Column(DateTime, nullable=True)
+    page_shown = Column(String(100), default="homepage")  # homepage, pricing, all
+    created_date = Column(DateTime, default=datetime.utcnow)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 # Create all tables

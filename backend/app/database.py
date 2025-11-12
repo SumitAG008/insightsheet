@@ -187,6 +187,38 @@ class UserActivity(Base):
         }
 
 
+class FileProcessingHistory(Base):
+    """Track file processing operations (metadata only, NO file content)"""
+    __tablename__ = "file_processing_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+
+    # Processing details
+    processing_type = Column(String(100))  # excel_to_ppt, zip_cleaning, etc.
+    original_filename = Column(String(255))
+    file_size_mb = Column(Float)
+
+    # Result
+    status = Column(String(50))  # success, failed
+    error_message = Column(Text, nullable=True)
+
+    # Timestamp
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_email": self.user_email,
+            "processing_type": self.processing_type,
+            "original_filename": self.original_filename,
+            "file_size_mb": self.file_size_mb,
+            "status": self.status,
+            "error_message": self.error_message,
+            "created_date": self.created_date.isoformat() if self.created_date else None
+        }
+
+
 # ============================================
 # HELPER FUNCTIONS
 # ============================================

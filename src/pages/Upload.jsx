@@ -25,50 +25,50 @@ export default function Upload() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 relative overflow-hidden">
       {/* Animated background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -left-20 w-96 h-96 bg-blue-400/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-indigo-400/20 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/4 -left-20 w-96 h-96 bg-slate-400/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-gray-400/20 rounded-full blur-3xl animate-pulse delay-1000" />
       </div>
 
       <div className="relative z-10 container mx-auto px-4 py-12">
         {/* Header */}
         <div className="text-center mb-16 animate-fade-in">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/50">
+            <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center shadow-2xl shadow-slate-500/50">
               <Zap className="w-10 h-10 text-white" />
             </div>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 border border-blue-300 rounded-full mb-6 backdrop-blur-sm">
-            <Shield className="w-4 h-4 text-blue-700" />
-            <span className="text-sm text-blue-800 font-semibold">100% Private • Zero Storage • Excel & CSV Support</span>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 border border-slate-300 rounded-full mb-6 backdrop-blur-sm">
+            <Shield className="w-4 h-4 text-slate-700" />
+            <span className="text-sm text-slate-800 font-bold">100% Private • Zero Storage • Excel & CSV Support</span>
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-blue-700 via-indigo-600 to-blue-700 bg-clip-text text-transparent leading-tight">
+          <h1 className="text-5xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 bg-clip-text text-transparent leading-tight">
             Transform Your Data
           </h1>
 
-          <p className="text-xl md:text-2xl text-blue-800 max-w-3xl mx-auto mb-4 font-medium">
+          <p className="text-xl md:text-2xl text-slate-800 max-w-3xl mx-auto mb-4 font-bold">
             AI-powered analysis, instant cleanup, and beautiful visualizations
           </p>
 
-          <p className="text-lg text-blue-700 font-semibold">
+          <p className="text-lg text-slate-700 font-bold">
             InsightSheet-lite
           </p>
 
           {/* Features */}
           <div className="flex flex-wrap justify-center gap-4 mt-8">
             {[
-              { icon: Gauge, text: 'Instant Processing', color: 'from-blue-600 to-cyan-600' },
-              { icon: Brain, text: 'AI-Powered', color: 'from-blue-600 to-indigo-600' },
-              { icon: Lock, text: 'Privacy First', color: 'from-emerald-600 to-teal-600' },
-              { icon: TrendingUp, text: 'Smart Charts', color: 'from-orange-600 to-red-600' }
+              { icon: Gauge, text: 'Instant Processing', color: 'from-slate-800 to-slate-700' },
+              { icon: Brain, text: 'AI-Powered', color: 'from-slate-800 to-slate-700' },
+              { icon: Lock, text: 'Privacy First', color: 'from-emerald-700 to-emerald-600' },
+              { icon: TrendingUp, text: 'Smart Charts', color: 'from-slate-800 to-slate-700' }
             ].map((feature, idx) => (
               <div key={idx} className={`flex items-center gap-2 px-4 py-2 bg-gradient-to-r ${feature.color} rounded-lg shadow-lg`}>
                 <feature.icon className="w-5 h-5 text-white" />
-                <span className="text-white font-semibold">{feature.text}</span>
+                <span className="text-white font-bold">{feature.text}</span>
               </div>
             ))}
           </div>
@@ -98,15 +98,15 @@ export default function Upload() {
 
         {/* UPDATED: Excel + CSV Instructions */}
         <div className="mt-12 max-w-4xl mx-auto">
-          <div className="bg-white border border-blue-200 rounded-2xl p-8 shadow-lg">
-            <h2 className="text-2xl font-bold text-blue-900 mb-6 flex items-center gap-3">
-              <FileText className="w-7 h-7 text-blue-600" />
+          <div className="bg-white border border-slate-300 rounded-2xl p-8 shadow-lg">
+            <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+              <FileText className="w-7 h-7 text-slate-700" />
               ✨ Now Supports Excel Files!
             </h2>
 
             <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-4 mb-6">
-              <p className="text-emerald-800 font-semibold mb-2">🎉 Direct Upload Support:</p>
-              <ul className="text-emerald-700 text-sm space-y-1 ml-4">
+              <p className="text-emerald-800 font-bold mb-2">🎉 Direct Upload Support:</p>
+              <ul className="text-emerald-700 font-bold text-sm space-y-1 ml-4">
                 <li>✅ <strong>Excel:</strong> .XLSX, .XLS files (up to {`{subscription?.plan === "premium" ? "500MB" : "10MB"}`})</li>
                 <li>✅ <strong>CSV:</strong> .CSV files</li>
                 <li>✅ <strong>Export:</strong> Download as Excel or CSV format</li>

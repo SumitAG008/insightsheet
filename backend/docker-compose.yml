@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: insightsheet_db
+    restart: always
+    environment:
+      POSTGRES_DB: insightsheet
+      POSTGRES_USER: insightsheet_user
+      POSTGRES_PASSWORD: insightsheet_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - insightsheet_network
+
+  # FastAPI Backend
+  backend:
+    build: .
+    container_name: insightsheet_backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://insightsheet_user:insightsheet_password@db:5432/insightsheet
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-secret-key-change-this}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      CORS_ORIGINS: http://localhost:3000,http://localhost:5173,https://meldra.ai
+    depends_on:
+      - db
+    volumes:
+      - ./logs:/app/logs
+      - ./temp_uploads:/app/temp_uploads
+    networks:
+      - insightsheet_network
+
+volumes:
+  postgres_data:
+
+networks:
+  insightsheet_network:
+    driver: bridge

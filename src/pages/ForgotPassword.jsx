@@ -33,7 +33,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         {/* Back to Login */}
         <Link
@@ -99,7 +99,7 @@ export default function ForgotPassword() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="you@example.com"
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-300/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-500"
+                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-300/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 text-white placeholder-gray-500"
               />
             </div>
 

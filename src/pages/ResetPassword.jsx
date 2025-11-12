@@ -54,7 +54,7 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-900 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-300/30 p-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-red-400 mb-4">Invalid Reset Link</h1>
@@ -75,7 +75,7 @@ export default function ResetPassword() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-900 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-300/30 p-8">
           <div className="text-center">
             <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
@@ -90,7 +90,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="bg-slate-900/90 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-300/30 p-8">
           <div className="text-center mb-8">
@@ -125,7 +125,7 @@ export default function ResetPassword() {
                 required
                 minLength={6}
                 placeholder="Enter new password"
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-300/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-500"
+                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-300/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 text-white placeholder-gray-500"
               />
               <p className="text-xs text-gray-500 mt-1">At least 6 characters</p>
             </div>
@@ -140,14 +140,14 @@ export default function ResetPassword() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 placeholder="Confirm new password"
-                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-300/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-gray-500"
+                className="w-full px-4 py-3 bg-slate-800/50 border border-slate-300/30 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-500 text-white placeholder-gray-500"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-lg hover:from-slate-800 hover:to-slate-700 transition-all shadow-lg shadow-purple-500/50 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3 bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-lg hover:from-slate-900 hover:to-slate-800 transition-all shadow-lg shadow-slate-500/50 font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

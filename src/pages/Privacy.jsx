@@ -4,11 +4,11 @@ import { Shield, Lock, Eye, Server, AlertTriangle, FileText } from 'lucide-react
 
 export default function Privacy() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-12">
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-6">
             <Shield className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-slate-800 mb-4">
@@ -27,7 +27,7 @@ export default function Privacy() {
           {/* Privacy-First Architecture */}
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-slate-800 rounded-lg flex items-center justify-center">
+              <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
                 <Lock className="w-6 h-6 text-slate-800" />
               </div>
               <h2 className="text-2xl font-bold text-slate-800">Privacy-First Architecture</h2>
@@ -187,7 +187,7 @@ export default function Privacy() {
                 <li><strong>Right to Data Portability:</strong> Export your data in machine-readable format</li>
                 <li><strong>Right to Object:</strong> Opt-out of certain data processing</li>
               </ul>
-              <div className="mt-4 p-4 bg-purple-50 border border-slate-300 rounded-lg">
+              <div className="mt-4 p-4 bg-slate-100 border border-slate-300 rounded-lg">
                 <p className="text-sm font-semibold text-slate-800 mb-2">To exercise your rights:</p>
                 <p className="text-sm text-slate-800">
                   Email: privacy@insightsheet.com<br />

@@ -76,10 +76,10 @@ export default function PDFEditor() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 p-6">
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
         <div className="absolute top-1/4 -left-20 w-96 h-96 bg-slate-800 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-indigo-300 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-slate-300 rounded-full blur-3xl" />
       </div>
 
       <div className="relative z-10 container mx-auto max-w-7xl">
@@ -115,7 +115,7 @@ export default function PDFEditor() {
                   disabled={isUploading}
                 />
                 <div className="text-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <FileText className="w-10 h-10 text-white" />
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 mb-2">
@@ -176,7 +176,7 @@ export default function PDFEditor() {
                       type={field.type}
                       value={formFields[field.id] || ''}
                       onChange={(e) => handleFieldChange(field.id, e.target.value)}
-                      className="border-slate-300 focus:border-slate-300 focus:ring-purple-500"
+                      className="border-slate-300 focus:border-slate-800 focus:ring-slate-500"
                       placeholder={`Enter ${field.label.toLowerCase()}`}
                     />
                   </div>
@@ -186,7 +186,7 @@ export default function PDFEditor() {
               <div className="mt-6 space-y-3">
                 <Button
                   onClick={handleDownload}
-                  className="w-full bg-gradient-to-r from-slate-800 to-indigo-600 hover:from-slate-800 hover:to-indigo-700 text-white"
+                  className="w-full bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-900 hover:to-slate-800 text-white"
                 >
                   <Download className="w-4 h-4 mr-2" />
                   Download Filled Data

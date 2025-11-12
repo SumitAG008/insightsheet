@@ -92,9 +92,9 @@ InsightSheet-lite Team`
 
   if (processing) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-16 h-16 text-purple-500 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-16 h-16 text-slate-400 animate-spin mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-white mb-2">Activating Your Subscription...</h2>
           <p className="text-slate-400">Please wait while we set up your account</p>
         </div>
@@ -104,7 +104,7 @@ InsightSheet-lite Team`
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-900 flex items-center justify-center p-4">
         <div className="bg-slate-900/80 backdrop-blur-xl border border-red-500/30 rounded-2xl p-8 max-w-md text-center">
           <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
             <XCircle className="w-8 h-8 text-red-400" />
@@ -120,7 +120,7 @@ InsightSheet-lite Team`
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-gray-900 flex items-center justify-center p-4">
       <div className="bg-slate-900/80 backdrop-blur-xl border border-emerald-500/30 rounded-2xl p-8 max-w-md text-center">
         <div className="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle className="w-10 h-10 text-emerald-400" />
@@ -129,7 +129,7 @@ InsightSheet-lite Team`
         <p className="text-slate-300 mb-6">
           Your subscription is now active. Redirecting you to the dashboard...
         </p>
-        <div className="flex items-center justify-center gap-2 text-purple-400">
+        <div className="flex items-center justify-center gap-2 text-slate-400">
           <Sparkles className="w-5 h-5" />
           <span className="font-semibold">All premium features unlocked</span>
         </div>

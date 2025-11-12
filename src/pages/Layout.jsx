@@ -128,7 +128,6 @@ export default function Layout({ children }) {
         onClick={() => toggleDropdown(name)}
         className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-bold text-slate-800 hover:bg-slate-100 hover:text-slate-900"
       >
-        <Icon className="w-4 h-4" />
         <span>{name}</span>
         <ChevronDown className={`w-4 h-4 transition-transform ${openDropdown === name ? 'rotate-180' : ''}`} />
       </button>
@@ -142,7 +141,6 @@ export default function Layout({ children }) {
               onClick={() => setOpenDropdown(null)}
               className="flex items-center gap-3 px-4 py-2.5 text-slate-800 hover:bg-slate-100 hover:text-slate-900 font-bold transition-colors"
             >
-              <item.icon className="w-4 h-4" />
               <span>{item.label}</span>
             </Link>
           ))}
@@ -212,7 +210,6 @@ export default function Layout({ children }) {
                     : 'text-slate-800 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
-                <LayoutDashboard className="w-4 h-4" />
                 <span>Dashboard</span>
               </Link>
 
@@ -231,7 +228,6 @@ export default function Layout({ children }) {
                     : 'text-slate-800 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
-                <Brain className="w-4 h-4" />
                 <span>AI Tools</span>
               </Link>
 
@@ -247,7 +243,6 @@ export default function Layout({ children }) {
                     : 'text-slate-800 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
-                <DollarSign className="w-4 h-4" />
                 <span>Pricing</span>
               </Link>
 

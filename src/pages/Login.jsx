@@ -43,9 +43,11 @@ export default function Login() {
       <Card className="w-full max-w-md bg-white border border-slate-300 shadow-lg">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
+            <img
+              src="/meldra.png"
+              alt="Meldra Logo"
+              className="h-16 w-auto object-contain"
+            />
           </div>
           <CardTitle className="text-2xl text-center text-slate-800">Welcome to InsightSheet-lite</CardTitle>
           <CardDescription className="text-center text-slate-700">

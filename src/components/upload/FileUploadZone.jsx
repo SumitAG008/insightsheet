@@ -232,12 +232,12 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
       {/* File size limit notice */}
       <Alert className={`mb-6 ${subscription?.plan === 'premium' ? 'bg-emerald-50 border-emerald-300' : 'bg-amber-50 border-amber-300'}`}>
         <Info className={`h-4 w-4 ${subscription?.plan === 'premium' ? 'text-emerald-600' : 'text-amber-600'}`} />
-        <AlertDescription className="text-blue-900">
+        <AlertDescription className="text-slate-800 font-bold">
           <strong className={subscription?.plan === 'premium' ? 'text-emerald-700' : 'text-amber-700'}>
             {subscription?.plan === 'premium' ? '✨ Premium: Unlimited file size!' : `File Size Limit: ${maxSize}MB`}
           </strong>
           <br />
-          <span className="text-sm text-blue-800">
+          <span className="text-sm text-slate-700 font-bold">
             {subscription?.plan === 'premium'
               ? 'You can upload files up to 500MB with your Premium plan.'
               : 'Free plan limited to 10MB. Upgrade to Premium for unlimited size!'}
@@ -251,14 +251,14 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
         onDragLeave={handleDragLeave}
         className={`relative group transition-all duration-300 ${isDragging ? 'scale-102' : ''}`}
       >
-        <div className={`absolute inset-0 bg-gradient-to-r from-blue-600/30 to-indigo-600/30 rounded-3xl blur-2xl transition-all duration-300 ${
+        <div className={`absolute inset-0 bg-gradient-to-r from-slate-800/30 to-slate-700/30 rounded-3xl blur-2xl transition-all duration-300 ${
           isDragging ? 'opacity-100 scale-105' : 'opacity-0 group-hover:opacity-70'
         }`} />
 
         <div className={`relative bg-white border-2 border-dashed rounded-3xl p-16 transition-all duration-300 shadow-lg ${
           isDragging
-            ? 'border-blue-600 bg-blue-50'
-            : 'border-blue-300 hover:border-blue-500 hover:bg-blue-50/50'
+            ? 'border-slate-600 bg-slate-50'
+            : 'border-slate-300 hover:border-slate-500 hover:bg-slate-50/50'
         }`}>
           <input
             type="file"
@@ -272,13 +272,13 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
             {isProcessing || processingStatus ? (
               <>
                 <div className="relative">
-                  <Loader2 className="w-20 h-20 text-blue-600 animate-spin mb-6" />
-                  <div className="absolute inset-0 bg-blue-600/20 rounded-full blur-xl animate-pulse" />
+                  <Loader2 className="w-20 h-20 text-slate-700 animate-spin mb-6" />
+                  <div className="absolute inset-0 bg-slate-700/20 rounded-full blur-xl animate-pulse" />
                 </div>
-                <h3 className="text-2xl font-bold text-blue-900 mb-2">
+                <h3 className="text-2xl font-bold text-slate-800 mb-2">
                   {processingStatus || 'Processing Your File...'}
                 </h3>
-                <p className="text-blue-800">Analyzing data structure and preparing workspace</p>
+                <p className="text-slate-700 font-bold">Analyzing data structure and preparing workspace</p>
               </>
             ) : uploadedFileName ? (
               <>
@@ -287,33 +287,33 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
                   <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse" />
                 </div>
                 <h3 className="text-2xl font-bold text-emerald-700 mb-2">File Uploaded Successfully!</h3>
-                <p className="text-blue-800">{uploadedFileName}</p>
+                <p className="text-slate-800 font-bold">{uploadedFileName}</p>
               </>
             ) : (
               <>
                 <div className="relative mb-8">
-                  <div className="absolute inset-0 bg-blue-600/20 rounded-full blur-2xl" />
-                  <FileSpreadsheet className="relative w-24 h-24 text-blue-600 mb-2" />
+                  <div className="absolute inset-0 bg-slate-700/20 rounded-full blur-2xl" />
+                  <FileSpreadsheet className="relative w-24 h-24 text-slate-700 mb-2" />
                 </div>
 
-                <h3 className="text-3xl font-bold text-blue-900 mb-4">
+                <h3 className="text-3xl font-bold text-slate-800 mb-4">
                   Drop your file here
                 </h3>
 
-                <p className="text-blue-800 text-lg mb-8 max-w-md">
-                  or <span className="text-blue-600 font-semibold underline cursor-pointer">browse files</span>
+                <p className="text-slate-700 text-lg font-bold mb-8 max-w-md">
+                  or <span className="text-slate-700 font-bold underline cursor-pointer">browse files</span>
                 </p>
 
                 <div className="flex flex-wrap justify-center gap-3 text-sm mb-6">
-                  <span className="px-6 py-3 bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border border-blue-500/30 rounded-lg text-blue-900 font-bold text-base">
+                  <span className="px-6 py-3 bg-gradient-to-r from-slate-800/20 to-slate-700/20 border border-slate-500/30 rounded-lg text-slate-800 font-bold text-base">
                     .CSV • .XLSX • .XLS
                   </span>
                 </div>
 
-                <p className="text-blue-700 text-xs mb-2">
+                <p className="text-slate-700 text-xs font-bold mb-2">
                   100% browser-based • No server upload • Instant processing
                 </p>
-                <p className="text-blue-800 text-sm font-semibold">
+                <p className="text-slate-800 text-sm font-bold">
                   Max {maxSize}MB {subscription?.plan !== 'premium' && '(Free Plan)'}
                 </p>
               </>

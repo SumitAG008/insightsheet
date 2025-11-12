@@ -93,7 +93,7 @@ export default function Privacy() {
               <p className="leading-relaxed">
                 When you use AI features (AI Assistant, Smart Formulas), we send minimal, anonymized data to our AI service:
               </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+              <div className="bg-blue-50 border border-slate-300 rounded-lg p-4 space-y-2">
                 <p className="font-semibold text-blue-900">What gets sent:</p>
                 <ul className="list-disc list-inside space-y-1 text-blue-800">
                   <li>Column names (headers only)</li>

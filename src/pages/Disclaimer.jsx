@@ -159,7 +159,7 @@ export default function Disclaimer() {
 
           {/* No Professional Advice */}
           <section>
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
+            <div className="bg-blue-50 border-2 border-slate-300 rounded-lg p-6">
               <h2 className="text-xl font-bold text-blue-900 mb-3">Not Professional Advice</h2>
               <p className="text-blue-800 leading-relaxed">
                 InsightSheet provides <strong>data analysis tools only</strong>. The Service does NOT provide:

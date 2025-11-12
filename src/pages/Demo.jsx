@@ -100,7 +100,7 @@ export default function Demo() {
   const currentDemo = demos.find(d => d.id === activeDemo);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
@@ -115,7 +115,7 @@ export default function Demo() {
         </div>
 
         {/* Quick Start Guide */}
-        <Alert className="mb-8 bg-blue-100 border-blue-200">
+        <Alert className="mb-8 bg-blue-100 border-slate-300">
           <Sparkles className="w-5 h-5 text-slate-800" />
           <AlertDescription className="text-blue-900">
             <strong>Quick Start:</strong> Select a demo below to see step-by-step instructions.
@@ -125,7 +125,7 @@ export default function Demo() {
 
         {/* Demo Tabs */}
         <Tabs value={activeDemo} onValueChange={setActiveDemo} className="space-y-6">
-          <TabsList className="bg-white border border-blue-200 p-1 grid grid-cols-5 gap-2">
+          <TabsList className="bg-white border border-slate-300 p-1 grid grid-cols-5 gap-2">
             {demos.map((demo) => {
               const Icon = demo.icon;
               return (

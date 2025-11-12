@@ -176,7 +176,7 @@ export default function Layout({ children }) {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       {/* Navigation */}
       <nav className="border-b border-slate-300 backdrop-blur-xl bg-white/95 sticky top-0 z-50 shadow-lg shadow-slate-300/50">
         <div className="container mx-auto px-4">

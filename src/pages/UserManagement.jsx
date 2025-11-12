@@ -103,7 +103,7 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -115,7 +115,7 @@ export default function UserManagement() {
 
         {/* Stats Cards */}
         <div className="grid md:grid-cols-5 gap-4 mb-8">
-          <Card className="bg-white border border-blue-200 shadow-lg">
+          <Card className="bg-white border border-slate-300 shadow-lg">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>

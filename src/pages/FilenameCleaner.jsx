@@ -298,8 +298,7 @@ export default function FilenameCleaner() {
     eview.setUint16(4, 0, true);
     eview.setUint16(6, 0, true);
     eview.setUint16(8, centralDirectoryEntries.length, true);
-    eview.setUint10(10, centralDirectoryEntries.length, true); // This line had a typo in original code, should be setUint16
-    eview.setUint16(10, centralDirectoryEntries.length, true); // Corrected this line as it was setUint10, which doesn't exist
+    eview.setUint16(10, centralDirectoryEntries.length, true);
     eview.setUint32(12, centralDirectorySize, true);
     eview.setUint32(16, offsetOfCentralDirectory, true);
     eview.setUint16(20, 0, true);

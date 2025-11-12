@@ -94,7 +94,7 @@ export default function PDFEditor() {
         </div>
 
         {/* Privacy Notice */}
-        <Alert className="mb-6 bg-blue-50 border-blue-200">
+        <Alert className="mb-6 bg-blue-50 border-slate-300">
           <Shield className="h-5 w-5 text-blue-600" />
           <AlertDescription className="text-slate-700">
             <strong className="text-blue-700">Privacy First:</strong> Your PDF is processed in your browser only. 

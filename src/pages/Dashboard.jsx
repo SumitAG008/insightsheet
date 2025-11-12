@@ -124,7 +124,7 @@ export default function Dashboard() {
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
           <p className="text-blue-900 font-medium">Loading your data...</p>
@@ -134,9 +134,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-slate-200/20 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-200/20 rounded-full blur-3xl" />
       </div>
 
@@ -159,7 +159,7 @@ export default function Dashboard() {
           <div className="flex gap-3 flex-wrap">
             <Button
               onClick={handleExport}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              className="bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-900 hover:to-slate-800"
             >
               <Download className="w-4 h-4 mr-2" />
               Export (Excel/CSV)
@@ -167,7 +167,7 @@ export default function Dashboard() {
             <Button
               onClick={handleClearData}
               variant="outline"
-              className="border-blue-200 hover:bg-blue-50"
+              className="border-slate-300 hover:bg-blue-50"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Clear All
@@ -176,7 +176,7 @@ export default function Dashboard() {
         </div>
 
         {/* Privacy Notice */}
-        <div className="mb-6 bg-white border border-blue-200 shadow-lg rounded-lg p-4">
+        <div className="mb-6 bg-white border border-slate-300 shadow-lg rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-slate-700 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-blue-900 font-medium">
@@ -187,7 +187,7 @@ export default function Dashboard() {
         </div>
 
         {/* AI Assistant Banner */}
-        <div className="mb-6 bg-gradient-to-r from-blue-100 to-indigo-100 border border-blue-200 rounded-lg p-4">
+        <div className="mb-6 bg-gradient-to-r from-slate-100 to-slate-200 border border-slate-300 rounded-lg p-4">
           <div className="flex items-center gap-3">
             <Sparkles className="w-6 h-6 text-slate-700" />
             <div>
@@ -199,7 +199,7 @@ export default function Dashboard() {
 
         {/* Tabs for Different Sections */}
         <Tabs defaultValue="analysis" className="space-y-6">
-          <TabsList className="bg-white border border-blue-200 p-1">
+          <TabsList className="bg-white border border-slate-300 p-1">
             <TabsTrigger value="analysis" className="data-[state=active]:bg-blue-600">
               Analysis & Cleaning
             </TabsTrigger>

@@ -176,7 +176,7 @@ export default function Pricing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 py-12">
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-12">
@@ -196,7 +196,7 @@ export default function Pricing() {
 
           {/* Billing Cycle Toggle */}
           <Tabs value={billingCycle} onValueChange={setBillingCycle} className="max-w-md mx-auto mb-8">
-            <TabsList className="grid w-full grid-cols-3 bg-white border border-blue-200">
+            <TabsList className="grid w-full grid-cols-3 bg-white border border-slate-300">
               <TabsTrigger value="monthly">Monthly</TabsTrigger>
               <TabsTrigger value="quarterly">
                 Quarterly
@@ -230,7 +230,7 @@ export default function Pricing() {
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-1">
+                  <Badge className="bg-gradient-to-r from-slate-800 to-slate-700 text-white px-4 py-1">
                     Most Popular
                   </Badge>
                 </div>
@@ -239,7 +239,7 @@ export default function Pricing() {
               <div className="relative group h-full">
                 <div className={`absolute inset-0 bg-gradient-to-r ${plan.color} rounded-2xl blur-xl opacity-20`} />
 
-                <div className="relative bg-white backdrop-blur-xl border border-blue-200 rounded-2xl p-8 h-full flex flex-col shadow-lg">
+                <div className="relative bg-white backdrop-blur-xl border border-slate-300 rounded-2xl p-8 h-full flex flex-col shadow-lg">
                   {/* Plan Header */}
                   <div className="text-center mb-6">
                     <plan.icon className="w-12 h-12 mx-auto mb-4 text-slate-800" />
@@ -260,7 +260,7 @@ export default function Pricing() {
 
                   {/* Processing Method - NEW */}
                   {plan.processing && (
-                    <div className="mb-6 bg-blue-50 rounded-xl p-4 border border-blue-200">
+                    <div className="mb-6 bg-blue-50 rounded-xl p-4 border border-slate-300">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-semibold text-slate-700">Processing Method</span>
                         <Badge className={`${
@@ -279,11 +279,11 @@ export default function Pricing() {
                   {/* Limits - NEW */}
                   {plan.limits && (
                     <div className="mb-6 space-y-2">
-                      <div className="flex items-center justify-between py-2 border-b border-blue-200">
+                      <div className="flex items-center justify-between py-2 border-b border-slate-300">
                         <span className="text-sm text-slate-700">Max File Size</span>
                         <span className="text-sm font-bold text-blue-900">{plan.limits.fileSize}</span>
                       </div>
-                      <div className="flex items-center justify-between py-2 border-b border-blue-200">
+                      <div className="flex items-center justify-between py-2 border-b border-slate-300">
                         <span className="text-sm text-slate-700">Max Rows</span>
                         <span className="text-sm font-bold text-blue-900">{plan.limits.rows}</span>
                       </div>
@@ -329,7 +329,7 @@ export default function Pricing() {
         {/* Payment Modal */}
         {selectedPlan && (
           <div className="fixed inset-0 bg-blue-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-blue-200 shadow-2xl">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-slate-300 shadow-2xl">
               <h2 className="text-2xl font-bold text-blue-900 mb-4">
                 Subscribe to {selectedPlan.name}
               </h2>
@@ -373,21 +373,21 @@ export default function Pricing() {
             Why upgrade to Premium?
           </h2>
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white border border-blue-200 rounded-xl p-6 shadow-md">
+            <div className="bg-white border border-slate-300 rounded-xl p-6 shadow-md">
               <Zap className="w-10 h-10 text-slate-800 mb-4" />
               <h3 className="text-lg font-bold text-blue-900 mb-2">Unlimited Everything</h3>
               <p className="text-slate-700 text-sm">
                 No file size limits, unlimited transactions, unlimited AI queries
               </p>
             </div>
-            <div className="bg-white border border-blue-200 rounded-xl p-6 shadow-md">
+            <div className="bg-white border border-slate-300 rounded-xl p-6 shadow-md">
               <Crown className="w-10 h-10 text-slate-800 mb-4" />
               <h3 className="text-lg font-bold text-blue-900 mb-2">Excel Support</h3>
               <p className="text-slate-700 text-sm">
                 Import .XLS, .XLSX files directly. Export to Excel format
               </p>
             </div>
-            <div className="bg-white border border-blue-200 rounded-xl p-6 shadow-md">
+            <div className="bg-white border border-slate-300 rounded-xl p-6 shadow-md">
               <Star className="w-10 h-10 text-slate-800 mb-4" />
               <h3 className="text-lg font-bold text-blue-900 mb-2">Save More</h3>
               <p className="text-slate-700 text-sm">

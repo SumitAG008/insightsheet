@@ -159,7 +159,7 @@ export default function AccountingToolkit() {
             <TabsTrigger value="journal" className="data-[state=active]:bg-purple-600">
               Journal Entries
             </TabsTrigger>
-            <TabsTrigger value="trial" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="trial" className="data-[state=active]:bg-slate-800">
               Trial Balance
             </TabsTrigger>
             <TabsTrigger value="financial" className="data-[state=active]:bg-emerald-600">

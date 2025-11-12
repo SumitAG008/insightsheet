@@ -326,14 +326,14 @@ Create a clear, business-ready summary.`;
           <p className="text-xl text-blue-700 mb-4">
             Autonomous AI Agent • Plans → Executes → Reports
           </p>
-          <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+          <Badge className="bg-blue-100 text-blue-700 border-slate-300">
             <Sparkles className="w-4 h-4 mr-1" />
             Self-Learning • Goal-Driven • Fully Autonomous
           </Badge>
         </div>
 
         {/* Info Banner */}
-        <Alert className="mb-8 bg-blue-100 border-blue-200">
+        <Alert className="mb-8 bg-blue-100 border-slate-300">
           <Brain className="h-5 w-5 text-blue-600" />
           <AlertDescription className="text-blue-800">
             <strong className="text-blue-700">What is Agentic AI?</strong><br />
@@ -348,7 +348,7 @@ Create a clear, business-ready summary.`;
         </Alert>
 
         {/* Task Input */}
-        <div className="bg-white border border-blue-200 shadow-lg rounded-2xl p-6 mb-6">
+        <div className="bg-white border border-slate-300 shadow-lg rounded-2xl p-6 mb-6">
           <h2 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
             <Target className="w-5 h-5 text-blue-600" />
             What would you like the AI agent to do?
@@ -358,7 +358,7 @@ Create a clear, business-ready summary.`;
             placeholder="Example: Analyze my sales data, find top performing products, and create a report with recommendations..."
             value={task}
             onChange={(e) => setTask(e.target.value)}
-            className="bg-blue-50 border-blue-200 text-blue-900 placeholder:text-blue-600 min-h-[120px] mb-4"
+            className="bg-blue-50 border-slate-300 text-blue-900 placeholder:text-blue-600 min-h-[120px] mb-4"
             disabled={thinking}
           />
 
@@ -372,7 +372,7 @@ Create a clear, business-ready summary.`;
               <button
                 key={idx}
                 onClick={() => setTask(example)}
-                className="text-left text-sm p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-blue-800 transition-colors"
+                className="text-left text-sm p-3 bg-blue-50 hover:bg-blue-100 border border-slate-300 rounded-lg text-blue-800 transition-colors"
                 disabled={thinking}
               >
                 {example}
@@ -407,7 +407,7 @@ Create a clear, business-ready summary.`;
 
         {/* Agent Execution Visualization */}
         {agent && (
-          <div className="bg-white border border-blue-200 shadow-lg rounded-2xl p-6 mb-6">
+          <div className="bg-white border border-slate-300 shadow-lg rounded-2xl p-6 mb-6">
             <h2 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
               <Eye className="w-5 h-5 text-blue-600" />
               Agent Execution
@@ -421,7 +421,7 @@ Create a clear, business-ready summary.`;
                   <span className="text-lg font-semibold text-blue-700">Planning Strategy...</span>
                 </div>
 
-                <div className="bg-blue-100 border border-blue-200 rounded-lg p-4">
+                <div className="bg-blue-100 border border-slate-300 rounded-lg p-4">
                   <p className="text-blue-900 mb-3">
                     <strong>Understanding:</strong> {agent.plan.task_understood}
                   </p>

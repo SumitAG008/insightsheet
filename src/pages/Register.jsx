@@ -72,11 +72,11 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-white border border-blue-200 shadow-lg">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-white border border-slate-300 shadow-lg">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-gradient-to-br from-slate-800 to-slate-700 rounded-xl flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
           </div>
@@ -107,7 +107,7 @@ export default function Register() {
                 placeholder="John Doe"
                 value={formData.fullName}
                 onChange={handleChange}
-                className="bg-blue-50 border-blue-200 text-blue-900"
+                className="bg-blue-50 border-slate-300 text-blue-900"
               />
             </div>
             <div className="space-y-2">
@@ -119,7 +119,7 @@ export default function Register() {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="bg-blue-50 border-blue-200 text-blue-900"
+                className="bg-blue-50 border-slate-300 text-blue-900"
               />
             </div>
             <div className="space-y-2">
@@ -132,7 +132,7 @@ export default function Register() {
                 onChange={handleChange}
                 required
                 minLength={6}
-                className="bg-blue-50 border-blue-200 text-blue-900"
+                className="bg-blue-50 border-slate-300 text-blue-900"
               />
             </div>
             <div className="space-y-2">
@@ -144,7 +144,7 @@ export default function Register() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                className="bg-blue-50 border-blue-200 text-blue-900"
+                className="bg-blue-50 border-slate-300 text-blue-900"
               />
             </div>
           </CardContent>
@@ -152,7 +152,7 @@ export default function Register() {
             <Button
               type="submit"
               disabled={loading || success}
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              className="w-full bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-900 hover:to-slate-800"
             >
               {loading ? (
                 <>

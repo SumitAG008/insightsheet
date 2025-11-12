@@ -29,7 +29,7 @@ export default function UserGuide() {
         </Alert>
 
         <Tabs defaultValue="basics" className="space-y-6">
-          <TabsList className="bg-white border border-blue-200 p-1 grid grid-cols-4 gap-2">
+          <TabsList className="bg-white border border-slate-300 p-1 grid grid-cols-4 gap-2">
             <TabsTrigger value="basics" className="data-[state=active]:bg-blue-600">
               Basics
             </TabsTrigger>
@@ -46,7 +46,7 @@ export default function UserGuide() {
 
           {/* Basics Tab */}
           <TabsContent value="basics" className="space-y-6">
-            <Card className="bg-white border border-blue-200 shadow-lg">
+            <Card className="bg-white border border-slate-300 shadow-lg">
               <CardHeader>
                 <CardTitle className="text-blue-900 text-2xl">Getting Started</CardTitle>
                 <CardDescription className="text-blue-700 text-lg">

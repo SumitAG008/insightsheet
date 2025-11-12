@@ -127,7 +127,7 @@ export default function Dashboard() {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-blue-700">Loading your data...</p>
+          <p className="text-blue-900 font-medium">Loading your data...</p>
         </div>
       </div>
     );
@@ -145,7 +145,7 @@ export default function Dashboard() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-blue-900 mb-2">Analysis Dashboard</h1>
-            <p className="text-blue-700 flex items-center gap-2 flex-wrap">
+            <p className="text-blue-900 font-medium flex items-center gap-2 flex-wrap">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
               {filename} • {data.rows.length} rows • {data.headers.length} columns
               {cleanedRowCount > 0 && (
@@ -178,9 +178,9 @@ export default function Dashboard() {
         {/* Privacy Notice */}
         <div className="mb-6 bg-white border border-blue-200 shadow-lg rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-800">
-              <strong className="text-blue-700">Privacy Mode Active:</strong> All data is processed locally in your browser.
+            <AlertCircle className="w-5 h-5 text-blue-700 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-blue-900 font-medium">
+              <strong className="text-blue-900">Privacy Mode Active:</strong> All data is processed locally in your browser.
               Nothing is stored on servers. Close this tab to permanently delete all data.
             </div>
           </div>
@@ -189,10 +189,10 @@ export default function Dashboard() {
         {/* AI Assistant Banner */}
         <div className="mb-6 bg-gradient-to-r from-blue-100 to-indigo-100 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-blue-600" />
+            <Sparkles className="w-6 h-6 text-blue-700" />
             <div>
               <h3 className="text-lg font-bold text-blue-900">New: AI-Powered Operations</h3>
-              <p className="text-sm text-blue-800">Describe any operation in plain English - AI will execute it for you!</p>
+              <p className="text-sm text-blue-900 font-medium">Describe any operation in plain English - AI will execute it for you!</p>
             </div>
           </div>
         </div>

@@ -23,15 +23,25 @@ bg-slate-800/50 border-slate-700/50 → bg-blue-50 border-blue-200
 backdrop-blur-xl → backdrop-blur-xl (keep)
 ```
 
-### Text Colors
+### Text Colors (STRONG CONTRAST - Dark Blue/Black Combination)
 ```
 OLD → NEW
-text-white → text-blue-900 (headers)
-text-slate-300 → text-blue-800 (body)
-text-slate-400 → text-blue-700 (secondary)
-text-purple-300 → text-blue-700
-text-purple-400 → text-blue-600
-text-pink-400 → text-indigo-600
+text-white → text-blue-900 OR text-gray-900 (main headers - very dark for maximum readability)
+text-slate-300 → text-blue-900 OR text-gray-900 (body text - strong readability)
+text-slate-400 → text-blue-800 (secondary text - still dark)
+text-purple-300 → text-blue-900 (very dark blue)
+text-purple-400 → text-blue-800 (dark blue)
+text-pink-400 → text-blue-800 (dark blue)
+text-slate-200 → text-blue-900 (very dark)
+text-slate-500 → text-blue-800 (dark)
+
+**CRITICAL:** Use DARK colors for all text:
+- Headers: text-blue-900, text-gray-900, or text-black
+- Body text: text-blue-900 or text-gray-900
+- Secondary text: text-blue-800
+- Tertiary text: text-blue-700 (minimum darkness)
+
+NO light text colors (blue-600, blue-500, blue-400, etc.) on light backgrounds!
 ```
 
 ### Buttons & Interactive Elements

@@ -63,7 +63,14 @@ CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS + ["https://meldra.ai", "https://*.meldra.ai"],
+    allow_origins=CORS_ORIGINS + [
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "https://meldra.ai",
+        "https://www.meldra.ai"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

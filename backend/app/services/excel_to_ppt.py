@@ -83,15 +83,21 @@ class ExcelToPPTService:
             else:
                 file_bytes = file_data
 
-            # For Excel files on Windows, try COM converter first (best quality)
+            # For Excel files on Windows backend, try COM converter first (best quality)
+            # NOTE: This only works if the BACKEND SERVER is Windows with Excel installed.
+            # Client OS doesn't matter - conversion happens on server.
+            # For cloud Linux deployments, will automatically use cross-platform converter.
             if WINDOWS_CONVERTER_AVAILABLE and file_ext in ['xlsx', 'xls']:
                 try:
-                    logger.info(f"Using Windows COM converter for {filename}")
+                    logger.info(f"Using Windows COM converter for {filename} (backend is Windows with Excel)")
                     with WindowsExcelToPPTConverter() as converter:
                         return await converter.convert_to_ppt(file_bytes, filename)
                 except Exception as e:
                     logger.warning(f"Windows COM converter failed, falling back to cross-platform: {str(e)}")
                     # Fall through to cross-platform converter
+
+            # Use cross-platform converter (works on all OSes without Excel)
+            logger.info(f"Using cross-platform converter for {filename} (compatible with cloud Linux/Mac/Windows)")
 
             # Parse based on file type
             if file_ext == 'csv':

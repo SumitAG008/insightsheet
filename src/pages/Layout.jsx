@@ -9,6 +9,7 @@ import Logo from '@/components/branding/Logo';
 import { backendApi } from '@/api/backendClient';
 import { getIPAndLocation, getBrowserInfo } from '@/components/tracking/ActivityLogger';
 import ActivityLogger from '@/components/tracking/ActivityLogger';
+import FloatingAIAssistant from '@/components/assistant/FloatingAIAssistant';
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -374,6 +375,9 @@ export default function Layout({ children }) {
           </div>
         </div>
       </footer>
+
+      {/* Floating AI Assistant - Available on all pages */}
+      <FloatingAIAssistant />
     </div>
   );
 }

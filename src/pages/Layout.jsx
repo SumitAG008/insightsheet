@@ -3,7 +3,7 @@
 import React, { useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, FileSpreadsheet, GitCompare, Calculator, Calendar, BookOpen } from 'lucide-react';
+import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, FileSpreadsheet, GitCompare, Calculator, Calendar, BookOpen, Play } from 'lucide-react';
 import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
 import Logo from '@/components/branding/Logo';
 import { backendApi } from '@/api/backendClient';
@@ -255,6 +255,18 @@ export default function Layout({ children }) {
               >
                 <BookOpen className="w-4 h-4" />
                 <span>Guide</span>
+              </Link>
+
+              <Link
+                to={createPageUrl('Demo')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('Demo'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
+                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                }`}
+              >
+                <Play className="w-4 h-4" />
+                <span>Demo</span>
               </Link>
 
               <Link

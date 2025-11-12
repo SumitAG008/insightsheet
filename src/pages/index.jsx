@@ -43,6 +43,10 @@ import ProjectTracker from "./ProjectTracker";
 
 import UserGuide from "./UserGuide";
 
+import UserManagement from "./UserManagement";
+
+import Demo from "./Demo";
+
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
@@ -84,6 +88,10 @@ const PAGES = {
     ProjectTracker: ProjectTracker,
 
     UserGuide: UserGuide,
+
+    UserManagement: UserManagement,
+
+    Demo: Demo,
 
 }
 
@@ -166,6 +174,10 @@ function PagesContent() {
                 <Route path="/ProjectTracker" element={<ProjectTracker />} />
 
                 <Route path="/UserGuide" element={<UserGuide />} />
+
+                <Route path="/UserManagement" element={<UserManagement />} />
+
+                <Route path="/Demo" element={<Demo />} />
 
             </Routes>
         </Layout>

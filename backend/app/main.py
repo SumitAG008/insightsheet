@@ -751,7 +751,6 @@ async def get_my_subscription(
         "ai_queries_used": subscription.ai_queries_used,
         "ai_queries_limit": subscription.ai_queries_limit,
         "files_uploaded": subscription.files_uploaded,
-        "payment_status": subscription.payment_status,
         "created_date": subscription.created_date
     }
 
@@ -769,7 +768,7 @@ async def upgrade_subscription(
     if subscription:
         subscription.plan = "premium"
         subscription.ai_queries_limit = -1  # Unlimited
-        subscription.payment_status = "paid"
+        subscription.status = "active"
         subscription.subscription_start_date = datetime.utcnow()
         db.commit()
 

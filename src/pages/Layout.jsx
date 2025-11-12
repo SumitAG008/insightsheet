@@ -125,7 +125,7 @@ export default function Layout({ children }) {
     <div className="relative">
       <button
         onClick={() => toggleDropdown(name)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-blue-700 hover:bg-blue-100 hover:text-blue-900"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-bold text-blue-800 hover:bg-blue-100 hover:text-blue-900"
       >
         <Icon className="w-4 h-4" />
         <span>{name}</span>
@@ -133,13 +133,13 @@ export default function Layout({ children }) {
       </button>
 
       {openDropdown === name && (
-        <div className="absolute top-full left-0 mt-1 bg-white border border-blue-200 rounded-lg shadow-xl min-w-[200px] py-2 z-50">
+        <div className="absolute top-full left-0 mt-1 bg-white border border-blue-300 rounded-lg shadow-xl min-w-[220px] py-2 z-50">
           {items.map((item, idx) => (
             <Link
               key={idx}
               to={createPageUrl(item.page)}
               onClick={() => setOpenDropdown(null)}
-              className="flex items-center gap-3 px-4 py-2 text-blue-700 hover:bg-blue-50 hover:text-blue-900 transition-colors"
+              className="flex items-center gap-3 px-4 py-2.5 text-blue-800 hover:bg-blue-50 hover:text-blue-900 font-bold transition-colors"
             >
               <item.icon className="w-4 h-4" />
               <span>{item.label}</span>

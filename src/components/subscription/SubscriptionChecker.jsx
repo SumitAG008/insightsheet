@@ -94,80 +94,82 @@ export default function SubscriptionChecker({ children }) {
         </Alert>
       )}
 
-      {/* Subscription Info Bar */}
-      <div className="sticky top-16 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 shadow-lg">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-6 text-sm">
-              {/* Plan Badge */}
-              <div className="flex items-center gap-2">
-                {subscription?.plan === 'premium' ? (
-                  <Crown className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <Zap className="w-4 h-4 text-purple-400" />
-                )}
-                <span className="font-semibold text-slate-200">
-                  {subscription?.plan === 'premium' ? 'Premium Plan' : 'Free Plan'}
-                </span>
+      {/* Subscription Info Bar - Hidden per user request */}
+      {false && (
+        <div className="sticky top-16 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 shadow-lg">
+          <div className="container mx-auto px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-wrap items-center gap-6 text-sm">
+                {/* Plan Badge */}
+                <div className="flex items-center gap-2">
+                  {subscription?.plan === 'premium' ? (
+                    <Crown className="w-4 h-4 text-amber-400" />
+                  ) : (
+                    <Zap className="w-4 h-4 text-purple-400" />
+                  )}
+                  <span className="font-semibold text-slate-200">
+                    {subscription?.plan === 'premium' ? 'Premium Plan' : 'Free Plan'}
+                  </span>
+                </div>
+
+                {/* File Size Limit */}
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-400">
+                    File Size: <strong className="text-slate-200">{getFileSizeLimit()}MB</strong>
+                  </span>
+                </div>
+
+                {/* Transaction Usage */}
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    transactionUsage >= 90 ? 'bg-red-500' :
+                    transactionUsage >= 70 ? 'bg-amber-500' :
+                    'bg-emerald-500'
+                  } animate-pulse`} />
+                  <span className="text-slate-400">
+                    Transactions: <strong className={`${
+                      transactionUsage >= 90 ? 'text-red-400' :
+                      transactionUsage >= 70 ? 'text-amber-400' :
+                      'text-slate-200'
+                    }`}>
+                      {subscription?.files_uploaded || 0}/{getTransactionLimit()}
+                    </strong>
+                  </span>
+                </div>
+
+                {/* AI Query Usage */}
+                <div className="flex items-center gap-2">
+                  <div className={`w-2 h-2 rounded-full ${
+                    aiQueryUsage >= 90 ? 'bg-red-500' :
+                    aiQueryUsage >= 70 ? 'bg-amber-500' :
+                    'bg-emerald-500'
+                  } animate-pulse`} />
+                  <span className="text-slate-400">
+                    AI Queries: <strong className={`${
+                      aiQueryUsage >= 90 ? 'text-red-400' :
+                      aiQueryUsage >= 70 ? 'text-amber-400' :
+                      'text-slate-200'
+                    }`}>
+                      {subscription?.ai_queries_used || 0}/{getAIQueryLimit()}
+                    </strong>
+                  </span>
+                </div>
               </div>
 
-              {/* File Size Limit */}
-              <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-slate-400" />
-                <span className="text-slate-400">
-                  File Size: <strong className="text-slate-200">{getFileSizeLimit()}MB</strong>
-                </span>
-              </div>
-
-              {/* Transaction Usage */}
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  transactionUsage >= 90 ? 'bg-red-500' : 
-                  transactionUsage >= 70 ? 'bg-amber-500' : 
-                  'bg-emerald-500'
-                } animate-pulse`} />
-                <span className="text-slate-400">
-                  Transactions: <strong className={`${
-                    transactionUsage >= 90 ? 'text-red-400' : 
-                    transactionUsage >= 70 ? 'text-amber-400' : 
-                    'text-slate-200'
-                  }`}>
-                    {subscription?.files_uploaded || 0}/{getTransactionLimit()}
-                  </strong>
-                </span>
-              </div>
-
-              {/* AI Query Usage */}
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  aiQueryUsage >= 90 ? 'bg-red-500' : 
-                  aiQueryUsage >= 70 ? 'bg-amber-500' : 
-                  'bg-emerald-500'
-                } animate-pulse`} />
-                <span className="text-slate-400">
-                  AI Queries: <strong className={`${
-                    aiQueryUsage >= 90 ? 'text-red-400' : 
-                    aiQueryUsage >= 70 ? 'text-amber-400' : 
-                    'text-slate-200'
-                  }`}>
-                    {subscription?.ai_queries_used || 0}/{getAIQueryLimit()}
-                  </strong>
-                </span>
-              </div>
+              {/* Upgrade Button (only for free users) */}
+              {subscription?.plan !== 'premium' && (
+                <Link to={createPageUrl('Pricing')}>
+                  <Button size="sm" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
+                    <Crown className="w-4 h-4 mr-2" />
+                    Upgrade to Premium
+                  </Button>
+                </Link>
+              )}
             </div>
-
-            {/* Upgrade Button (only for free users) */}
-            {subscription?.plan !== 'premium' && (
-              <Link to={createPageUrl('Pricing')}>
-                <Button size="sm" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
-                  <Crown className="w-4 h-4 mr-2" />
-                  Upgrade to Premium
-                </Button>
-              </Link>
-            )}
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content */}
       {children}

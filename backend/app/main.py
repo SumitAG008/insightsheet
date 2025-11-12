@@ -58,24 +58,18 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS Configuration - Explicit origins for development
+# CORS Configuration - Allow ALL origins for development
+# CRITICAL: This MUST be the first middleware added
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        "http://localhost:5174",
-        "http://localhost:4173",
-        "https://meldra.ai",
-        "https://www.meldra.ai"
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=False,  # Must be False when using allow_origins=["*"]
+    allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"]
 )
+
+logger.info("CORS middleware configured with allow_origins=['*']")
 
 # Initialize database on startup
 @app.on_event("startup")

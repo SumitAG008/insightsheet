@@ -308,7 +308,4 @@ export const meldra = {
   },
 };
 
-// Backward compatibility - deprecated, use meldra instead
-export const base44 = meldra;
-
 export default backendApi;

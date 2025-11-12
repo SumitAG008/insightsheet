@@ -261,33 +261,4 @@ export const auth = {
   setToken,
 };
 
-// Backward compatibility with Base44 client (for gradual migration)
-export const base44 = {
-  auth: backendApi.auth,
-  integrations: {
-    Core: {
-      InvokeLLM: async (prompt) => {
-        const result = await backendApi.llm.invoke(prompt);
-        return result.response;
-      },
-      GenerateImage: async (prompt) => {
-        const result = await backendApi.llm.generateImage(prompt);
-        return result.image_url;
-      },
-    },
-  },
-  entities: {
-    Subscription: {
-      filter: async (params) => {
-        // Return array for compatibility
-        const subscription = await backendApi.subscriptions.getMy();
-        if (params.user_email && subscription.user_email === params.user_email) {
-          return [subscription];
-        }
-        return [];
-      },
-    },
-  },
-};
-
 export default backendApi;

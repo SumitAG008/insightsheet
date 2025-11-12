@@ -22,3 +22,10 @@ build/
 
 # OS
 .DS_Store
+
+# Test files (Excel and PowerPoint samples)
+test_input.xlsx
+test_output.pptx
+improved_output.pptx
+*_test.xlsx
+*_test.pptx

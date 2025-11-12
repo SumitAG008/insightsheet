@@ -66,18 +66,33 @@ export default function Pricing() {
       period: 'forever',
       icon: Sparkles,
       color: 'from-gray-600 to-gray-700',
+      processing: {
+        method: 'Browser Only',
+        badge: '🔒 100% Private',
+        description: 'All processing in your browser'
+      },
+      limits: {
+        fileSize: '5 MB',
+        rows: '5,000 rows',
+        storage: 'Zero data storage'
+      },
       features: [
-        '10MB file size limit',
-        '50 transactions per month',
+        '🔒 Browser-only processing (100% private)',
+        '📁 Files up to 5 MB',
+        '📊 Datasets up to 5,000 rows',
         '5 AI queries per day',
         'Basic charts (3 types)',
         'Basic cleaning tools',
-        'Export to CSV'
+        'Export to CSV',
+        '✓ Sheet Manager',
+        '✓ Reconciliation Tool',
+        '✓ Accounting Toolkit',
+        '✓ Project Tracker'
       ]
     },
     {
       id: 'premium',
-      name: 'Premium',
+      name: 'Pro',
       price: pricing.monthly,
       priceDisplay: pricing.display,
       period: pricing.period,
@@ -86,16 +101,62 @@ export default function Pricing() {
       icon: Crown,
       color: 'from-purple-600 to-indigo-600',
       popular: true,
+      processing: {
+        method: 'Browser + Backend',
+        badge: '⚡ Faster Processing',
+        description: 'Python backend for large files'
+      },
+      limits: {
+        fileSize: '50 MB',
+        rows: '100,000 rows',
+        storage: 'Zero data storage'
+      },
       features: [
-        'Unlimited file size',
-        'Unlimited transactions',
+        '⚡ Backend processing for files >5MB',
+        '📁 Files up to 50 MB',
+        '📊 Datasets up to 100,000 rows',
         'Unlimited AI queries',
         'All 7 chart types',
         'Advanced transformations',
         'Smart formula builder',
         'Priority support',
         'Export to Excel & CSV',
-        'Import .XLS, .XLSX, .CSV'
+        'Import .XLS, .XLSX, .CSV',
+        '✓ All Free features',
+        '✓ 10x faster for large files'
+      ]
+    },
+    {
+      id: 'enterprise',
+      name: 'Enterprise',
+      price: null,
+      priceDisplay: 'Custom',
+      period: '',
+      icon: Zap,
+      color: 'from-amber-600 to-orange-600',
+      processing: {
+        method: 'Dedicated Backend',
+        badge: '🚀 Maximum Performance',
+        description: 'Dedicated resources'
+      },
+      limits: {
+        fileSize: '500 MB',
+        rows: 'Unlimited',
+        storage: 'Optional cloud storage'
+      },
+      features: [
+        '🚀 Dedicated backend processing',
+        '📁 Files up to 500 MB',
+        '📊 Unlimited rows',
+        'Unlimited AI queries',
+        'All features',
+        'Custom integrations',
+        'Dedicated support',
+        'SLA guarantee',
+        'Optional cloud storage',
+        'Team collaboration',
+        'Advanced security',
+        'Priority processing queue'
       ]
     }
   ];
@@ -177,7 +238,7 @@ export default function Pricing() {
 
               <div className="relative group h-full">
                 <div className={`absolute inset-0 bg-gradient-to-r ${plan.color} rounded-2xl blur-xl opacity-30`} />
-                
+
                 <div className="relative bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 h-full flex flex-col">
                   {/* Plan Header */}
                   <div className="text-center mb-6">
@@ -196,6 +257,42 @@ export default function Pricing() {
                       </Badge>
                     )}
                   </div>
+
+                  {/* Processing Method - NEW */}
+                  {plan.processing && (
+                    <div className="mb-6 bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-slate-400">Processing Method</span>
+                        <Badge className={`${
+                          plan.id === 'free' ? 'bg-purple-600/20 text-purple-300' :
+                          plan.id === 'premium' ? 'bg-blue-600/20 text-blue-300' :
+                          'bg-amber-600/20 text-amber-300'
+                        }`}>
+                          {plan.processing.badge}
+                        </Badge>
+                      </div>
+                      <p className="text-white font-bold mb-1">{plan.processing.method}</p>
+                      <p className="text-xs text-slate-400">{plan.processing.description}</p>
+                    </div>
+                  )}
+
+                  {/* Limits - NEW */}
+                  {plan.limits && (
+                    <div className="mb-6 space-y-2">
+                      <div className="flex items-center justify-between py-2 border-b border-slate-700/30">
+                        <span className="text-sm text-slate-400">Max File Size</span>
+                        <span className="text-sm font-bold text-white">{plan.limits.fileSize}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2 border-b border-slate-700/30">
+                        <span className="text-sm text-slate-400">Max Rows</span>
+                        <span className="text-sm font-bold text-white">{plan.limits.rows}</span>
+                      </div>
+                      <div className="flex items-center justify-between py-2">
+                        <span className="text-sm text-slate-400">Data Storage</span>
+                        <span className="text-sm font-bold text-emerald-400">{plan.limits.storage}</span>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Features */}
                   <ul className="space-y-3 mb-8 flex-grow">

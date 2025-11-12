@@ -4,7 +4,7 @@ Run this while the backend is running
 """
 import requests
 
-BASE_URL = "http://localhost:8000"
+BASE_URL = "http://localhost:8001"
 
 print("🧪 Testing CORS Configuration...\n")
 

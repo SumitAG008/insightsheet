@@ -47,7 +47,7 @@ export default function Login() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center text-blue-900">Welcome to InsightSheet-lite</CardTitle>
+          <CardTitle className="text-2xl text-center text-slate-800">Welcome to InsightSheet-lite</CardTitle>
           <CardDescription className="text-center text-slate-700">
             Sign in to access your privacy-first data analysis platform
           </CardDescription>
@@ -60,19 +60,19 @@ export default function Login() {
               </Alert>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-blue-900">Email</label>
+              <label className="text-sm font-medium text-slate-800">Email</label>
               <Input
                 type="email"
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-blue-50 border-slate-300 text-blue-900"
+                className="bg-blue-50 border-slate-300 text-slate-800"
               />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-blue-900">Password</label>
+                <label className="text-sm font-medium text-slate-800">Password</label>
                 <Link to="/forgot-password" className="text-xs text-slate-800 hover:text-slate-700">
                   Forgot password?
                 </Link>
@@ -83,7 +83,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-blue-50 border-slate-300 text-blue-900"
+                className="bg-blue-50 border-slate-300 text-slate-800"
               />
             </div>
           </CardContent>

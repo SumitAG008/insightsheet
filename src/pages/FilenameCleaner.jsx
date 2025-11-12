@@ -455,10 +455,10 @@ export default function FilenameCleaner() {
               <FileArchive className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-blue-900 mb-2">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-2">
             Enhanced File Processor
           </h1>
-          <p className="text-blue-700 text-sm md:text-base">
+          <p className="text-slate-700 text-sm md:text-base">
             Process ZIP files with advanced Unicode and character replacement support
           </p>
         </div>
@@ -488,7 +488,7 @@ export default function FilenameCleaner() {
         </Alert>
 
         {/* Auto-Download Notice */}
-        <Alert className="mb-6 bg-blue-500/10 border-blue-500/30">
+        <Alert className="mb-6 bg-blue-500/10 border-slate-2000/30">
           <Download className="h-5 w-5 text-blue-400" />
           <AlertDescription className="text-slate-300">
             <strong className="text-blue-300">Auto-Download:</strong> Files download automatically when processed. No popups, no manual downloads.
@@ -498,15 +498,15 @@ export default function FilenameCleaner() {
         {/* Tabs */}
         <Tabs defaultValue="upload" className="space-y-6">
           <TabsList className="bg-slate-900/80 border border-slate-700/50 p-1 grid w-full grid-cols-3">
-            <TabsTrigger value="upload" className="data-[state=active]:bg-indigo-600">
+            <TabsTrigger value="upload" className="data-[state=active]:bg-slate-800">
               <Upload className="w-4 h-4 mr-2" />
               File Upload
             </TabsTrigger>
-            <TabsTrigger value="settings" className="data-[state=active]:bg-indigo-600">
+            <TabsTrigger value="settings" className="data-[state=active]:bg-slate-800">
               <Wand2 className="w-4 h-4 mr-2" />
               Settings
             </TabsTrigger>
-            <TabsTrigger value="history" className="data-[state=active]:bg-indigo-600">
+            <TabsTrigger value="history" className="data-[state=active]:bg-slate-800">
               <Clock className="w-4 h-4 mr-2" />
               History
             </TabsTrigger>
@@ -618,7 +618,7 @@ export default function FilenameCleaner() {
                       onClick={() => applyPreset(preset)}
                       variant="outline"
                       size="sm"
-                      className="border-slate-700 text-slate-300 hover:bg-indigo-600/20 hover:border-indigo-500/50"
+                      className="border-slate-700 text-slate-300 hover:bg-slate-800/20 hover:border-indigo-500/50"
                     >
                       {preset.name}
                     </Button>
@@ -727,7 +727,7 @@ export default function FilenameCleaner() {
                     />
                     <Button
                       onClick={addCustomRule}
-                      className="bg-indigo-600 hover:bg-indigo-700"
+                      className="bg-slate-800 hover:bg-indigo-700"
                     >
                       <Plus className="w-4 h-4" />
                     </Button>

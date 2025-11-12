@@ -127,7 +127,7 @@ export default function Dashboard() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-          <p className="text-blue-900 font-medium">Loading your data...</p>
+          <p className="text-slate-800 font-medium">Loading your data...</p>
         </div>
       </div>
     );
@@ -144,8 +144,8 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-blue-900 mb-2">Analysis Dashboard</h1>
-            <p className="text-blue-900 font-medium flex items-center gap-2 flex-wrap">
+            <h1 className="text-3xl font-bold text-slate-800 mb-2">Analysis Dashboard</h1>
+            <p className="text-slate-800 font-medium flex items-center gap-2 flex-wrap">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
               {filename} • {data.rows.length} rows • {data.headers.length} columns
               {cleanedRowCount > 0 && (
@@ -167,7 +167,7 @@ export default function Dashboard() {
             <Button
               onClick={handleClearData}
               variant="outline"
-              className="border-slate-300 hover:bg-blue-50"
+              className="border-slate-300 hover:bg-slate-100"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Clear All
@@ -179,8 +179,8 @@ export default function Dashboard() {
         <div className="mb-6 bg-white border border-slate-300 shadow-lg rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-slate-700 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-900 font-medium">
-              <strong className="text-blue-900">Privacy Mode Active:</strong> All data is processed locally in your browser.
+            <div className="text-sm text-slate-800 font-medium">
+              <strong className="text-slate-800">Privacy Mode Active:</strong> All data is processed locally in your browser.
               Nothing is stored on servers. Close this tab to permanently delete all data.
             </div>
           </div>
@@ -191,8 +191,8 @@ export default function Dashboard() {
           <div className="flex items-center gap-3">
             <Sparkles className="w-6 h-6 text-slate-700" />
             <div>
-              <h3 className="text-lg font-bold text-blue-900">New: AI-Powered Operations</h3>
-              <p className="text-sm text-blue-900 font-medium">Describe any operation in plain English - AI will execute it for you!</p>
+              <h3 className="text-lg font-bold text-slate-800">New: AI-Powered Operations</h3>
+              <p className="text-sm text-slate-800 font-medium">Describe any operation in plain English - AI will execute it for you!</p>
             </div>
           </div>
         </div>
@@ -200,13 +200,13 @@ export default function Dashboard() {
         {/* Tabs for Different Sections */}
         <Tabs defaultValue="analysis" className="space-y-6">
           <TabsList className="bg-white border border-slate-300 p-1">
-            <TabsTrigger value="analysis" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="analysis" className="data-[state=active]:bg-slate-800">
               Analysis & Cleaning
             </TabsTrigger>
-            <TabsTrigger value="transform" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="transform" className="data-[state=active]:bg-slate-800">
               Transform Data
             </TabsTrigger>
-            <TabsTrigger value="ai" className="data-[state=active]:bg-indigo-600">
+            <TabsTrigger value="ai" className="data-[state=active]:bg-slate-800">
               AI Tools
             </TabsTrigger>
           </TabsList>

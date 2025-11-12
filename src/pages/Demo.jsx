@@ -106,7 +106,7 @@ export default function Demo() {
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
             <Play className="w-12 h-12 text-slate-800" />
-            <h1 className="text-5xl font-bold text-blue-900">Interactive Demo</h1>
+            <h1 className="text-5xl font-bold text-slate-800">Interactive Demo</h1>
           </div>
           <p className="text-slate-700 text-lg max-w-2xl mx-auto">
             Explore InsightSheet-lite features with interactive demos and tutorials.
@@ -117,7 +117,7 @@ export default function Demo() {
         {/* Quick Start Guide */}
         <Alert className="mb-8 bg-blue-100 border-slate-300">
           <Sparkles className="w-5 h-5 text-slate-800" />
-          <AlertDescription className="text-blue-900">
+          <AlertDescription className="text-slate-800">
             <strong>Quick Start:</strong> Select a demo below to see step-by-step instructions.
             Click "Try Now" to jump directly to that feature!
           </AlertDescription>

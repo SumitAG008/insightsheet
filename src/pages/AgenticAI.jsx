@@ -320,13 +320,13 @@ Create a clear, business-ready summary.`;
             </div>
           </div>
 
-          <h1 className="text-5xl font-bold text-blue-900 mb-2">
+          <h1 className="text-5xl font-bold text-slate-800 mb-2">
             Agentic AI
           </h1>
-          <p className="text-xl text-blue-700 mb-4">
+          <p className="text-xl text-slate-700 mb-4">
             Autonomous AI Agent • Plans → Executes → Reports
           </p>
-          <Badge className="bg-blue-100 text-blue-700 border-slate-300">
+          <Badge className="bg-blue-100 text-slate-700 border-slate-300">
             <Sparkles className="w-4 h-4 mr-1" />
             Self-Learning • Goal-Driven • Fully Autonomous
           </Badge>
@@ -334,9 +334,9 @@ Create a clear, business-ready summary.`;
 
         {/* Info Banner */}
         <Alert className="mb-8 bg-blue-100 border-slate-300">
-          <Brain className="h-5 w-5 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            <strong className="text-blue-700">What is Agentic AI?</strong><br />
+          <Brain className="h-5 w-5 text-slate-700" />
+          <AlertDescription className="text-slate-700">
+            <strong className="text-slate-700">What is Agentic AI?</strong><br />
             Unlike regular AI that just answers questions, Agentic AI:
             <ul className="list-disc ml-5 mt-2 space-y-1">
               <li>🎯 <strong>Plans</strong> its own steps to achieve your goal</li>
@@ -349,8 +349,8 @@ Create a clear, business-ready summary.`;
 
         {/* Task Input */}
         <div className="bg-white border border-slate-300 shadow-lg rounded-2xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
-            <Target className="w-5 h-5 text-blue-600" />
+          <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <Target className="w-5 h-5 text-slate-700" />
             What would you like the AI agent to do?
           </h2>
 
@@ -358,13 +358,13 @@ Create a clear, business-ready summary.`;
             placeholder="Example: Analyze my sales data, find top performing products, and create a report with recommendations..."
             value={task}
             onChange={(e) => setTask(e.target.value)}
-            className="bg-blue-50 border-slate-300 text-blue-900 placeholder:text-blue-600 min-h-[120px] mb-4"
+            className="bg-blue-50 border-slate-300 text-slate-800 placeholder:text-slate-700 min-h-[120px] mb-4"
             disabled={thinking}
           />
 
           <div className="flex flex-wrap gap-2 mb-4">
             <Lightbulb className="w-4 h-4 text-amber-400 mt-1" />
-            <span className="text-xs text-blue-700 font-semibold">Quick Examples:</span>
+            <span className="text-xs text-slate-700 font-semibold">Quick Examples:</span>
           </div>
 
           <div className="grid md:grid-cols-2 gap-2 mb-6">
@@ -372,7 +372,7 @@ Create a clear, business-ready summary.`;
               <button
                 key={idx}
                 onClick={() => setTask(example)}
-                className="text-left text-sm p-3 bg-blue-50 hover:bg-blue-100 border border-slate-300 rounded-lg text-blue-800 transition-colors"
+                className="text-left text-sm p-3 bg-blue-50 hover:bg-blue-100 border border-slate-300 rounded-lg text-slate-700 transition-colors"
                 disabled={thinking}
               >
                 {example}
@@ -408,8 +408,8 @@ Create a clear, business-ready summary.`;
         {/* Agent Execution Visualization */}
         {agent && (
           <div className="bg-white border border-slate-300 shadow-lg rounded-2xl p-6 mb-6">
-            <h2 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
-              <Eye className="w-5 h-5 text-blue-600" />
+            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <Eye className="w-5 h-5 text-slate-700" />
               Agent Execution
             </h2>
 
@@ -417,26 +417,26 @@ Create a clear, business-ready summary.`;
             {agent.phase === 'planning' && (
               <div className="space-y-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-                  <span className="text-lg font-semibold text-blue-700">Planning Strategy...</span>
+                  <Loader2 className="w-6 h-6 text-slate-700 animate-spin" />
+                  <span className="text-lg font-semibold text-slate-700">Planning Strategy...</span>
                 </div>
 
                 <div className="bg-blue-100 border border-slate-300 rounded-lg p-4">
-                  <p className="text-blue-900 mb-3">
+                  <p className="text-slate-800 mb-3">
                     <strong>Understanding:</strong> {agent.plan.task_understood}
                   </p>
-                  <p className="text-blue-700 text-sm mb-2">
+                  <p className="text-slate-700 text-sm mb-2">
                     <strong>Estimated Time:</strong> {agent.plan.estimated_time} •
                     <strong className="ml-2">Confidence:</strong> {(agent.plan.confidence * 100).toFixed(0)}%
                   </p>
 
                   <div className="mt-4">
-                    <p className="text-sm font-semibold text-blue-700 mb-2">Execution Plan:</p>
+                    <p className="text-sm font-semibold text-slate-700 mb-2">Execution Plan:</p>
                     <ol className="space-y-2">
                       {agent.plan.steps.map((step, idx) => (
-                        <li key={idx} className="text-sm text-blue-800">
-                          <span className="font-bold text-blue-600">Step {step.step}:</span> {step.description}
-                          <p className="text-xs text-blue-600 ml-4 mt-1">💭 {step.reasoning}</p>
+                        <li key={idx} className="text-sm text-slate-700">
+                          <span className="font-bold text-slate-700">Step {step.step}:</span> {step.description}
+                          <p className="text-xs text-slate-700 ml-4 mt-1">💭 {step.reasoning}</p>
                         </li>
                       ))}
                     </ol>

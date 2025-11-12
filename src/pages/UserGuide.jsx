@@ -12,9 +12,9 @@ export default function UserGuide() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8 text-center">
-          <BookOpen className="w-20 h-20 text-blue-600 mx-auto mb-4" />
-          <h1 className="text-5xl font-bold text-blue-900 mb-3">User Guide</h1>
-          <p className="text-blue-700 text-lg">
+          <BookOpen className="w-20 h-20 text-slate-700 mx-auto mb-4" />
+          <h1 className="text-5xl font-bold text-slate-800 mb-3">User Guide</h1>
+          <p className="text-slate-700 text-lg">
             Everything you need to know about InsightSheet-lite
           </p>
         </div>
@@ -30,16 +30,16 @@ export default function UserGuide() {
 
         <Tabs defaultValue="basics" className="space-y-6">
           <TabsList className="bg-white border border-slate-300 p-1 grid grid-cols-4 gap-2">
-            <TabsTrigger value="basics" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="basics" className="data-[state=active]:bg-slate-800">
               Basics
             </TabsTrigger>
-            <TabsTrigger value="features" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="features" className="data-[state=active]:bg-slate-800">
               Features
             </TabsTrigger>
             <TabsTrigger value="workflows" className="data-[state=active]:bg-emerald-600">
               Workflows
             </TabsTrigger>
-            <TabsTrigger value="tips" className="data-[state=active]:bg-indigo-600">
+            <TabsTrigger value="tips" className="data-[state=active]:bg-slate-800">
               Tips & Tricks
             </TabsTrigger>
           </TabsList>
@@ -48,8 +48,8 @@ export default function UserGuide() {
           <TabsContent value="basics" className="space-y-6">
             <Card className="bg-white border border-slate-300 shadow-lg">
               <CardHeader>
-                <CardTitle className="text-blue-900 text-2xl">Getting Started</CardTitle>
-                <CardDescription className="text-blue-700 text-lg">
+                <CardTitle className="text-slate-800 text-2xl">Getting Started</CardTitle>
+                <CardDescription className="text-slate-700 text-lg">
                   Learn the basics in 5 minutes
                 </CardDescription>
               </CardHeader>
@@ -431,27 +431,27 @@ export default function UserGuide() {
                 </div>
 
                 {/* Workflow 2 */}
-                <div className="border-l-4 border-blue-500 pl-6">
+                <div className="border-l-4 border-slate-2000 pl-6">
                   <h3 className="text-xl font-bold text-blue-300 mb-4">2. Work with Multi-Sheet Excel Files</h3>
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
-                      <Badge className="bg-blue-600 shrink-0">Step 1</Badge>
+                      <Badge className="bg-slate-800 shrink-0">Step 1</Badge>
                       <p className="text-slate-400">Click <strong className="text-blue-300">"Sheets"</strong> in top menu</p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Badge className="bg-blue-600 shrink-0">Step 2</Badge>
+                      <Badge className="bg-slate-800 shrink-0">Step 2</Badge>
                       <p className="text-slate-400">Click "Import Excel" → Select your .xlsx file with multiple sheets</p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Badge className="bg-blue-600 shrink-0">Step 3</Badge>
+                      <Badge className="bg-slate-800 shrink-0">Step 3</Badge>
                       <p className="text-slate-400">All sheets appear as tabs → Click tabs to switch between sheets</p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Badge className="bg-blue-600 shrink-0">Step 4</Badge>
+                      <Badge className="bg-slate-800 shrink-0">Step 4</Badge>
                       <p className="text-slate-400">Add tags to organize (e.g., "Q1", "Revenue", "Draft")</p>
                     </div>
                     <div className="flex items-start gap-3">
-                      <Badge className="bg-blue-600 shrink-0">Step 5</Badge>
+                      <Badge className="bg-slate-800 shrink-0">Step 5</Badge>
                       <p className="text-slate-400">Link related sheets → Click "Export All" to download complete workbook</p>
                     </div>
                   </div>
@@ -513,7 +513,7 @@ export default function UserGuide() {
                       that are ready to apply on the Dashboard.
                     </p>
                   </div>
-                  <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-3">
+                  <div className="bg-blue-900/20 border border-slate-2000/30 rounded-lg p-3">
                     <h4 className="font-semibold text-blue-300 mb-1">Privacy Mode</h4>
                     <p className="text-sm text-slate-400">
                       Close your tab to delete all data permanently. Nothing is stored on servers.

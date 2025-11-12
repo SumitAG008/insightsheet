@@ -173,7 +173,7 @@ export default function ProjectTracker() {
             <TabsTrigger value="gantt" className="data-[state=active]:bg-purple-600">
               Gantt Chart
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="tasks" className="data-[state=active]:bg-slate-800">
               Task List
             </TabsTrigger>
             <TabsTrigger value="evm" className="data-[state=active]:bg-emerald-600">

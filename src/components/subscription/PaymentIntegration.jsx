@@ -176,7 +176,7 @@ export default function PaymentIntegration({ plan, amount, onSuccess }) {
             </div>
           </div>
 
-          <Alert className="mt-4 bg-blue-500/10 border-blue-500/30">
+          <Alert className="mt-4 bg-blue-500/10 border-slate-2000/30">
             <AlertCircle className="h-4 w-4 text-blue-400" />
             <AlertDescription className="text-blue-200 text-xs">
               <strong>Need help?</strong> Send your Stripe payment links to: sumit@meldra.ai

@@ -100,7 +100,7 @@ export default function AdminDashboard() {
 
   const getStatusBadge = (status) => {
     const badges = {
-      trial: { color: 'bg-blue-500/20 text-blue-300 border-blue-500/30', icon: Clock },
+      trial: { color: 'bg-blue-500/20 text-blue-300 border-slate-2000/30', icon: Clock },
       active: { color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', icon: CheckCircle },
       expired: { color: 'bg-red-500/20 text-red-300 border-red-500/30', icon: AlertCircle },
       cancelled: { color: 'bg-gray-500/20 text-gray-300 border-gray-500/30', icon: AlertCircle }
@@ -170,7 +170,7 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-blue-900 mb-2">Access Denied</h1>
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">Access Denied</h1>
           <p className="text-slate-700">This page is only accessible to sumit@meldra.ai</p>
         </div>
       </div>
@@ -182,7 +182,7 @@ export default function AdminDashboard() {
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-blue-900 mb-2">Subscription Admin Dashboard</h1>
+          <h1 className="text-4xl font-bold text-slate-800 mb-2">Subscription Admin Dashboard</h1>
           <p className="text-slate-700">Track all subscriptions, trials, and revenue</p>
         </div>
 

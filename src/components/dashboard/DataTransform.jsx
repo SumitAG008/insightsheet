@@ -95,7 +95,7 @@ export default function DataTransform({ data, onDataUpdate }) {
             <Calculator className="w-5 h-5 text-blue-400" />
             Data Transform
           </h2>
-          <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+          <Badge className="bg-blue-500/20 text-blue-300 border-slate-2000/30">
             Create Columns
           </Badge>
         </div>
@@ -114,7 +114,7 @@ export default function DataTransform({ data, onDataUpdate }) {
                   variant="outline"
                   className={`justify-start h-auto py-3 ${
                     operation === op.id
-                      ? 'bg-blue-600 text-white border-blue-500'
+                      ? 'bg-slate-800 text-white border-slate-2000'
                       : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-700/50 hover:text-white'
                   }`}
                 >
@@ -201,7 +201,7 @@ export default function DataTransform({ data, onDataUpdate }) {
 
         {/* Preview */}
         {column1 && column2 && operation && (
-          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+          <div className="mt-6 p-4 bg-blue-500/10 border border-slate-2000/30 rounded-lg">
             <p className="text-sm text-blue-300 font-semibold mb-1">Preview:</p>
             <p className="text-slate-200">
               <span className="text-blue-300">{newColumnName || 'NewColumn'}</span> = 

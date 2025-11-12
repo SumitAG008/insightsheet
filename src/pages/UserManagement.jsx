@@ -107,7 +107,7 @@ export default function UserManagement() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-blue-900 mb-2">User Management</h1>
+          <h1 className="text-4xl font-bold text-slate-800 mb-2">User Management</h1>
           <p className="text-slate-700">
             Manage users, subscriptions, and access control
           </p>
@@ -283,7 +283,7 @@ export default function UserManagement() {
                         </td>
                         <td className="px-4 py-4">
                           {user.subscription === 'pro' ? (
-                            <Badge className="bg-blue-600">
+                            <Badge className="bg-slate-800">
                               <Crown className="w-3 h-3 mr-1" />
                               Pro
                             </Badge>

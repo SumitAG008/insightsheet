@@ -95,9 +95,9 @@ export default function PDFEditor() {
 
         {/* Privacy Notice */}
         <Alert className="mb-6 bg-blue-50 border-slate-300">
-          <Shield className="h-5 w-5 text-blue-600" />
+          <Shield className="h-5 w-5 text-slate-700" />
           <AlertDescription className="text-slate-700">
-            <strong className="text-blue-700">Privacy First:</strong> Your PDF is processed in your browser only. 
+            <strong className="text-slate-700">Privacy First:</strong> Your PDF is processed in your browser only. 
             We never store your files on our servers. Close this tab to permanently delete all data.
           </AlertDescription>
         </Alert>

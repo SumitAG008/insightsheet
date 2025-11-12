@@ -119,8 +119,8 @@ export default function Upload() {
                   1
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-blue-900 mb-1">Upload Excel Directly</h3>
-                  <p className="text-blue-700">Just drag & drop your .XLSX or .XLS file - no conversion needed!</p>
+                  <h3 className="text-lg font-bold text-slate-800 mb-1">Upload Excel Directly</h3>
+                  <p className="text-slate-700">Just drag & drop your .XLSX or .XLS file - no conversion needed!</p>
                 </div>
               </div>
 
@@ -129,8 +129,8 @@ export default function Upload() {
                   2
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-blue-900 mb-1">Analyze & Transform</h3>
-                  <p className="text-blue-700">Use AI-powered tools to clean, analyze, and visualize your data</p>
+                  <h3 className="text-lg font-bold text-slate-800 mb-1">Analyze & Transform</h3>
+                  <p className="text-slate-700">Use AI-powered tools to clean, analyze, and visualize your data</p>
                 </div>
               </div>
 
@@ -139,8 +139,8 @@ export default function Upload() {
                   3
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-blue-900 mb-1">Export Your Results</h3>
-                  <p className="text-blue-700">Download as Excel (.xlsx) or CSV - your choice!</p>
+                  <h3 className="text-lg font-bold text-slate-800 mb-1">Export Your Results</h3>
+                  <p className="text-slate-700">Download as Excel (.xlsx) or CSV - your choice!</p>
                 </div>
               </div>
             </div>

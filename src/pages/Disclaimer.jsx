@@ -160,18 +160,18 @@ export default function Disclaimer() {
           {/* No Professional Advice */}
           <section>
             <div className="bg-blue-50 border-2 border-slate-300 rounded-lg p-6">
-              <h2 className="text-xl font-bold text-blue-900 mb-3">Not Professional Advice</h2>
-              <p className="text-blue-800 leading-relaxed">
+              <h2 className="text-xl font-bold text-slate-800 mb-3">Not Professional Advice</h2>
+              <p className="text-slate-700 leading-relaxed">
                 InsightSheet provides <strong>data analysis tools only</strong>. The Service does NOT provide:
               </p>
-              <ul className="list-disc list-inside space-y-1 mt-2 ml-4 text-blue-800">
+              <ul className="list-disc list-inside space-y-1 mt-2 ml-4 text-slate-700">
                 <li>Financial advice or investment recommendations</li>
                 <li>Legal advice or document preparation services</li>
                 <li>Medical advice or healthcare recommendations</li>
                 <li>Tax advice or accounting services</li>
                 <li>Professional consulting in any field</li>
               </ul>
-              <p className="text-blue-800 mt-3 font-semibold">
+              <p className="text-slate-700 mt-3 font-semibold">
                 Always consult qualified professionals for important decisions.
               </p>
             </div>

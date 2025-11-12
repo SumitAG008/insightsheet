@@ -29,7 +29,7 @@ export default function Security() {
             <CheckCircle className="w-4 h-4 mr-2" />
             GDPR Compliant
           </Badge>
-          <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-sm py-2 px-4">
+          <Badge className="bg-blue-500/20 text-blue-300 border-slate-2000/30 text-sm py-2 px-4">
             <CheckCircle className="w-4 h-4 mr-2" />
             CCPA Compliant
           </Badge>

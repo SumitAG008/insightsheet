@@ -309,7 +309,7 @@ export default function Reconciliation() {
         </div>
 
         {/* Instructions */}
-        <Alert className="mb-6 bg-blue-900/20 border-blue-500/30">
+        <Alert className="mb-6 bg-blue-900/20 border-slate-2000/30">
           <AlertCircle className="w-4 h-4 text-blue-400" />
           <AlertDescription className="text-blue-200">
             Upload your target dataset, select matching key columns, choose columns to compare, and run reconciliation.
@@ -483,7 +483,7 @@ export default function Reconciliation() {
                     <p className="text-2xl font-bold text-red-200">{results.summary.missingCount}</p>
                   </div>
 
-                  <div className="bg-blue-900/20 border border-blue-500/30 rounded-lg p-4">
+                  <div className="bg-blue-900/20 border border-slate-2000/30 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <FileText className="w-5 h-5 text-blue-400" />
                       <span className="text-sm text-blue-300">Extra</span>
@@ -592,7 +592,7 @@ export default function Reconciliation() {
                   <CardContent>
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                       {results.extra.slice(0, 10).map((item, idx) => (
-                        <div key={idx} className="bg-blue-900/10 border border-blue-500/20 rounded p-3">
+                        <div key={idx} className="bg-blue-900/10 border border-slate-2000/20 rounded p-3">
                           <p className="text-sm text-blue-300">+ {item.keyValue}</p>
                         </div>
                       ))}

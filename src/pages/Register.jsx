@@ -80,7 +80,7 @@ export default function Register() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center text-blue-900">Create your account</CardTitle>
+          <CardTitle className="text-2xl text-center text-slate-800">Create your account</CardTitle>
           <CardDescription className="text-center text-slate-700">
             Join InsightSheet-lite for privacy-first data analysis
           </CardDescription>
@@ -100,18 +100,18 @@ export default function Register() {
               </Alert>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-blue-900">Full Name</label>
+              <label className="text-sm font-medium text-slate-800">Full Name</label>
               <Input
                 name="fullName"
                 type="text"
                 placeholder="John Doe"
                 value={formData.fullName}
                 onChange={handleChange}
-                className="bg-blue-50 border-slate-300 text-blue-900"
+                className="bg-blue-50 border-slate-300 text-slate-800"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-blue-900">Email</label>
+              <label className="text-sm font-medium text-slate-800">Email</label>
               <Input
                 name="email"
                 type="email"
@@ -119,11 +119,11 @@ export default function Register() {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="bg-blue-50 border-slate-300 text-blue-900"
+                className="bg-blue-50 border-slate-300 text-slate-800"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-blue-900">Password</label>
+              <label className="text-sm font-medium text-slate-800">Password</label>
               <Input
                 name="password"
                 type="password"
@@ -132,11 +132,11 @@ export default function Register() {
                 onChange={handleChange}
                 required
                 minLength={6}
-                className="bg-blue-50 border-slate-300 text-blue-900"
+                className="bg-blue-50 border-slate-300 text-slate-800"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-blue-900">Confirm Password</label>
+              <label className="text-sm font-medium text-slate-800">Confirm Password</label>
               <Input
                 name="confirmPassword"
                 type="password"
@@ -144,7 +144,7 @@ export default function Register() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                className="bg-blue-50 border-slate-300 text-blue-900"
+                className="bg-blue-50 border-slate-300 text-slate-800"
               />
             </div>
           </CardContent>

@@ -53,7 +53,7 @@ export default function Privacy() {
           <section>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Server className="w-6 h-6 text-blue-600" />
+                <Server className="w-6 h-6 text-slate-700" />
               </div>
               <h2 className="text-2xl font-bold text-slate-800">Data We Collect</h2>
             </div>
@@ -85,7 +85,7 @@ export default function Privacy() {
           <section>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                <Eye className="w-6 h-6 text-indigo-600" />
+                <Eye className="w-6 h-6 text-slate-700" />
               </div>
               <h2 className="text-2xl font-bold text-slate-800">AI Data Processing</h2>
             </div>
@@ -94,8 +94,8 @@ export default function Privacy() {
                 When you use AI features (AI Assistant, Smart Formulas), we send minimal, anonymized data to our AI service:
               </p>
               <div className="bg-blue-50 border border-slate-300 rounded-lg p-4 space-y-2">
-                <p className="font-semibold text-blue-900">What gets sent:</p>
-                <ul className="list-disc list-inside space-y-1 text-blue-800">
+                <p className="font-semibold text-slate-800">What gets sent:</p>
+                <ul className="list-disc list-inside space-y-1 text-slate-700">
                   <li>Column names (headers only)</li>
                   <li>Sample rows (first 5-10 rows, no sensitive data)</li>
                   <li>Your query/question</li>

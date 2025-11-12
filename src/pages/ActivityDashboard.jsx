@@ -282,7 +282,7 @@ export default function ActivityDashboard() {
               <Activity className="w-4 h-4 mr-2" />
               User Activities
             </TabsTrigger>
-            <TabsTrigger value="users" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="users" className="data-[state=active]:bg-slate-800">
               <Users className="w-4 h-4 mr-2" />
               User Summary
             </TabsTrigger>

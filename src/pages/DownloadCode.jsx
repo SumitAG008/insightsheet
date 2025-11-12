@@ -328,7 +328,7 @@ CMD ["python", "app.py"]`;
                 </div>
 
                 {/* Quick Start */}
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                <div className="bg-blue-500/10 border border-slate-2000/30 rounded-lg p-4">
                   <h4 className="font-bold text-blue-300 mb-2">🚀 Quick Start:</h4>
                   <pre className="text-sm text-slate-300">
 {`1. Save all files in a folder
@@ -436,7 +436,7 @@ CMD ["python", "app.py"]`;
                 <code>{standaloneCsvProcessor}</code>
               </pre>
 
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+              <div className="bg-blue-500/10 border border-slate-2000/30 rounded-lg p-4">
                 <h4 className="font-bold text-blue-300 mb-2">How to Use:</h4>
                 <ol className="list-decimal ml-5 text-slate-300 space-y-1">
                   <li>Download the HTML file</li>
@@ -474,7 +474,7 @@ CMD ["python", "app.py"]`;
                       <code>{dockerfileCode}</code>
                     </pre>
                   </div>
-                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                  <div className="bg-blue-500/10 border border-slate-2000/30 rounded-lg p-3">
                     <pre className="text-sm text-slate-300">
 {`docker build -t insightsheet-backend .
 docker run -p 5000:5000 insightsheet-backend`}

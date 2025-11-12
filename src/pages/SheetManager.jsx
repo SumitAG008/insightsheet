@@ -255,11 +255,11 @@ export default function SheetManager() {
                 />
               </label>
 
-              <p className="text-sm text-blue-600">
+              <p className="text-sm text-slate-700">
                 Or upload data from the{' '}
                 <button
                   onClick={() => navigate(createPageUrl('Upload'))}
-                  className="text-blue-600 hover:text-blue-700 underline"
+                  className="text-slate-700 hover:text-slate-700 underline"
                 >
                   Upload page
                 </button>
@@ -279,8 +279,8 @@ export default function SheetManager() {
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-blue-900 mb-2">Sheet Manager</h1>
-            <p className="text-blue-700">{sheets.length} sheet(s) loaded</p>
+            <h1 className="text-3xl font-bold text-slate-800 mb-2">Sheet Manager</h1>
+            <p className="text-slate-700">{sheets.length} sheet(s) loaded</p>
           </div>
 
           <div className="flex gap-3">
@@ -466,7 +466,7 @@ export default function SheetManager() {
                     <Button
                       onClick={() => handleLinkSheet(activeSheet)}
                       size="sm"
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-slate-800 hover:bg-blue-700"
                     >
                       Link
                     </Button>

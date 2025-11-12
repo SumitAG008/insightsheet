@@ -1,5 +1,4 @@
 
-
 // Layout.jsx - Remove Workflow, Excel-to-PPT, add Agentic AI
 import React, { useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -7,8 +6,7 @@ import { createPageUrl } from '@/utils';
 import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain } from 'lucide-react';
 import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
 import Logo from '@/components/branding/Logo';
-import { meldra } from '@/api/meldraClient';
-import { LoginHistory } from '@/api/entities';
+import { backendApi } from '@/api/backendClient';
 import { getIPAndLocation, getBrowserInfo } from '@/components/tracking/ActivityLogger';
 import ActivityLogger from '@/components/tracking/ActivityLogger';
 
@@ -20,20 +18,35 @@ export default function Layout({ children }) {
 
   const loadUser = useCallback(async () => {
     try {
-      const currentUser = await meldra.auth.me();
+      // Check if we have a token first
+      if (!backendApi.auth.isAuthenticated()) {
+        setUser(null);
+        return;
+      }
+
+      const currentUser = await backendApi.auth.me();
       setUser(currentUser);
-      
+
       const loginTimestamp = Date.now();
       setLoginTime(loginTimestamp);
       sessionStorage.setItem('loginTime', loginTimestamp.toString());
-      
+
       const sessionLogged = sessionStorage.getItem('sessionLogged');
       if (!sessionLogged) {
-        await logLogin(currentUser.email);
-        sessionStorage.setItem('sessionLogged', 'true');
+        // Try to log login, but don't fail if it doesn't work
+        try {
+          await logLogin(currentUser.email);
+          sessionStorage.setItem('sessionLogged', 'true');
+        } catch (logError) {
+          console.error('Failed to log login:', logError);
+        }
       }
     } catch (error) {
-      // User not logged in
+      // User not logged in or token invalid
+      console.error('Failed to load user:', error);
+      setUser(null);
+      // Clear any invalid tokens
+      backendApi.auth.logout();
     }
   }, []);
 
@@ -45,37 +58,45 @@ export default function Layout({ children }) {
     try {
       const ipData = await getIPAndLocation();
       const browser = getBrowserInfo();
-      
-      await LoginHistory.create({
-        user_email: email,
-        event_type: 'login',
-        ip_address: ipData.ip,
-        location: ipData.location,
-        browser: browser,
-      });
+
+      // Try to log via backend API if available
+      // Note: This endpoint might not exist yet, so we catch errors
+      try {
+        await backendApi.activity.log('login', 'Login', {
+          ip_address: ipData.ip,
+          location: ipData.location,
+          browser: browser,
+        });
+      } catch (apiError) {
+        console.log('Activity logging not available:', apiError.message);
+      }
     } catch (error) {
       console.error('Error logging login:', error);
     }
   };
 
   const handleLogout = async () => {
+    // Try to log the logout event, but don't let it block the actual logout
     if (user) {
       try {
         const loginTimestamp = parseInt(sessionStorage.getItem('loginTime') || '0');
         const sessionDuration = loginTimestamp ? Math.round((Date.now() - loginTimestamp) / 60000) : 0;
-        
+
         const ipData = await getIPAndLocation();
         const browser = getBrowserInfo();
-        
-        await LoginHistory.create({
-          user_email: user.email,
-          event_type: 'logout',
-          ip_address: ipData.ip,
-          location: ipData.location,
-          browser: browser,
-          session_duration: sessionDuration
-        });
-        
+
+        // Try to log via backend API
+        try {
+          await backendApi.activity.log('logout', 'Logout', {
+            ip_address: ipData.ip,
+            location: ipData.location,
+            browser: browser,
+            session_duration: sessionDuration
+          });
+        } catch (apiError) {
+          console.log('Activity logging not available:', apiError.message);
+        }
+
         sessionStorage.removeItem('loginTime');
         sessionStorage.removeItem('sessionLogged');
       } catch (error) {
@@ -83,8 +104,14 @@ export default function Layout({ children }) {
       }
     }
 
-    meldra.auth.logout();
-    window.location.reload();
+    // Clear authentication and redirect
+    backendApi.auth.logout();
+
+    // Clear user state
+    setUser(null);
+
+    // Redirect to login page
+    navigate('/login');
   };
   
   const isActive = (path) => location.pathname === path;

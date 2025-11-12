@@ -125,7 +125,7 @@ export default function Layout({ children }) {
     <div className="relative">
       <button
         onClick={() => toggleDropdown(name)}
-        className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-semibold text-slate-800 hover:bg-slate-100 hover:text-slate-900"
+        className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-bold text-slate-800 hover:bg-slate-100 hover:text-slate-900"
       >
         <Icon className="w-4 h-4" />
         <span>{name}</span>
@@ -139,7 +139,7 @@ export default function Layout({ children }) {
               key={idx}
               to={createPageUrl(item.page)}
               onClick={() => setOpenDropdown(null)}
-              className="flex items-center gap-3 px-4 py-2.5 text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-medium transition-colors"
+              className="flex items-center gap-3 px-4 py-2.5 text-slate-800 hover:bg-slate-100 hover:text-slate-900 font-bold transition-colors"
             >
               <item.icon className="w-4 h-4" />
               <span>{item.label}</span>
@@ -205,10 +205,10 @@ export default function Layout({ children }) {
               {/* Dashboard */}
               <Link
                 to={createPageUrl('Dashboard')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-bold ${
                   isActive(createPageUrl('Dashboard'))
                     ? 'bg-gradient-to-r from-slate-800 to-slate-700 text-white shadow-lg shadow-slate-500/50'
-                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                    : 'text-slate-800 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
@@ -224,10 +224,10 @@ export default function Layout({ children }) {
               {/* AI Tools */}
               <Link
                 to={createPageUrl('AgenticAI')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-bold ${
                   isActive(createPageUrl('AgenticAI'))
                     ? 'bg-gradient-to-r from-slate-800 to-slate-700 text-white shadow-lg shadow-slate-500/50'
-                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                    : 'text-slate-800 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 <Brain className="w-4 h-4" />
@@ -240,10 +240,10 @@ export default function Layout({ children }) {
               {/* Pricing */}
               <Link
                 to={createPageUrl('Pricing')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-bold ${
                   isActive(createPageUrl('Pricing'))
                     ? 'bg-gradient-to-r from-slate-800 to-slate-700 text-white shadow-lg shadow-slate-500/50'
-                    : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                    : 'text-slate-800 hover:bg-slate-100 hover:text-slate-900'
                 }`}
               >
                 <DollarSign className="w-4 h-4" />
@@ -275,12 +275,12 @@ export default function Layout({ children }) {
               {user ? (
                 <div className="flex items-center gap-3 border-l border-slate-300 pl-4">
                   <div className="text-right">
-                    <p className="text-sm font-medium text-slate-800">{user.email}</p>
-                    <p className="text-xs text-slate-600">Logged in</p>
+                    <p className="text-sm font-bold text-slate-800">{user.email}</p>
+                    <p className="text-xs font-semibold text-slate-600">Logged in</p>
                   </div>
                   <button
                     onClick={handleLogout}
-                    className="px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-medium transition-colors"
+                    className="px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg font-bold transition-colors"
                   >
                     Logout
                   </button>
@@ -288,7 +288,7 @@ export default function Layout({ children }) {
               ) : (
                 <Link
                   to={createPageUrl('Login')}
-                  className="px-4 py-2 bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-lg hover:from-slate-900 hover:to-slate-800 transition-all shadow-lg shadow-slate-500/50 font-medium"
+                  className="px-4 py-2 bg-gradient-to-r from-slate-800 to-slate-700 text-white rounded-lg hover:from-slate-900 hover:to-slate-800 transition-all shadow-lg shadow-slate-500/50 font-bold"
                 >
                   Login
                 </Link>
@@ -327,24 +327,24 @@ export default function Layout({ children }) {
                   </h1>
                 </div>
               </div>
-              <p className="text-sm text-slate-700">
+              <p className="text-sm font-bold text-slate-800">
                 Privacy-first data & file management
               </p>
             </div>
 
             <div>
-              <h3 className="font-semibold text-slate-800 mb-3">Legal</h3>
+              <h3 className="font-bold text-slate-800 mb-3">Legal</h3>
               <div className="space-y-2">
                 <Link
                   to={createPageUrl('Privacy')}
-                  className="flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900 transition-colors"
+                  className="flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-slate-900 transition-colors"
                 >
                   <Shield className="w-4 h-4" />
                   Privacy Policy
                 </Link>
                 <Link
                   to={createPageUrl('Disclaimer')}
-                  className="flex items-center gap-2 text-sm text-slate-700 hover:text-slate-900 transition-colors"
+                  className="flex items-center gap-2 text-sm font-bold text-slate-800 hover:text-slate-900 transition-colors"
                 >
                   <AlertTriangle className="w-4 h-4" />
                   Disclaimer & Terms
@@ -356,9 +356,9 @@ export default function Layout({ children }) {
               <div className="bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-300 rounded-xl p-4 backdrop-blur-sm">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-5 h-5 text-slate-700" />
-                  <span className="font-semibold text-slate-800 text-sm">Privacy First</span>
+                  <span className="font-bold text-slate-800 text-sm">Privacy First</span>
                 </div>
-                <p className="text-xs text-slate-700 leading-relaxed">
+                <p className="text-xs font-bold text-slate-800 leading-relaxed">
                   100% browser processing<br />
                   Zero data storage<br />
                   No tracking
@@ -368,7 +368,7 @@ export default function Layout({ children }) {
           </div>
 
           <div className="mt-8 pt-6 border-t border-slate-300 text-center">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm font-bold text-slate-700">
               © 2024 InsightSheet-lite • All rights reserved
             </p>
           </div>

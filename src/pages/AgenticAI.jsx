@@ -310,33 +310,33 @@ Create a clear, business-ready summary.`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 p-6">
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/50 animate-pulse">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/50 animate-pulse">
               <Brain className="w-10 h-10 text-white" />
             </div>
           </div>
-          
-          <h1 className="text-5xl font-bold text-white mb-2">
+
+          <h1 className="text-5xl font-bold text-blue-900 mb-2">
             Agentic AI
           </h1>
-          <p className="text-xl text-purple-200 mb-4">
+          <p className="text-xl text-blue-700 mb-4">
             Autonomous AI Agent • Plans → Executes → Reports
           </p>
-          <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+          <Badge className="bg-blue-100 text-blue-700 border-blue-200">
             <Sparkles className="w-4 h-4 mr-1" />
             Self-Learning • Goal-Driven • Fully Autonomous
           </Badge>
         </div>
 
         {/* Info Banner */}
-        <Alert className="mb-8 bg-indigo-500/10 border-indigo-500/30">
-          <Brain className="h-5 w-5 text-indigo-400" />
-          <AlertDescription className="text-slate-200">
-            <strong className="text-indigo-300">What is Agentic AI?</strong><br />
+        <Alert className="mb-8 bg-blue-100 border-blue-200">
+          <Brain className="h-5 w-5 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            <strong className="text-blue-700">What is Agentic AI?</strong><br />
             Unlike regular AI that just answers questions, Agentic AI:
             <ul className="list-disc ml-5 mt-2 space-y-1">
               <li>🎯 <strong>Plans</strong> its own steps to achieve your goal</li>
@@ -348,9 +348,9 @@ Create a clear, business-ready summary.`;
         </Alert>
 
         {/* Task Input */}
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <Target className="w-5 h-5 text-purple-400" />
+        <div className="bg-white border border-blue-200 shadow-lg rounded-2xl p-6 mb-6">
+          <h2 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+            <Target className="w-5 h-5 text-blue-600" />
             What would you like the AI agent to do?
           </h2>
 
@@ -358,13 +358,13 @@ Create a clear, business-ready summary.`;
             placeholder="Example: Analyze my sales data, find top performing products, and create a report with recommendations..."
             value={task}
             onChange={(e) => setTask(e.target.value)}
-            className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500 min-h-[120px] mb-4"
+            className="bg-blue-50 border-blue-200 text-blue-900 placeholder:text-blue-600 min-h-[120px] mb-4"
             disabled={thinking}
           />
 
           <div className="flex flex-wrap gap-2 mb-4">
             <Lightbulb className="w-4 h-4 text-amber-400 mt-1" />
-            <span className="text-xs text-slate-400 font-semibold">Quick Examples:</span>
+            <span className="text-xs text-blue-700 font-semibold">Quick Examples:</span>
           </div>
 
           <div className="grid md:grid-cols-2 gap-2 mb-6">
@@ -372,7 +372,7 @@ Create a clear, business-ready summary.`;
               <button
                 key={idx}
                 onClick={() => setTask(example)}
-                className="text-left text-sm p-3 bg-slate-800/30 hover:bg-slate-700/50 border border-slate-700 rounded-lg text-slate-300 transition-colors"
+                className="text-left text-sm p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg text-blue-800 transition-colors"
                 disabled={thinking}
               >
                 {example}
@@ -383,7 +383,7 @@ Create a clear, business-ready summary.`;
           <Button
             onClick={runAgent}
             disabled={thinking || !task.trim() || !data}
-            className="w-full bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 hover:from-purple-700 hover:via-pink-700 hover:to-indigo-700 text-white font-bold py-4 text-lg"
+            className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-bold py-4 text-lg"
           >
             {thinking ? (
               <>
@@ -407,9 +407,9 @@ Create a clear, business-ready summary.`;
 
         {/* Agent Execution Visualization */}
         {agent && (
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 mb-6">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <Eye className="w-5 h-5 text-purple-400" />
+          <div className="bg-white border border-blue-200 shadow-lg rounded-2xl p-6 mb-6">
+            <h2 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+              <Eye className="w-5 h-5 text-blue-600" />
               Agent Execution
             </h2>
 
@@ -417,26 +417,26 @@ Create a clear, business-ready summary.`;
             {agent.phase === 'planning' && (
               <div className="space-y-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <Loader2 className="w-6 h-6 text-purple-500 animate-spin" />
-                  <span className="text-lg font-semibold text-purple-300">Planning Strategy...</span>
+                  <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
+                  <span className="text-lg font-semibold text-blue-700">Planning Strategy...</span>
                 </div>
 
-                <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-                  <p className="text-white mb-3">
+                <div className="bg-blue-100 border border-blue-200 rounded-lg p-4">
+                  <p className="text-blue-900 mb-3">
                     <strong>Understanding:</strong> {agent.plan.task_understood}
                   </p>
-                  <p className="text-slate-400 text-sm mb-2">
-                    <strong>Estimated Time:</strong> {agent.plan.estimated_time} • 
+                  <p className="text-blue-700 text-sm mb-2">
+                    <strong>Estimated Time:</strong> {agent.plan.estimated_time} •
                     <strong className="ml-2">Confidence:</strong> {(agent.plan.confidence * 100).toFixed(0)}%
                   </p>
 
                   <div className="mt-4">
-                    <p className="text-sm font-semibold text-purple-300 mb-2">Execution Plan:</p>
+                    <p className="text-sm font-semibold text-blue-700 mb-2">Execution Plan:</p>
                     <ol className="space-y-2">
                       {agent.plan.steps.map((step, idx) => (
-                        <li key={idx} className="text-sm text-slate-300">
-                          <span className="font-bold text-purple-400">Step {step.step}:</span> {step.description}
-                          <p className="text-xs text-slate-500 ml-4 mt-1">💭 {step.reasoning}</p>
+                        <li key={idx} className="text-sm text-blue-800">
+                          <span className="font-bold text-blue-600">Step {step.step}:</span> {step.description}
+                          <p className="text-xs text-blue-600 ml-4 mt-1">💭 {step.reasoning}</p>
                         </li>
                       ))}
                     </ol>

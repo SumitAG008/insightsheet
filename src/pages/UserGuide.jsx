@@ -8,29 +8,29 @@ import { Badge } from '@/components/ui/badge';
 
 export default function UserGuide() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8 text-center">
-          <BookOpen className="w-20 h-20 text-purple-400 mx-auto mb-4" />
-          <h1 className="text-5xl font-bold text-purple-200 mb-3">User Guide</h1>
-          <p className="text-slate-400 text-lg">
+          <BookOpen className="w-20 h-20 text-blue-600 mx-auto mb-4" />
+          <h1 className="text-5xl font-bold text-blue-900 mb-3">User Guide</h1>
+          <p className="text-blue-700 text-lg">
             Everything you need to know about InsightSheet-lite
           </p>
         </div>
 
         {/* Privacy Notice */}
-        <Alert className="mb-8 bg-purple-900/20 border-purple-500/30">
-          <Shield className="w-5 h-5 text-purple-400" />
-          <AlertDescription className="text-purple-200">
+        <Alert className="mb-8 bg-green-100 border-green-300">
+          <Shield className="w-5 h-5 text-emerald-600" />
+          <AlertDescription className="text-emerald-900">
             <strong>100% Privacy Guaranteed:</strong> All data processing happens in your browser.
             Nothing is uploaded to servers. Close your tab to permanently delete all data.
           </AlertDescription>
         </Alert>
 
         <Tabs defaultValue="basics" className="space-y-6">
-          <TabsList className="bg-slate-900/80 border border-slate-700/50 p-1 grid grid-cols-4 gap-2">
-            <TabsTrigger value="basics" className="data-[state=active]:bg-purple-600">
+          <TabsList className="bg-white border border-blue-200 p-1 grid grid-cols-4 gap-2">
+            <TabsTrigger value="basics" className="data-[state=active]:bg-blue-600">
               Basics
             </TabsTrigger>
             <TabsTrigger value="features" className="data-[state=active]:bg-blue-600">
@@ -39,17 +39,17 @@ export default function UserGuide() {
             <TabsTrigger value="workflows" className="data-[state=active]:bg-emerald-600">
               Workflows
             </TabsTrigger>
-            <TabsTrigger value="tips" className="data-[state=active]:bg-pink-600">
+            <TabsTrigger value="tips" className="data-[state=active]:bg-indigo-600">
               Tips & Tricks
             </TabsTrigger>
           </TabsList>
 
           {/* Basics Tab */}
           <TabsContent value="basics" className="space-y-6">
-            <Card className="bg-slate-900/50 border-slate-700/50">
+            <Card className="bg-white border border-blue-200 shadow-lg">
               <CardHeader>
-                <CardTitle className="text-purple-200 text-2xl">Getting Started</CardTitle>
-                <CardDescription className="text-slate-400 text-lg">
+                <CardTitle className="text-blue-900 text-2xl">Getting Started</CardTitle>
+                <CardDescription className="text-blue-700 text-lg">
                   Learn the basics in 5 minutes
                 </CardDescription>
               </CardHeader>

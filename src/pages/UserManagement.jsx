@@ -103,26 +103,26 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-purple-200 mb-2">User Management</h1>
-          <p className="text-slate-400">
+          <h1 className="text-4xl font-bold text-blue-900 mb-2">User Management</h1>
+          <p className="text-blue-700">
             Manage users, subscriptions, and access control
           </p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid md:grid-cols-5 gap-4 mb-8">
-          <Card className="bg-slate-900/50 border-slate-700/50">
+          <Card className="bg-white border border-blue-200 shadow-lg">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-slate-400">Total Users</p>
-                  <p className="text-3xl font-bold text-purple-300">{stats.total}</p>
+                  <p className="text-sm text-blue-700">Total Users</p>
+                  <p className="text-3xl font-bold text-blue-600">{stats.total}</p>
                 </div>
-                <Users className="w-10 h-10 text-purple-400" />
+                <Users className="w-10 h-10 text-blue-600" />
               </div>
             </CardContent>
           </Card>

@@ -39,16 +39,16 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md bg-white border border-blue-200 shadow-lg">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center text-white">Welcome to InsightSheet-lite</CardTitle>
-          <CardDescription className="text-center text-slate-400">
+          <CardTitle className="text-2xl text-center text-blue-900">Welcome to InsightSheet-lite</CardTitle>
+          <CardDescription className="text-center text-blue-700">
             Sign in to access your privacy-first data analysis platform
           </CardDescription>
         </CardHeader>
@@ -60,20 +60,20 @@ export default function Login() {
               </Alert>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Email</label>
+              <label className="text-sm font-medium text-blue-900">Email</label>
               <Input
                 type="email"
                 placeholder="your@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-slate-800/50 border-slate-700 text-slate-200"
+                className="bg-blue-50 border-blue-200 text-blue-900"
               />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-slate-300">Password</label>
-                <Link to="/forgot-password" className="text-xs text-purple-400 hover:text-purple-300">
+                <label className="text-sm font-medium text-blue-900">Password</label>
+                <Link to="/forgot-password" className="text-xs text-blue-600 hover:text-blue-700">
                   Forgot password?
                 </Link>
               </div>
@@ -83,7 +83,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-slate-800/50 border-slate-700 text-slate-200"
+                className="bg-blue-50 border-blue-200 text-blue-900"
               />
             </div>
           </CardContent>
@@ -91,7 +91,7 @@ export default function Login() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
             >
               {loading ? (
                 <>
@@ -105,9 +105,9 @@ export default function Login() {
                 </>
               )}
             </Button>
-            <p className="text-sm text-center text-slate-400">
+            <p className="text-sm text-center text-blue-700">
               Don't have an account?{' '}
-              <Link to="/register" className="text-purple-400 hover:text-purple-300 underline">
+              <Link to="/register" className="text-blue-600 hover:text-blue-700 underline">
                 Sign up
               </Link>
             </p>

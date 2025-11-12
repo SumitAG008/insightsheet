@@ -243,7 +243,7 @@ export default function SheetManager() {
 
             <div className="space-y-4">
               <label className="block">
-                <div className="cursor-pointer bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-lg transition-all shadow-lg shadow-purple-500/50 inline-flex items-center gap-3">
+                <div className="cursor-pointer bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 rounded-lg transition-all shadow-lg shadow-blue-500/50 inline-flex items-center gap-3">
                   <UploadIcon className="w-5 h-5" />
                   <span className="font-semibold">Import Excel File</span>
                 </div>
@@ -255,11 +255,11 @@ export default function SheetManager() {
                 />
               </label>
 
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-blue-600">
                 Or upload data from the{' '}
                 <button
                   onClick={() => navigate(createPageUrl('Upload'))}
-                  className="text-purple-400 hover:text-purple-300 underline"
+                  className="text-blue-600 hover:text-blue-700 underline"
                 >
                   Upload page
                 </button>
@@ -274,13 +274,13 @@ export default function SheetManager() {
   const currentData = sheetData[activeSheet];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-purple-200 mb-2">Sheet Manager</h1>
-            <p className="text-slate-400">{sheets.length} sheet(s) loaded</p>
+            <h1 className="text-3xl font-bold text-blue-900 mb-2">Sheet Manager</h1>
+            <p className="text-blue-700">{sheets.length} sheet(s) loaded</p>
           </div>
 
           <div className="flex gap-3">

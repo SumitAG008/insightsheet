@@ -447,19 +447,19 @@ export default function FilenameCleaner() {
   const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-4 md:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 p-4 md:p-6">
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center">
               <FileArchive className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-indigo-200 mb-2">
+          <h1 className="text-3xl md:text-4xl font-bold text-blue-900 mb-2">
             Enhanced File Processor
           </h1>
-          <p className="text-slate-400 text-sm md:text-base">
+          <p className="text-blue-700 text-sm md:text-base">
             Process ZIP files with advanced Unicode and character replacement support
           </p>
         </div>

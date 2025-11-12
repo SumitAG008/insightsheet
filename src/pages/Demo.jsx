@@ -100,24 +100,24 @@ export default function Demo() {
   const currentDemo = demos.find(d => d.id === activeDemo);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <Play className="w-12 h-12 text-purple-400" />
-            <h1 className="text-5xl font-bold text-purple-200">Interactive Demo</h1>
+            <Play className="w-12 h-12 text-blue-600" />
+            <h1 className="text-5xl font-bold text-blue-900">Interactive Demo</h1>
           </div>
-          <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+          <p className="text-blue-700 text-lg max-w-2xl mx-auto">
             Explore InsightSheet-lite features with interactive demos and tutorials.
             See how easy it is to analyze data, manage spreadsheets, and track projects.
           </p>
         </div>
 
         {/* Quick Start Guide */}
-        <Alert className="mb-8 bg-blue-900/20 border-blue-500/30">
-          <Sparkles className="w-5 h-5 text-blue-400" />
-          <AlertDescription className="text-blue-200">
+        <Alert className="mb-8 bg-blue-100 border-blue-200">
+          <Sparkles className="w-5 h-5 text-blue-600" />
+          <AlertDescription className="text-blue-900">
             <strong>Quick Start:</strong> Select a demo below to see step-by-step instructions.
             Click "Try Now" to jump directly to that feature!
           </AlertDescription>
@@ -125,7 +125,7 @@ export default function Demo() {
 
         {/* Demo Tabs */}
         <Tabs value={activeDemo} onValueChange={setActiveDemo} className="space-y-6">
-          <TabsList className="bg-slate-900/80 border border-slate-700/50 p-1 grid grid-cols-5 gap-2">
+          <TabsList className="bg-white border border-blue-200 p-1 grid grid-cols-5 gap-2">
             {demos.map((demo) => {
               const Icon = demo.icon;
               return (

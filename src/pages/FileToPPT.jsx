@@ -257,28 +257,28 @@ export default function FileToPPT() {
   const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 py-12">
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/50">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/50">
               <FileText className="w-10 h-10 text-white" />
             </div>
           </div>
 
-          <h1 className="text-5xl font-bold text-white mb-4">
+          <h1 className="text-5xl font-bold text-blue-900 mb-4">
             Advanced Excel to PowerPoint
           </h1>
-          <p className="text-xl text-purple-200 mb-4">
+          <p className="text-xl text-blue-700 mb-4">
             Professional presentations with charts, tables & statistics
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+            <Badge className="bg-blue-100 text-blue-700 border-blue-200">
               <BarChart3 className="w-4 h-4 mr-1" />
               Multiple Charts
             </Badge>
-            <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+            <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200">
               <Table className="w-4 h-4 mr-1" />
               Data Tables
             </Badge>
@@ -286,7 +286,7 @@ export default function FileToPPT() {
               <TrendingUp className="w-4 h-4 mr-1" />
               Statistics
             </Badge>
-            <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/30">
+            <Badge className="bg-blue-100 text-blue-700 border-blue-200">
               <PieChart className="w-4 h-4 mr-1" />
               Bar/Line/Pie
             </Badge>

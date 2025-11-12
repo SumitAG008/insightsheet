@@ -159,36 +159,36 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500" />
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
     );
   }
 
   if (!currentUser || currentUser.email !== 'sumit@meldra.ai') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-slate-200 mb-2">Access Denied</h1>
-          <p className="text-slate-400">This page is only accessible to sumit@meldra.ai</p>
+          <h1 className="text-2xl font-bold text-blue-900 mb-2">Access Denied</h1>
+          <p className="text-blue-700">This page is only accessible to sumit@meldra.ai</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 p-6">
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-purple-200 mb-2">Subscription Admin Dashboard</h1>
-          <p className="text-slate-400">Track all subscriptions, trials, and revenue</p>
+          <h1 className="text-4xl font-bold text-blue-900 mb-2">Subscription Admin Dashboard</h1>
+          <p className="text-blue-700">Track all subscriptions, trials, and revenue</p>
         </div>
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+          <div className="bg-white border border-blue-200 shadow-lg rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <DollarSign className="w-10 h-10 text-emerald-400" />
               <Badge className="bg-emerald-500/20 text-emerald-300">Total</Badge>

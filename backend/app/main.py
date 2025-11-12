@@ -776,6 +776,79 @@ async def upgrade_subscription(
 
 
 # ============================================================================
+# DEVELOPMENT / TESTING ENDPOINTS
+# ============================================================================
+
+class DevGrantPremiumRequest(BaseModel):
+    email: EmailStr
+
+@app.post("/api/dev/grant-premium")
+async def dev_grant_premium(
+    request: DevGrantPremiumRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    🚨 DEVELOPMENT ONLY - Grant premium subscription to any user
+
+    This endpoint bypasses authentication for testing purposes.
+    DISABLE THIS IN PRODUCTION!
+
+    Usage:
+        POST /api/dev/grant-premium
+        {
+            "email": "user@example.com"
+        }
+    """
+    # TODO: Add environment check to disable in production
+    # if os.getenv("ENVIRONMENT") == "production":
+    #     raise HTTPException(status_code=404, detail="Not found")
+
+    try:
+        # Find or create subscription
+        subscription = db.query(Subscription).filter(
+            Subscription.user_email == request.email
+        ).first()
+
+        if not subscription:
+            # Create new subscription
+            subscription = Subscription(
+                user_email=request.email,
+                plan="free",
+                status="active",
+                ai_queries_limit=5,
+                ai_queries_used=0,
+                files_uploaded=0
+            )
+            db.add(subscription)
+            db.commit()
+            db.refresh(subscription)
+
+        # Upgrade to premium
+        subscription.plan = "premium"
+        subscription.status = "active"
+        subscription.ai_queries_limit = -1  # Unlimited
+        subscription.subscription_start_date = datetime.utcnow()
+        db.commit()
+
+        logger.info(f"DEV: Granted premium to {request.email}")
+
+        return {
+            "message": f"✅ Premium subscription granted to {request.email}",
+            "subscription": {
+                "email": subscription.user_email,
+                "plan": subscription.plan,
+                "status": subscription.status,
+                "ai_queries_limit": subscription.ai_queries_limit,
+                "start_date": subscription.subscription_start_date
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Error granting premium: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
 # ACTIVITY & ANALYTICS ENDPOINTS
 # ============================================================================
 

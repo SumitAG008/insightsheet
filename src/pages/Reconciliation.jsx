@@ -277,7 +277,7 @@ export default function Reconciliation() {
 
   if (!sourceData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center max-w-2xl mx-auto">
             <GitCompare className="w-24 h-24 text-purple-400 mx-auto mb-6" />
@@ -287,7 +287,7 @@ export default function Reconciliation() {
             </p>
             <Button
               onClick={() => navigate(createPageUrl('Upload'))}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              className="bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-900 hover:to-slate-800"
             >
               Go to Upload Page
             </Button>
@@ -298,7 +298,7 @@ export default function Reconciliation() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -433,7 +433,7 @@ export default function Reconciliation() {
           <Button
             onClick={handleReconcile}
             disabled={!sourceData || !targetData || !sourceKey || !targetKey || isReconciling}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-6 text-lg"
+            className="bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-900 hover:to-slate-800 px-8 py-6 text-lg"
           >
             {isReconciling ? 'Reconciling...' : 'Run Reconciliation'}
           </Button>

@@ -108,7 +108,7 @@ export default function UserManagement() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-blue-900 mb-2">User Management</h1>
-          <p className="text-blue-700">
+          <p className="text-slate-700">
             Manage users, subscriptions, and access control
           </p>
         </div>
@@ -119,15 +119,15 @@ export default function UserManagement() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-blue-700">Total Users</p>
-                  <p className="text-3xl font-bold text-blue-600">{stats.total}</p>
+                  <p className="text-sm text-slate-700">Total Users</p>
+                  <p className="text-3xl font-bold text-slate-800">{stats.total}</p>
                 </div>
-                <Users className="w-10 h-10 text-blue-600" />
+                <Users className="w-10 h-10 text-slate-800" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900/50 border-slate-700/50">
+          <Card className="bg-slate-900/50 border-slate-300">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -139,7 +139,7 @@ export default function UserManagement() {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900/50 border-slate-700/50">
+          <Card className="bg-slate-900/50 border-slate-300">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -151,7 +151,7 @@ export default function UserManagement() {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900/50 border-slate-700/50">
+          <Card className="bg-slate-900/50 border-slate-300">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -163,7 +163,7 @@ export default function UserManagement() {
             </CardContent>
           </Card>
 
-          <Card className="bg-slate-900/50 border-slate-700/50">
+          <Card className="bg-slate-900/50 border-slate-300">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -177,7 +177,7 @@ export default function UserManagement() {
         </div>
 
         {/* Filters and Search */}
-        <Card className="bg-slate-900/50 border-slate-700/50 mb-6">
+        <Card className="bg-slate-900/50 border-slate-300 mb-6">
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
@@ -225,7 +225,7 @@ export default function UserManagement() {
         </Card>
 
         {/* Users Table */}
-        <Card className="bg-slate-900/50 border-slate-700/50">
+        <Card className="bg-slate-900/50 border-slate-300">
           <CardHeader>
             <CardTitle className="text-purple-200">
               Users ({filteredUsers.length})
@@ -343,7 +343,7 @@ export default function UserManagement() {
 
         {/* Admin Note */}
         <Alert className="mt-6 bg-purple-900/20 border-purple-500/30">
-          <Shield className="w-4 h-4 text-purple-400" />
+          <Shield className="w-4 h-4 text-slate-700" />
           <AlertDescription className="text-purple-200">
             <strong>Admin Access Only:</strong> This page is only visible to administrators.
             User data is displayed for management purposes only.

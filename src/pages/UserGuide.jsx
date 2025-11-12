@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 
 export default function UserGuide() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -56,7 +56,7 @@ export default function UserGuide() {
               <CardContent className="space-y-6">
                 {/* Step 1 */}
                 <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-slate-800 to-slate-700 rounded-full flex items-center justify-center text-white font-bold text-xl">
                     1
                   </div>
                   <div className="flex-1">
@@ -75,7 +75,7 @@ export default function UserGuide() {
 
                 {/* Step 2 */}
                 <div className="flex gap-4">
-                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                  <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-slate-800 to-slate-700 rounded-full flex items-center justify-center text-white font-bold text-xl">
                     2
                   </div>
                   <div className="flex-1">

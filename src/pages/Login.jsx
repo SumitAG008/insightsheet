@@ -48,7 +48,7 @@ export default function Login() {
             </div>
           </div>
           <CardTitle className="text-2xl text-center text-blue-900">Welcome to InsightSheet-lite</CardTitle>
-          <CardDescription className="text-center text-blue-700">
+          <CardDescription className="text-center text-slate-700">
             Sign in to access your privacy-first data analysis platform
           </CardDescription>
         </CardHeader>
@@ -73,7 +73,7 @@ export default function Login() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-medium text-blue-900">Password</label>
-                <Link to="/forgot-password" className="text-xs text-blue-600 hover:text-blue-700">
+                <Link to="/forgot-password" className="text-xs text-slate-800 hover:text-slate-700">
                   Forgot password?
                 </Link>
               </div>
@@ -105,9 +105,9 @@ export default function Login() {
                 </>
               )}
             </Button>
-            <p className="text-sm text-center text-blue-700">
+            <p className="text-sm text-center text-slate-700">
               Don't have an account?{' '}
-              <Link to="/register" className="text-blue-600 hover:text-blue-700 underline">
+              <Link to="/register" className="text-slate-800 hover:text-slate-700 underline">
                 Sign up
               </Link>
             </p>

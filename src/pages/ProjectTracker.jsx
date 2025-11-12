@@ -158,7 +158,7 @@ export default function ProjectTracker() {
   const evm = calculateEVM();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -221,7 +221,7 @@ export default function ProjectTracker() {
                   />
                   <Button
                     onClick={handleAddTask}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                    className="bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-900 hover:to-slate-800"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Task
@@ -257,7 +257,7 @@ export default function ProjectTracker() {
                           </div>
                           <div className="relative h-8 bg-slate-800 rounded-lg overflow-hidden">
                             <div
-                              className="absolute top-0 h-full bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center"
+                              className="absolute top-0 h-full bg-gradient-to-r from-slate-800 to-slate-700 rounded-lg flex items-center justify-center"
                               style={{
                                 left: `${position.left}%`,
                                 width: `${position.width}%`

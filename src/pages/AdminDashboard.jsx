@@ -171,7 +171,7 @@ export default function AdminDashboard() {
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-red-400 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-blue-900 mb-2">Access Denied</h1>
-          <p className="text-blue-700">This page is only accessible to sumit@meldra.ai</p>
+          <p className="text-slate-700">This page is only accessible to sumit@meldra.ai</p>
         </div>
       </div>
     );
@@ -183,7 +183,7 @@ export default function AdminDashboard() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-blue-900 mb-2">Subscription Admin Dashboard</h1>
-          <p className="text-blue-700">Track all subscriptions, trials, and revenue</p>
+          <p className="text-slate-700">Track all subscriptions, trials, and revenue</p>
         </div>
 
         {/* Statistics Cards */}
@@ -202,7 +202,7 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+          <div className="bg-white backdrop-blur-xl border border-slate-300 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <CheckCircle className="w-10 h-10 text-indigo-400" />
               <Badge className="bg-indigo-500/20 text-indigo-300">Active</Badge>
@@ -216,7 +216,7 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+          <div className="bg-white backdrop-blur-xl border border-slate-300 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <Clock className="w-10 h-10 text-blue-400" />
               <Badge className="bg-blue-500/20 text-blue-300">Trial</Badge>
@@ -230,23 +230,23 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+          <div className="bg-white backdrop-blur-xl border border-slate-300 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <Users className="w-10 h-10 text-purple-400" />
+              <Users className="w-10 h-10 text-slate-700" />
               <Badge className="bg-purple-500/20 text-purple-300">Total</Badge>
             </div>
             <h3 className="text-3xl font-bold text-purple-300 mb-1">
               {users.length}
             </h3>
             <p className="text-sm text-slate-400">Total Users</p>
-            <p className="text-xs text-purple-400 mt-2">
+            <p className="text-xs text-slate-700 mt-2">
               {subscriptions.length} subscriptions
             </p>
           </div>
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 mb-6">
+        <div className="bg-white backdrop-blur-xl border border-slate-300 rounded-2xl p-6 mb-6">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
@@ -303,8 +303,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* Subscriptions Table */}
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden">
-          <div className="p-6 border-b border-slate-700/50">
+        <div className="bg-white backdrop-blur-xl border border-slate-300 rounded-2xl overflow-hidden">
+          <div className="p-6 border-b border-slate-300">
             <h2 className="text-xl font-bold text-purple-200">
               All Subscriptions ({filteredSubscriptions.length})
             </h2>
@@ -313,7 +313,7 @@ export default function AdminDashboard() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-700/50">
+                <TableRow className="border-slate-300">
                   <TableHead className="text-purple-300">User Email</TableHead>
                   <TableHead className="text-purple-300">Plan</TableHead>
                   <TableHead className="text-purple-300">Status</TableHead>
@@ -373,7 +373,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Trial Expiration Alerts */}
-        <div className="mt-6 bg-slate-900/80 backdrop-blur-xl border border-amber-500/30 rounded-2xl p-6">
+        <div className="mt-6 bg-white backdrop-blur-xl border border-amber-500/30 rounded-2xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <AlertCircle className="w-6 h-6 text-amber-400" />
             <h3 className="text-lg font-bold text-amber-300">Trials Expiring Soon (3 days or less)</h3>

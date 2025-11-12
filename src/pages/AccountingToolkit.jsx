@@ -144,7 +144,7 @@ export default function AccountingToolkit() {
   const financials = calculateFinancials();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -215,7 +215,7 @@ export default function AccountingToolkit() {
                 <div className="flex gap-3 mt-4">
                   <Button
                     onClick={handleAddEntry}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                    className="bg-gradient-to-r from-slate-800 to-slate-700 hover:from-slate-900 hover:to-slate-800"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Entry

@@ -310,12 +310,12 @@ Create a clear, business-ready summary.`;
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 p-6">
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-blue-500/50 animate-pulse">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-slate-500/50 animate-pulse">
               <Brain className="w-10 h-10 text-white" />
             </div>
           </div>
@@ -462,7 +462,7 @@ Create a clear, business-ready summary.`;
 
                 <div className="w-full bg-slate-800 rounded-full h-3">
                   <div
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 h-3 rounded-full transition-all duration-500"
+                    className="bg-gradient-to-r from-slate-800 to-slate-700 h-3 rounded-full transition-all duration-500"
                     style={{ width: `${(agent.currentStep / agent.totalSteps) * 100}%` }}
                   />
                 </div>
@@ -556,7 +556,7 @@ Create a clear, business-ready summary.`;
 
                   <div className="flex gap-3 mt-6">
                     <Button
-                      className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600"
+                      className="flex-1 bg-gradient-to-r from-slate-800 to-slate-700"
                       onClick={() => {
                         const report = `# AI Agent Report\n\n## Task\n${agent.task}\n\n## Results\n${agent.results.map(r => `### Step ${r.step}: ${r.description}\n${r.output}`).join('\n\n')}\n\n## Summary\n${agent.finalReport}`;
                         const blob = new Blob([report], { type: 'text/markdown' });

@@ -81,7 +81,7 @@ export default function Register() {
             </div>
           </div>
           <CardTitle className="text-2xl text-center text-blue-900">Create your account</CardTitle>
-          <CardDescription className="text-center text-blue-700">
+          <CardDescription className="text-center text-slate-700">
             Join InsightSheet-lite for privacy-first data analysis
           </CardDescription>
         </CardHeader>
@@ -171,9 +171,9 @@ export default function Register() {
                 </>
               )}
             </Button>
-            <p className="text-sm text-center text-blue-700">
+            <p className="text-sm text-center text-slate-700">
               Already have an account?{' '}
-              <Link to="/login" className="text-blue-600 hover:text-blue-700 underline">
+              <Link to="/login" className="text-slate-800 hover:text-slate-700 underline">
                 Sign in
               </Link>
             </p>

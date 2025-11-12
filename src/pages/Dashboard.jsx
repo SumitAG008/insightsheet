@@ -178,7 +178,7 @@ export default function Dashboard() {
         {/* Privacy Notice */}
         <div className="mb-6 bg-white border border-blue-200 shadow-lg rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-700 flex-shrink-0 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-slate-700 flex-shrink-0 mt-0.5" />
             <div className="text-sm text-blue-900 font-medium">
               <strong className="text-blue-900">Privacy Mode Active:</strong> All data is processed locally in your browser.
               Nothing is stored on servers. Close this tab to permanently delete all data.
@@ -189,7 +189,7 @@ export default function Dashboard() {
         {/* AI Assistant Banner */}
         <div className="mb-6 bg-gradient-to-r from-blue-100 to-indigo-100 border border-blue-200 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-blue-700" />
+            <Sparkles className="w-6 h-6 text-slate-700" />
             <div>
               <h3 className="text-lg font-bold text-blue-900">New: AI-Powered Operations</h3>
               <p className="text-sm text-blue-900 font-medium">Describe any operation in plain English - AI will execute it for you!</p>

@@ -1,0 +1,451 @@
+"""
+Excel to PowerPoint Service for InsightSheet-lite
+Converts Excel files to professional PowerPoint presentations
+"""
+import openpyxl
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.text import PP_ALIGN
+from pptx.chart.data import CategoryChartData
+from pptx.enum.chart import XL_CHART_TYPE
+from pptx.dml.color import RGBColor
+import pandas as pd
+from typing import List, Dict, Any, Optional, BinaryIO
+import io
+import logging
+from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+
+class ExcelToPPTService:
+    """Service to convert Excel files to PowerPoint presentations"""
+
+    def __init__(self):
+        self.theme_colors = {
+            'primary': RGBColor(99, 102, 241),  # Indigo
+            'secondary': RGBColor(139, 92, 246),  # Purple
+            'accent': RGBColor(236, 72, 153),  # Pink
+            'success': RGBColor(16, 185, 129),  # Green
+            'warning': RGBColor(245, 158, 11),  # Orange
+            'dark': RGBColor(30, 41, 59),  # Slate
+            'light': RGBColor(248, 250, 252),  # Light slate
+        }
+
+    async def convert_excel_to_ppt(
+        self,
+        excel_file: BinaryIO,
+        filename: str
+    ) -> bytes:
+        """
+        Convert Excel file to PowerPoint presentation
+
+        Args:
+            excel_file: Excel file binary data
+            filename: Original filename
+
+        Returns:
+            bytes: PowerPoint file data
+        """
+        try:
+            # Read Excel file
+            excel_data = excel_file.read() if hasattr(excel_file, 'read') else excel_file
+            workbook = openpyxl.load_workbook(io.BytesIO(excel_data), data_only=True)
+
+            # Create PowerPoint presentation
+            prs = Presentation()
+            prs.slide_width = Inches(10)
+            prs.slide_height = Inches(5.625)  # 16:9 aspect ratio
+
+            # Add title slide
+            self._add_title_slide(prs, filename)
+
+            # Process each worksheet
+            for sheet_name in workbook.sheetnames:
+                logger.info(f"Processing sheet: {sheet_name}")
+                worksheet = workbook[sheet_name]
+
+                # Get data from worksheet
+                data = self._extract_worksheet_data(worksheet)
+
+                if not data['rows']:
+                    logger.warning(f"Skipping empty sheet: {sheet_name}")
+                    continue
+
+                # Analyze data
+                analysis = self._analyze_data(data)
+
+                # Add section slide
+                self._add_section_slide(prs, sheet_name, analysis)
+
+                # Add data table slide
+                self._add_data_table_slide(prs, sheet_name, data)
+
+                # Add chart slides
+                if analysis['numeric_columns'] and analysis['categorical_columns']:
+                    self._add_chart_slides(prs, sheet_name, data, analysis)
+
+                # Add statistics slide
+                if analysis['numeric_columns']:
+                    self._add_statistics_slide(prs, sheet_name, data, analysis)
+
+            # Save to bytes
+            output = io.BytesIO()
+            prs.save(output)
+            output.seek(0)
+
+            return output.read()
+
+        except Exception as e:
+            logger.error(f"Error converting Excel to PPT: {str(e)}")
+            raise Exception(f"Excel to PPT conversion failed: {str(e)}")
+
+    def _add_title_slide(self, prs: Presentation, filename: str):
+        """Add title slide to presentation"""
+        slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank layout
+
+        # Background
+        background = slide.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = self.theme_colors['dark']
+
+        # Title
+        title_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(2), Inches(9), Inches(1)
+        )
+        title_frame = title_box.text_frame
+        title_frame.text = "Excel Data Presentation"
+        title_para = title_frame.paragraphs[0]
+        title_para.font.size = Pt(40)
+        title_para.font.bold = True
+        title_para.font.color.rgb = RGBColor(255, 255, 255)
+        title_para.alignment = PP_ALIGN.CENTER
+
+        # Subtitle
+        subtitle_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(3.2), Inches(9), Inches(0.6)
+        )
+        subtitle_frame = subtitle_box.text_frame
+        subtitle_frame.text = filename.replace('.xlsx', '').replace('.xls', '')
+        subtitle_para = subtitle_frame.paragraphs[0]
+        subtitle_para.font.size = Pt(24)
+        subtitle_para.font.color.rgb = self.theme_colors['secondary']
+        subtitle_para.alignment = PP_ALIGN.CENTER
+
+        # Footer
+        footer_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(4.5), Inches(9), Inches(0.5)
+        )
+        footer_frame = footer_box.text_frame
+        footer_frame.text = f"Generated by InsightSheet-lite\n{datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        footer_para = footer_frame.paragraphs[0]
+        footer_para.font.size = Pt(14)
+        footer_para.font.color.rgb = RGBColor(148, 163, 184)
+        footer_para.alignment = PP_ALIGN.CENTER
+
+    def _add_section_slide(self, prs: Presentation, sheet_name: str, analysis: Dict):
+        """Add section slide for worksheet"""
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+
+        # Background
+        background = slide.background
+        fill = background.fill
+        fill.solid()
+        fill.fore_color.rgb = RGBColor(51, 65, 85)
+
+        # Section title
+        title_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(2.5), Inches(9), Inches(1)
+        )
+        title_frame = title_box.text_frame
+        title_frame.text = sheet_name
+        title_para = title_frame.paragraphs[0]
+        title_para.font.size = Pt(48)
+        title_para.font.bold = True
+        title_para.font.color.rgb = RGBColor(255, 255, 255)
+        title_para.alignment = PP_ALIGN.CENTER
+
+        # Stats
+        stats_text = f"{len(analysis.get('chart_candidates', []))} charts • {analysis['row_count']} rows • {analysis['column_count']} columns"
+        stats_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(3.8), Inches(9), Inches(0.5)
+        )
+        stats_frame = stats_box.text_frame
+        stats_frame.text = stats_text
+        stats_para = stats_frame.paragraphs[0]
+        stats_para.font.size = Pt(20)
+        stats_para.font.color.rgb = self.theme_colors['secondary']
+        stats_para.alignment = PP_ALIGN.CENTER
+
+    def _add_data_table_slide(self, prs: Presentation, sheet_name: str, data: Dict):
+        """Add data table slide"""
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+
+        # Title
+        title_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(0.3), Inches(9), Inches(0.5)
+        )
+        title_frame = title_box.text_frame
+        title_frame.text = f"{sheet_name} - Data Overview"
+        title_para = title_frame.paragraphs[0]
+        title_para.font.size = Pt(28)
+        title_para.font.bold = True
+        title_para.font.color.rgb = self.theme_colors['dark']
+
+        # Create table
+        max_rows = min(len(data['rows']), 20)
+        max_cols = min(len(data['headers']), 10)
+
+        rows_count = max_rows + 1  # +1 for header
+        cols_count = max_cols
+
+        table = slide.shapes.add_table(
+            rows_count, cols_count,
+            Inches(0.4), Inches(1),
+            Inches(9.2), Inches(4.2)
+        ).table
+
+        # Set column widths
+        for col_idx in range(cols_count):
+            table.columns[col_idx].width = Inches(9.2 / cols_count)
+
+        # Add headers
+        for col_idx in range(max_cols):
+            cell = table.cell(0, col_idx)
+            cell.text = str(data['headers'][col_idx])
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = self.theme_colors['primary']
+            paragraph = cell.text_frame.paragraphs[0]
+            paragraph.font.size = Pt(10)
+            paragraph.font.bold = True
+            paragraph.font.color.rgb = RGBColor(255, 255, 255)
+
+        # Add data rows
+        for row_idx in range(max_rows):
+            for col_idx in range(max_cols):
+                cell = table.cell(row_idx + 1, col_idx)
+                value = data['rows'][row_idx][col_idx] if col_idx < len(data['rows'][row_idx]) else ''
+                cell.text = str(value) if value is not None else ''
+                paragraph = cell.text_frame.paragraphs[0]
+                paragraph.font.size = Pt(9)
+
+    def _add_chart_slides(self, prs: Presentation, sheet_name: str, data: Dict, analysis: Dict):
+        """Add chart slides for data visualization"""
+        chart_types = [
+            (XL_CHART_TYPE.BAR_CLUSTERED, "Bar Chart"),
+            (XL_CHART_TYPE.LINE, "Line Chart"),
+            (XL_CHART_TYPE.PIE, "Pie Chart"),
+        ]
+
+        numeric_cols = analysis['numeric_columns'][:3]  # Max 3 charts
+        categorical_col = analysis['categorical_columns'][0] if analysis['categorical_columns'] else None
+
+        if not categorical_col:
+            return
+
+        cat_idx = data['headers'].index(categorical_col['name'])
+
+        for idx, num_col in enumerate(numeric_cols):
+            if idx >= len(chart_types):
+                break
+
+            chart_type, chart_name = chart_types[idx]
+            num_idx = data['headers'].index(num_col['name'])
+
+            self._add_chart_slide(
+                prs, sheet_name, data, cat_idx, num_idx,
+                chart_type, chart_name, idx + 1, len(numeric_cols)
+            )
+
+    def _add_chart_slide(
+        self, prs: Presentation, sheet_name: str, data: Dict,
+        cat_idx: int, num_idx: int, chart_type, chart_name: str,
+        chart_num: int, total_charts: int
+    ):
+        """Add individual chart slide"""
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+
+        # Title
+        title_text = f"{sheet_name} - {chart_name} ({chart_num}/{total_charts})"
+        title_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(0.3), Inches(9), Inches(0.5)
+        )
+        title_frame = title_box.text_frame
+        title_frame.text = title_text
+        title_para = title_frame.paragraphs[0]
+        title_para.font.size = Pt(24)
+        title_para.font.bold = True
+
+        # Prepare chart data
+        chart_data = CategoryChartData()
+        chart_data.categories = []
+        values = []
+
+        # Aggregate data
+        data_map = {}
+        for row in data['rows'][:50]:  # Max 50 rows
+            if cat_idx < len(row) and num_idx < len(row):
+                category = str(row[cat_idx])[:30]
+                try:
+                    value = float(row[num_idx])
+                    if category not in data_map:
+                        data_map[category] = {'sum': 0, 'count': 0}
+                    data_map[category]['sum'] += value
+                    data_map[category]['count'] += 1
+                except (ValueError, TypeError):
+                    continue
+
+        # Sort and limit
+        sorted_data = sorted(
+            [(k, v['sum'] / v['count']) for k, v in data_map.items()],
+            key=lambda x: x[1],
+            reverse=True
+        )[:15]
+
+        for category, value in sorted_data:
+            chart_data.categories.append(category)
+            values.append(round(value, 2))
+
+        chart_data.add_series(data['headers'][num_idx], values)
+
+        # Add chart
+        x, y, cx, cy = Inches(0.5), Inches(1), Inches(9), Inches(4)
+        chart = slide.shapes.add_chart(
+            chart_type, x, y, cx, cy, chart_data
+        ).chart
+
+        chart.has_legend = (chart_type == XL_CHART_TYPE.PIE)
+
+    def _add_statistics_slide(self, prs: Presentation, sheet_name: str, data: Dict, analysis: Dict):
+        """Add statistics slide"""
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+
+        # Title
+        title_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(0.3), Inches(9), Inches(0.5)
+        )
+        title_frame = title_box.text_frame
+        title_frame.text = f"{sheet_name} - Statistical Summary"
+        title_para = title_frame.paragraphs[0]
+        title_para.font.size = Pt(28)
+        title_para.font.bold = True
+
+        # Create statistics table
+        numeric_cols = analysis['numeric_columns'][:10]
+        rows_count = len(numeric_cols) + 1
+        cols_count = 6
+
+        table = slide.shapes.add_table(
+            rows_count, cols_count,
+            Inches(1), Inches(1.2),
+            Inches(8), Inches(4)
+        ).table
+
+        # Headers
+        headers = ['Column', 'Average', 'Min', 'Max', 'Std Dev', 'Count']
+        for col_idx, header in enumerate(headers):
+            cell = table.cell(0, col_idx)
+            cell.text = header
+            cell.fill.solid()
+            cell.fill.fore_color.rgb = self.theme_colors['primary']
+            paragraph = cell.text_frame.paragraphs[0]
+            paragraph.font.size = Pt(11)
+            paragraph.font.bold = True
+            paragraph.font.color.rgb = RGBColor(255, 255, 255)
+            paragraph.alignment = PP_ALIGN.CENTER
+
+        # Statistics data
+        for row_idx, num_col in enumerate(numeric_cols):
+            col_name = num_col['name']
+            col_index = data['headers'].index(col_name)
+
+            # Calculate statistics
+            values = []
+            for row in data['rows']:
+                if col_index < len(row):
+                    try:
+                        val = float(row[col_index])
+                        values.append(val)
+                    except (ValueError, TypeError):
+                        continue
+
+            if values:
+                stats = {
+                    'Column': col_name[:25],
+                    'Average': f"{sum(values) / len(values):.2f}",
+                    'Min': f"{min(values):.2f}",
+                    'Max': f"{max(values):.2f}",
+                    'Std Dev': f"{pd.Series(values).std():.2f}",
+                    'Count': str(len(values))
+                }
+
+                for col_idx, (key, value) in enumerate(stats.items()):
+                    cell = table.cell(row_idx + 1, col_idx)
+                    cell.text = value
+                    paragraph = cell.text_frame.paragraphs[0]
+                    paragraph.font.size = Pt(10)
+                    paragraph.alignment = PP_ALIGN.CENTER
+
+    def _extract_worksheet_data(self, worksheet) -> Dict:
+        """Extract data from worksheet"""
+        data = {
+            'headers': [],
+            'rows': []
+        }
+
+        # Get headers from first row
+        first_row = list(worksheet.iter_rows(min_row=1, max_row=1, values_only=True))[0]
+        data['headers'] = [str(h) if h is not None else f'Column{i}' for i, h in enumerate(first_row)]
+
+        # Get data rows
+        for row in worksheet.iter_rows(min_row=2, values_only=True):
+            if any(cell is not None and str(cell).strip() for cell in row):
+                data['rows'].append(list(row))
+
+        return data
+
+    def _analyze_data(self, data: Dict) -> Dict:
+        """Analyze data to determine chart types and columns"""
+        analysis = {
+            'row_count': len(data['rows']),
+            'column_count': len(data['headers']),
+            'numeric_columns': [],
+            'categorical_columns': [],
+            'chart_candidates': []
+        }
+
+        for col_idx, header in enumerate(data['headers']):
+            values = [row[col_idx] for row in data['rows'] if col_idx < len(row)]
+            values = [v for v in values if v is not None]
+
+            if not values:
+                continue
+
+            # Check if numeric
+            numeric_count = 0
+            for val in values:
+                try:
+                    float(val)
+                    numeric_count += 1
+                except (ValueError, TypeError):
+                    pass
+
+            is_numeric = numeric_count > len(values) * 0.7
+
+            if is_numeric:
+                analysis['numeric_columns'].append({
+                    'name': header,
+                    'index': col_idx
+                })
+            else:
+                unique_count = len(set(str(v) for v in values))
+                if 1 < unique_count <= 20:
+                    analysis['categorical_columns'].append({
+                        'name': header,
+                        'index': col_idx,
+                        'unique_count': unique_count
+                    })
+
+        return analysis

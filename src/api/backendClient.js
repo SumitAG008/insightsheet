@@ -97,6 +97,22 @@ export const backendApi = {
     isAuthenticated: () => {
       return !!getToken();
     },
+
+    forgotPassword: async (email) => {
+      const response = await apiCall('/api/auth/forgot-password', {
+        method: 'POST',
+        body: { email },
+      });
+      return response.json();
+    },
+
+    resetPassword: async (token, newPassword) => {
+      const response = await apiCall('/api/auth/reset-password', {
+        method: 'POST',
+        body: { token, new_password: newPassword },
+      });
+      return response.json();
+    },
   },
 
   // AI/LLM Integration

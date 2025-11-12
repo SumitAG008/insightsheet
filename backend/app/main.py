@@ -285,6 +285,87 @@ async def get_me(current_user: dict = Depends(get_current_user), db: Session = D
     }
 
 
+@app.post("/api/auth/forgot-password")
+async def forgot_password(email: EmailStr, db: Session = Depends(get_db)):
+    """Request password reset email"""
+    try:
+        # Find user
+        user = db.query(User).filter(User.email == email).first()
+
+        if not user:
+            # Don't reveal if email exists - return success anyway
+            return {"message": "If the email exists, a reset link has been sent"}
+
+        # Generate reset token
+        reset_token = secrets.token_urlsafe(32)
+        reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+
+        # Update user
+        user.reset_token = reset_token
+        user.reset_token_expires = reset_token_expires
+        db.commit()
+
+        # In production, send email here
+        # For now, just log the token (REMOVE IN PRODUCTION!)
+        reset_url = f"http://localhost:5173/reset-password?token={reset_token}"
+        logger.info(f"Password reset requested for {email}")
+        logger.info(f"Reset URL: {reset_url}")
+
+        # TODO: Send email with reset_url
+        # For development, return the URL (REMOVE IN PRODUCTION!)
+        return {
+            "message": "If the email exists, a reset link has been sent",
+            "reset_url": reset_url  # REMOVE IN PRODUCTION!
+        }
+
+    except Exception as e:
+        logger.error(f"Error in forgot password: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to process request"
+        )
+
+
+@app.post("/api/auth/reset-password")
+async def reset_password(
+    token: str,
+    new_password: str,
+    db: Session = Depends(get_db)
+):
+    """Reset password with token"""
+    try:
+        # Find user with valid token
+        user = db.query(User).filter(
+            User.reset_token == token,
+            User.reset_token_expires > datetime.utcnow()
+        ).first()
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset token"
+            )
+
+        # Update password
+        user.hashed_password = get_password_hash(new_password)
+        user.reset_token = None
+        user.reset_token_expires = None
+        db.commit()
+
+        logger.info(f"Password reset successful for {user.email}")
+
+        return {"message": "Password reset successful"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error resetting password: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reset password"
+        )
+
+
 # ============================================================================
 # AI/LLM ENDPOINTS
 # ============================================================================

@@ -11,7 +11,7 @@ export default function Security() {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/50">
+            <div className="w-20 h-20 bg-gradient-to-br from-slate-800 to-slate-700 rounded-2xl flex items-center justify-center shadow-2xl shadow-slate-500/50">
               <Shield className="w-10 h-10 text-white" />
             </div>
           </div>
@@ -29,7 +29,7 @@ export default function Security() {
             <CheckCircle className="w-4 h-4 mr-2" />
             GDPR Compliant
           </Badge>
-          <Badge className="bg-blue-500/20 text-blue-300 border-slate-2000/30 text-sm py-2 px-4">
+          <Badge className="bg-slate-500/20 text-slate-300 border-slate-2000/30 text-sm py-2 px-4">
             <CheckCircle className="w-4 h-4 mr-2" />
             CCPA Compliant
           </Badge>
@@ -37,7 +37,7 @@ export default function Security() {
             <CheckCircle className="w-4 h-4 mr-2" />
             Zero Data Storage
           </Badge>
-          <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/30 text-sm py-2 px-4">
+          <Badge className="bg-slate-500/20 text-slate-300 border-slate-500/30 text-sm py-2 px-4">
             <Lock className="w-4 h-4 mr-2" />
             Encrypted
           </Badge>
@@ -187,7 +187,7 @@ export default function Security() {
 
             <div>
               <h3 className="text-xl font-semibold text-white mb-2 flex items-center">
-                <CheckCircle className="w-5 h-5 mr-2 text-blue-400" />
+                <CheckCircle className="w-5 h-5 mr-2 text-slate-400" />
                 CCPA (California Privacy)
               </h3>
               <ul className="list-disc ml-6 space-y-1">

@@ -99,7 +99,7 @@ export default function Pricing() {
       totalDisplay: pricing.total,
       savings: pricing.savings,
       icon: Crown,
-      color: 'from-slate-800 to-indigo-600',
+      color: 'from-slate-800 to-slate-700',
       popular: true,
       processing: {
         method: 'Browser + Backend',
@@ -180,7 +180,7 @@ export default function Pricing() {
       <div className="container mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-12">
-          <Badge className="mb-4 bg-blue-500/20 text-slate-700 border-slate-2000/30">
+          <Badge className="mb-4 bg-slate-500/20 text-slate-700 border-slate-2000/30">
             <Star className="w-4 h-4 mr-1" />
             Choose Your Plan
           </Badge>
@@ -260,12 +260,12 @@ export default function Pricing() {
 
                   {/* Processing Method - NEW */}
                   {plan.processing && (
-                    <div className="mb-6 bg-blue-50 rounded-xl p-4 border border-slate-300">
+                    <div className="mb-6 bg-slate-50 rounded-xl p-4 border border-slate-300">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-sm font-semibold text-slate-700">Processing Method</span>
                         <Badge className={`${
                           plan.id === 'free' ? 'bg-slate-800/20 text-slate-700' :
-                          plan.id === 'premium' ? 'bg-slate-800/20 text-indigo-700' :
+                          plan.id === 'premium' ? 'bg-slate-800/20 text-slate-700' :
                           'bg-amber-600/20 text-amber-700'
                         }`}>
                           {plan.processing.badge}
@@ -307,7 +307,7 @@ export default function Pricing() {
                   {/* CTA Button */}
                   {plan.id === 'free' ? (
                     <Button
-                      className="w-full bg-blue-200 hover:bg-blue-300 text-slate-800 font-semibold"
+                      className="w-full bg-slate-200 hover:bg-slate-300 text-slate-800 font-semibold"
                     >
                       Current Plan
                     </Button>
@@ -328,7 +328,7 @@ export default function Pricing() {
 
         {/* Payment Modal */}
         {selectedPlan && (
-          <div className="fixed inset-0 bg-blue-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-slate-300 shadow-2xl">
               <h2 className="text-2xl font-bold text-slate-800 mb-4">
                 Subscribe to {selectedPlan.name}
@@ -359,7 +359,7 @@ export default function Pricing() {
               <Button
                 onClick={() => setSelectedPlan(null)}
                 variant="outline"
-                className="w-full mt-4 border-blue-300 text-slate-700 hover:bg-slate-100"
+                className="w-full mt-4 border-slate-300 text-slate-700 hover:bg-slate-100"
               >
                 Cancel
               </Button>

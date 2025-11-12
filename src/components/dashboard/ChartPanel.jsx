@@ -17,13 +17,13 @@ import {
 const CHART_COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#06B6D4', '#F472B6'];
 
 const CHART_TYPES = [
-  { id: 'bar', name: 'Bar', icon: BarChart3, color: 'from-purple-600 to-purple-700' },
-  { id: 'column', name: 'Column', icon: BarChart2, color: 'from-pink-600 to-pink-700' },
-  { id: 'line', name: 'Line', icon: LineChart, color: 'from-blue-600 to-blue-700' },
+  { id: 'bar', name: 'Bar', icon: BarChart3, color: 'from-slate-700 to-slate-700' },
+  { id: 'column', name: 'Column', icon: BarChart2, color: 'from-slate-700 to-slate-700' },
+  { id: 'line', name: 'Line', icon: LineChart, color: 'from-slate-700 to-slate-700' },
   { id: 'area', name: 'Area', icon: Activity, color: 'from-cyan-600 to-cyan-700' },
   { id: 'pie', name: 'Pie', icon: PieChart, color: 'from-orange-600 to-orange-700' },
   { id: 'radar', name: 'Radar', icon: Layers, color: 'from-emerald-600 to-emerald-700' },
-  { id: 'combo', name: 'Combo', icon: TrendingUp, color: 'from-indigo-600 to-indigo-700' }
+  { id: 'combo', name: 'Combo', icon: TrendingUp, color: 'from-slate-700 to-slate-700' }
 ];
 
 export default function ChartPanel({ data }) {
@@ -422,11 +422,11 @@ export default function ChartPanel({ data }) {
   if (numericColumns.length === 0 || categoricalColumns.length === 0) {
     return (
       <div className="relative group">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/10 to-blue-600/10 rounded-2xl blur-xl" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-700/10 to-slate-700/10 rounded-2xl blur-xl" />
         
         <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-          <h2 className="text-xl font-bold text-indigo-200 flex items-center gap-2 mb-4">
-            <BarChart3 className="w-5 h-5 text-indigo-400" />
+          <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2 mb-4">
+            <BarChart3 className="w-5 h-5 text-slate-400" />
             Advanced Charts
           </h2>
           
@@ -445,12 +445,12 @@ export default function ChartPanel({ data }) {
 
   return (
     <div className="relative group">
-      <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/10 to-blue-600/10 rounded-2xl blur-xl" />
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-700/10 to-slate-700/10 rounded-2xl blur-xl" />
       
       <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg md:text-xl font-bold text-indigo-200 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-indigo-400" />
+          <h2 className="text-lg md:text-xl font-bold text-slate-200 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-slate-400" />
             Advanced Charts
           </h2>
           {chartData && (
@@ -555,7 +555,7 @@ export default function ChartPanel({ data }) {
           <Button
             onClick={generateChart}
             disabled={!xColumn || !yColumn || (chartType === 'combo' && !yColumn2)}
-            className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 font-semibold h-11 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-700 font-semibold h-11 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <TrendingUp className="w-4 h-4 mr-2" />
             Generate Chart

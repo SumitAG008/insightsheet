@@ -69,7 +69,7 @@ export default function SubscriptionChecker({ children }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-500" />
       </div>
     );
   }
@@ -105,7 +105,7 @@ export default function SubscriptionChecker({ children }) {
                   {subscription?.plan === 'premium' ? (
                     <Crown className="w-4 h-4 text-amber-400" />
                   ) : (
-                    <Zap className="w-4 h-4 text-purple-400" />
+                    <Zap className="w-4 h-4 text-slate-400" />
                   )}
                   <span className="font-semibold text-slate-200">
                     {subscription?.plan === 'premium' ? 'Premium Plan' : 'Free Plan'}
@@ -160,7 +160,7 @@ export default function SubscriptionChecker({ children }) {
               {/* Upgrade Button (only for free users) */}
               {subscription?.plan !== 'premium' && (
                 <Link to={createPageUrl('Pricing')}>
-                  <Button size="sm" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
+                  <Button size="sm" className="bg-gradient-to-r from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-700">
                     <Crown className="w-4 h-4 mr-2" />
                     Upgrade to Premium
                   </Button>

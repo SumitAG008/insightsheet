@@ -488,10 +488,10 @@ export default function FilenameCleaner() {
         </Alert>
 
         {/* Auto-Download Notice */}
-        <Alert className="mb-6 bg-blue-500/10 border-slate-2000/30">
-          <Download className="h-5 w-5 text-blue-400" />
+        <Alert className="mb-6 bg-slate-500/10 border-slate-2000/30">
+          <Download className="h-5 w-5 text-slate-400" />
           <AlertDescription className="text-slate-300">
-            <strong className="text-blue-300">Auto-Download:</strong> Files download automatically when processed. No popups, no manual downloads.
+            <strong className="text-slate-300">Auto-Download:</strong> Files download automatically when processed. No popups, no manual downloads.
           </AlertDescription>
         </Alert>
 
@@ -524,14 +524,14 @@ export default function FilenameCleaner() {
                   className="hidden"
                   disabled={processing}
                 />
-                <div className="w-20 h-20 bg-gradient-to-br from-indigo-600/20 to-purple-600/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <FileArchive className="w-10 h-10 text-indigo-400" />
+                <div className="w-20 h-20 bg-gradient-to-br from-slate-700/20 to-slate-700/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <FileArchive className="w-10 h-10 text-slate-400" />
                 </div>
-                <h3 className="text-xl font-bold text-indigo-200 mb-2">
+                <h3 className="text-xl font-bold text-slate-200 mb-2">
                   {zipFile ? zipFile.name : 'Drop ZIP file here'}
                 </h3>
                 <p className="text-slate-400">
-                  or <span className="text-indigo-400 underline">browse files</span>
+                  or <span className="text-slate-400 underline">browse files</span>
                 </p>
                 {zipFile && (
                   <p className="text-sm text-slate-500 mt-2">
@@ -545,7 +545,7 @@ export default function FilenameCleaner() {
                   <Button
                     onClick={handlePreview}
                     disabled={processing}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                    className="w-full bg-gradient-to-r from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-700"
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
                     {processing ? 'Reading ZIP...' : 'Preview Changes'}
@@ -558,11 +558,11 @@ export default function FilenameCleaner() {
             {preview.length > 0 && (
               <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-indigo-200">
+                  <h3 className="text-lg font-bold text-slate-200">
                     Preview Changes ({preview.length} files)
                   </h3>
                   {processedCount > 0 && processedCount < preview.length && (
-                    <span className="text-sm text-indigo-400">
+                    <span className="text-sm text-slate-400">
                       Processing: {processedCount}/{preview.length}
                     </span>
                   )}
@@ -570,10 +570,10 @@ export default function FilenameCleaner() {
 
                 <div className="max-h-96 overflow-y-auto space-y-2 mb-4">
                   {preview.map((item, idx) => (
-                    <div key={idx} className={`p-3 rounded-lg ${item.changed ? 'bg-indigo-500/10 border border-indigo-500/30' : 'bg-slate-800/50'}`}>
+                    <div key={idx} className={`p-3 rounded-lg ${item.changed ? 'bg-slate-500/10 border border-slate-500/30' : 'bg-slate-800/50'}`}>
                       <div className="flex items-start gap-2">
                         {item.changed ? (
-                          <AlertCircle className="w-4 h-4 text-indigo-400 mt-1 flex-shrink-0" />
+                          <AlertCircle className="w-4 h-4 text-slate-400 mt-1 flex-shrink-0" />
                         ) : (
                           <CheckCircle className="w-4 h-4 text-slate-500 mt-1 flex-shrink-0" />
                         )}
@@ -581,7 +581,7 @@ export default function FilenameCleaner() {
                           <p className="text-sm text-slate-400 line-through truncate">
                             {item.original}
                           </p>
-                          <p className="text-sm text-indigo-300 font-medium truncate">
+                          <p className="text-sm text-slate-300 font-medium truncate">
                             {item.processed}
                           </p>
                         </div>
@@ -605,12 +605,12 @@ export default function FilenameCleaner() {
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
             <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-indigo-200 mb-4">Processing Settings</h3>
+              <h3 className="text-xl font-bold text-slate-200 mb-4">Processing Settings</h3>
               <p className="text-sm text-slate-400 mb-6">Configure how your files will be processed</p>
 
               {/* Quick Character Sets */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-3 block">Quick Character Sets</label>
+                <label className="text-sm font-semibold text-slate-300 mb-3 block">Quick Character Sets</label>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                   {quickPresets.map((preset, idx) => (
                     <Button
@@ -618,7 +618,7 @@ export default function FilenameCleaner() {
                       onClick={() => applyPreset(preset)}
                       variant="outline"
                       size="sm"
-                      className="border-slate-700 text-slate-300 hover:bg-slate-800/20 hover:border-indigo-500/50"
+                      className="border-slate-700 text-slate-300 hover:bg-slate-800/20 hover:border-slate-500/50"
                     >
                       {preset.name}
                     </Button>
@@ -628,7 +628,7 @@ export default function FilenameCleaner() {
 
               {/* Allowed Characters */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-2 block">Allowed Characters</label>
+                <label className="text-sm font-semibold text-slate-300 mb-2 block">Allowed Characters</label>
                 <Input
                   value={options.allowedCharacters}
                   onChange={(e) => setOptions({...options, allowedCharacters: e.target.value})}
@@ -639,7 +639,7 @@ export default function FilenameCleaner() {
 
               {/* Disallowed Characters */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-2 block">Remove Underscore/ Dash</label>
+                <label className="text-sm font-semibold text-slate-300 mb-2 block">Remove Underscore/ Dash</label>
                 <Input
                   value={options.disallowedCharacters}
                   onChange={(e) => setOptions({...options, disallowedCharacters: e.target.value})}
@@ -650,7 +650,7 @@ export default function FilenameCleaner() {
 
               {/* Replacement Character */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-2 block">Replacement Character</label>
+                <label className="text-sm font-semibold text-slate-300 mb-2 block">Replacement Character</label>
                 <Input
                   value={options.replacementCharacter}
                   onChange={(e) => setOptions({...options, replacementCharacter: e.target.value})}
@@ -663,7 +663,7 @@ export default function FilenameCleaner() {
 
               {/* Max Filename Length */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-2 block">Max Filename Length</label>
+                <label className="text-sm font-semibold text-slate-300 mb-2 block">Max Filename Length</label>
                 <Input
                   type="number"
                   value={options.maxLength}
@@ -677,7 +677,7 @@ export default function FilenameCleaner() {
 
               {/* Language Support */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-3 block">International Language Support</label>
+                <label className="text-sm font-semibold text-slate-300 mb-3 block">International Language Support</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {Object.keys(selectedLanguages).map(lang => (
                     <label key={lang} className="flex items-center gap-2 p-3 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-700/50">
@@ -693,12 +693,12 @@ export default function FilenameCleaner() {
 
               {/* Custom Replacement Rules */}
               <div>
-                <label className="text-sm font-semibold text-indigo-300 mb-3 block">Custom Replacement Rules</label>
+                <label className="text-sm font-semibold text-slate-300 mb-3 block">Custom Replacement Rules</label>
                 <div className="space-y-3">
                   {options.customRules.map((rule, idx) => (
                     <div key={idx} className="flex gap-2 items-center p-3 bg-slate-800/50 rounded-lg">
                       <span className="text-slate-400 text-sm">Replace</span>
-                      <span className="text-indigo-300 font-mono">{rule.find}</span>
+                      <span className="text-slate-300 font-mono">{rule.find}</span>
                       <span className="text-slate-400 text-sm">with</span>
                       <span className="text-emerald-300 font-mono">{rule.replace}</span>
                       <Button
@@ -727,7 +727,7 @@ export default function FilenameCleaner() {
                     />
                     <Button
                       onClick={addCustomRule}
-                      className="bg-slate-800 hover:bg-indigo-700"
+                      className="bg-slate-800 hover:bg-slate-700"
                     >
                       <Plus className="w-4 h-4" />
                     </Button>
@@ -740,7 +740,7 @@ export default function FilenameCleaner() {
           {/* History Tab */}
           <TabsContent value="history" className="space-y-6">
             <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-indigo-200 mb-4 flex items-center gap-2">
+              <h3 className="text-xl font-bold text-slate-200 mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5" />
                 Processing History
               </h3>
@@ -759,7 +759,7 @@ export default function FilenameCleaner() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                            <p className="text-sm font-semibold text-indigo-300">
+                            <p className="text-sm font-semibold text-slate-300">
                               processed_{item.originalFile}
                             </p>
                           </div>

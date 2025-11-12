@@ -100,7 +100,7 @@ export default function AdminDashboard() {
 
   const getStatusBadge = (status) => {
     const badges = {
-      trial: { color: 'bg-blue-500/20 text-blue-300 border-slate-2000/30', icon: Clock },
+      trial: { color: 'bg-slate-500/20 text-slate-300 border-slate-2000/30', icon: Clock },
       active: { color: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', icon: CheckCircle },
       expired: { color: 'bg-red-500/20 text-red-300 border-red-500/30', icon: AlertCircle },
       cancelled: { color: 'bg-gray-500/20 text-gray-300 border-gray-500/30', icon: AlertCircle }
@@ -118,9 +118,9 @@ export default function AdminDashboard() {
 
   const getPlanBadge = (plan) => {
     const plans = {
-      free_trial: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+      free_trial: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
       free: 'bg-gray-500/20 text-gray-300 border-gray-500/30',
-      premium: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
+      premium: 'bg-slate-500/20 text-slate-300 border-slate-500/30',
       business: 'bg-orange-500/20 text-orange-300 border-orange-500/30'
     };
     return <Badge className={plans[plan] || plans.free}>{plan.replace('_', ' ')}</Badge>;
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-700" />
       </div>
     );
   }
@@ -204,28 +204,28 @@ export default function AdminDashboard() {
 
           <div className="bg-white backdrop-blur-xl border border-slate-300 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <CheckCircle className="w-10 h-10 text-indigo-400" />
-              <Badge className="bg-indigo-500/20 text-indigo-300">Active</Badge>
+              <CheckCircle className="w-10 h-10 text-slate-400" />
+              <Badge className="bg-slate-500/20 text-slate-300">Active</Badge>
             </div>
-            <h3 className="text-3xl font-bold text-indigo-300 mb-1">
+            <h3 className="text-3xl font-bold text-slate-300 mb-1">
               {stats.activeSubscriptions}
             </h3>
             <p className="text-sm text-slate-400">Paid Subscriptions</p>
-            <p className="text-xs text-indigo-400 mt-2">
+            <p className="text-xs text-slate-400 mt-2">
               {stats.conversionRate}% conversion rate
             </p>
           </div>
 
           <div className="bg-white backdrop-blur-xl border border-slate-300 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <Clock className="w-10 h-10 text-blue-400" />
-              <Badge className="bg-blue-500/20 text-blue-300">Trial</Badge>
+              <Clock className="w-10 h-10 text-slate-400" />
+              <Badge className="bg-slate-500/20 text-slate-300">Trial</Badge>
             </div>
-            <h3 className="text-3xl font-bold text-blue-300 mb-1">
+            <h3 className="text-3xl font-bold text-slate-300 mb-1">
               {stats.trialUsers}
             </h3>
             <p className="text-sm text-slate-400">Active Trials</p>
-            <p className="text-xs text-blue-400 mt-2">
+            <p className="text-xs text-slate-400 mt-2">
               {stats.expiredTrials} expired
             </p>
           </div>
@@ -233,9 +233,9 @@ export default function AdminDashboard() {
           <div className="bg-white backdrop-blur-xl border border-slate-300 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <Users className="w-10 h-10 text-slate-700" />
-              <Badge className="bg-purple-500/20 text-purple-300">Total</Badge>
+              <Badge className="bg-slate-500/20 text-slate-300">Total</Badge>
             </div>
-            <h3 className="text-3xl font-bold text-purple-300 mb-1">
+            <h3 className="text-3xl font-bold text-slate-300 mb-1">
               {users.length}
             </h3>
             <p className="text-sm text-slate-400">Total Users</p>
@@ -305,7 +305,7 @@ export default function AdminDashboard() {
         {/* Subscriptions Table */}
         <div className="bg-white backdrop-blur-xl border border-slate-300 rounded-2xl overflow-hidden">
           <div className="p-6 border-b border-slate-300">
-            <h2 className="text-xl font-bold text-purple-200">
+            <h2 className="text-xl font-bold text-slate-200">
               All Subscriptions ({filteredSubscriptions.length})
             </h2>
           </div>
@@ -314,14 +314,14 @@ export default function AdminDashboard() {
             <Table>
               <TableHeader>
                 <TableRow className="border-slate-300">
-                  <TableHead className="text-purple-300">User Email</TableHead>
-                  <TableHead className="text-purple-300">Plan</TableHead>
-                  <TableHead className="text-purple-300">Status</TableHead>
-                  <TableHead className="text-purple-300">Trial Ends</TableHead>
-                  <TableHead className="text-purple-300">Amount Paid</TableHead>
-                  <TableHead className="text-purple-300">Payment Method</TableHead>
-                  <TableHead className="text-purple-300">AI Queries</TableHead>
-                  <TableHead className="text-purple-300">Created Date</TableHead>
+                  <TableHead className="text-slate-300">User Email</TableHead>
+                  <TableHead className="text-slate-300">Plan</TableHead>
+                  <TableHead className="text-slate-300">Status</TableHead>
+                  <TableHead className="text-slate-300">Trial Ends</TableHead>
+                  <TableHead className="text-slate-300">Amount Paid</TableHead>
+                  <TableHead className="text-slate-300">Payment Method</TableHead>
+                  <TableHead className="text-slate-300">AI Queries</TableHead>
+                  <TableHead className="text-slate-300">Created Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

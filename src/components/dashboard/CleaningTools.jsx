@@ -147,7 +147,7 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
           <Button
             onClick={removeDuplicates}
             disabled={cleaning}
-            className="bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold"
+            className="bg-gradient-to-br from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-semibold"
           >
             <Trash className="w-4 h-4 mr-2" />
             Remove Dupes
@@ -156,7 +156,7 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
           <Button
             onClick={trimWhitespace}
             disabled={cleaning}
-            className="bg-gradient-to-br from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold"
+            className="bg-gradient-to-br from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-semibold"
           >
             <Type className="w-4 h-4 mr-2" />
             Trim Space
@@ -165,7 +165,7 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
           <Button
             onClick={inferTypes}
             disabled={cleaning}
-            className="bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold"
+            className="bg-gradient-to-br from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-semibold"
           >
             <Type className="w-4 h-4 mr-2" />
             Fix Types
@@ -182,8 +182,8 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
         </div>
 
         {cleaning && (
-          <div className="mt-4 flex items-center justify-center gap-2 text-purple-400">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-400" />
+          <div className="mt-4 flex items-center justify-center gap-2 text-slate-400">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-400" />
             <span className="text-sm">Processing...</span>
           </div>
         )}

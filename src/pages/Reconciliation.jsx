@@ -280,8 +280,8 @@ export default function Reconciliation() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center max-w-2xl mx-auto">
-            <GitCompare className="w-24 h-24 text-purple-400 mx-auto mb-6" />
-            <h1 className="text-4xl font-bold text-purple-200 mb-4">Data Reconciliation</h1>
+            <GitCompare className="w-24 h-24 text-slate-400 mx-auto mb-6" />
+            <h1 className="text-4xl font-bold text-slate-200 mb-4">Data Reconciliation</h1>
             <p className="text-slate-400 mb-8">
               No source data loaded. Please upload data from the Upload page first.
             </p>
@@ -302,16 +302,16 @@ export default function Reconciliation() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-purple-200 mb-2">Data Reconciliation</h1>
+          <h1 className="text-4xl font-bold text-slate-200 mb-2">Data Reconciliation</h1>
           <p className="text-slate-400">
             Match and compare two datasets using XLOOKUP/VLOOKUP logic
           </p>
         </div>
 
         {/* Instructions */}
-        <Alert className="mb-6 bg-blue-900/20 border-slate-2000/30">
-          <AlertCircle className="w-4 h-4 text-blue-400" />
-          <AlertDescription className="text-blue-200">
+        <Alert className="mb-6 bg-slate-900/20 border-slate-2000/30">
+          <AlertCircle className="w-4 h-4 text-slate-400" />
+          <AlertDescription className="text-slate-200">
             Upload your target dataset, select matching key columns, choose columns to compare, and run reconciliation.
             The tool will find matched, mismatched, missing, and extra records.
           </AlertDescription>
@@ -321,14 +321,14 @@ export default function Reconciliation() {
           {/* Source Data */}
           <Card className="bg-slate-900/50 border-slate-700/50">
             <CardHeader>
-              <CardTitle className="text-purple-200">Source Data (Main)</CardTitle>
+              <CardTitle className="text-slate-200">Source Data (Main)</CardTitle>
               <CardDescription className="text-slate-400">
                 Loaded from session: {sourceData.rows.length} rows × {sourceData.headers.length} columns
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-purple-300 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Select Key Column (Source)
                 </label>
                 <select
@@ -344,7 +344,7 @@ export default function Reconciliation() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-purple-300 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Columns to Compare
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -354,8 +354,8 @@ export default function Reconciliation() {
                       variant={compareColumns.includes(header) ? "default" : "outline"}
                       className={`cursor-pointer ${
                         compareColumns.includes(header)
-                          ? 'bg-purple-600 hover:bg-purple-700'
-                          : 'border-slate-600 hover:border-purple-500'
+                          ? 'bg-slate-700 hover:bg-slate-700'
+                          : 'border-slate-600 hover:border-slate-500'
                       }`}
                       onClick={() => toggleCompareColumn(header)}
                     >
@@ -370,7 +370,7 @@ export default function Reconciliation() {
           {/* Target Data */}
           <Card className="bg-slate-900/50 border-slate-700/50">
             <CardHeader>
-              <CardTitle className="text-purple-200">Target Data (Comparison)</CardTitle>
+              <CardTitle className="text-slate-200">Target Data (Comparison)</CardTitle>
               <CardDescription className="text-slate-400">
                 {targetData
                   ? `${targetData.rows.length} rows × ${targetData.headers.length} columns`
@@ -380,7 +380,7 @@ export default function Reconciliation() {
             <CardContent className="space-y-4">
               {!targetData ? (
                 <label className="block">
-                  <div className="cursor-pointer border-2 border-dashed border-slate-700 hover:border-purple-500 rounded-lg p-8 text-center transition-colors">
+                  <div className="cursor-pointer border-2 border-dashed border-slate-700 hover:border-slate-500 rounded-lg p-8 text-center transition-colors">
                     <Upload className="w-12 h-12 text-slate-500 mx-auto mb-3" />
                     <p className="text-slate-400 mb-2">Upload Target CSV/Excel</p>
                     <p className="text-xs text-slate-500">Click to browse files</p>
@@ -395,7 +395,7 @@ export default function Reconciliation() {
               ) : (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-purple-300 mb-2">
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
                       Select Key Column (Target)
                     </label>
                     <select
@@ -411,7 +411,7 @@ export default function Reconciliation() {
                   </div>
 
                   <label>
-                    <Button variant="outline" className="w-full border-purple-600 text-purple-300 hover:bg-purple-900/50">
+                    <Button variant="outline" className="w-full border-slate-700 text-slate-300 hover:bg-slate-900/50">
                       <Upload className="w-4 h-4 mr-2" />
                       Upload Different File
                     </Button>
@@ -446,11 +446,11 @@ export default function Reconciliation() {
             <Card className="bg-slate-900/50 border-slate-700/50">
               <CardHeader>
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-purple-200">Reconciliation Summary</CardTitle>
+                  <CardTitle className="text-slate-200">Reconciliation Summary</CardTitle>
                   <Button
                     onClick={handleExportResults}
                     variant="outline"
-                    className="border-purple-600 text-purple-300 hover:bg-purple-900/50"
+                    className="border-slate-700 text-slate-300 hover:bg-slate-900/50"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     Export Results
@@ -483,12 +483,12 @@ export default function Reconciliation() {
                     <p className="text-2xl font-bold text-red-200">{results.summary.missingCount}</p>
                   </div>
 
-                  <div className="bg-blue-900/20 border border-slate-2000/30 rounded-lg p-4">
+                  <div className="bg-slate-900/20 border border-slate-2000/30 rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-2">
-                      <FileText className="w-5 h-5 text-blue-400" />
-                      <span className="text-sm text-blue-300">Extra</span>
+                      <FileText className="w-5 h-5 text-slate-400" />
+                      <span className="text-sm text-slate-300">Extra</span>
                     </div>
-                    <p className="text-2xl font-bold text-blue-200">{results.summary.extraCount}</p>
+                    <p className="text-2xl font-bold text-slate-200">{results.summary.extraCount}</p>
                   </div>
                 </div>
               </CardContent>
@@ -584,7 +584,7 @@ export default function Reconciliation() {
               {results.extra.length > 0 && (
                 <Card className="bg-slate-900/50 border-slate-700/50">
                   <CardHeader>
-                    <CardTitle className="text-blue-200 flex items-center gap-2">
+                    <CardTitle className="text-slate-200 flex items-center gap-2">
                       <FileText className="w-5 h-5" />
                       Extra in Target ({results.extra.length})
                     </CardTitle>
@@ -592,8 +592,8 @@ export default function Reconciliation() {
                   <CardContent>
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                       {results.extra.slice(0, 10).map((item, idx) => (
-                        <div key={idx} className="bg-blue-900/10 border border-slate-2000/20 rounded p-3">
-                          <p className="text-sm text-blue-300">+ {item.keyValue}</p>
+                        <div key={idx} className="bg-slate-900/10 border border-slate-2000/20 rounded p-3">
+                          <p className="text-sm text-slate-300">+ {item.keyValue}</p>
                         </div>
                       ))}
                       {results.extra.length > 10 && (

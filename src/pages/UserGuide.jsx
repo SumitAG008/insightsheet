@@ -67,7 +67,7 @@ export default function UserGuide() {
                     </p>
                     <div className="bg-slate-800/50 rounded-lg p-4">
                       <p className="text-sm text-emerald-400">✓ Supported: .xlsx, .xls, .csv</p>
-                      <p className="text-sm text-blue-400">✓ File size: Up to 5MB (free) | 50MB (Pro)</p>
+                      <p className="text-sm text-slate-400">✓ File size: Up to 5MB (free) | 50MB (Pro)</p>
                       <p className="text-sm text-slate-800">✓ Privacy: Processed locally in your browser</p>
                     </div>
                   </div>
@@ -79,7 +79,7 @@ export default function UserGuide() {
                     2
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-blue-300 mb-2">Automatic Processing</h3>
+                    <h3 className="text-xl font-semibold text-slate-300 mb-2">Automatic Processing</h3>
                     <p className="text-slate-400 mb-3">
                       Your file is parsed instantly. Headers are detected automatically. You're redirected
                       to the Dashboard where all tools are available.
@@ -109,11 +109,11 @@ export default function UserGuide() {
                         <p className="text-xs text-slate-400">Remove duplicates, handle missing values, format data</p>
                       </div>
                       <div className="bg-slate-800/50 rounded-lg p-3">
-                        <p className="text-sm text-blue-300 font-semibold mb-1">Transform Data</p>
+                        <p className="text-sm text-slate-300 font-semibold mb-1">Transform Data</p>
                         <p className="text-xs text-slate-400">Sort, filter, create calculated columns</p>
                       </div>
                       <div className="bg-slate-800/50 rounded-lg p-3">
-                        <p className="text-sm text-pink-300 font-semibold mb-1">AI Tools</p>
+                        <p className="text-sm text-slate-300 font-semibold mb-1">AI Tools</p>
                         <p className="text-xs text-slate-400">Natural language queries and insights</p>
                       </div>
                       <div className="bg-slate-800/50 rounded-lg p-3">
@@ -130,14 +130,14 @@ export default function UserGuide() {
                     4
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-xl font-semibold text-pink-300 mb-2">Export Your Results</h3>
+                    <h3 className="text-xl font-semibold text-slate-300 mb-2">Export Your Results</h3>
                     <p className="text-slate-400 mb-3">
                       Export cleaned data as Excel or CSV. All changes are preserved. Download includes
                       your transformations and calculated columns.
                     </p>
                     <div className="bg-slate-800/50 rounded-lg p-4">
                       <p className="text-sm text-emerald-400">✓ Export to Excel (.xlsx)</p>
-                      <p className="text-sm text-blue-400">✓ Export to CSV</p>
+                      <p className="text-sm text-slate-400">✓ Export to CSV</p>
                       <p className="text-sm text-slate-800">✓ Original formatting preserved</p>
                     </div>
                   </div>
@@ -413,7 +413,7 @@ export default function UserGuide() {
                     </div>
                     <div className="flex items-start gap-3">
                       <Badge className="bg-slate-800 shrink-0">Step 2</Badge>
-                      <p className="text-slate-400">Dashboard loads automatically → Click <strong className="text-blue-300">"Analysis & Cleaning"</strong> tab</p>
+                      <p className="text-slate-400">Dashboard loads automatically → Click <strong className="text-slate-300">"Analysis & Cleaning"</strong> tab</p>
                     </div>
                     <div className="flex items-start gap-3">
                       <Badge className="bg-slate-800 shrink-0">Step 3</Badge>
@@ -432,11 +432,11 @@ export default function UserGuide() {
 
                 {/* Workflow 2 */}
                 <div className="border-l-4 border-slate-2000 pl-6">
-                  <h3 className="text-xl font-bold text-blue-300 mb-4">2. Work with Multi-Sheet Excel Files</h3>
+                  <h3 className="text-xl font-bold text-slate-300 mb-4">2. Work with Multi-Sheet Excel Files</h3>
                   <div className="space-y-3">
                     <div className="flex items-start gap-3">
                       <Badge className="bg-slate-800 shrink-0">Step 1</Badge>
-                      <p className="text-slate-400">Click <strong className="text-blue-300">"Sheets"</strong> in top menu</p>
+                      <p className="text-slate-400">Click <strong className="text-slate-300">"Sheets"</strong> in top menu</p>
                     </div>
                     <div className="flex items-start gap-3">
                       <Badge className="bg-slate-800 shrink-0">Step 2</Badge>
@@ -513,8 +513,8 @@ export default function UserGuide() {
                       that are ready to apply on the Dashboard.
                     </p>
                   </div>
-                  <div className="bg-blue-900/20 border border-slate-2000/30 rounded-lg p-3">
-                    <h4 className="font-semibold text-blue-300 mb-1">Privacy Mode</h4>
+                  <div className="bg-slate-900/20 border border-slate-2000/30 rounded-lg p-3">
+                    <h4 className="font-semibold text-slate-300 mb-1">Privacy Mode</h4>
                     <p className="text-sm text-slate-400">
                       Close your tab to delete all data permanently. Nothing is stored on servers.
                       Open new tab = fresh start.
@@ -527,8 +527,8 @@ export default function UserGuide() {
                       sheet to STATES sheet.
                     </p>
                   </div>
-                  <div className="bg-pink-900/20 border border-pink-500/30 rounded-lg p-3">
-                    <h4 className="font-semibold text-pink-300 mb-1">Upgrade for Larger Files</h4>
+                  <div className="bg-slate-900/20 border border-slate-500/30 rounded-lg p-3">
+                    <h4 className="font-semibold text-slate-300 mb-1">Upgrade for Larger Files</h4>
                     <p className="text-sm text-slate-400">
                       Free: 5MB | Pro: 50MB. Need enterprise features? Contact us for custom limits.
                     </p>
@@ -597,7 +597,7 @@ export default function UserGuide() {
                     </ul>
                   </div>
                   <div className="space-y-2">
-                    <h4 className="font-bold text-blue-300">Advanced Tools</h4>
+                    <h4 className="font-bold text-slate-300">Advanced Tools</h4>
                     <ul className="space-y-1 text-sm text-slate-300">
                       <li>✓ Data reconciliation</li>
                       <li>✓ XLOOKUP/VLOOKUP</li>

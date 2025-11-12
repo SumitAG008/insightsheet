@@ -4,7 +4,7 @@ import { AlertTriangle, FileText, Scale } from 'lucide-react';
 
 export default function Disclaimer() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50 py-12">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-slate-50 py-12">
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-12">
@@ -95,8 +95,8 @@ export default function Disclaimer() {
           {/* Limitation of Liability */}
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Scale className="w-6 h-6 text-purple-600" />
+              <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center">
+                <Scale className="w-6 h-6 text-slate-700" />
               </div>
               <h2 className="text-2xl font-bold text-slate-800">Limitation of Liability</h2>
             </div>
@@ -159,7 +159,7 @@ export default function Disclaimer() {
 
           {/* No Professional Advice */}
           <section>
-            <div className="bg-blue-50 border-2 border-slate-300 rounded-lg p-6">
+            <div className="bg-slate-50 border-2 border-slate-300 rounded-lg p-6">
               <h2 className="text-xl font-bold text-slate-800 mb-3">Not Professional Advice</h2>
               <p className="text-slate-700 leading-relaxed">
                 InsightSheet provides <strong>data analysis tools only</strong>. The Service does NOT provide:
@@ -231,8 +231,8 @@ export default function Disclaimer() {
           </section>
 
           {/* Acceptance */}
-          <section className="bg-purple-50 border-2 border-purple-200 rounded-lg p-6">
-            <p className="text-purple-900 font-semibold text-center text-lg">
+          <section className="bg-slate-50 border-2 border-slate-200 rounded-lg p-6">
+            <p className="text-slate-900 font-semibold text-center text-lg">
               By using InsightSheet, you acknowledge that you have read, understood, 
               and agree to be bound by these terms and our Privacy Policy.
             </p>

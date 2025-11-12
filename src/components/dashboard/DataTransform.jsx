@@ -87,15 +87,15 @@ export default function DataTransform({ data, onDataUpdate }) {
 
   return (
     <div className="relative group">
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-cyan-600/10 rounded-2xl blur-xl" />
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-700/10 to-cyan-600/10 rounded-2xl blur-xl" />
       
       <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-blue-200 flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-blue-400" />
+          <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2">
+            <Calculator className="w-5 h-5 text-slate-400" />
             Data Transform
           </h2>
-          <Badge className="bg-blue-500/20 text-blue-300 border-slate-2000/30">
+          <Badge className="bg-slate-500/20 text-slate-300 border-slate-2000/30">
             Create Columns
           </Badge>
         </div>
@@ -183,7 +183,7 @@ export default function DataTransform({ data, onDataUpdate }) {
           <Button
             onClick={handleTransform}
             disabled={transforming || !column1 || !column2 || !newColumnName}
-            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
+            className="w-full bg-gradient-to-r from-slate-700 to-cyan-600 hover:from-slate-700 hover:to-cyan-700 text-white font-semibold"
           >
             {transforming ? (
               <>
@@ -201,10 +201,10 @@ export default function DataTransform({ data, onDataUpdate }) {
 
         {/* Preview */}
         {column1 && column2 && operation && (
-          <div className="mt-6 p-4 bg-blue-500/10 border border-slate-2000/30 rounded-lg">
-            <p className="text-sm text-blue-300 font-semibold mb-1">Preview:</p>
+          <div className="mt-6 p-4 bg-slate-500/10 border border-slate-2000/30 rounded-lg">
+            <p className="text-sm text-slate-300 font-semibold mb-1">Preview:</p>
             <p className="text-slate-200">
-              <span className="text-blue-300">{newColumnName || 'NewColumn'}</span> = 
+              <span className="text-slate-300">{newColumnName || 'NewColumn'}</span> = 
               <span className="text-emerald-300"> {column1}</span> 
               <span className="text-slate-400"> {operations.find(o => o.id === operation)?.name.split(' ')[0]}</span> 
               <span className="text-emerald-300"> {column2}</span>

@@ -235,8 +235,8 @@ export default function SheetManager() {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center max-w-2xl mx-auto">
-            <FileSpreadsheet className="w-24 h-24 text-purple-400 mx-auto mb-6" />
-            <h1 className="text-4xl font-bold text-purple-200 mb-4">Smart Sheet Manager</h1>
+            <FileSpreadsheet className="w-24 h-24 text-slate-400 mx-auto mb-6" />
+            <h1 className="text-4xl font-bold text-slate-200 mb-4">Smart Sheet Manager</h1>
             <p className="text-slate-400 mb-8">
               Import multi-sheet Excel workbooks, organize with tags, link related sheets, and manage versions.
             </p>
@@ -285,7 +285,7 @@ export default function SheetManager() {
 
           <div className="flex gap-3">
             <label>
-              <Button variant="outline" className="border-purple-600 text-purple-300 hover:bg-purple-900/50">
+              <Button variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-900/50">
                 <UploadIcon className="w-4 h-4 mr-2" />
                 Import Excel
               </Button>
@@ -354,7 +354,7 @@ export default function SheetManager() {
               {/* Data Grid */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200">Sheet Data: {activeSheet}</CardTitle>
+                  <CardTitle className="text-slate-200">Sheet Data: {activeSheet}</CardTitle>
                   <CardDescription className="text-slate-400">
                     {currentData?.rows?.length || 0} rows × {currentData?.headers?.length || 0} columns
                   </CardDescription>
@@ -366,7 +366,7 @@ export default function SheetManager() {
                         <thead>
                           <tr className="border-b border-slate-700">
                             {currentData.headers.map((header, idx) => (
-                              <th key={idx} className="px-4 py-2 text-left text-purple-300 font-semibold">
+                              <th key={idx} className="px-4 py-2 text-left text-slate-300 font-semibold">
                                 {header}
                               </th>
                             ))}
@@ -402,7 +402,7 @@ export default function SheetManager() {
               {/* Tags */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-200 flex items-center gap-2">
                     <Tag className="w-5 h-5" />
                     Tags
                   </CardTitle>
@@ -419,7 +419,7 @@ export default function SheetManager() {
                     <Button
                       onClick={() => handleAddTag(activeSheet)}
                       size="sm"
-                      className="bg-purple-600 hover:bg-purple-700"
+                      className="bg-slate-700 hover:bg-slate-700"
                     >
                       <Plus className="w-4 h-4" />
                     </Button>
@@ -444,7 +444,7 @@ export default function SheetManager() {
               {/* Linked Sheets */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-200 flex items-center gap-2">
                     <LinkIcon className="w-5 h-5" />
                     Linked Sheets
                   </CardTitle>
@@ -466,7 +466,7 @@ export default function SheetManager() {
                     <Button
                       onClick={() => handleLinkSheet(activeSheet)}
                       size="sm"
-                      className="bg-slate-800 hover:bg-blue-700"
+                      className="bg-slate-800 hover:bg-slate-700"
                     >
                       Link
                     </Button>
@@ -477,7 +477,7 @@ export default function SheetManager() {
                       <div key={idx} className="flex items-center justify-between bg-slate-800 rounded-lg p-2">
                         <button
                           onClick={() => setActiveSheet(linkedSheet)}
-                          className="text-sm text-purple-400 hover:text-purple-300"
+                          className="text-sm text-slate-400 hover:text-slate-300"
                         >
                           {linkedSheet}
                         </button>
@@ -503,7 +503,7 @@ export default function SheetManager() {
               {/* Version History */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-200 flex items-center gap-2">
                     <Clock className="w-5 h-5" />
                     Version History
                   </CardTitle>

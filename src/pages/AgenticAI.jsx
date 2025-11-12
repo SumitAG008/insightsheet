@@ -315,7 +315,7 @@ Create a clear, business-ready summary.`;
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 via-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-slate-500/50 animate-pulse">
+            <div className="w-20 h-20 bg-gradient-to-br from-slate-500 via-slate-500 to-slate-700 rounded-2xl flex items-center justify-center shadow-2xl shadow-slate-500/50 animate-pulse">
               <Brain className="w-10 h-10 text-white" />
             </div>
           </div>
@@ -326,14 +326,14 @@ Create a clear, business-ready summary.`;
           <p className="text-xl text-slate-700 mb-4">
             Autonomous AI Agent • Plans → Executes → Reports
           </p>
-          <Badge className="bg-blue-100 text-slate-700 border-slate-300">
+          <Badge className="bg-slate-100 text-slate-700 border-slate-300">
             <Sparkles className="w-4 h-4 mr-1" />
             Self-Learning • Goal-Driven • Fully Autonomous
           </Badge>
         </div>
 
         {/* Info Banner */}
-        <Alert className="mb-8 bg-blue-100 border-slate-300">
+        <Alert className="mb-8 bg-slate-100 border-slate-300">
           <Brain className="h-5 w-5 text-slate-700" />
           <AlertDescription className="text-slate-700">
             <strong className="text-slate-700">What is Agentic AI?</strong><br />
@@ -358,7 +358,7 @@ Create a clear, business-ready summary.`;
             placeholder="Example: Analyze my sales data, find top performing products, and create a report with recommendations..."
             value={task}
             onChange={(e) => setTask(e.target.value)}
-            className="bg-blue-50 border-slate-300 text-slate-800 placeholder:text-slate-700 min-h-[120px] mb-4"
+            className="bg-slate-50 border-slate-300 text-slate-800 placeholder:text-slate-700 min-h-[120px] mb-4"
             disabled={thinking}
           />
 
@@ -372,7 +372,7 @@ Create a clear, business-ready summary.`;
               <button
                 key={idx}
                 onClick={() => setTask(example)}
-                className="text-left text-sm p-3 bg-blue-50 hover:bg-blue-100 border border-slate-300 rounded-lg text-slate-700 transition-colors"
+                className="text-left text-sm p-3 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg text-slate-700 transition-colors"
                 disabled={thinking}
               >
                 {example}
@@ -383,7 +383,7 @@ Create a clear, business-ready summary.`;
           <Button
             onClick={runAgent}
             disabled={thinking || !task.trim() || !data}
-            className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:via-indigo-700 hover:to-blue-800 text-white font-bold py-4 text-lg"
+            className="w-full bg-gradient-to-r from-slate-700 via-slate-700 to-slate-700 hover:from-slate-700 hover:via-slate-700 hover:to-slate-800 text-white font-bold py-4 text-lg"
           >
             {thinking ? (
               <>
@@ -421,7 +421,7 @@ Create a clear, business-ready summary.`;
                   <span className="text-lg font-semibold text-slate-700">Planning Strategy...</span>
                 </div>
 
-                <div className="bg-blue-100 border border-slate-300 rounded-lg p-4">
+                <div className="bg-slate-100 border border-slate-300 rounded-lg p-4">
                   <p className="text-slate-800 mb-3">
                     <strong>Understanding:</strong> {agent.plan.task_understood}
                   </p>
@@ -542,7 +542,7 @@ Create a clear, business-ready summary.`;
                   </div>
 
                   {/* Final Report */}
-                  <div className="bg-gradient-to-br from-slate-800/30 to-indigo-900/30 border border-slate-300/30 rounded-lg p-6">
+                  <div className="bg-gradient-to-br from-slate-800/30 to-slate-900/30 border border-slate-300/30 rounded-lg p-6">
                     <h4 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
                       <TrendingUp className="w-5 h-5" />
                       Final Report

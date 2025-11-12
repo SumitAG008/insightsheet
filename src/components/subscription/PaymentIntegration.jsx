@@ -70,7 +70,7 @@ export default function PaymentIntegration({ plan, amount, onSuccess }) {
       <Button
         onClick={handlePayment}
         disabled={processing}
-        className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold py-3 text-lg"
+        className="w-full bg-gradient-to-r from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-700 text-white font-bold py-3 text-lg"
       >
         {processing ? (
           <>
@@ -120,7 +120,7 @@ export default function PaymentIntegration({ plan, amount, onSuccess }) {
                   href="https://dashboard.stripe.com/register" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-blue-400 underline flex items-center gap-1 mt-1"
+                  className="text-slate-400 underline flex items-center gap-1 mt-1"
                 >
                   Sign up at stripe.com <ExternalLink className="w-3 h-3" />
                 </a>
@@ -132,7 +132,7 @@ export default function PaymentIntegration({ plan, amount, onSuccess }) {
               <div>
                 <strong>Create Payment Links:</strong>
                 <br />
-                Go to: <code className="text-purple-300">Stripe Dashboard → Products → Create Product</code>
+                Go to: <code className="text-slate-300">Stripe Dashboard → Products → Create Product</code>
                 <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
                   <li>Premium Plan: $9.99/month (recurring)</li>
                   <li>Business Plan: $29.99/month (recurring)</li>
@@ -145,7 +145,7 @@ export default function PaymentIntegration({ plan, amount, onSuccess }) {
               <div>
                 <strong>Create Payment Links:</strong>
                 <br />
-                For each product: <code className="text-purple-300">Product → Create payment link</code>
+                For each product: <code className="text-slate-300">Product → Create payment link</code>
                 <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
                   <li>Enable: "Collect customer emails"</li>
                   <li>Success URL: <code className="text-green-300">{window.location.origin}/StripeSuccess?session_id={'{'}{'{'}CHECKOUT_SESSION_ID{'}'}{'}'}                  </code></li>
@@ -158,7 +158,7 @@ export default function PaymentIntegration({ plan, amount, onSuccess }) {
               <div>
                 <strong>Copy Payment Links:</strong>
                 <br />
-                You'll get URLs like: <code className="text-blue-300">https://buy.stripe.com/test_...</code>
+                You'll get URLs like: <code className="text-slate-300">https://buy.stripe.com/test_...</code>
                 <br />
                 <span className="text-amber-300 mt-1 block">⚠️ Contact developer to add these links to the code</span>
               </div>
@@ -169,16 +169,16 @@ export default function PaymentIntegration({ plan, amount, onSuccess }) {
               <div>
                 <strong>Set up Webhook (Important!):</strong>
                 <br />
-                <code className="text-purple-300">Stripe Dashboard → Developers → Webhooks → Add endpoint</code>
+                <code className="text-slate-300">Stripe Dashboard → Developers → Webhooks → Add endpoint</code>
                 <br />
                 <span className="text-xs text-slate-400">Webhook URL: (contact developer for setup)</span>
               </div>
             </div>
           </div>
 
-          <Alert className="mt-4 bg-blue-500/10 border-slate-2000/30">
-            <AlertCircle className="h-4 w-4 text-blue-400" />
-            <AlertDescription className="text-blue-200 text-xs">
+          <Alert className="mt-4 bg-slate-500/10 border-slate-2000/30">
+            <AlertCircle className="h-4 w-4 text-slate-400" />
+            <AlertDescription className="text-slate-200 text-xs">
               <strong>Need help?</strong> Send your Stripe payment links to: sumit@meldra.ai
             </AlertDescription>
           </Alert>

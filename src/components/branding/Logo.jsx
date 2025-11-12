@@ -75,10 +75,10 @@ export default function Logo({ className = "", size = "medium" }) {
 
       {/* Brand Text */}
       <div className="flex flex-col">
-        <h1 className={`${currentSize.text} font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent leading-tight`}>
-          InsightSheet<span className="text-purple-400">-lite</span>
+        <h1 className={`${currentSize.text} font-bold bg-gradient-to-r from-slate-400 via-slate-400 to-slate-400 bg-clip-text text-transparent leading-tight`}>
+          InsightSheet<span className="text-slate-400">-lite</span>
         </h1>
-        <p className="text-xs text-purple-400 font-medium tracking-wide">
+        <p className="text-xs text-slate-400 font-medium tracking-wide">
           DATA MADE SIMPLE
         </p>
       </div>

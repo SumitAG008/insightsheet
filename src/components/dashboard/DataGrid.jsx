@@ -20,11 +20,11 @@ export default function DataGrid({ data }) {
 
   return (
     <div className="relative group">
-      <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-indigo-600/10 rounded-2xl blur-xl" />
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-700/10 to-slate-700/10 rounded-2xl blur-xl" />
       
       <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden">
         <div className="p-6 border-b border-slate-700/50">
-          <h2 className="text-xl font-bold text-purple-200">Data Preview</h2>
+          <h2 className="text-xl font-bold text-slate-200">Data Preview</h2>
           <p className="text-sm text-slate-400 mt-1">
             Showing {startIdx + 1}-{endIdx} of {data.rows.length} rows • {validHeaders.length} columns
           </p>
@@ -35,7 +35,7 @@ export default function DataGrid({ data }) {
             <TableHeader>
               <TableRow className="border-slate-700/50 hover:bg-slate-800/50">
                 {validHeaders.map((header, idx) => (
-                  <TableHead key={idx} className="text-purple-300 font-semibold whitespace-nowrap">
+                  <TableHead key={idx} className="text-slate-300 font-semibold whitespace-nowrap">
                     {header}
                   </TableHead>
                 ))}

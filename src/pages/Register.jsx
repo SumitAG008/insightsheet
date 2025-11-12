@@ -107,7 +107,7 @@ export default function Register() {
                 placeholder="John Doe"
                 value={formData.fullName}
                 onChange={handleChange}
-                className="bg-blue-50 border-slate-300 text-slate-800"
+                className="bg-slate-50 border-slate-300 text-slate-800"
               />
             </div>
             <div className="space-y-2">
@@ -119,7 +119,7 @@ export default function Register() {
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="bg-blue-50 border-slate-300 text-slate-800"
+                className="bg-slate-50 border-slate-300 text-slate-800"
               />
             </div>
             <div className="space-y-2">
@@ -132,7 +132,7 @@ export default function Register() {
                 onChange={handleChange}
                 required
                 minLength={6}
-                className="bg-blue-50 border-slate-300 text-slate-800"
+                className="bg-slate-50 border-slate-300 text-slate-800"
               />
             </div>
             <div className="space-y-2">
@@ -144,7 +144,7 @@ export default function Register() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                className="bg-blue-50 border-slate-300 text-slate-800"
+                className="bg-slate-50 border-slate-300 text-slate-800"
               />
             </div>
           </CardContent>

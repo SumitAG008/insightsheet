@@ -91,10 +91,10 @@ export default function ActivityDashboard() {
 
   const getActivityColor = (type) => {
     const colors = {
-      page_view: 'text-blue-400',
+      page_view: 'text-slate-400',
       file_upload: 'text-green-400',
-      file_download: 'text-purple-400',
-      ai_query: 'text-pink-400',
+      file_download: 'text-slate-400',
+      ai_query: 'text-slate-400',
       login: 'text-emerald-400',
       logout: 'text-orange-400'
     };
@@ -160,7 +160,7 @@ export default function ActivityDashboard() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-500" />
       </div>
     );
   }
@@ -182,8 +182,8 @@ export default function ActivityDashboard() {
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-purple-200 mb-2 flex items-center gap-3">
-            <Activity className="w-10 h-10 text-purple-400" />
+          <h1 className="text-4xl font-bold text-slate-200 mb-2 flex items-center gap-3">
+            <Activity className="w-10 h-10 text-slate-400" />
             Activity & Login Dashboard
           </h1>
           <p className="text-slate-400">Track all user activities, logins, and session data</p>
@@ -204,10 +204,10 @@ export default function ActivityDashboard() {
 
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <Users className="w-10 h-10 text-blue-400" />
-              <Badge className="bg-blue-500/20 text-blue-300">Active</Badge>
+              <Users className="w-10 h-10 text-slate-400" />
+              <Badge className="bg-slate-500/20 text-slate-300">Active</Badge>
             </div>
-            <h3 className="text-3xl font-bold text-blue-300 mb-1">
+            <h3 className="text-3xl font-bold text-slate-300 mb-1">
               {stats.activeUsers}
             </h3>
             <p className="text-sm text-slate-400">Active Users</p>
@@ -215,10 +215,10 @@ export default function ActivityDashboard() {
 
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
-              <Activity className="w-10 h-10 text-purple-400" />
-              <Badge className="bg-purple-500/20 text-purple-300">All Time</Badge>
+              <Activity className="w-10 h-10 text-slate-400" />
+              <Badge className="bg-slate-500/20 text-slate-300">All Time</Badge>
             </div>
-            <h3 className="text-3xl font-bold text-purple-300 mb-1">
+            <h3 className="text-3xl font-bold text-slate-300 mb-1">
               {stats.totalActivities}
             </h3>
             <p className="text-sm text-slate-400">Total Activities</p>
@@ -278,7 +278,7 @@ export default function ActivityDashboard() {
               <LogIn className="w-4 h-4 mr-2" />
               Login History
             </TabsTrigger>
-            <TabsTrigger value="activities" className="data-[state=active]:bg-purple-600">
+            <TabsTrigger value="activities" className="data-[state=active]:bg-slate-700">
               <Activity className="w-4 h-4 mr-2" />
               User Activities
             </TabsTrigger>
@@ -357,7 +357,7 @@ export default function ActivityDashboard() {
           <TabsContent value="activities">
             <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden">
               <div className="p-6 border-b border-slate-700/50">
-                <h2 className="text-xl font-bold text-purple-200">
+                <h2 className="text-xl font-bold text-slate-200">
                   User Activities ({filteredActivities.length})
                 </h2>
               </div>
@@ -366,12 +366,12 @@ export default function ActivityDashboard() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-slate-700/50">
-                      <TableHead className="text-purple-300">User Email</TableHead>
-                      <TableHead className="text-purple-300">Activity Type</TableHead>
-                      <TableHead className="text-purple-300">Page</TableHead>
-                      <TableHead className="text-purple-300">IP Address</TableHead>
-                      <TableHead className="text-purple-300">Browser</TableHead>
-                      <TableHead className="text-purple-300">Timestamp</TableHead>
+                      <TableHead className="text-slate-300">User Email</TableHead>
+                      <TableHead className="text-slate-300">Activity Type</TableHead>
+                      <TableHead className="text-slate-300">Page</TableHead>
+                      <TableHead className="text-slate-300">IP Address</TableHead>
+                      <TableHead className="text-slate-300">Browser</TableHead>
+                      <TableHead className="text-slate-300">Timestamp</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -408,7 +408,7 @@ export default function ActivityDashboard() {
           {/* User Summary Tab */}
           <TabsContent value="users">
             <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-              <h2 className="text-xl font-bold text-blue-200 mb-6">User Login Summary</h2>
+              <h2 className="text-xl font-bold text-slate-200 mb-6">User Login Summary</h2>
               
               <div className="space-y-4">
                 {allUsers.map(user => {
@@ -422,10 +422,10 @@ export default function ActivityDashboard() {
                     <div key={user.id} className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h3 className="text-lg font-bold text-blue-300">{user.full_name}</h3>
+                          <h3 className="text-lg font-bold text-slate-300">{user.full_name}</h3>
                           <p className="text-sm text-slate-400">{user.email}</p>
                         </div>
-                        <Badge className="bg-blue-500/20 text-blue-300">
+                        <Badge className="bg-slate-500/20 text-slate-300">
                           {loginCount} logins
                         </Badge>
                       </div>

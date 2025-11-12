@@ -238,7 +238,7 @@ CMD ["python", "app.py"]`;
           <TabsContent value="backend">
             <div className="space-y-6">
               <div className="bg-slate-900/80 border border-slate-700/50 rounded-2xl p-6">
-                <h2 className="text-2xl font-bold text-purple-200 mb-4 flex items-center gap-2">
+                <h2 className="text-2xl font-bold text-slate-200 mb-4 flex items-center gap-2">
                   <Code className="w-6 h-6" />
                   Excel to PPT Backend (Python/Flask)
                 </h2>
@@ -328,8 +328,8 @@ CMD ["python", "app.py"]`;
                 </div>
 
                 {/* Quick Start */}
-                <div className="bg-blue-500/10 border border-slate-2000/30 rounded-lg p-4">
-                  <h4 className="font-bold text-blue-300 mb-2">🚀 Quick Start:</h4>
+                <div className="bg-slate-500/10 border border-slate-2000/30 rounded-lg p-4">
+                  <h4 className="font-bold text-slate-300 mb-2">🚀 Quick Start:</h4>
                   <pre className="text-sm text-slate-300">
 {`1. Save all files in a folder
 2. pip install -r requirements.txt
@@ -344,7 +344,7 @@ CMD ["python", "app.py"]`;
           {/* Frontend Code */}
           <TabsContent value="frontend">
             <div className="bg-slate-900/80 border border-slate-700/50 rounded-2xl p-6">
-              <h2 className="text-2xl font-bold text-purple-200 mb-4">
+              <h2 className="text-2xl font-bold text-slate-200 mb-4">
                 📱 Frontend React Components
               </h2>
 
@@ -398,7 +398,7 @@ CMD ["python", "app.py"]`;
           {/* Standalone HTML */}
           <TabsContent value="standalone">
             <div className="bg-slate-900/80 border border-slate-700/50 rounded-2xl p-6">
-              <h2 className="text-2xl font-bold text-purple-200 mb-4">
+              <h2 className="text-2xl font-bold text-slate-200 mb-4">
                 🌐 Standalone HTML Version (Zero Dependencies)
               </h2>
 
@@ -436,8 +436,8 @@ CMD ["python", "app.py"]`;
                 <code>{standaloneCsvProcessor}</code>
               </pre>
 
-              <div className="bg-blue-500/10 border border-slate-2000/30 rounded-lg p-4">
-                <h4 className="font-bold text-blue-300 mb-2">How to Use:</h4>
+              <div className="bg-slate-500/10 border border-slate-2000/30 rounded-lg p-4">
+                <h4 className="font-bold text-slate-300 mb-2">How to Use:</h4>
                 <ol className="list-decimal ml-5 text-slate-300 space-y-1">
                   <li>Download the HTML file</li>
                   <li>Double-click to open in any browser</li>
@@ -452,7 +452,7 @@ CMD ["python", "app.py"]`;
           <TabsContent value="deploy">
             <div className="space-y-6">
               <div className="bg-slate-900/80 border border-slate-700/50 rounded-2xl p-6">
-                <h2 className="text-2xl font-bold text-purple-200 mb-4">
+                <h2 className="text-2xl font-bold text-slate-200 mb-4">
                   🚀 Deployment Options
                 </h2>
 
@@ -461,7 +461,7 @@ CMD ["python", "app.py"]`;
                   <h3 className="text-xl font-bold text-white mb-3">1. Docker (Recommended)</h3>
                   <div className="bg-slate-800/50 p-4 rounded-lg mb-3">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold text-purple-300">Dockerfile</h4>
+                      <h4 className="font-semibold text-slate-300">Dockerfile</h4>
                       <Button
                         size="sm"
                         onClick={() => downloadFile(dockerfileCode, 'Dockerfile')}
@@ -474,7 +474,7 @@ CMD ["python", "app.py"]`;
                       <code>{dockerfileCode}</code>
                     </pre>
                   </div>
-                  <div className="bg-blue-500/10 border border-slate-2000/30 rounded-lg p-3">
+                  <div className="bg-slate-500/10 border border-slate-2000/30 rounded-lg p-3">
                     <pre className="text-sm text-slate-300">
 {`docker build -t insightsheet-backend .
 docker run -p 5000:5000 insightsheet-backend`}

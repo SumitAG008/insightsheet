@@ -115,7 +115,7 @@ export default function Demo() {
         </div>
 
         {/* Quick Start Guide */}
-        <Alert className="mb-8 bg-blue-100 border-slate-300">
+        <Alert className="mb-8 bg-slate-100 border-slate-300">
           <Sparkles className="w-5 h-5 text-slate-800" />
           <AlertDescription className="text-slate-800">
             <strong>Quick Start:</strong> Select a demo below to see step-by-step instructions.

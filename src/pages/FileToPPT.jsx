@@ -497,7 +497,7 @@ export default function FileToPPT() {
             </div>
 
             <div className="flex gap-3">
-              <span className="font-bold text-purple-400">2️⃣</span>
+              <span className="font-bold text-slate-400">2️⃣</span>
               <div>
                 <strong className="text-white">Section Slide (per worksheet):</strong>
                 <p>Overview showing chart count, row count, and column count</p>
@@ -505,7 +505,7 @@ export default function FileToPPT() {
             </div>
 
             <div className="flex gap-3">
-              <span className="font-bold text-purple-400">3️⃣</span>
+              <span className="font-bold text-slate-400">3️⃣</span>
               <div>
                 <strong className="text-white">Data Table Slide:</strong>
                 <p>Full data display (up to 20 rows × 10 columns)</p>
@@ -513,7 +513,7 @@ export default function FileToPPT() {
             </div>
 
             <div className="flex gap-3">
-              <span className="font-bold text-purple-400">4️⃣</span>
+              <span className="font-bold text-slate-400">4️⃣</span>
               <div>
                 <strong className="text-white">Chart Slides (up to 3 per sheet):</strong>
                 <p>Bar, Line, and Pie charts with data tables below</p>
@@ -521,7 +521,7 @@ export default function FileToPPT() {
             </div>
 
             <div className="flex gap-3">
-              <span className="font-bold text-purple-400">5️⃣</span>
+              <span className="font-bold text-slate-400">5️⃣</span>
               <div>
                 <strong className="text-white">Statistics Slide:</strong>
                 <p>Average, Min, Max, Standard Deviation for numeric columns</p>

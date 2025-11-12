@@ -66,15 +66,15 @@ Format your response in a clear, structured way.`;
 
   return (
     <div className="relative group">
-      <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-2xl blur-xl" />
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-700/10 to-slate-700/10 rounded-2xl blur-xl" />
       
       <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-purple-200 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-400" />
+          <h2 className="text-xl font-bold text-slate-200 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-slate-400" />
             AI Assistant
           </h2>
-          <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+          <Badge className="bg-slate-500/20 text-slate-300 border-slate-500/30">
             Powered by AI
           </Badge>
         </div>
@@ -115,7 +115,7 @@ Format your response in a clear, structured way.`;
           <Button
             onClick={handleAIOperation}
             disabled={isProcessing || !prompt.trim()}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            className="w-full bg-gradient-to-r from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-700"
           >
             {isProcessing ? (
               <>
@@ -135,8 +135,8 @@ Format your response in a clear, structured way.`;
         {response && (
           <div className="mt-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
-              <Wand2 className="w-5 h-5 text-purple-400" />
-              <span className="text-sm font-semibold text-purple-300">AI Response:</span>
+              <Wand2 className="w-5 h-5 text-slate-400" />
+              <span className="text-sm font-semibold text-slate-300">AI Response:</span>
             </div>
             <div className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
               {response}

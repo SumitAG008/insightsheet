@@ -162,7 +162,7 @@ export default function ProjectTracker() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-purple-200 mb-2">Project Tracker</h1>
+          <h1 className="text-4xl font-bold text-slate-200 mb-2">Project Tracker</h1>
           <p className="text-slate-400">
             Task management with Gantt charts and Earned Value Management
           </p>
@@ -170,7 +170,7 @@ export default function ProjectTracker() {
 
         <Tabs defaultValue="gantt" className="space-y-6">
           <TabsList className="bg-slate-900/80 border border-slate-700/50 p-1">
-            <TabsTrigger value="gantt" className="data-[state=active]:bg-purple-600">
+            <TabsTrigger value="gantt" className="data-[state=active]:bg-slate-700">
               Gantt Chart
             </TabsTrigger>
             <TabsTrigger value="tasks" className="data-[state=active]:bg-slate-800">
@@ -186,7 +186,7 @@ export default function ProjectTracker() {
             {/* Add New Task */}
             <Card className="bg-slate-900/50 border-slate-700/50">
               <CardHeader>
-                <CardTitle className="text-purple-200 flex items-center gap-2">
+                <CardTitle className="text-slate-200 flex items-center gap-2">
                   <Plus className="w-5 h-5" />
                   Add New Task
                 </CardTitle>
@@ -233,7 +233,7 @@ export default function ProjectTracker() {
             {/* Gantt Chart */}
             <Card className="bg-slate-900/50 border-slate-700/50">
               <CardHeader>
-                <CardTitle className="text-purple-200 flex items-center gap-2">
+                <CardTitle className="text-slate-200 flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
                   Gantt Timeline
                 </CardTitle>
@@ -281,7 +281,7 @@ export default function ProjectTracker() {
           <TabsContent value="tasks" className="space-y-6">
             <Card className="bg-slate-900/50 border-slate-700/50">
               <CardHeader>
-                <CardTitle className="text-purple-200">All Tasks ({tasks.length})</CardTitle>
+                <CardTitle className="text-slate-200">All Tasks ({tasks.length})</CardTitle>
               </CardHeader>
               <CardContent>
                 {tasks.length === 0 ? (
@@ -295,7 +295,7 @@ export default function ProjectTracker() {
                         <CardContent className="pt-6">
                           <div className="flex items-start justify-between mb-4">
                             <div>
-                              <h3 className="text-lg font-semibold text-purple-200">{task.name}</h3>
+                              <h3 className="text-lg font-semibold text-slate-200">{task.name}</h3>
                               <p className="text-sm text-slate-400">
                                 {task.startDate} to {task.endDate} ({task.duration} days)
                               </p>
@@ -313,7 +313,7 @@ export default function ProjectTracker() {
                           <div className="grid md:grid-cols-2 gap-4 mb-4">
                             <div>
                               <label className="block text-xs text-slate-400 mb-1">Budget</label>
-                              <p className="text-lg font-semibold text-blue-400">
+                              <p className="text-lg font-semibold text-slate-400">
                                 ${task.budget.toFixed(2)}
                               </p>
                             </div>
@@ -359,7 +359,7 @@ export default function ProjectTracker() {
               {/* Core Values */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-200 flex items-center gap-2">
                     <DollarSign className="w-5 h-5" />
                     Core Values
                   </CardTitle>
@@ -367,7 +367,7 @@ export default function ProjectTracker() {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-slate-400">Planned Value (PV)</span>
-                    <span className="text-blue-400 font-semibold">
+                    <span className="text-slate-400 font-semibold">
                       ${evm.plannedValue.toFixed(2)}
                     </span>
                   </div>
@@ -389,7 +389,7 @@ export default function ProjectTracker() {
               {/* Performance Indices */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-200 flex items-center gap-2">
                     <TrendingUp className="w-5 h-5" />
                     Performance Indices
                   </CardTitle>
@@ -422,7 +422,7 @@ export default function ProjectTracker() {
               {/* Forecasts */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-200 flex items-center gap-2">
                     <BarChart3 className="w-5 h-5" />
                     Forecasts
                   </CardTitle>
@@ -430,13 +430,13 @@ export default function ProjectTracker() {
                 <CardContent className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-slate-400">EAC (Est. at Completion)</span>
-                    <span className="text-purple-400 font-semibold">
+                    <span className="text-slate-400 font-semibold">
                       ${evm.estimateAtCompletion.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-slate-400">ETC (Est. to Complete)</span>
-                    <span className="text-blue-400 font-semibold">
+                    <span className="text-slate-400 font-semibold">
                       ${evm.estimateToComplete.toFixed(2)}
                     </span>
                   </div>
@@ -454,12 +454,12 @@ export default function ProjectTracker() {
             {/* Project Health */}
             <Card className="bg-slate-900/50 border-slate-700/50">
               <CardHeader>
-                <CardTitle className="text-purple-200">Project Health Analysis</CardTitle>
+                <CardTitle className="text-slate-200">Project Health Analysis</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   <div className="bg-slate-800/50 rounded-lg p-4">
-                    <h4 className="font-semibold text-purple-300 mb-2">Cost Performance</h4>
+                    <h4 className="font-semibold text-slate-300 mb-2">Cost Performance</h4>
                     <p className="text-sm text-slate-400">
                       {evm.costPerformanceIndex >= 1
                         ? `✓ Project is under budget. For every $1 spent, you're earning $${evm.costPerformanceIndex.toFixed(2)} of value.`
@@ -468,7 +468,7 @@ export default function ProjectTracker() {
                   </div>
 
                   <div className="bg-slate-800/50 rounded-lg p-4">
-                    <h4 className="font-semibold text-blue-300 mb-2">Schedule Performance</h4>
+                    <h4 className="font-semibold text-slate-300 mb-2">Schedule Performance</h4>
                     <p className="text-sm text-slate-400">
                       {evm.schedulePerformanceIndex >= 1
                         ? `✓ Project is ahead of schedule with SPI of ${evm.schedulePerformanceIndex.toFixed(2)}.`

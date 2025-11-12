@@ -144,9 +144,9 @@ export default function UserManagement() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-slate-400">Pro Users</p>
-                  <p className="text-3xl font-bold text-blue-300">{stats.pro}</p>
+                  <p className="text-3xl font-bold text-slate-300">{stats.pro}</p>
                 </div>
-                <Crown className="w-10 h-10 text-blue-400" />
+                <Crown className="w-10 h-10 text-slate-400" />
               </div>
             </CardContent>
           </Card>
@@ -194,28 +194,28 @@ export default function UserManagement() {
                 <Button
                   onClick={() => setFilter('all')}
                   variant={filter === 'all' ? 'default' : 'outline'}
-                  className={filter === 'all' ? 'bg-purple-600 hover:bg-purple-700' : 'border-slate-600'}
+                  className={filter === 'all' ? 'bg-slate-700 hover:bg-slate-700' : 'border-slate-600'}
                 >
                   All
                 </Button>
                 <Button
                   onClick={() => setFilter('admin')}
                   variant={filter === 'admin' ? 'default' : 'outline'}
-                  className={filter === 'admin' ? 'bg-purple-600 hover:bg-purple-700' : 'border-slate-600'}
+                  className={filter === 'admin' ? 'bg-slate-700 hover:bg-slate-700' : 'border-slate-600'}
                 >
                   Admins
                 </Button>
                 <Button
                   onClick={() => setFilter('pro')}
                   variant={filter === 'pro' ? 'default' : 'outline'}
-                  className={filter === 'pro' ? 'bg-purple-600 hover:bg-purple-700' : 'border-slate-600'}
+                  className={filter === 'pro' ? 'bg-slate-700 hover:bg-slate-700' : 'border-slate-600'}
                 >
                   Pro
                 </Button>
                 <Button
                   onClick={() => setFilter('free')}
                   variant={filter === 'free' ? 'default' : 'outline'}
-                  className={filter === 'free' ? 'bg-purple-600 hover:bg-purple-700' : 'border-slate-600'}
+                  className={filter === 'free' ? 'bg-slate-700 hover:bg-slate-700' : 'border-slate-600'}
                 >
                   Free
                 </Button>
@@ -227,14 +227,14 @@ export default function UserManagement() {
         {/* Users Table */}
         <Card className="bg-slate-900/50 border-slate-300">
           <CardHeader>
-            <CardTitle className="text-purple-200">
+            <CardTitle className="text-slate-200">
               Users ({filteredUsers.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4" />
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-500 mx-auto mb-4" />
                 <p className="text-slate-400">Loading users...</p>
               </div>
             ) : filteredUsers.length === 0 ? (
@@ -247,14 +247,14 @@ export default function UserManagement() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-700">
-                      <th className="px-4 py-3 text-left text-purple-300">User</th>
-                      <th className="px-4 py-3 text-left text-purple-300">Role</th>
-                      <th className="px-4 py-3 text-left text-purple-300">Subscription</th>
-                      <th className="px-4 py-3 text-left text-purple-300">Status</th>
-                      <th className="px-4 py-3 text-left text-purple-300">Created</th>
-                      <th className="px-4 py-3 text-left text-purple-300">Last Login</th>
-                      <th className="px-4 py-3 text-right text-purple-300">Usage</th>
-                      <th className="px-4 py-3 text-center text-purple-300">Actions</th>
+                      <th className="px-4 py-3 text-left text-slate-300">User</th>
+                      <th className="px-4 py-3 text-left text-slate-300">Role</th>
+                      <th className="px-4 py-3 text-left text-slate-300">Subscription</th>
+                      <th className="px-4 py-3 text-left text-slate-300">Status</th>
+                      <th className="px-4 py-3 text-left text-slate-300">Created</th>
+                      <th className="px-4 py-3 text-left text-slate-300">Last Login</th>
+                      <th className="px-4 py-3 text-right text-slate-300">Usage</th>
+                      <th className="px-4 py-3 text-center text-slate-300">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -342,9 +342,9 @@ export default function UserManagement() {
         </Card>
 
         {/* Admin Note */}
-        <Alert className="mt-6 bg-purple-900/20 border-purple-500/30">
+        <Alert className="mt-6 bg-slate-900/20 border-slate-500/30">
           <Shield className="w-4 h-4 text-slate-700" />
-          <AlertDescription className="text-purple-200">
+          <AlertDescription className="text-slate-200">
             <strong>Admin Access Only:</strong> This page is only visible to administrators.
             User data is displayed for management purposes only.
           </AlertDescription>

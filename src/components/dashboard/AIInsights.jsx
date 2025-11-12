@@ -85,11 +85,11 @@ Provide detailed answer based on the data.`;
 
   return (
     <div className="relative group">
-      <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-2xl blur-xl" />
+      <div className="absolute inset-0 bg-gradient-to-r from-slate-700/10 to-slate-700/10 rounded-2xl blur-xl" />
       
       <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
         <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
-          <Sparkles className="w-5 h-5 text-purple-400" />
+          <Sparkles className="w-5 h-5 text-slate-400" />
           AI Analysis
         </h2>
 
@@ -97,7 +97,7 @@ Provide detailed answer based on the data.`;
           <Button
             onClick={() => analyzeData('summary')}
             disabled={isAnalyzing}
-            className="w-full justify-start bg-gradient-to-br from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold"
+            className="w-full justify-start bg-gradient-to-br from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-semibold"
           >
             {isAnalyzing && activeAnalysis === 'summary' ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -110,7 +110,7 @@ Provide detailed answer based on the data.`;
           <Button
             onClick={() => analyzeData('formula')}
             disabled={isAnalyzing}
-            className="w-full justify-start bg-gradient-to-br from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold"
+            className="w-full justify-start bg-gradient-to-br from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-800 text-white font-semibold"
           >
             {isAnalyzing && activeAnalysis === 'formula' ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -133,7 +133,7 @@ Provide detailed answer based on the data.`;
           <Button
             onClick={() => analyzeData('custom')}
             disabled={isAnalyzing || !customPrompt.trim()}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-semibold"
+            className="w-full bg-gradient-to-r from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-700 text-white font-semibold"
           >
             {isAnalyzing && activeAnalysis === 'custom' ? (
               <>
@@ -152,7 +152,7 @@ Provide detailed answer based on the data.`;
         {insights && (
           <div className="mt-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
-              <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+              <Badge className="bg-slate-500/20 text-slate-300 border-slate-500/30">
                 {insights.type === 'summary' ? 'Summary' : insights.type === 'formula' ? 'Formulas' : 'Custom Analysis'}
               </Badge>
             </div>

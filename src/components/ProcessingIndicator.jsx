@@ -16,7 +16,7 @@ import { createPageUrl } from '@/utils';
 export function ProcessingMethodBadge({ method, fileSize }) {
   if (method === 'backend') {
     return (
-      <Badge className="bg-blue-600 flex items-center gap-1">
+      <Badge className="bg-slate-700 flex items-center gap-1">
         <Server className="w-3 h-3" />
         <span>Backend Processing</span>
         <Zap className="w-3 h-3" />
@@ -36,11 +36,11 @@ export function ProcessingMethodBadge({ method, fileSize }) {
 export function ProcessingAlert({ message, method }) {
   const Icon = method === 'backend' ? Server : Lock;
   const colorClasses = method === 'backend'
-    ? 'bg-blue-900/20 border-blue-500/30'
+    ? 'bg-slate-900/20 border-slate-500/30'
     : 'bg-emerald-900/20 border-emerald-500/30';
 
-  const iconColor = method === 'backend' ? 'text-blue-400' : 'text-emerald-400';
-  const textColor = method === 'backend' ? 'text-blue-200' : 'text-emerald-200';
+  const iconColor = method === 'backend' ? 'text-slate-400' : 'text-emerald-400';
+  const textColor = method === 'backend' ? 'text-slate-200' : 'text-emerald-200';
 
   return (
     <Alert className={`${colorClasses} mb-4`}>
@@ -64,13 +64,13 @@ export function UpgradePrompt({ upgradeMessage, currentTier }) {
   if (!upgradeMessage) return null;
 
   return (
-    <Alert className="bg-purple-900/20 border-purple-500/30 mb-4">
-      <Crown className="w-4 h-4 text-purple-400" />
-      <AlertDescription className="text-purple-200">
+    <Alert className="bg-slate-900/20 border-slate-500/30 mb-4">
+      <Crown className="w-4 h-4 text-slate-400" />
+      <AlertDescription className="text-slate-200">
         <div>
           <div className="flex items-center justify-between mb-2">
             <strong className="text-lg">{upgradeMessage.title}</strong>
-            <Badge variant="outline" className="border-purple-400 text-purple-300">
+            <Badge variant="outline" className="border-slate-400 text-slate-300">
               Current: {currentTier}
             </Badge>
           </div>
@@ -79,7 +79,7 @@ export function UpgradePrompt({ upgradeMessage, currentTier }) {
 
           <div className="grid grid-cols-2 gap-2 mb-3">
             {upgradeMessage.features.map((feature, idx) => (
-              <div key={idx} className="text-xs text-purple-100">
+              <div key={idx} className="text-xs text-slate-100">
                 {feature}
               </div>
             ))}
@@ -88,11 +88,11 @@ export function UpgradePrompt({ upgradeMessage, currentTier }) {
           <div className="flex items-center gap-3">
             <Button
               onClick={() => navigate(createPageUrl('Pricing'))}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              className="bg-gradient-to-r from-slate-700 to-slate-700 hover:from-slate-700 hover:to-slate-700"
             >
               {upgradeMessage.ctaText}
             </Button>
-            <span className="text-sm text-purple-300">
+            <span className="text-sm text-slate-300">
               Starting at {upgradeMessage.price}
             </span>
           </div>
@@ -111,19 +111,19 @@ export function FileSizeWarning({ fileSize, limit, tier }) {
     ? 'bg-red-900/20 border-red-500/30'
     : percentage > 70
     ? 'bg-amber-900/20 border-amber-500/30'
-    : 'bg-blue-900/20 border-blue-500/30';
+    : 'bg-slate-900/20 border-slate-500/30';
 
   const iconColor = percentage > 90
     ? 'text-red-400'
     : percentage > 70
     ? 'text-amber-400'
-    : 'text-blue-400';
+    : 'text-slate-400';
 
   const textColor = percentage > 90
     ? 'text-red-200'
     : percentage > 70
     ? 'text-amber-200'
-    : 'text-blue-200';
+    : 'text-slate-200';
 
   return (
     <Alert className={colorClass}>
@@ -150,7 +150,7 @@ export function FileSizeWarning({ fileSize, limit, tier }) {
 export function ProcessingComparison() {
   return (
     <div className="bg-slate-900/50 rounded-lg border border-slate-700/50 p-6 mb-6">
-      <h3 className="text-xl font-bold text-purple-200 mb-4">
+      <h3 className="text-xl font-bold text-slate-200 mb-4">
         Processing Methods Comparison
       </h3>
 
@@ -185,14 +185,14 @@ export function ProcessingComparison() {
         </div>
 
         {/* Backend Processing */}
-        <div className="bg-blue-900/10 border border-blue-500/30 rounded-lg p-4">
+        <div className="bg-slate-900/10 border border-slate-500/30 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Server className="w-6 h-6 text-blue-400" />
-            <h4 className="font-bold text-blue-200">Backend Processing</h4>
-            <Badge className="bg-purple-600 text-xs">Pro/Enterprise</Badge>
+            <Server className="w-6 h-6 text-slate-400" />
+            <h4 className="font-bold text-slate-200">Backend Processing</h4>
+            <Badge className="bg-slate-700 text-xs">Pro/Enterprise</Badge>
           </div>
 
-          <div className="space-y-2 text-sm text-blue-100">
+          <div className="space-y-2 text-sm text-slate-100">
             <div className="flex items-start gap-2">
               <Zap className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>Much faster for large files (50MB+)</span>
@@ -207,8 +207,8 @@ export function ProcessingComparison() {
             </div>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-blue-500/30">
-            <p className="text-xs text-blue-300">
+          <div className="mt-3 pt-3 border-t border-slate-500/30">
+            <p className="text-xs text-slate-300">
               <strong>Best for:</strong> Large files (5MB-500MB), complex operations
             </p>
           </div>

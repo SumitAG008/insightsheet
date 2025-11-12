@@ -148,7 +148,7 @@ export default function AccountingToolkit() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-purple-200 mb-2">Accounting Toolkit</h1>
+          <h1 className="text-4xl font-bold text-slate-200 mb-2">Accounting Toolkit</h1>
           <p className="text-slate-400">
             Journal entries, trial balance, and financial statements
           </p>
@@ -156,7 +156,7 @@ export default function AccountingToolkit() {
 
         <Tabs defaultValue="journal" className="space-y-6">
           <TabsList className="bg-slate-900/80 border border-slate-700/50 p-1">
-            <TabsTrigger value="journal" className="data-[state=active]:bg-purple-600">
+            <TabsTrigger value="journal" className="data-[state=active]:bg-slate-700">
               Journal Entries
             </TabsTrigger>
             <TabsTrigger value="trial" className="data-[state=active]:bg-slate-800">
@@ -172,7 +172,7 @@ export default function AccountingToolkit() {
             {/* Add New Entry */}
             <Card className="bg-slate-900/50 border-slate-700/50">
               <CardHeader>
-                <CardTitle className="text-purple-200 flex items-center gap-2">
+                <CardTitle className="text-slate-200 flex items-center gap-2">
                   <Plus className="w-5 h-5" />
                   New Journal Entry
                 </CardTitle>
@@ -236,7 +236,7 @@ export default function AccountingToolkit() {
             {/* Entries List */}
             <Card className="bg-slate-900/50 border-slate-700/50">
               <CardHeader>
-                <CardTitle className="text-purple-200">All Entries ({entries.length})</CardTitle>
+                <CardTitle className="text-slate-200">All Entries ({entries.length})</CardTitle>
               </CardHeader>
               <CardContent>
                 {entries.length === 0 ? (
@@ -248,12 +248,12 @@ export default function AccountingToolkit() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-slate-700">
-                          <th className="px-4 py-2 text-left text-purple-300">Date</th>
-                          <th className="px-4 py-2 text-left text-purple-300">Account</th>
-                          <th className="px-4 py-2 text-left text-purple-300">Description</th>
-                          <th className="px-4 py-2 text-right text-purple-300">Debit</th>
-                          <th className="px-4 py-2 text-right text-purple-300">Credit</th>
-                          <th className="px-4 py-2 text-center text-purple-300">Actions</th>
+                          <th className="px-4 py-2 text-left text-slate-300">Date</th>
+                          <th className="px-4 py-2 text-left text-slate-300">Account</th>
+                          <th className="px-4 py-2 text-left text-slate-300">Description</th>
+                          <th className="px-4 py-2 text-right text-slate-300">Debit</th>
+                          <th className="px-4 py-2 text-right text-slate-300">Credit</th>
+                          <th className="px-4 py-2 text-center text-slate-300">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -265,7 +265,7 @@ export default function AccountingToolkit() {
                             <td className="px-4 py-2 text-right text-emerald-400">
                               {entry.debit > 0 ? `$${entry.debit.toFixed(2)}` : '-'}
                             </td>
-                            <td className="px-4 py-2 text-right text-blue-400">
+                            <td className="px-4 py-2 text-right text-slate-400">
                               {entry.credit > 0 ? `$${entry.credit.toFixed(2)}` : '-'}
                             </td>
                             <td className="px-4 py-2 text-center">
@@ -301,7 +301,7 @@ export default function AccountingToolkit() {
 
             <Card className="bg-slate-900/50 border-slate-700/50">
               <CardHeader>
-                <CardTitle className="text-purple-200">Trial Balance</CardTitle>
+                <CardTitle className="text-slate-200">Trial Balance</CardTitle>
                 <CardDescription className="text-slate-400">
                   Summary of all account balances
                 </CardDescription>
@@ -316,10 +316,10 @@ export default function AccountingToolkit() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-slate-700">
-                          <th className="px-4 py-2 text-left text-purple-300">Account</th>
-                          <th className="px-4 py-2 text-right text-purple-300">Debit</th>
-                          <th className="px-4 py-2 text-right text-purple-300">Credit</th>
-                          <th className="px-4 py-2 text-right text-purple-300">Balance</th>
+                          <th className="px-4 py-2 text-left text-slate-300">Account</th>
+                          <th className="px-4 py-2 text-right text-slate-300">Debit</th>
+                          <th className="px-4 py-2 text-right text-slate-300">Credit</th>
+                          <th className="px-4 py-2 text-right text-slate-300">Balance</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -329,7 +329,7 @@ export default function AccountingToolkit() {
                             <td className="px-4 py-2 text-right text-emerald-400">
                               ${account.debit.toFixed(2)}
                             </td>
-                            <td className="px-4 py-2 text-right text-blue-400">
+                            <td className="px-4 py-2 text-right text-slate-400">
                               ${account.credit.toFixed(2)}
                             </td>
                             <td className={`px-4 py-2 text-right font-semibold ${
@@ -339,15 +339,15 @@ export default function AccountingToolkit() {
                             </td>
                           </tr>
                         ))}
-                        <tr className="border-t-2 border-purple-500 font-bold">
-                          <td className="px-4 py-3 text-purple-200">TOTAL</td>
+                        <tr className="border-t-2 border-slate-500 font-bold">
+                          <td className="px-4 py-3 text-slate-200">TOTAL</td>
                           <td className="px-4 py-3 text-right text-emerald-300">
                             ${totalDebit.toFixed(2)}
                           </td>
-                          <td className="px-4 py-3 text-right text-blue-300">
+                          <td className="px-4 py-3 text-right text-slate-300">
                             ${totalCredit.toFixed(2)}
                           </td>
-                          <td className="px-4 py-3 text-right text-purple-200">
+                          <td className="px-4 py-3 text-right text-slate-200">
                             {isBalanced ? 'Balanced ✓' : 'Not Balanced ✗'}
                           </td>
                         </tr>
@@ -365,7 +365,7 @@ export default function AccountingToolkit() {
               {/* Income Statement */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-200 flex items-center gap-2">
                     <FileText className="w-5 h-5" />
                     Income Statement
                   </CardTitle>
@@ -382,8 +382,8 @@ export default function AccountingToolkit() {
                     <span className="text-slate-300">Expenses</span>
                     <span className="text-red-400 font-semibold">${financials.expenses.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t-2 border-purple-500">
-                    <span className="text-purple-200 font-bold">Net Income</span>
+                  <div className="flex justify-between items-center pt-2 border-t-2 border-slate-500">
+                    <span className="text-slate-200 font-bold">Net Income</span>
                     <span className={`font-bold text-lg ${financials.netIncome >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                       ${Math.abs(financials.netIncome).toFixed(2)}
                     </span>
@@ -394,7 +394,7 @@ export default function AccountingToolkit() {
               {/* Balance Sheet */}
               <Card className="bg-slate-900/50 border-slate-700/50">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-200 flex items-center gap-2">
                     <Calculator className="w-5 h-5" />
                     Balance Sheet
                   </CardTitle>
@@ -405,7 +405,7 @@ export default function AccountingToolkit() {
                 <CardContent className="space-y-4">
                   <div className="flex justify-between items-center pb-2 border-b border-slate-700">
                     <span className="text-slate-300">Assets</span>
-                    <span className="text-blue-400 font-semibold">${financials.assets.toFixed(2)}</span>
+                    <span className="text-slate-400 font-semibold">${financials.assets.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-slate-700">
                     <span className="text-slate-300">Liabilities</span>
@@ -413,11 +413,11 @@ export default function AccountingToolkit() {
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-slate-700">
                     <span className="text-slate-300">Equity</span>
-                    <span className="text-purple-400 font-semibold">${financials.equity.toFixed(2)}</span>
+                    <span className="text-slate-400 font-semibold">${financials.equity.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center pt-2 border-t-2 border-purple-500">
-                    <span className="text-purple-200 font-bold">Total</span>
-                    <span className="text-purple-300 font-bold text-lg">
+                  <div className="flex justify-between items-center pt-2 border-t-2 border-slate-500">
+                    <span className="text-slate-200 font-bold">Total</span>
+                    <span className="text-slate-300 font-bold text-lg">
                       ${(financials.liabilities + financials.equity).toFixed(2)}
                     </span>
                   </div>
@@ -427,7 +427,7 @@ export default function AccountingToolkit() {
               {/* Financial Ratios */}
               <Card className="bg-slate-900/50 border-slate-700/50 md:col-span-2">
                 <CardHeader>
-                  <CardTitle className="text-purple-200 flex items-center gap-2">
+                  <CardTitle className="text-slate-200 flex items-center gap-2">
                     <TrendingUp className="w-5 h-5" />
                     Financial Ratios
                   </CardTitle>
@@ -436,11 +436,11 @@ export default function AccountingToolkit() {
                   <div className="grid md:grid-cols-3 gap-4">
                     <div className="bg-slate-800/50 rounded-lg p-4">
                       <p className="text-sm text-slate-400 mb-1">Profit Margin</p>
-                      <p className="text-2xl font-bold text-purple-300">{financials.profitMargin}%</p>
+                      <p className="text-2xl font-bold text-slate-300">{financials.profitMargin}%</p>
                     </div>
                     <div className="bg-slate-800/50 rounded-lg p-4">
                       <p className="text-sm text-slate-400 mb-1">Current Ratio</p>
-                      <p className="text-2xl font-bold text-blue-300">
+                      <p className="text-2xl font-bold text-slate-300">
                         {financials.liabilities > 0
                           ? (financials.assets / financials.liabilities).toFixed(2)
                           : 'N/A'}

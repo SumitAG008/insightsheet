@@ -67,7 +67,7 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-blue-50 border-slate-300 text-slate-800"
+                className="bg-slate-50 border-slate-300 text-slate-800"
               />
             </div>
             <div className="space-y-2">
@@ -83,7 +83,7 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-blue-50 border-slate-300 text-slate-800"
+                className="bg-slate-50 border-slate-300 text-slate-800"
               />
             </div>
           </CardContent>

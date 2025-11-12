@@ -2,6 +2,10 @@
 Excel/CSV/PDF to PowerPoint Service for InsightSheet-lite
 Converts Excel, CSV, and PDF files to professional PowerPoint presentations
 Supports: .xlsx, .xls, .csv, .pdf with any number of tabs/sheets
+
+Features:
+- Windows (with Excel installed): Uses COM automation for actual chart images and complete data
+- Cross-platform fallback: Uses openpyxl/pptx to recreate charts programmatically
 """
 import openpyxl
 from pptx import Presentation
@@ -19,8 +23,21 @@ import io
 import logging
 from datetime import datetime
 import re
+import sys
 
 logger = logging.getLogger(__name__)
+
+# Try to import Windows converter
+try:
+    from .excel_to_ppt_windows import WindowsExcelToPPTConverter, is_windows_converter_available
+    WINDOWS_CONVERTER_AVAILABLE = is_windows_converter_available()
+    if WINDOWS_CONVERTER_AVAILABLE:
+        logger.info("Windows Excel COM converter is available - will use for .xlsx/.xls files with charts")
+    else:
+        logger.info("Windows Excel COM converter not available - using cross-platform fallback")
+except ImportError:
+    WINDOWS_CONVERTER_AVAILABLE = False
+    logger.info("Windows Excel COM converter not installed - using cross-platform fallback")
 
 
 class ExcelToPPTService:
@@ -46,6 +63,9 @@ class ExcelToPPTService:
         Convert Excel/CSV/PDF file to PowerPoint presentation
         Supports: .xlsx, .xls, .csv, .pdf
 
+        On Windows with Excel installed, uses COM automation for best results.
+        Otherwise uses cross-platform libraries.
+
         Args:
             file_data: File binary data
             filename: Original filename
@@ -62,6 +82,16 @@ class ExcelToPPTService:
                 file_bytes = file_data.read()
             else:
                 file_bytes = file_data
+
+            # For Excel files on Windows, try COM converter first (best quality)
+            if WINDOWS_CONVERTER_AVAILABLE and file_ext in ['xlsx', 'xls']:
+                try:
+                    logger.info(f"Using Windows COM converter for {filename}")
+                    with WindowsExcelToPPTConverter() as converter:
+                        return await converter.convert_to_ppt(file_bytes, filename)
+                except Exception as e:
+                    logger.warning(f"Windows COM converter failed, falling back to cross-platform: {str(e)}")
+                    # Fall through to cross-platform converter
 
             # Parse based on file type
             if file_ext == 'csv':

@@ -91,6 +91,15 @@ class UserLogin(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 class LLMRequest(BaseModel):
     prompt: str
     add_context_from_internet: bool = False
@@ -286,11 +295,11 @@ async def get_me(current_user: dict = Depends(get_current_user), db: Session = D
 
 
 @app.post("/api/auth/forgot-password")
-async def forgot_password(email: EmailStr, db: Session = Depends(get_db)):
+async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
     """Request password reset email"""
     try:
         # Find user
-        user = db.query(User).filter(User.email == email).first()
+        user = db.query(User).filter(User.email == request.email).first()
 
         if not user:
             # Don't reveal if email exists - return success anyway
@@ -308,7 +317,7 @@ async def forgot_password(email: EmailStr, db: Session = Depends(get_db)):
         # In production, send email here
         # For now, just log the token (REMOVE IN PRODUCTION!)
         reset_url = f"http://localhost:5173/reset-password?token={reset_token}"
-        logger.info(f"Password reset requested for {email}")
+        logger.info(f"Password reset requested for {request.email}")
         logger.info(f"Reset URL: {reset_url}")
 
         # TODO: Send email with reset_url
@@ -328,15 +337,14 @@ async def forgot_password(email: EmailStr, db: Session = Depends(get_db)):
 
 @app.post("/api/auth/reset-password")
 async def reset_password(
-    token: str,
-    new_password: str,
+    request: ResetPasswordRequest,
     db: Session = Depends(get_db)
 ):
     """Reset password with token"""
     try:
         # Find user with valid token
         user = db.query(User).filter(
-            User.reset_token == token,
+            User.reset_token == request.token,
             User.reset_token_expires > datetime.utcnow()
         ).first()
 
@@ -347,7 +355,7 @@ async def reset_password(
             )
 
         # Update password
-        user.hashed_password = get_password_hash(new_password)
+        user.hashed_password = get_password_hash(request.new_password)
         user.reset_token = None
         user.reset_token_expires = None
         db.commit()

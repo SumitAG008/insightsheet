@@ -1,8 +1,8 @@
 # Meldra.ai App
 
 
-This app was created automatically by Base44.
-It's a Vite+React app that communicates with the Base44 API.
+This app was created by Meldra.
+It's a Vite+React app that communicates with the Meldra.ai API.
 
 ## Running the app
 

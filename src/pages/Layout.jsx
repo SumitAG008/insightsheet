@@ -21,13 +21,17 @@ export default function Layout({ children }) {
     try {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
-      
+
       const loginTimestamp = Date.now();
       setLoginTime(loginTimestamp);
       sessionStorage.setItem('loginTime', loginTimestamp.toString());
-      
+
       const sessionLogged = sessionStorage.getItem('sessionLogged');
       if (!sessionLogged) {
+        // First login in this session - clear any old data for a fresh start
+        sessionStorage.removeItem('insightsheet_data');
+        sessionStorage.removeItem('insightsheet_filename');
+
         await logLogin(currentUser.email);
         sessionStorage.setItem('sessionLogged', 'true');
       }
@@ -62,10 +66,10 @@ export default function Layout({ children }) {
       try {
         const loginTimestamp = parseInt(sessionStorage.getItem('loginTime') || '0');
         const sessionDuration = loginTimestamp ? Math.round((Date.now() - loginTimestamp) / 60000) : 0;
-        
+
         const ipData = await getIPAndLocation();
         const browser = getBrowserInfo();
-        
+
         await LoginHistory.create({
           user_email: user.email,
           event_type: 'logout',
@@ -74,14 +78,14 @@ export default function Layout({ children }) {
           browser: browser,
           session_duration: sessionDuration
         });
-        
-        sessionStorage.removeItem('loginTime');
-        sessionStorage.removeItem('sessionLogged');
       } catch (error) {
         console.error('Error logging logout:', error);
       }
     }
-    
+
+    // Clear ALL sessionStorage data including uploaded files
+    sessionStorage.clear();
+
     await base44.auth.logout();
     window.location.reload();
   };

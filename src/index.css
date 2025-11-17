@@ -156,3 +156,84 @@ button:focus-visible {
     @apply bg-background text-foreground;
   }
 }
+
+
+/* ====================================
+   TEXT CONTRAST FIX
+   ==================================== */
+
+/* Make ALL text bold by default for better visibility */
+* {
+  font-weight: 600 !important;
+}
+
+/* Headings extra bold */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700 !important;
+}
+
+/* Text on LIGHT backgrounds (white, slate-50, gray-50) should be BLACK */
+.bg-white *,
+.bg-slate-50 *,
+.bg-gray-50 *,
+.bg-blue-50 *,
+.bg-indigo-50 * {
+  color: #000000 !important;
+}
+
+/* Text on DARK backgrounds (slate-900, purple-900, indigo-900, gradients) should be WHITE */
+.bg-slate-900 *,
+.bg-gray-900 *,
+.bg-purple-900 *,
+.bg-indigo-900 *,
+.bg-gradient-to-r *,
+.bg-gradient-to-br *,
+.from-purple-900 *,
+.from-indigo-900 *,
+.to-purple-800 * {
+  color: #FFFFFF !important;
+}
+
+/* Selected/Active buttons with proper contrast */
+button.bg-blue-100,
+button.bg-blue-200,
+.bg-blue-100,
+.bg-blue-200 {
+  background-color: rgba(147, 197, 253, 0.3) !important;
+  color: #000000 !important;
+  font-weight: 700 !important;
+}
+
+/* Unselected buttons on white backgrounds */
+button {
+  color: #000000 !important;
+  font-weight: 600 !important;
+}
+
+/* Links should be visible */
+a {
+  font-weight: 600 !important;
+}
+
+/* Special case: preserve chart/data visualization colors */
+svg text,
+.recharts-text,
+.recharts-label {
+  font-weight: 500 !important;
+}
+
+/* Navigation items on light backgrounds */
+nav.bg-white button,
+nav.bg-white a,
+div[class*="bg-white"] nav button,
+div[class*="bg-white"] nav a {
+  color: #000000 !important;
+}
+
+/* Navigation items on dark backgrounds */
+nav.bg-slate-900 button,
+nav.bg-slate-900 a,
+nav.bg-purple-900 button,
+nav.bg-purple-900 a {
+  color: #FFFFFF !important;
+}

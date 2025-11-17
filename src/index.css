@@ -156,3 +156,162 @@ button:focus-visible {
     @apply bg-background text-foreground;
   }
 }
+
+/* Text Visibility Fixes - Force Readable Colors */
+@layer components {
+  /* Main Headings - Bold Black Font */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 700 !important;
+    color: #000000 !important;
+  }
+
+  /* Dark mode headings - Bold White */
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+    color: #FFFFFF !important;
+  }
+
+  /* Section titles and labels - Bold Black */
+  label,
+  [class*="label"],
+  [class*="title"] {
+    color: #000000 !important;
+    font-weight: 600 !important;
+  }
+
+  .dark label,
+  .dark [class*="label"],
+  .dark [class*="title"] {
+    color: #FFFFFF !important;
+  }
+
+  /* Subsections - Bold White on dark backgrounds */
+  [class*="subtitle"],
+  .section-subtitle,
+  [class*="section-title"] {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+  }
+
+  /* Table headers - Bold Black */
+  th, thead {
+    color: #000000 !important;
+    font-weight: 700 !important;
+  }
+
+  .dark th, .dark thead {
+    color: #FFFFFF !important;
+  }
+
+  /* Form inputs - Dark text on white background */
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="email"],
+  input[type="password"],
+  textarea,
+  select {
+    color: #000000 !important;
+    background-color: #FFFFFF !important;
+    font-weight: 500 !important;
+  }
+
+  .dark input[type="text"],
+  .dark input[type="number"],
+  .dark input[type="date"],
+  .dark input[type="email"],
+  .dark input[type="password"],
+  .dark textarea,
+  .dark select {
+    color: #FFFFFF !important;
+    background-color: #2d3748 !important;
+  }
+
+  /* Button text - Bold */
+  button {
+    font-weight: 600 !important;
+  }
+
+  /* Placeholders - Readable gray */
+  ::placeholder {
+    color: #6b7280 !important;
+    opacity: 1 !important;
+  }
+
+  .dark ::placeholder {
+    color: #9ca3af !important;
+  }
+
+  /* Links - Blue with good contrast */
+  a {
+    color: #2563eb !important;
+    font-weight: 500 !important;
+  }
+
+  .dark a {
+    color: #60a5fa !important;
+  }
+
+  /* Utility classes for specific cases */
+  .text-bold-black {
+    color: #000000 !important;
+    font-weight: 700 !important;
+  }
+
+  .text-bold-white {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+  }
+
+  .text-dark-black {
+    color: #000000 !important;
+  }
+
+  /* Ensure card titles are visible */
+  [class*="card"] h2,
+  [class*="card"] h3,
+  [class*="card"] h4,
+  [class*="card"] h5 {
+    color: #000000 !important;
+    font-weight: 700 !important;
+  }
+
+  .dark [class*="card"] h2,
+  .dark [class*="card"] h3,
+  .dark [class*="card"] h4,
+  .dark [class*="card"] h5 {
+    color: #FFFFFF !important;
+  }
+
+  /* Paragraphs - Good contrast */
+  p {
+    color: #1f2937 !important;
+  }
+
+  .dark p {
+    color: #e5e7eb !important;
+  }
+
+  /* List items */
+  li {
+    color: #1f2937 !important;
+  }
+
+  .dark li {
+    color: #e5e7eb !important;
+  }
+
+  /* Ensure description text is visible */
+  .description,
+  [class*="description"],
+  .text-sm,
+  .text-xs {
+    color: #374151 !important;
+  }
+
+  .dark .description,
+  .dark [class*="description"],
+  .dark .text-sm,
+  .dark .text-xs {
+    color: #d1d5db !important;
+  }
+}

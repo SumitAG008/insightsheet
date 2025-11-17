@@ -159,38 +159,78 @@ button:focus-visible {
 
 /* Text Visibility Fixes - Force Readable Colors */
 @layer components {
-  /* ALL TEXT - Bold White Font (since app uses dark backgrounds) */
-  body, body * {
-    color: #FFFFFF !important;
+  /* Make all text BOLD by default */
+  * {
     font-weight: 600 !important;
   }
 
-  /* Main Headings - Extra Bold White */
+  /* Headings - Extra Bold */
   h1, h2, h3, h4, h5, h6 {
     font-weight: 700 !important;
+  }
+
+  /* Dark backgrounds (purple, slate, indigo) - WHITE text */
+  [class*="slate-9"],
+  [class*="purple-9"],
+  [class*="indigo-9"],
+  [class*="bg-gradient"],
+  .bg-slate-900,
+  .bg-purple-900,
+  .bg-indigo-900 {
     color: #FFFFFF !important;
   }
 
-  /* Section titles and labels - Bold White */
-  label,
-  [class*="label"],
-  [class*="title"],
-  span,
-  div,
-  p,
-  li,
+  [class*="slate-9"] *,
+  [class*="purple-9"] *,
+  [class*="indigo-9"] *,
+  [class*="bg-gradient"] *,
+  .bg-slate-900 *,
+  .bg-purple-900 *,
+  .bg-indigo-900 * {
+    color: #FFFFFF !important;
+  }
+
+  /* Light/White backgrounds - BLACK text */
+  [class*="bg-white"],
+  [class*="bg-slate-50"],
+  [class*="bg-gray-50"],
+  .bg-white,
+  .bg-slate-50 {
+    color: #000000 !important;
+  }
+
+  [class*="bg-white"] *,
+  [class*="bg-slate-50"] *,
+  [class*="bg-gray-50"] *,
+  .bg-white *,
+  .bg-slate-50 * {
+    color: #000000 !important;
+  }
+
+  /* Buttons - Bold, with proper contrast */
   button {
-    color: #FFFFFF !important;
-    font-weight: 600 !important;
-  }
-
-  /* Table headers - Bold White */
-  th, thead {
-    color: #FFFFFF !important;
     font-weight: 700 !important;
   }
 
-  /* Form inputs - White text on dark background */
+  /* Selected/Active buttons - Light background with BLACK text */
+  button[class*="bg-gradient"],
+  button.bg-purple-600,
+  button.bg-indigo-600,
+  button[data-state="active"],
+  button.active,
+  [role="tab"][data-state="active"] {
+    background: rgba(147, 197, 253, 0.3) !important; /* Light blue background */
+    color: #000000 !important;
+    font-weight: 700 !important;
+  }
+
+  /* Unselected buttons on white background - BLACK text */
+  [class*="bg-white"] button,
+  [class*="bg-slate-50"] button {
+    color: #000000 !important;
+  }
+
+  /* Form inputs */
   input[type="text"],
   input[type="number"],
   input[type="date"],
@@ -198,26 +238,17 @@ button:focus-visible {
   input[type="password"],
   textarea,
   select {
-    color: #FFFFFF !important;
-    background-color: rgba(30, 41, 59, 0.5) !important;
     font-weight: 500 !important;
-    border: 1px solid rgba(148, 163, 184, 0.2) !important;
   }
 
-  /* Placeholders - Light gray for visibility */
-  ::placeholder {
-    color: #9ca3af !important;
-    opacity: 1 !important;
-  }
-
-  /* Links - Keep colored but make bold */
-  a {
-    font-weight: 600 !important;
-  }
-
-  /* Buttons - Bold White text */
-  button {
+  /* Table headers */
+  th, thead {
     font-weight: 700 !important;
-    color: #FFFFFF !important;
+  }
+
+  /* Placeholders */
+  ::placeholder {
+    color: #6b7280 !important;
+    opacity: 1 !important;
   }
 }

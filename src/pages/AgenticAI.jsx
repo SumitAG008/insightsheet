@@ -22,9 +22,29 @@ export default function AgenticAI() {
     const csvData = JSON.parse(sessionStorage.getItem('insightsheet_data') || 'null');
     setData(csvData);
 
-    // Load history from localStorage
+    // Load history from localStorage and clean up old entries
     const saved = JSON.parse(localStorage.getItem('agent_history') || '[]');
-    setHistory(saved);
+
+    // Cleanup: Remove entries older than 30 days
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const recentHistory = saved.filter(item => {
+      try {
+        const itemDate = new Date(item.timestamp).getTime();
+        return itemDate > thirtyDaysAgo;
+      } catch {
+        return false; // Remove invalid entries
+      }
+    });
+
+    // Keep only the 10 most recent entries
+    const limitedHistory = recentHistory.slice(0, 10);
+
+    // Update localStorage if cleanup occurred
+    if (limitedHistory.length !== saved.length) {
+      localStorage.setItem('agent_history', JSON.stringify(limitedHistory));
+    }
+
+    setHistory(limitedHistory);
   }, []);
 
   // EXAMPLE TASKS
@@ -180,10 +200,18 @@ Create a clear, executive summary in markdown format with:
 
       setAgent({ phase: 'completed', ...execution });
 
-      // Save to history
+      // Save to history (limit to 10 most recent entries)
       const newHistory = [execution, ...history].slice(0, 10);
       setHistory(newHistory);
-      localStorage.setItem('agent_history', JSON.stringify(newHistory));
+
+      // Cleanup: Only keep entries from the last 30 days
+      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      const recentHistory = newHistory.filter(item => {
+        const itemDate = new Date(item.timestamp).getTime();
+        return itemDate > thirtyDaysAgo;
+      });
+
+      localStorage.setItem('agent_history', JSON.stringify(recentHistory));
 
     } catch (error) {
       console.error('Agent error:', error);
@@ -566,7 +594,12 @@ Create a clear, business-ready summary.`;
                         const a = document.createElement('a');
                         a.href = url;
                         a.download = `agent-report-${Date.now()}.md`;
+                        document.body.appendChild(a);
                         a.click();
+                        document.body.removeChild(a);
+
+                        // Cleanup: Revoke the blob URL to free memory
+                        URL.revokeObjectURL(url);
                       }}
                     >
                       <Download className="w-4 h-4 mr-2" />
@@ -607,7 +640,25 @@ Create a clear, business-ready summary.`;
         {/* Execution History */}
         {history.length > 0 && (
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-white mb-4">📜 Recent Agent Executions</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">📜 Recent Agent Executions</h2>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                onClick={() => {
+                  if (confirm('Clear all agent execution history? This cannot be undone.')) {
+                    localStorage.removeItem('agent_history');
+                    setHistory([]);
+                  }
+                }}
+              >
+                Clear History
+              </Button>
+            </div>
+            <p className="text-xs text-slate-500 mb-4">
+              History is automatically cleaned up after 30 days. Only the 10 most recent executions are kept.
+            </p>
             <div className="space-y-3">
               {history.slice(0, 5).map((execution, idx) => (
                 <div
@@ -619,7 +670,7 @@ Create a clear, business-ready summary.`;
                     <div className="flex-1">
                       <p className="text-white font-semibold mb-1">{execution.task}</p>
                       <p className="text-xs text-slate-400">
-                        {new Date(execution.timestamp).toLocaleString()} • 
+                        {new Date(execution.timestamp).toLocaleString()} •
                         {execution.results.length} steps completed
                       </p>
                     </div>

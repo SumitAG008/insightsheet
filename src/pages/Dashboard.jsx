@@ -40,7 +40,7 @@ export default function Dashboard() {
 
   const exportAsCSV = () => {
     if (!data) return;
-    
+
     const headers = data.headers.join(',');
     const rows = data.rows.map(row => {
       return data.headers.map(header => {
@@ -51,17 +51,29 @@ export default function Dashboard() {
         return value ?? '';
       }).join(',');
     }).join('\n');
-    
+
     const csvContent = `${headers}\n${rows}`;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
-    
+
     link.setAttribute('href', url);
     link.setAttribute('download', `cleaned_${filename.replace(/\.[^/.]+$/, '')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // Cleanup: Revoke the blob URL to free memory
+    URL.revokeObjectURL(url);
+
+    // Optional: Ask user if they want to clear the data after export
+    setTimeout(() => {
+      if (confirm('Data exported successfully!\n\nWould you like to clear the data from this session? This will free up browser memory.')) {
+        sessionStorage.removeItem('insightsheet_data');
+        sessionStorage.removeItem('insightsheet_filename');
+        navigate(createPageUrl('Upload'));
+      }
+    }, 100);
   };
 
   const exportAsExcel = () => {
@@ -80,7 +92,7 @@ export default function Dashboard() {
     });
 
     const ws = window.XLSX.utils.aoa_to_sheet(ws_data);
-    
+
     // Auto-size columns
     const colWidths = data.headers.map((h, i) => {
       const maxLength = Math.max(
@@ -97,6 +109,15 @@ export default function Dashboard() {
 
     // Export
     window.XLSX.writeFile(wb, `cleaned_${filename.replace(/\.[^/.]+$/, '')}.xlsx`);
+
+    // Optional: Ask user if they want to clear the data after export
+    setTimeout(() => {
+      if (confirm('Data exported successfully!\n\nWould you like to clear the data from this session? This will free up browser memory.')) {
+        sessionStorage.removeItem('insightsheet_data');
+        sessionStorage.removeItem('insightsheet_filename');
+        navigate(createPageUrl('Upload'));
+      }
+    }, 100);
   };
 
   const handleExport = () => {

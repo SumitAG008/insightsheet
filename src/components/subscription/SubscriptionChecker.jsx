@@ -1,4 +1,4 @@
-// components/subscription/SubscriptionChecker.jsx - Enhanced with strict file size enforcement
+// components/subscription/SubscriptionChecker.jsx - Meldra - Works without mandatory login
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { AlertCircle, Crown, Zap, Lock } from 'lucide-react';
@@ -22,8 +22,8 @@ export default function SubscriptionChecker({ children }) {
       const currentUser = await base44.auth.me();
       setUser(currentUser);
 
-      let userSub = await base44.entities.Subscription.filter({ 
-        user_email: currentUser.email 
+      let userSub = await base44.entities.Subscription.filter({
+        user_email: currentUser.email
       });
 
       if (userSub.length === 0) {
@@ -39,7 +39,7 @@ export default function SubscriptionChecker({ children }) {
         setSubscription(newSub);
       } else {
         setSubscription(userSub[0]);
-        
+
         // Calculate days left for trial users
         if (userSub[0].trial_end_date) {
           const endDate = new Date(userSub[0].trial_end_date);
@@ -49,7 +49,9 @@ export default function SubscriptionChecker({ children }) {
         }
       }
     } catch (error) {
-      console.error('Error checking subscription:', error);
+      // User not logged in - that's okay for testing
+      console.log('User not logged in - showing free plan UI');
+      setSubscription({ plan: 'free', status: 'active', ai_queries_used: 0, files_uploaded: 0 });
     }
     setLoading(false);
   };
@@ -68,8 +70,11 @@ export default function SubscriptionChecker({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-purple-50/30 to-slate-50 dark:from-slate-950 dark:via-purple-950/20 dark:to-slate-950">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500" />
+          <p className="text-slate-600 dark:text-slate-400">Loading Meldra...</p>
+        </div>
       </div>
     );
   }
@@ -81,12 +86,12 @@ export default function SubscriptionChecker({ children }) {
     <>
       {/* Trial Expiration Warning */}
       {subscription?.status === 'trial' && daysLeft !== null && daysLeft <= 7 && (
-        <Alert className="mb-4 mx-4 bg-amber-500/10 border-amber-500/30">
-          <AlertCircle className="h-5 w-5 text-amber-400" />
-          <AlertDescription className="text-slate-300">
-            <strong className="text-amber-300">Trial Ending Soon!</strong> Your free trial expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}.
+        <Alert className="mb-4 mx-4 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30">
+          <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="text-slate-700 dark:text-slate-300">
+            <strong className="text-amber-700 dark:text-amber-300">Trial Ending Soon!</strong> Your free trial expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}.
             <Link to={createPageUrl('Pricing')}>
-              <Button size="sm" className="ml-4 bg-amber-600 hover:bg-amber-700">
+              <Button size="sm" className="ml-4 bg-amber-600 hover:bg-amber-700 text-white">
                 Upgrade Now
               </Button>
             </Link>
@@ -94,19 +99,19 @@ export default function SubscriptionChecker({ children }) {
         </Alert>
       )}
 
-      {/* Subscription Info Bar */}
-      <div className="sticky top-16 z-40 bg-slate-900/95 backdrop-blur-xl border-b border-slate-700/50 shadow-lg">
+      {/* Subscription Info Bar - Meldra Styled */}
+      <div className="sticky top-16 z-40 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-purple-200/50 dark:border-purple-800/30 shadow-sm">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-6 text-sm">
               {/* Plan Badge */}
               <div className="flex items-center gap-2">
                 {subscription?.plan === 'premium' ? (
-                  <Crown className="w-4 h-4 text-amber-400" />
+                  <Crown className="w-4 h-4 text-amber-500" />
                 ) : (
-                  <Zap className="w-4 h-4 text-purple-400" />
+                  <Zap className="w-4 h-4 text-purple-500" />
                 )}
-                <span className="font-semibold text-slate-200">
+                <span className="font-semibold text-slate-800 dark:text-slate-200">
                   {subscription?.plan === 'premium' ? 'Premium Plan' : 'Free Plan'}
                 </span>
               </div>
@@ -114,23 +119,23 @@ export default function SubscriptionChecker({ children }) {
               {/* File Size Limit */}
               <div className="flex items-center gap-2">
                 <Lock className="w-4 h-4 text-slate-400" />
-                <span className="text-slate-400">
-                  File Size: <strong className="text-slate-200">{getFileSizeLimit()}MB</strong>
+                <span className="text-slate-600 dark:text-slate-400">
+                  File Size: <strong className="text-slate-800 dark:text-slate-200">{getFileSizeLimit()}MB</strong>
                 </span>
               </div>
 
               {/* Transaction Usage */}
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${
-                  transactionUsage >= 90 ? 'bg-red-500' : 
-                  transactionUsage >= 70 ? 'bg-amber-500' : 
+                  transactionUsage >= 90 ? 'bg-red-500' :
+                  transactionUsage >= 70 ? 'bg-amber-500' :
                   'bg-emerald-500'
                 } animate-pulse`} />
-                <span className="text-slate-400">
+                <span className="text-slate-600 dark:text-slate-400">
                   Transactions: <strong className={`${
-                    transactionUsage >= 90 ? 'text-red-400' : 
-                    transactionUsage >= 70 ? 'text-amber-400' : 
-                    'text-slate-200'
+                    transactionUsage >= 90 ? 'text-red-500' :
+                    transactionUsage >= 70 ? 'text-amber-500' :
+                    'text-slate-800 dark:text-slate-200'
                   }`}>
                     {subscription?.files_uploaded || 0}/{getTransactionLimit()}
                   </strong>
@@ -140,15 +145,15 @@ export default function SubscriptionChecker({ children }) {
               {/* AI Query Usage */}
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${
-                  aiQueryUsage >= 90 ? 'bg-red-500' : 
-                  aiQueryUsage >= 70 ? 'bg-amber-500' : 
+                  aiQueryUsage >= 90 ? 'bg-red-500' :
+                  aiQueryUsage >= 70 ? 'bg-amber-500' :
                   'bg-emerald-500'
                 } animate-pulse`} />
-                <span className="text-slate-400">
+                <span className="text-slate-600 dark:text-slate-400">
                   AI Queries: <strong className={`${
-                    aiQueryUsage >= 90 ? 'text-red-400' : 
-                    aiQueryUsage >= 70 ? 'text-amber-400' : 
-                    'text-slate-200'
+                    aiQueryUsage >= 90 ? 'text-red-500' :
+                    aiQueryUsage >= 70 ? 'text-amber-500' :
+                    'text-slate-800 dark:text-slate-200'
                   }`}>
                     {subscription?.ai_queries_used || 0}/{getAIQueryLimit()}
                   </strong>
@@ -159,7 +164,7 @@ export default function SubscriptionChecker({ children }) {
             {/* Upgrade Button (only for free users) */}
             {subscription?.plan !== 'premium' && (
               <Link to={createPageUrl('Pricing')}>
-                <Button size="sm" className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700">
+                <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/30">
                   <Crown className="w-4 h-4 mr-2" />
                   Upgrade to Premium
                 </Button>

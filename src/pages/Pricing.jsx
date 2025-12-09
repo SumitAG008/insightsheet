@@ -1,6 +1,6 @@
 // pages/Pricing.jsx - Updated with quarterly/yearly pricing, removed Business plan
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Check, Crown, Sparkles, Zap, Star, CreditCard, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';

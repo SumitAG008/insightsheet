@@ -1,7 +1,7 @@
 
 // pages/FileToPPT.jsx - Advanced Excel to PowerPoint converter (browser-based) with file size limits
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';

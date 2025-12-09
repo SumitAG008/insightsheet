@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, FileSpreadsheet, Loader2, CheckCircle, Info, AlertCircle, Sparkles } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/meldraClient';
 
 export default function FileUploadZone({ onFileUpload, isProcessing }) {
   const [isDragging, setIsDragging] = useState(false);

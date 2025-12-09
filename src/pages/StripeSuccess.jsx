@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/meldraClient';
 import { CheckCircle, Loader2, Sparkles, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 

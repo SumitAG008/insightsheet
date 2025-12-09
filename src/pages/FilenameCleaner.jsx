@@ -1,7 +1,7 @@
 
 // pages/FilenameCleaner.js - ZIP processor with 10MB file size limit enforcement
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';

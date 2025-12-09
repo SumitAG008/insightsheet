@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import SubscriptionChecker from '../components/subscription/SubscriptionChecker';
 import Logo, { MeldraOrb } from '../components/branding/Logo';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/meldraClient';
 import { LoginHistory } from '@/api/entities';
 import { getIPAndLocation, getBrowserInfo } from '../components/tracking/ActivityLogger';
 import ActivityLogger from '../components/tracking/ActivityLogger';

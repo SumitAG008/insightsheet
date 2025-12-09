@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CreditCard, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { base44 } from '@/api/meldraClient';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function PaymentIntegration({ plan, amount, onSuccess }) {

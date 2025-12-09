@@ -1,7 +1,7 @@
-// components/subscription/SubscriptionChecker.jsx - Meldra - Works without mandatory login
+// components/subscription/SubscriptionChecker.jsx - Meldra - 14-day Trial Enforcement
 import React, { useState, useEffect } from 'react';
 import { base44 } from '@/api/meldraClient';
-import { AlertCircle, Crown, Zap, Lock } from 'lucide-react';
+import { AlertCircle, Crown, Zap, Lock, Clock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -12,6 +12,7 @@ export default function SubscriptionChecker({ children }) {
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
   const [daysLeft, setDaysLeft] = useState(null);
+  const [trialExpired, setTrialExpired] = useState(false);
 
   useEffect(() => {
     checkSubscription();
@@ -27,31 +28,35 @@ export default function SubscriptionChecker({ children }) {
       });
 
       if (userSub.length === 0) {
-        // Create free plan subscription for new users
-        const newSub = await base44.entities.Subscription.create({
-          user_email: currentUser.email,
-          plan: 'free',
-          status: 'active',
-          ai_queries_used: 0,
-          ai_queries_limit: 5,
-          files_uploaded: 0
-        });
-        setSubscription(newSub);
+        // No subscription - show free plan UI but mark as needing to start trial
+        setSubscription({ plan: 'none', status: 'none' });
       } else {
-        setSubscription(userSub[0]);
+        const sub = userSub[0];
+        setSubscription(sub);
 
-        // Calculate days left for trial users
-        if (userSub[0].trial_end_date) {
-          const endDate = new Date(userSub[0].trial_end_date);
-          const now = new Date();
-          const days = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
-          setDaysLeft(Math.max(0, days));
+        // Check trial status
+        if (sub.plan === 'free' || sub.status === 'trial') {
+          if (sub.trial_end_date) {
+            const endDate = new Date(sub.trial_end_date);
+            const now = new Date();
+            const days = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+
+            if (days <= 0) {
+              setTrialExpired(true);
+              setDaysLeft(0);
+            } else {
+              setDaysLeft(days);
+            }
+          } else if (sub.trial_used) {
+            // Trial was used but no end date - treat as expired
+            setTrialExpired(true);
+          }
         }
       }
     } catch (error) {
-      // User not logged in - that's okay for testing
-      console.log('User not logged in - showing free plan UI');
-      setSubscription({ plan: 'free', status: 'active', ai_queries_used: 0, files_uploaded: 0 });
+      // User not logged in - show basic UI
+      console.log('User not logged in - showing guest UI');
+      setSubscription({ plan: 'guest', status: 'guest' });
     }
     setLoading(false);
   };
@@ -79,17 +84,45 @@ export default function SubscriptionChecker({ children }) {
     );
   }
 
+  // Trial Expired - Block access and show upgrade prompt
+  if (trialExpired && subscription?.plan !== 'premium') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-purple-50/30 to-slate-50 dark:from-slate-950 dark:via-purple-950/20 dark:to-slate-950 p-4">
+        <div className="meldra-card p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+            <Clock className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-4">
+            Free Trial Expired
+          </h2>
+          <p className="text-slate-600 dark:text-slate-400 mb-6">
+            Your 14-day free trial has ended. Upgrade to Premium to continue using Meldra's powerful data intelligence features.
+          </p>
+          <Link to={createPageUrl('Pricing')}>
+            <Button className="w-full meldra-button-primary mb-4">
+              <Crown className="w-4 h-4 mr-2" />
+              Upgrade to Premium
+            </Button>
+          </Link>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Only one free trial per email address is allowed.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const transactionUsage = ((subscription?.files_uploaded || 0) / getTransactionLimit()) * 100;
   const aiQueryUsage = ((subscription?.ai_queries_used || 0) / getAIQueryLimit()) * 100;
 
   return (
     <>
       {/* Trial Expiration Warning */}
-      {subscription?.status === 'trial' && daysLeft !== null && daysLeft <= 7 && (
-        <Alert className="mb-4 mx-4 bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30">
-          <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-          <AlertDescription className="text-slate-700 dark:text-slate-300">
-            <strong className="text-amber-700 dark:text-amber-300">Trial Ending Soon!</strong> Your free trial expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}.
+      {daysLeft !== null && daysLeft > 0 && daysLeft <= 7 && subscription?.plan !== 'premium' && (
+        <Alert className="mx-4 mt-4 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-500/30">
+          <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="text-amber-700 dark:text-amber-300">
+            <strong>Trial Ending Soon!</strong> Your free trial expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}.
             <Link to={createPageUrl('Pricing')}>
               <Button size="sm" className="ml-4 bg-amber-600 hover:bg-amber-700 text-white">
                 Upgrade Now
@@ -112,7 +145,9 @@ export default function SubscriptionChecker({ children }) {
                   <Zap className="w-4 h-4 text-purple-500" />
                 )}
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
-                  {subscription?.plan === 'premium' ? 'Premium Plan' : 'Free Plan'}
+                  {subscription?.plan === 'premium' ? 'Premium Plan' :
+                   subscription?.plan === 'guest' ? 'Guest' :
+                   daysLeft ? `Free Trial (${daysLeft} days left)` : 'Free Plan'}
                 </span>
               </div>
 
@@ -137,7 +172,7 @@ export default function SubscriptionChecker({ children }) {
                     transactionUsage >= 70 ? 'text-amber-500' :
                     'text-slate-800 dark:text-slate-200'
                   }`}>
-                    {subscription?.files_uploaded || 0}/{getTransactionLimit()}
+                    {subscription?.files_uploaded || 0}/{getTransactionLimit() === 999999 ? '∞' : getTransactionLimit()}
                   </strong>
                 </span>
               </div>
@@ -155,13 +190,13 @@ export default function SubscriptionChecker({ children }) {
                     aiQueryUsage >= 70 ? 'text-amber-500' :
                     'text-slate-800 dark:text-slate-200'
                   }`}>
-                    {subscription?.ai_queries_used || 0}/{getAIQueryLimit()}
+                    {subscription?.ai_queries_used || 0}/{getAIQueryLimit() === 999999 ? '∞' : getAIQueryLimit()}
                   </strong>
                 </span>
               </div>
             </div>
 
-            {/* Upgrade Button (only for free users) */}
+            {/* Upgrade Button (only for non-premium users) */}
             {subscription?.plan !== 'premium' && (
               <Link to={createPageUrl('Pricing')}>
                 <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/30">

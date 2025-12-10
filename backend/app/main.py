@@ -193,11 +193,17 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(new_user)
 
-        # Create free subscription
+        # Create free subscription with 14-day trial
+        trial_start = datetime.utcnow()
+        trial_end = trial_start + timedelta(days=14)
+
         subscription = Subscription(
             user_email=user_data.email,
             plan="free",
-            status="active",
+            status="trial",
+            trial_used=True,  # Mark trial as used for this email
+            trial_start_date=trial_start,
+            trial_end_date=trial_end,
             ai_queries_limit=5,
             ai_queries_used=0
         )
@@ -731,11 +737,17 @@ async def get_my_subscription(
     ).first()
 
     if not subscription:
-        # Create free subscription if doesn't exist
+        # Create free subscription with 14-day trial if doesn't exist
+        trial_start = datetime.utcnow()
+        trial_end = trial_start + timedelta(days=14)
+
         subscription = Subscription(
             user_email=current_user["email"],
             plan="free",
-            status="active",
+            status="trial",
+            trial_used=True,
+            trial_start_date=trial_start,
+            trial_end_date=trial_end,
             ai_queries_limit=5,
             ai_queries_used=0
         )
@@ -748,6 +760,9 @@ async def get_my_subscription(
         "user_email": subscription.user_email,
         "plan": subscription.plan,
         "status": subscription.status,
+        "trial_used": subscription.trial_used,
+        "trial_start_date": subscription.trial_start_date.isoformat() if subscription.trial_start_date else None,
+        "trial_end_date": subscription.trial_end_date.isoformat() if subscription.trial_end_date else None,
         "ai_queries_used": subscription.ai_queries_used,
         "ai_queries_limit": subscription.ai_queries_limit,
         "files_uploaded": subscription.files_uploaded,

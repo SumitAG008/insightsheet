@@ -80,9 +80,10 @@ class Subscription(Base):
 
     # Plan details
     plan = Column(String(50), default="free")  # free, premium
-    status = Column(String(50), default="active")  # active, cancelled, expired
+    status = Column(String(50), default="trial")  # trial, active, cancelled, expired
 
-    # Trial
+    # Trial - 14 days one-time per email
+    trial_used = Column(Boolean, default=False)  # True if trial was already used
     trial_start_date = Column(DateTime, nullable=True)
     trial_end_date = Column(DateTime, nullable=True)
 
@@ -92,7 +93,7 @@ class Subscription(Base):
 
     # Usage limits
     ai_queries_used = Column(Integer, default=0)
-    ai_queries_limit = Column(Integer, default=100)  # 100 for free, unlimited for premium
+    ai_queries_limit = Column(Integer, default=5)  # 5 for free trial, unlimited for premium
     files_uploaded = Column(Integer, default=0)
 
     # Payment
@@ -110,6 +111,7 @@ class Subscription(Base):
             "user_email": self.user_email,
             "plan": self.plan,
             "status": self.status,
+            "trial_used": self.trial_used,
             "trial_start_date": self.trial_start_date.isoformat() if self.trial_start_date else None,
             "trial_end_date": self.trial_end_date.isoformat() if self.trial_end_date else None,
             "subscription_start_date": self.subscription_start_date.isoformat() if self.subscription_start_date else None,

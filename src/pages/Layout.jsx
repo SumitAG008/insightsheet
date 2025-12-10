@@ -1,9 +1,9 @@
 
 // Layout.jsx - Remove Workflow, Excel-to-PPT, add Agentic AI
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain } from 'lucide-react';
+import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, Menu, X, LogIn } from 'lucide-react';
 import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
 import Logo from '@/components/branding/Logo';
 import { backendApi } from '@/api/backendClient';
@@ -15,6 +15,7 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const [user, setUser] = React.useState(null);
   const [loginTime, setLoginTime] = React.useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const loadUser = useCallback(async () => {
     try {
@@ -261,14 +262,140 @@ export default function Layout({ children }) {
                 </div>
               ) : (
                 <Link
-                  to={createPageUrl('Login')}
+                  to="/login"
                   className="ml-4 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-purple-500/50 font-medium"
                 >
                   Login
                 </Link>
               )}
             </div>
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-purple-300 hover:text-purple-100"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
+
+          {/* Mobile Navigation Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden border-t border-purple-800/30 py-4 space-y-2">
+              <Link
+                to={createPageUrl('Upload')}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('Upload'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                    : 'text-purple-300 hover:bg-purple-900/50'
+                }`}
+              >
+                <Upload className="w-4 h-4" />
+                <span>CSV Upload</span>
+              </Link>
+
+              <Link
+                to={createPageUrl('Dashboard')}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('Dashboard'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                    : 'text-purple-300 hover:bg-purple-900/50'
+                }`}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                <span>Dashboard</span>
+              </Link>
+
+              <Link
+                to={createPageUrl('AgenticAI')}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('AgenticAI'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                    : 'text-purple-300 hover:bg-purple-900/50'
+                }`}
+              >
+                <Brain className="w-4 h-4" />
+                <span>Agentic AI</span>
+              </Link>
+
+              <Link
+                to={createPageUrl('FileToPPT')}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('FileToPPT'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                    : 'text-purple-300 hover:bg-purple-900/50'
+                }`}
+              >
+                <FileText className="w-4 h-4" />
+                <span>File to PPT</span>
+              </Link>
+
+              <Link
+                to={createPageUrl('FilenameCleaner')}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('FilenameCleaner'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                    : 'text-purple-300 hover:bg-purple-900/50'
+                }`}
+              >
+                <FileArchive className="w-4 h-4" />
+                <span>ZIP Cleaner</span>
+              </Link>
+
+              <Link
+                to={createPageUrl('Pricing')}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('Pricing'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                    : 'text-purple-300 hover:bg-purple-900/50'
+                }`}
+              >
+                <DollarSign className="w-4 h-4" />
+                <span>Pricing</span>
+              </Link>
+
+              <div className="border-t border-purple-800/30 pt-4 mt-4">
+                {user ? (
+                  <div className="px-4 space-y-3">
+                    <p className="text-sm text-purple-300">{user.email}</p>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full py-2 px-4 bg-purple-900/50 text-purple-300 rounded-lg hover:bg-purple-900 transition-colors"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                ) : (
+                  <div className="px-4 space-y-2">
+                    <Link
+                      to="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium"
+                    >
+                      <LogIn className="w-4 h-4" />
+                      Login
+                    </Link>
+                    <Link
+                      to="/register"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-center gap-2 w-full py-3 border border-purple-500/50 text-purple-300 rounded-lg font-medium hover:bg-purple-900/30"
+                    >
+                      Sign Up
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 

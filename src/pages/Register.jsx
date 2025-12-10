@@ -72,11 +72,11 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 flex items-center justify-center p-4">
       <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
           </div>
@@ -152,7 +152,7 @@ export default function Register() {
             <Button
               type="submit"
               disabled={loading || success}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
             >
               {loading ? (
                 <>
@@ -173,7 +173,7 @@ export default function Register() {
             </Button>
             <p className="text-sm text-center text-slate-400">
               Already have an account?{' '}
-              <Link to="/login" className="text-purple-400 hover:text-purple-300 underline">
+              <Link to="/login" className="text-blue-400 hover:text-blue-300 underline">
                 Sign in
               </Link>
             </p>

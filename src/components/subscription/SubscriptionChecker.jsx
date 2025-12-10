@@ -75,9 +75,9 @@ export default function SubscriptionChecker({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-blue-950/20 to-slate-950">
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
           <p className="text-slate-400">Loading...</p>
         </div>
       </div>
@@ -87,8 +87,8 @@ export default function SubscriptionChecker({ children }) {
   // Trial Expired - Block access and show upgrade prompt
   if (trialExpired && subscription?.plan !== 'premium') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-purple-950/20 to-slate-950 p-4">
-        <div className="bg-slate-900/80 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-8 max-w-md w-full text-center">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-blue-950/20 to-slate-950 p-4">
+        <div className="bg-slate-900/80 backdrop-blur-xl border border-blue-500/30 rounded-2xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-red-900/30 flex items-center justify-center">
             <Clock className="w-8 h-8 text-red-500" />
           </div>
@@ -99,7 +99,7 @@ export default function SubscriptionChecker({ children }) {
             Your 14-day free trial has ended. Upgrade to Premium to continue using InsightSheet's powerful data intelligence features.
           </p>
           <Link to={createPageUrl('Pricing')}>
-            <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white mb-4">
+            <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white mb-4">
               <Crown className="w-4 h-4 mr-2" />
               Upgrade to Premium
             </Button>
@@ -138,7 +138,7 @@ export default function SubscriptionChecker({ children }) {
       )}
 
       {/* Subscription Info Bar */}
-      <div className="sticky top-16 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-purple-800/30 shadow-sm">
+      <div className="sticky top-16 z-40 bg-slate-900/80 backdrop-blur-xl border-b border-blue-800/30 shadow-sm">
         <div className="container mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-6 text-sm">
@@ -147,7 +147,7 @@ export default function SubscriptionChecker({ children }) {
                 {subscription?.plan === 'premium' ? (
                   <Crown className="w-4 h-4 text-amber-500" />
                 ) : (
-                  <Zap className="w-4 h-4 text-purple-500" />
+                  <Zap className="w-4 h-4 text-blue-500" />
                 )}
                 <span className="font-semibold text-slate-200">
                   {subscription?.plan === 'premium' ? 'Premium Plan' :
@@ -203,7 +203,7 @@ export default function SubscriptionChecker({ children }) {
             {/* Upgrade Button (only for non-premium users) */}
             {subscription?.plan !== 'premium' && (
               <Link to={createPageUrl('Pricing')}>
-                <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/30">
+                <Button size="sm" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/30">
                   <Crown className="w-4 h-4 mr-2" />
                   Upgrade to Premium
                 </Button>

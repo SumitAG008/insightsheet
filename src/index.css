@@ -2,102 +2,102 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Meldra Design System - Premium Balanced Theme */
+/* InsightSheet Design System - Royal Blue Premium Theme */
 
 @layer base {
   :root {
-    /* Meldra Brand Colors */
-    --meldra-purple-50: 270 100% 98%;
-    --meldra-purple-100: 269 100% 95%;
-    --meldra-purple-200: 269 100% 92%;
-    --meldra-purple-300: 269 97% 85%;
-    --meldra-purple-400: 270 95% 75%;
-    --meldra-purple-500: 271 91% 65%;
-    --meldra-purple-600: 271 81% 56%;
-    --meldra-purple-700: 272 72% 47%;
-    --meldra-purple-800: 273 67% 39%;
-    --meldra-purple-900: 274 66% 32%;
+    /* Royal Blue Brand Colors */
+    --royal-blue-50: 225 100% 98%;
+    --royal-blue-100: 225 100% 95%;
+    --royal-blue-200: 225 100% 90%;
+    --royal-blue-300: 225 95% 80%;
+    --royal-blue-400: 225 90% 70%;
+    --royal-blue-500: 225 73% 57%;
+    --royal-blue-600: 225 70% 50%;
+    --royal-blue-700: 225 65% 42%;
+    --royal-blue-800: 225 60% 35%;
+    --royal-blue-900: 225 55% 28%;
 
-    --meldra-blue-deep: 213 54% 24%;
-    --meldra-teal: 173 58% 39%;
+    --accent-gold: 45 93% 58%;
+    --accent-teal: 173 58% 45%;
 
-    /* Light Theme - Balanced & Premium */
-    --background: 270 20% 98%;
-    --foreground: 274 50% 15%;
+    /* Light Theme - Royal Blue */
+    --background: 220 20% 98%;
+    --foreground: 225 50% 15%;
     --card: 0 0% 100%;
-    --card-foreground: 274 50% 15%;
+    --card-foreground: 225 50% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 274 50% 15%;
-    --primary: 271 91% 65%;
+    --popover-foreground: 225 50% 15%;
+    --primary: 225 73% 57%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 269 30% 94%;
-    --secondary-foreground: 274 50% 25%;
-    --muted: 270 20% 96%;
-    --muted-foreground: 274 20% 45%;
-    --accent: 271 91% 65%;
+    --secondary: 220 30% 94%;
+    --secondary-foreground: 225 50% 25%;
+    --muted: 220 20% 96%;
+    --muted-foreground: 225 20% 45%;
+    --accent: 225 73% 57%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 270 20% 90%;
-    --input: 270 20% 90%;
-    --ring: 271 91% 65%;
+    --border: 220 20% 90%;
+    --input: 220 20% 90%;
+    --ring: 225 73% 57%;
 
-    /* Chart Colors - Meldra Palette */
-    --chart-1: 271 91% 65%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 213 54% 45%;
-    --chart-4: 330 80% 60%;
-    --chart-5: 45 93% 58%;
+    /* Chart Colors - Royal Blue Palette */
+    --chart-1: 225 73% 57%;
+    --chart-2: 173 58% 45%;
+    --chart-3: 45 93% 58%;
+    --chart-4: 330 70% 55%;
+    --chart-5: 200 80% 50%;
 
     --radius: 0.75rem;
 
     /* Sidebar - Light Theme */
-    --sidebar-background: 270 20% 99%;
-    --sidebar-foreground: 274 50% 25%;
-    --sidebar-primary: 271 91% 65%;
+    --sidebar-background: 220 20% 99%;
+    --sidebar-foreground: 225 50% 25%;
+    --sidebar-primary: 225 73% 57%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 269 30% 94%;
-    --sidebar-accent-foreground: 274 50% 25%;
-    --sidebar-border: 270 20% 92%;
-    --sidebar-ring: 271 91% 65%;
+    --sidebar-accent: 220 30% 94%;
+    --sidebar-accent-foreground: 225 50% 25%;
+    --sidebar-border: 220 20% 92%;
+    --sidebar-ring: 225 73% 57%;
   }
 
   .dark {
-    /* Dark Theme - Sophisticated but not too dark */
-    --background: 270 25% 8%;
-    --foreground: 270 20% 95%;
-    --card: 270 20% 12%;
-    --card-foreground: 270 20% 95%;
-    --popover: 270 20% 10%;
-    --popover-foreground: 270 20% 95%;
-    --primary: 271 91% 65%;
+    /* Dark Theme - Royal Blue Sophisticated */
+    --background: 220 25% 8%;
+    --foreground: 220 20% 95%;
+    --card: 220 20% 12%;
+    --card-foreground: 220 20% 95%;
+    --popover: 220 20% 10%;
+    --popover-foreground: 220 20% 95%;
+    --primary: 225 73% 60%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 270 15% 18%;
-    --secondary-foreground: 270 20% 90%;
-    --muted: 270 15% 15%;
-    --muted-foreground: 270 15% 60%;
-    --accent: 271 91% 65%;
+    --secondary: 220 15% 18%;
+    --secondary-foreground: 220 20% 90%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 15% 60%;
+    --accent: 225 73% 60%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 62% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 270 15% 20%;
-    --input: 270 15% 20%;
-    --ring: 271 91% 65%;
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 225 73% 60%;
 
-    --chart-1: 271 91% 70%;
+    --chart-1: 225 73% 65%;
     --chart-2: 173 58% 50%;
-    --chart-3: 213 70% 55%;
-    --chart-4: 330 80% 65%;
-    --chart-5: 45 93% 62%;
+    --chart-3: 45 93% 60%;
+    --chart-4: 330 70% 60%;
+    --chart-5: 200 80% 55%;
 
-    --sidebar-background: 270 20% 10%;
-    --sidebar-foreground: 270 20% 90%;
-    --sidebar-primary: 271 91% 65%;
+    --sidebar-background: 220 20% 10%;
+    --sidebar-foreground: 220 20% 90%;
+    --sidebar-primary: 225 73% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 270 15% 18%;
-    --sidebar-accent-foreground: 270 20% 90%;
-    --sidebar-border: 270 15% 18%;
-    --sidebar-ring: 271 91% 65%;
+    --sidebar-accent: 220 15% 18%;
+    --sidebar-accent-foreground: 220 20% 90%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 225 73% 60%;
   }
 }
 
@@ -110,17 +110,17 @@
   }
 }
 
-/* Meldra Custom Animations */
-@keyframes meldra-glow {
+/* Custom Animations */
+@keyframes royal-glow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 20px rgba(65, 105, 225, 0.3);
   }
   50% {
-    box-shadow: 0 0 40px rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 40px rgba(65, 105, 225, 0.5);
   }
 }
 
-@keyframes meldra-float {
+@keyframes float {
   0%, 100% {
     transform: translateY(0px);
   }
@@ -129,7 +129,7 @@
   }
 }
 
-@keyframes meldra-pulse {
+@keyframes pulse-soft {
   0%, 100% {
     opacity: 1;
   }
@@ -138,7 +138,7 @@
   }
 }
 
-@keyframes meldra-gradient {
+@keyframes gradient-shift {
   0% {
     background-position: 0% 50%;
   }
@@ -150,7 +150,7 @@
   }
 }
 
-@keyframes meldra-shimmer {
+@keyframes shimmer {
   0% {
     transform: translateX(-100%);
   }
@@ -177,23 +177,65 @@
   }
 }
 
-/* Meldra Utility Classes */
+/* Utility Classes */
 @layer utilities {
+  .royal-glow {
+    animation: royal-glow 3s ease-in-out infinite;
+  }
+
+  .float-animation {
+    animation: float 4s ease-in-out infinite;
+  }
+
+  .pulse-soft {
+    animation: pulse-soft 2s ease-in-out infinite;
+  }
+
+  .gradient-animated {
+    background-size: 200% 200%;
+    animation: gradient-shift 5s ease infinite;
+  }
+
+  .glass-effect {
+    @apply backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border border-white/20 dark:border-slate-700/50;
+  }
+
+  .glass-strong {
+    @apply backdrop-blur-2xl bg-white/90 dark:bg-slate-900/90 border border-white/30 dark:border-slate-700/50;
+  }
+
+  .card-royal {
+    @apply bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-lg shadow-blue-500/5;
+  }
+
+  .text-gradient-royal {
+    @apply bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 bg-clip-text text-transparent;
+  }
+
+  .button-primary-royal {
+    @apply bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl px-6 py-3 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-105 transition-all duration-300;
+  }
+
+  .button-secondary-royal {
+    @apply bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold rounded-xl px-6 py-3 border-2 border-blue-200 dark:border-blue-800 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 transition-all duration-300;
+  }
+
+  /* Legacy meldra classes for backward compatibility */
   .meldra-glow {
-    animation: meldra-glow 3s ease-in-out infinite;
+    animation: royal-glow 3s ease-in-out infinite;
   }
 
   .meldra-float {
-    animation: meldra-float 4s ease-in-out infinite;
+    animation: float 4s ease-in-out infinite;
   }
 
   .meldra-pulse {
-    animation: meldra-pulse 2s ease-in-out infinite;
+    animation: pulse-soft 2s ease-in-out infinite;
   }
 
   .meldra-gradient-animated {
     background-size: 200% 200%;
-    animation: meldra-gradient 5s ease infinite;
+    animation: gradient-shift 5s ease infinite;
   }
 
   .meldra-glass {
@@ -205,23 +247,23 @@
   }
 
   .meldra-card {
-    @apply bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-lg shadow-purple-500/5;
+    @apply bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-lg shadow-blue-500/5;
   }
 
   .meldra-text-gradient {
-    @apply bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 bg-clip-text text-transparent;
   }
 
   .meldra-button-primary {
-    @apply bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl px-6 py-3 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-105 transition-all duration-300;
+    @apply bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl px-6 py-3 shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 hover:scale-105 transition-all duration-300;
   }
 
   .meldra-button-secondary {
-    @apply bg-white dark:bg-slate-800 text-purple-600 dark:text-purple-400 font-semibold rounded-xl px-6 py-3 border-2 border-purple-200 dark:border-purple-800 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-slate-700 transition-all duration-300;
+    @apply bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 font-semibold rounded-xl px-6 py-3 border-2 border-blue-200 dark:border-blue-800 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 transition-all duration-300;
   }
 }
 
-/* Meldra Scrollbar */
+/* Scrollbar Styling */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -232,9 +274,9 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-purple-400/50 dark:bg-purple-600/50 rounded-full;
+  @apply bg-blue-400/50 dark:bg-blue-600/50 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-purple-500/70 dark:bg-purple-500/70;
+  @apply bg-blue-500/70 dark:bg-blue-500/70;
 }

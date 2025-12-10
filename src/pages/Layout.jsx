@@ -118,21 +118,21 @@ export default function Layout({ children }) {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
       {/* Navigation */}
-      <nav className="border-b border-purple-800/30 backdrop-blur-xl bg-slate-900/90 sticky top-0 z-50 shadow-lg shadow-purple-900/20">
+      <nav className="border-b border-blue-800/30 backdrop-blur-xl bg-slate-900/90 sticky top-0 z-50 shadow-lg shadow-blue-900/20">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link to={createPageUrl('Upload')} className="group">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-purple-500/50">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/50">
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
-                    InsightSheet<span className="text-purple-400">-lite</span>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-blue-400 bg-clip-text text-transparent">
+                    InsightSheet<span className="text-blue-400">-lite</span>
                   </h1>
-                  <p className="text-xs text-purple-400 font-medium tracking-wider">DATA MADE SIMPLE</p>
+                  <p className="text-xs text-blue-400 font-medium tracking-wider">DATA MADE SIMPLE</p>
                 </div>
               </div>
             </Link>
@@ -142,8 +142,8 @@ export default function Layout({ children }) {
                 to={createPageUrl('Upload')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('Upload'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
-                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
+                    : 'text-blue-300 hover:bg-blue-900/50 hover:text-blue-100'
                 }`}
               >
                 <Upload className="w-4 h-4" />
@@ -154,8 +154,8 @@ export default function Layout({ children }) {
                 to={createPageUrl('Dashboard')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('Dashboard'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
-                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
+                    : 'text-blue-300 hover:bg-blue-900/50 hover:text-blue-100'
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
@@ -166,8 +166,8 @@ export default function Layout({ children }) {
                 to={createPageUrl('AgenticAI')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('AgenticAI'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
-                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
+                    : 'text-blue-300 hover:bg-blue-900/50 hover:text-blue-100'
                 }`}
               >
                 <Brain className="w-4 h-4" />
@@ -178,8 +178,8 @@ export default function Layout({ children }) {
                 to={createPageUrl('FileToPPT')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('FileToPPT'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
-                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
+                    : 'text-blue-300 hover:bg-blue-900/50 hover:text-blue-100'
                 }`}
               >
                 <FileText className="w-4 h-4" />
@@ -190,8 +190,8 @@ export default function Layout({ children }) {
                 to={createPageUrl('FilenameCleaner')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('FilenameCleaner'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
-                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
+                    : 'text-blue-300 hover:bg-blue-900/50 hover:text-blue-100'
                 }`}
               >
                 <FileArchive className="w-4 h-4" />
@@ -202,8 +202,8 @@ export default function Layout({ children }) {
                 to={createPageUrl('Pricing')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('Pricing'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
-                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
+                    : 'text-blue-300 hover:bg-blue-900/50 hover:text-blue-100'
                 }`}
               >
                 <DollarSign className="w-4 h-4" />
@@ -216,8 +216,8 @@ export default function Layout({ children }) {
                     to={createPageUrl('AdminDashboard')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
                       isActive(createPageUrl('AdminDashboard'))
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
-                        : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
+                        : 'text-blue-300 hover:bg-blue-900/50 hover:text-blue-100'
                     }`}
                   >
                     <DollarSign className="w-4 h-4" />
@@ -228,8 +228,8 @@ export default function Layout({ children }) {
                     to={createPageUrl('UserManagement')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
                       isActive(createPageUrl('UserManagement'))
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
-                        : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/50'
+                        : 'text-blue-300 hover:bg-blue-900/50 hover:text-blue-100'
                     }`}
                   >
                     <Users className="w-4 h-4" />
@@ -252,10 +252,10 @@ export default function Layout({ children }) {
 
               {user ? (
                 <div className="ml-4 flex items-center gap-3">
-                  <span className="text-sm text-purple-300">{user.email}</span>
+                  <span className="text-sm text-blue-300">{user.email}</span>
                   <button
                     onClick={handleLogout}
-                    className="text-sm text-purple-400 hover:text-purple-200 font-medium"
+                    className="text-sm text-blue-400 hover:text-blue-200 font-medium"
                   >
                     Logout
                   </button>
@@ -263,7 +263,7 @@ export default function Layout({ children }) {
               ) : (
                 <Link
                   to="/login"
-                  className="ml-4 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-purple-500/50 font-medium"
+                  className="ml-4 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/50 font-medium"
                 >
                   Login
                 </Link>
@@ -273,7 +273,7 @@ export default function Layout({ children }) {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-purple-300 hover:text-purple-100"
+              className="md:hidden p-2 text-blue-300 hover:text-blue-100"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -281,14 +281,14 @@ export default function Layout({ children }) {
 
           {/* Mobile Navigation Menu */}
           {mobileMenuOpen && (
-            <div className="md:hidden border-t border-purple-800/30 py-4 space-y-2">
+            <div className="md:hidden border-t border-blue-800/30 py-4 space-y-2">
               <Link
                 to={createPageUrl('Upload')}
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('Upload'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                    : 'text-purple-300 hover:bg-purple-900/50'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                    : 'text-blue-300 hover:bg-blue-900/50'
                 }`}
               >
                 <Upload className="w-4 h-4" />
@@ -300,8 +300,8 @@ export default function Layout({ children }) {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('Dashboard'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                    : 'text-purple-300 hover:bg-purple-900/50'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                    : 'text-blue-300 hover:bg-blue-900/50'
                 }`}
               >
                 <LayoutDashboard className="w-4 h-4" />
@@ -313,8 +313,8 @@ export default function Layout({ children }) {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('AgenticAI'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                    : 'text-purple-300 hover:bg-purple-900/50'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                    : 'text-blue-300 hover:bg-blue-900/50'
                 }`}
               >
                 <Brain className="w-4 h-4" />
@@ -326,8 +326,8 @@ export default function Layout({ children }) {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('FileToPPT'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                    : 'text-purple-300 hover:bg-purple-900/50'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                    : 'text-blue-300 hover:bg-blue-900/50'
                 }`}
               >
                 <FileText className="w-4 h-4" />
@@ -339,8 +339,8 @@ export default function Layout({ children }) {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('FilenameCleaner'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                    : 'text-purple-300 hover:bg-purple-900/50'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                    : 'text-blue-300 hover:bg-blue-900/50'
                 }`}
               >
                 <FileArchive className="w-4 h-4" />
@@ -352,24 +352,24 @@ export default function Layout({ children }) {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('Pricing'))
-                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
-                    : 'text-purple-300 hover:bg-purple-900/50'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                    : 'text-blue-300 hover:bg-blue-900/50'
                 }`}
               >
                 <DollarSign className="w-4 h-4" />
                 <span>Pricing</span>
               </Link>
 
-              <div className="border-t border-purple-800/30 pt-4 mt-4">
+              <div className="border-t border-blue-800/30 pt-4 mt-4">
                 {user ? (
                   <div className="px-4 space-y-3">
-                    <p className="text-sm text-purple-300">{user.email}</p>
+                    <p className="text-sm text-blue-300">{user.email}</p>
                     <button
                       onClick={() => {
                         handleLogout();
                         setMobileMenuOpen(false);
                       }}
-                      className="w-full py-2 px-4 bg-purple-900/50 text-purple-300 rounded-lg hover:bg-purple-900 transition-colors"
+                      className="w-full py-2 px-4 bg-blue-900/50 text-blue-300 rounded-lg hover:bg-blue-900 transition-colors"
                     >
                       Logout
                     </button>
@@ -379,7 +379,7 @@ export default function Layout({ children }) {
                     <Link
                       to="/login"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium"
+                      className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium"
                     >
                       <LogIn className="w-4 h-4" />
                       Login
@@ -387,7 +387,7 @@ export default function Layout({ children }) {
                     <Link
                       to="/register"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center justify-center gap-2 w-full py-3 border border-purple-500/50 text-purple-300 rounded-lg font-medium hover:bg-purple-900/30"
+                      className="flex items-center justify-center gap-2 w-full py-3 border border-blue-500/50 text-blue-300 rounded-lg font-medium hover:bg-blue-900/30"
                     >
                       Sign Up
                     </Link>
@@ -409,38 +409,38 @@ export default function Layout({ children }) {
       </SubscriptionChecker>
 
       {/* Footer */}
-      <footer className="border-t border-purple-800/30 bg-slate-900/90 mt-auto">
+      <footer className="border-t border-blue-800/30 bg-slate-900/90 mt-auto">
         <div className="container mx-auto px-4 py-8">
           <div className="grid md:grid-cols-3 gap-8">
             <div>
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/50">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/50">
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                    InsightSheet<span className="text-purple-400">-lite</span>
+                  <h1 className="text-lg font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
+                    InsightSheet<span className="text-blue-400">-lite</span>
                   </h1>
                 </div>
               </div>
-              <p className="text-sm text-purple-300">
+              <p className="text-sm text-blue-300">
                 Privacy-first data & file management
               </p>
             </div>
 
             <div>
-              <h3 className="font-semibold text-purple-200 mb-3">Legal</h3>
+              <h3 className="font-semibold text-blue-200 mb-3">Legal</h3>
               <div className="space-y-2">
                 <Link 
                   to={createPageUrl('Privacy')}
-                  className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-200 transition-colors"
+                  className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-200 transition-colors"
                 >
                   <Shield className="w-4 h-4" />
                   Privacy Policy
                 </Link>
                 <Link 
                   to={createPageUrl('Disclaimer')}
-                  className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-200 transition-colors"
+                  className="flex items-center gap-2 text-sm text-blue-400 hover:text-blue-200 transition-colors"
                 >
                   <AlertTriangle className="w-4 h-4" />
                   Disclaimer & Terms
@@ -449,12 +449,12 @@ export default function Layout({ children }) {
             </div>
 
             <div>
-              <div className="bg-gradient-to-br from-purple-900/50 to-pink-900/50 border border-purple-500/30 rounded-xl p-4 backdrop-blur-sm">
+              <div className="bg-gradient-to-br from-blue-900/50 to-indigo-900/50 border border-blue-500/30 rounded-xl p-4 backdrop-blur-sm">
                 <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-5 h-5 text-purple-400" />
-                  <span className="font-semibold text-purple-200 text-sm">Privacy First</span>
+                  <Sparkles className="w-5 h-5 text-blue-400" />
+                  <span className="font-semibold text-blue-200 text-sm">Privacy First</span>
                 </div>
-                <p className="text-xs text-purple-300 leading-relaxed">
+                <p className="text-xs text-blue-300 leading-relaxed">
                   100% browser processing<br />
                   Zero data storage<br />
                   No tracking
@@ -463,8 +463,8 @@ export default function Layout({ children }) {
             </div>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-purple-800/30 text-center">
-            <p className="text-sm text-purple-400">
+          <div className="mt-8 pt-6 border-t border-blue-800/30 text-center">
+            <p className="text-sm text-blue-400">
               © 2024 InsightSheet-lite • All rights reserved
             </p>
           </div>

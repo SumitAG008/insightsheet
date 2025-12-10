@@ -1,7 +1,7 @@
 // components/subscription/SubscriptionChecker.jsx - Meldra - 14-day Trial Enforcement
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/meldraClient';
-import { AlertCircle, Crown, Zap, Lock, Clock } from 'lucide-react';
+import { meldra } from '@/api/meldraClient';
+import { AlertCircle, Crown, Zap, Lock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -20,16 +20,24 @@ export default function SubscriptionChecker({ children }) {
 
   const checkSubscription = async () => {
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await meldra.auth.me();
       setUser(currentUser);
 
-      let userSub = await base44.entities.Subscription.filter({
-        user_email: currentUser.email
+      let userSub = await meldra.entities.Subscription.filter({ 
+        user_email: currentUser.email 
       });
 
       if (userSub.length === 0) {
-        // No subscription - show free plan UI but mark as needing to start trial
-        setSubscription({ plan: 'none', status: 'none' });
+        // Create free plan subscription for new users
+        const newSub = await meldra.entities.Subscription.create({
+          user_email: currentUser.email,
+          plan: 'free',
+          status: 'active',
+          ai_queries_used: 0,
+          ai_queries_limit: 5,
+          files_uploaded: 0
+        });
+        setSubscription(newSub);
       } else {
         const sub = userSub[0];
         setSubscription(sub);

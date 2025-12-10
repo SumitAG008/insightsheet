@@ -1,48 +1,30 @@
-// Layout.jsx - Meldra Premium Design System
-import React, { useCallback, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+
+// Layout.jsx - Remove Workflow, Excel-to-PPT, add Agentic AI
+import React, { useCallback } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import {
-  Upload, LayoutDashboard, DollarSign, FileText, Shield,
-  AlertTriangle, FileArchive, Users, Download, Brain,
-  Menu, X, ChevronDown, Settings, HelpCircle, LogOut,
-  Sparkles, Layers, Sun, Moon
-} from 'lucide-react';
-import SubscriptionChecker from '../components/subscription/SubscriptionChecker';
-import Logo, { MeldraOrb } from '../components/branding/Logo';
-import { base44 } from '@/api/meldraClient';
-import { LoginHistory } from '@/api/entities';
-import { getIPAndLocation, getBrowserInfo } from '../components/tracking/ActivityLogger';
-import ActivityLogger from '../components/tracking/ActivityLogger';
+import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain } from 'lucide-react';
+import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
+import Logo from '@/components/branding/Logo';
+import { backendApi } from '@/api/backendClient';
+import { getIPAndLocation, getBrowserInfo } from '@/components/tracking/ActivityLogger';
+import ActivityLogger from '@/components/tracking/ActivityLogger';
 
 export default function Layout({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [user, setUser] = React.useState(null);
   const [loginTime, setLoginTime] = React.useState(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [toolsDropdownOpen, setToolsDropdownOpen] = useState(false);
-  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-
-  React.useEffect(() => {
-    // Check for dark mode preference
-    const darkMode = localStorage.getItem('meldra-dark-mode') === 'true';
-    setIsDark(darkMode);
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    }
-  }, []);
-
-  const toggleDarkMode = () => {
-    const newDark = !isDark;
-    setIsDark(newDark);
-    localStorage.setItem('meldra-dark-mode', newDark.toString());
-    document.documentElement.classList.toggle('dark', newDark);
-  };
 
   const loadUser = useCallback(async () => {
     try {
-      const currentUser = await base44.auth.me();
+      // Check if we have a token first
+      if (!backendApi.auth.isAuthenticated()) {
+        setUser(null);
+        return;
+      }
+
+      const currentUser = await backendApi.auth.me();
       setUser(currentUser);
 
       const loginTimestamp = Date.now();
@@ -51,11 +33,20 @@ export default function Layout({ children }) {
 
       const sessionLogged = sessionStorage.getItem('sessionLogged');
       if (!sessionLogged) {
-        await logLogin(currentUser.email);
-        sessionStorage.setItem('sessionLogged', 'true');
+        // Try to log login, but don't fail if it doesn't work
+        try {
+          await logLogin(currentUser.email);
+          sessionStorage.setItem('sessionLogged', 'true');
+        } catch (logError) {
+          console.error('Failed to log login:', logError);
+        }
       }
     } catch (error) {
-      // User not logged in
+      // User not logged in or token invalid
+      console.error('Failed to load user:', error);
+      setUser(null);
+      // Clear any invalid tokens
+      backendApi.auth.logout();
     }
   }, []);
 
@@ -68,19 +59,24 @@ export default function Layout({ children }) {
       const ipData = await getIPAndLocation();
       const browser = getBrowserInfo();
 
-      await LoginHistory.create({
-        user_email: email,
-        event_type: 'login',
-        ip_address: ipData.ip,
-        location: ipData.location,
-        browser: browser,
-      });
+      // Try to log via backend API if available
+      // Note: This endpoint might not exist yet, so we catch errors
+      try {
+        await backendApi.activity.log('login', 'Login', {
+          ip_address: ipData.ip,
+          location: ipData.location,
+          browser: browser,
+        });
+      } catch (apiError) {
+        console.log('Activity logging not available:', apiError.message);
+      }
     } catch (error) {
       console.error('Error logging login:', error);
     }
   };
 
   const handleLogout = async () => {
+    // Try to log the logout event, but don't let it block the actual logout
     if (user) {
       try {
         const loginTimestamp = parseInt(sessionStorage.getItem('loginTime') || '0');
@@ -89,14 +85,17 @@ export default function Layout({ children }) {
         const ipData = await getIPAndLocation();
         const browser = getBrowserInfo();
 
-        await LoginHistory.create({
-          user_email: user.email,
-          event_type: 'logout',
-          ip_address: ipData.ip,
-          location: ipData.location,
-          browser: browser,
-          session_duration: sessionDuration
-        });
+        // Try to log via backend API
+        try {
+          await backendApi.activity.log('logout', 'Logout', {
+            ip_address: ipData.ip,
+            location: ipData.location,
+            browser: browser,
+            session_duration: sessionDuration
+          });
+        } catch (apiError) {
+          console.log('Activity logging not available:', apiError.message);
+        }
 
         sessionStorage.removeItem('loginTime');
         sessionStorage.removeItem('sessionLogged');
@@ -105,8 +104,14 @@ export default function Layout({ children }) {
       }
     }
 
-    await base44.auth.logout();
-    window.location.reload();
+    // Clear authentication and redirect
+    backendApi.auth.logout();
+
+    // Clear user state
+    setUser(null);
+
+    // Redirect to login page
+    navigate('/login');
   };
 
   const isActive = (path) => location.pathname === path;
@@ -180,116 +185,14 @@ export default function Layout({ children }) {
                     </div>
                   )}
                 </div>
-
-                {/* Direct Links */}
+              ) : (
                 <Link
-                  to={createPageUrl('Pricing')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
-                    isActive(createPageUrl('Pricing'))
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/30'
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/30'
-                  }`}
+                  to={createPageUrl('Login')}
+                  className="ml-4 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg shadow-purple-500/50 font-medium"
                 >
-                  <DollarSign className="w-4 h-4" />
-                  <span>Pricing</span>
+                  Login
                 </Link>
-
-                {/* Admin Links */}
-                {user && user.email === 'sumit@meldra.ai' && (
-                  <div className="flex items-center gap-1 ml-2 pl-2 border-l border-purple-200 dark:border-purple-800">
-                    {adminTools.map((tool) => (
-                      <Link
-                        key={tool.path}
-                        to={createPageUrl(tool.path)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                          isActive(createPageUrl(tool.path))
-                            ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
-                            : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/30'
-                        }`}
-                      >
-                        <tool.icon className="w-4 h-4" />
-                        <span>{tool.name}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Right Side - User Menu */}
-              <div className="flex items-center gap-3">
-                {/* Dark Mode Toggle */}
-                <button
-                  onClick={toggleDarkMode}
-                  className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all"
-                >
-                  {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                </button>
-
-                {/* User Menu */}
-                {user ? (
-                  <div className="relative">
-                    <button
-                      onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                      onBlur={() => setTimeout(() => setUserDropdownOpen(false), 200)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all"
-                    >
-                      <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
-                        {user.email[0].toUpperCase()}
-                      </div>
-                      <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {userDropdownOpen && (
-                      <div className="absolute top-full right-0 mt-2 w-64 meldra-card p-2 shadow-xl">
-                        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-                          <p className="font-medium text-slate-900 dark:text-white">{user.email}</p>
-                          <p className="text-xs text-purple-500">Premium Member</p>
-                        </div>
-                        <div className="py-2">
-                          <Link
-                            to={createPageUrl('Privacy')}
-                            className="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all"
-                          >
-                            <Shield className="w-4 h-4" />
-                            <span>Privacy Policy</span>
-                          </Link>
-                          <Link
-                            to={createPageUrl('Disclaimer')}
-                            className="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all"
-                          >
-                            <AlertTriangle className="w-4 h-4" />
-                            <span>Terms & Conditions</span>
-                          </Link>
-                        </div>
-                        <div className="border-t border-slate-200 dark:border-slate-700 pt-2">
-                          <button
-                            onClick={handleLogout}
-                            className="flex items-center gap-3 px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all w-full"
-                          >
-                            <LogOut className="w-4 h-4" />
-                            <span>Log out</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => base44.auth.redirectToLogin()}
-                    className="meldra-button-primary text-sm"
-                  >
-                    Get Started
-                  </button>
-                )}
-
-                {/* Mobile Menu Button */}
-                <button
-                  onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/30"
-                >
-                  {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-                </button>
-              </div>
+              )}
             </div>
           </div>
         </div>

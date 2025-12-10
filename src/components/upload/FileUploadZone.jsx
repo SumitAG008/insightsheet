@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, FileSpreadsheet, Loader2, CheckCircle, Info, AlertCircle, Sparkles } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { base44 } from '@/api/meldraClient';
+import { meldra } from '@/api/meldraClient';
 
 export default function FileUploadZone({ onFileUpload, isProcessing }) {
   const [isDragging, setIsDragging] = useState(false);
@@ -25,10 +25,10 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
 
   const loadUserAndSubscription = async () => {
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await meldra.auth.me();
       setUser(currentUser);
-
-      const subs = await base44.entities.Subscription.filter({ user_email: currentUser.email });
+      
+      const subs = await meldra.entities.Subscription.filter({ user_email: currentUser.email });
       if (subs.length > 0) {
         setSubscription(subs[0]);
       }

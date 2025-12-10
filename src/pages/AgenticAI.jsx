@@ -1,11 +1,11 @@
 // pages/AgenticAI.jsx - Autonomous AI Agent for data operations
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/meldraClient';
+import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
+import {
   Brain, Sparkles, Loader2, CheckCircle, AlertCircle,
   Play, Eye, Download, Zap, Target, TrendingUp, Lightbulb
 } from 'lucide-react';
@@ -81,10 +81,9 @@ Return JSON:
   "confidence": 0.95
 }`;
 
-      const plan = await base44.integrations.Core.InvokeLLM({
-        prompt: planPrompt,
-        add_context_from_internet: false,
-        response_json_schema: {
+      const planResponse = await backendApi.llm.invoke(planPrompt, {
+        addContext: false,
+        responseSchema: {
           type: "object",
           properties: {
             task_understood: { type: "string" },
@@ -105,6 +104,7 @@ Return JSON:
           }
         }
       });
+      const plan = planResponse.response;
 
       setAgent({ phase: 'planning', plan });
 
@@ -163,10 +163,10 @@ Create a clear, executive summary in markdown format with:
 3. Recommendations
 4. Next steps`;
 
-      const finalReport = await base44.integrations.Core.InvokeLLM({
-        prompt: reportPrompt,
-        add_context_from_internet: false
+      const finalReportResponse = await backendApi.llm.invoke(reportPrompt, {
+        addContext: false
       });
+      const finalReport = finalReportResponse.response;
 
       const execution = {
         id: Date.now(),
@@ -208,12 +208,11 @@ ${JSON.stringify(sampleData, null, 2)}
 
 Provide specific, actionable insights.`;
 
-    const insights = await base44.integrations.Core.InvokeLLM({
-      prompt: analysisPrompt,
-      add_context_from_internet: false
+    const insightsResponse = await backendApi.llm.invoke(analysisPrompt, {
+      addContext: false
     });
 
-    return { success: true, output: insights };
+    return { success: true, output: insightsResponse.response };
   };
 
   const executeClean = async (step, data) => {
@@ -303,12 +302,11 @@ Data overview:
 
 Create a clear, business-ready summary.`;
 
-    const report = await base44.integrations.Core.InvokeLLM({
-      prompt: reportPrompt,
-      add_context_from_internet: false
+    const reportResponse = await backendApi.llm.invoke(reportPrompt, {
+      addContext: false
     });
 
-    return { success: true, output: report };
+    return { success: true, output: reportResponse.response };
   };
 
   return (

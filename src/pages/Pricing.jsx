@@ -1,6 +1,6 @@
 // pages/Pricing.jsx - Meldra Premium Pricing with 14-day Trial
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/meldraClient';
+import { meldra } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Check, Crown, Sparkles, Zap, Star, CreditCard, AlertCircle, Clock, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +22,7 @@ export default function Pricing() {
 
   const loadUser = async () => {
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await meldra.auth.me();
       setUser(currentUser);
 
       // Check subscription status

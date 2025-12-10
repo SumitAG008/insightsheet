@@ -26,7 +26,7 @@ export default function Pricing() {
       setUser(currentUser);
 
       // Check subscription status
-      const subs = await base44.entities.Subscription.filter({ user_email: currentUser.email });
+      const subs = await meldra.entities.Subscription.filter({ user_email: currentUser.email });
       if (subs.length > 0) {
         const sub = subs[0];
         setSubscription(sub);
@@ -108,7 +108,7 @@ export default function Pricing() {
     }
 
     if (!user) {
-      base44.auth.redirectToLogin();
+      meldra.auth.redirectToLogin();
       return;
     }
 
@@ -117,7 +117,7 @@ export default function Pricing() {
 
   const handleStartTrial = async () => {
     if (!user) {
-      base44.auth.redirectToLogin();
+      meldra.auth.redirectToLogin();
       return;
     }
 
@@ -131,7 +131,7 @@ export default function Pricing() {
       const trialEndDate = new Date();
       trialEndDate.setDate(trialEndDate.getDate() + 14);
 
-      await base44.entities.Subscription.create({
+      await meldra.entities.Subscription.create({
         user_email: user.email,
         plan: 'free',
         status: 'trial',

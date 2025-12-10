@@ -261,8 +261,8 @@ export const auth = {
   setToken,
 };
 
-// Backward compatibility with Base44 client (for gradual migration)
-export const base44 = {
+// Meldra SDK client with full backend integration
+export const meldra = {
   auth: backendApi.auth,
   integrations: {
     Core: {

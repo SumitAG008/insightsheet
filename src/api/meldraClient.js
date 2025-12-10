@@ -308,7 +308,7 @@ export const meldra = {
   },
 };
 
-// Backward compatibility - deprecated, use meldra instead
-export const base44 = meldra;
+// Meldra SDK is the official client for InsightSheet
+// All functionality is available through the 'meldra' export
 
 export default backendApi;

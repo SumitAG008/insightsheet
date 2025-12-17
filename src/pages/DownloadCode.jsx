@@ -112,7 +112,7 @@ EXPOSE 5000
 
 CMD ["python", "app.py"]`;
 
-  const standaloneCsvProcessor = `// Standalone CSV Processor - Works WITHOUT base44
+  const standaloneCsvProcessor = `// Standalone CSV Processor - Works Independently
 // Save this as a single HTML file and open in any browser
 
 <!DOCTYPE html>
@@ -220,8 +220,8 @@ CMD ["python", "app.py"]`;
         <Alert className="mb-8 bg-emerald-500/10 border-emerald-500/30">
           <CheckCircle className="h-5 w-5 text-emerald-400" />
           <AlertDescription className="text-slate-200">
-            <strong className="text-emerald-300">100% Ownership Guaranteed:</strong> Download all your code now. 
-            Run it anywhere - no dependencies on base44 or any platform. Your intellectual property, your control.
+            <strong className="text-emerald-300">100% Ownership Guaranteed:</strong> Download all your code now.
+            Run it anywhere - completely independent and platform-agnostic. Your intellectual property, your control.
           </AlertDescription>
         </Alert>
 
@@ -351,12 +351,12 @@ CMD ["python", "app.py"]`;
               <Alert className="mb-6 bg-amber-500/10 border-amber-500/30">
                 <AlertCircle className="h-5 w-5 text-amber-400" />
                 <AlertDescription className="text-slate-300">
-                  <strong className="text-amber-300">How to Extract from base44:</strong>
+                  <strong className="text-amber-300">How to Extract Your Code:</strong>
                   <ol className="list-decimal ml-5 mt-2 space-y-1">
-                    <li>Go to base44 Dashboard → Code tab</li>
+                    <li>Download code from your repository</li>
                     <li>Copy each page/component code</li>
                     <li>Save as .jsx files</li>
-                    <li>You now own all your frontend code!</li>
+                    <li>You own all your frontend code!</li>
                   </ol>
                 </AlertDescription>
               </Alert>

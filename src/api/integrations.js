@@ -1,23 +1,32 @@
-import { meldraAi } from './meldraClient';
+/**
+ * Meldra Integrations
+ *
+ * This file exports core integrations from the Meldra library.
+ * For advanced AI, ML, UI, and backend utilities, import from @/lib/meldra
+ *
+ * @example
+ * import { InvokeLLM } from '@/api/integrations';
+ * // or for full library access:
+ * import { core, ai, ml, ui, backend } from '@/lib/meldra';
+ */
 
+import { core } from '@/lib/meldra';
 
+export const Core = core.Core;
 
+export const InvokeLLM = core.InvokeLLM;
 
-export const Core = meldraAi.integrations.Core;
+export const SendEmail = core.SendEmail;
 
-export const InvokeLLM = meldraAi.integrations.Core.InvokeLLM;
+export const UploadFile = core.UploadFile;
 
-export const SendEmail = meldraAi.integrations.Core.SendEmail;
+export const GenerateImage = core.GenerateImage;
 
-export const UploadFile = meldraAi.integrations.Core.UploadFile;
+export const ExtractDataFromUploadedFile = core.ExtractDataFromUploadedFile;
 
-export const GenerateImage = meldraAi.integrations.Core.GenerateImage;
+export const CreateFileSignedUrl = core.CreateFileSignedUrl;
 
-export const ExtractDataFromUploadedFile = meldraAi.integrations.Core.ExtractDataFromUploadedFile;
-
-export const CreateFileSignedUrl = meldraAi.integrations.Core.CreateFileSignedUrl;
-
-export const UploadPrivateFile = meldraAi.integrations.Core.UploadPrivateFile;
+export const UploadPrivateFile = core.UploadPrivateFile;
 
 
 

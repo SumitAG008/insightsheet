@@ -4,13 +4,13 @@
 import React, { useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain } from 'lucide-react';
-import SubscriptionChecker from './components/subscription/SubscriptionChecker';
-import Logo from './components/branding/Logo';
+import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, Database } from 'lucide-react';
+import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
+import Logo from '@/components/branding/Logo';
 import { base44 } from '@/api/base44Client';
 import { LoginHistory } from '@/api/entities';
-import { getIPAndLocation, getBrowserInfo } from './components/tracking/ActivityLogger';
-import ActivityLogger from './components/tracking/ActivityLogger';
+import { getIPAndLocation, getBrowserInfo } from '@/components/tracking/ActivityLogger';
+import ActivityLogger from '@/components/tracking/ActivityLogger';
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -133,7 +133,7 @@ export default function Layout({ children }) {
                 <span>Dashboard</span>
               </Link>
 
-              <Link 
+              <Link
                 to={createPageUrl('AgenticAI')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('AgenticAI'))
@@ -145,7 +145,19 @@ export default function Layout({ children }) {
                 <span>Agentic AI</span>
               </Link>
 
-              <Link 
+              <Link
+                to={createPageUrl('DataModelCreator')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
+                  isActive(createPageUrl('DataModelCreator'))
+                    ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/50'
+                    : 'text-purple-300 hover:bg-purple-900/50 hover:text-purple-100'
+                }`}
+              >
+                <Database className="w-4 h-4" />
+                <span>DB Schema</span>
+              </Link>
+
+              <Link
                 to={createPageUrl('FileToPPT')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${
                   isActive(createPageUrl('FileToPPT'))

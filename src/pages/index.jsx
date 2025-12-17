@@ -26,6 +26,8 @@ import AgenticAI from "./AgenticAI";
 
 import FileToPPT from "./FileToPPT";
 
+import DataModelCreator from "./DataModelCreator";
+
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
@@ -53,9 +55,11 @@ const PAGES = {
     StripeSuccess: StripeSuccess,
     
     AgenticAI: AgenticAI,
-    
+
     FileToPPT: FileToPPT,
-    
+
+    DataModelCreator: DataModelCreator,
+
 }
 
 function _getCurrentPage(url) {
@@ -106,9 +110,11 @@ function PagesContent() {
                 <Route path="/StripeSuccess" element={<StripeSuccess />} />
                 
                 <Route path="/AgenticAI" element={<AgenticAI />} />
-                
+
                 <Route path="/FileToPPT" element={<FileToPPT />} />
-                
+
+                <Route path="/DataModelCreator" element={<DataModelCreator />} />
+
             </Routes>
         </Layout>
     );

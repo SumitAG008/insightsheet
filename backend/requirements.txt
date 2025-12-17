@@ -1,0 +1,62 @@
+# Web Framework
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
+pydantic==2.9.2
+pydantic-settings==2.6.1
+
+# Database
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10  # PostgreSQL
+alembic==1.14.0  # Database migrations
+
+# Authentication & Security
+PyJWT==2.10.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.1
+bcrypt==4.1.2
+cryptography==44.0.0
+
+# AI/LLM Integration
+openai==1.54.5
+
+# Excel/Office Processing
+openpyxl==3.1.2  # Excel read/write
+xlrd==2.0.1  # Old Excel format
+pandas==2.1.4  # Data processing
+python-pptx==0.6.23  # PowerPoint generation
+Pillow==10.2.0  # Image processing
+
+# PDF Processing
+PyPDF2==3.0.1
+pdfplumber==0.10.3
+
+# File Processing & Utilities
+python-magic==0.4.27  # File type detection
+aiofiles==23.2.1  # Async file operations
+python-dateutil==2.9.0.post0
+
+# HTTP Client
+httpx==0.26.0
+requests==2.31.0
+
+# Payment Integration
+stripe==7.11.0
+
+# Email
+aiosmtplib==3.0.1
+email-validator==2.1.0.post1
+# sendgrid==6.11.0  # Uncomment if using SendGrid
+
+# Logging & Monitoring
+python-json-logger==2.0.7
+
+# Development & Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+black==24.1.1
+flake8==7.0.0
+
+# CORS & Middleware (built into FastAPI)
+# No additional packages needed - using fastapi.middleware.cors.CORSMiddleware

@@ -1,6 +1,6 @@
 // pages/AgenticAI.jsx - Autonomous AI Agent for data operations
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { meldraAi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -81,7 +81,7 @@ Return JSON:
   "confidence": 0.95
 }`;
 
-      const plan = await base44.integrations.Core.InvokeLLM({
+      const plan = await meldraAi.integrations.Core.InvokeLLM({
         prompt: planPrompt,
         add_context_from_internet: false,
         response_json_schema: {
@@ -163,7 +163,7 @@ Create a clear, executive summary in markdown format with:
 3. Recommendations
 4. Next steps`;
 
-      const finalReport = await base44.integrations.Core.InvokeLLM({
+      const finalReport = await meldraAi.integrations.Core.InvokeLLM({
         prompt: reportPrompt,
         add_context_from_internet: false
       });
@@ -208,7 +208,7 @@ ${JSON.stringify(sampleData, null, 2)}
 
 Provide specific, actionable insights.`;
 
-    const insights = await base44.integrations.Core.InvokeLLM({
+    const insights = await meldraAi.integrations.Core.InvokeLLM({
       prompt: analysisPrompt,
       add_context_from_internet: false
     });
@@ -303,7 +303,7 @@ Data overview:
 
 Create a clear, business-ready summary.`;
 
-    const report = await base44.integrations.Core.InvokeLLM({
+    const report = await meldraAi.integrations.Core.InvokeLLM({
       prompt: reportPrompt,
       add_context_from_internet: false
     });

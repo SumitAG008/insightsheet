@@ -1,6 +1,6 @@
 // pages/Pricing.jsx - Updated with quarterly/yearly pricing, removed Business plan
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { meldraAi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Check, Crown, Sparkles, Zap, Star, CreditCard, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +19,7 @@ export default function Pricing() {
 
   const loadUser = async () => {
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await meldraAi.auth.me();
       setUser(currentUser);
     } catch (error) {
       console.error('Error loading user data:', error);

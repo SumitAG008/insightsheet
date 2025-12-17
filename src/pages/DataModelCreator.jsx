@@ -9,7 +9,7 @@ import TableDesigner from '@/components/datamodel/TableDesigner';
 import RelationshipManager from '@/components/datamodel/RelationshipManager';
 import SQLGenerator from '@/components/datamodel/SQLGenerator';
 import AISchemaAssistant from '@/components/datamodel/AISchemaAssistant';
-import { base44 } from '@/api/base44Client';
+import { meldraAi } from '@/api/meldraClient';
 
 export default function DataModelCreator() {
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ export default function DataModelCreator() {
 
   const checkAuth = async () => {
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await meldraAi.auth.me();
       setUser(currentUser);
     } catch (error) {
       console.error('Auth check failed:', error);

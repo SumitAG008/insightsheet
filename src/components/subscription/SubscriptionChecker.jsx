@@ -1,6 +1,6 @@
 // components/subscription/SubscriptionChecker.jsx - Enhanced with strict file size enforcement
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { meldraAi } from '@/api/meldraClient';
 import { AlertCircle, Crown, Zap, Lock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -19,16 +19,16 @@ export default function SubscriptionChecker({ children }) {
 
   const checkSubscription = async () => {
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await meldraAi.auth.me();
       setUser(currentUser);
 
-      let userSub = await base44.entities.Subscription.filter({ 
+      let userSub = await meldraAi.entities.Subscription.filter({ 
         user_email: currentUser.email 
       });
 
       if (userSub.length === 0) {
         // Create free plan subscription for new users
-        const newSub = await base44.entities.Subscription.create({
+        const newSub = await meldraAi.entities.Subscription.create({
           user_email: currentUser.email,
           plan: 'free',
           status: 'active',

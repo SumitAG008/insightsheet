@@ -1,7 +1,7 @@
 
 // pages/FilenameCleaner.js - ZIP processor with 10MB file size limit enforcement
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { meldraAi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,10 +47,10 @@ export default function FilenameCleaner() {
 
   const loadUserAndSubscription = async () => {
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await meldraAi.auth.me();
       setUser(currentUser);
       
-      const subs = await base44.entities.Subscription.filter({ user_email: currentUser.email });
+      const subs = await meldraAi.entities.Subscription.filter({ user_email: currentUser.email });
       if (subs.length > 0) {
         setSubscription(subs[0]);
       }

@@ -1,7 +1,7 @@
 
 // pages/FileToPPT.jsx - Advanced Excel to PowerPoint converter (browser-based) with file size limits
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { meldraAi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -50,10 +50,10 @@ export default function FileToPPT() {
 
   const loadUserAndSubscription = async () => {
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await meldraAi.auth.me();
       setUser(currentUser);
 
-      const subs = await base44.entities.Subscription.filter({ user_email: currentUser.email });
+      const subs = await meldraAi.entities.Subscription.filter({ user_email: currentUser.email });
       if (subs.length > 0) {
         // Assuming there's only one active subscription per user or picking the first one
         setSubscription(subs[0]);

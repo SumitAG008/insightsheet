@@ -1,8 +1,8 @@
-// pages/Pricing.jsx - Updated with quarterly/yearly pricing, removed Business plan
+// pages/Pricing.jsx - Landing page with app overview and pricing
 import React, { useState, useEffect } from 'react';
 import { meldraAi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
-import { Check, Crown, Sparkles, Zap, Star, CreditCard, AlertCircle } from 'lucide-react';
+import { Check, Crown, Sparkles, Zap, Star, CreditCard, AlertCircle, BarChart3, Brain, Database, FileSpreadsheet, FileText, Shield, ArrowRight, TrendingUp, FileCheck, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -57,9 +57,7 @@ export default function Pricing() {
 
   const pricing = getPricing(billingCycle);
 
-  // Show only Free tier on landing page (when not logged in)
-  const showOnlyFree = !user;
-  
+  // Show both tiers on landing page
   const plans = [
     {
       id: 'free',
@@ -101,7 +99,7 @@ export default function Pricing() {
         'Import .XLS, .XLSX, .CSV'
       ]
     }
-  ].filter(plan => !showOnlyFree || plan.id === 'free'); // Filter to show only Free when not logged in
+  ];
 
   const handleSubscribe = (plan) => {
     if (plan.id === 'free') {
@@ -117,26 +115,145 @@ export default function Pricing() {
     setSelectedPlan({ ...plan, billingCycle });
   };
 
+  const features = [
+    {
+      icon: BarChart3,
+      title: 'AI-Powered Data Analysis',
+      description: 'Upload CSV/Excel files and get instant AI-powered insights, trends, and patterns from your data.'
+    },
+    {
+      icon: Brain,
+      title: 'Agentic AI Assistant',
+      description: 'Autonomous AI agent that plans, executes, and reports on complex data operations using natural language.'
+    },
+    {
+      icon: Database,
+      title: 'Database Schema Designer',
+      description: 'Visual database schema creator with AI assistance. Design relationships and generate SQL schemas.'
+    },
+    {
+      icon: FileSpreadsheet,
+      title: 'P&L Builder',
+      description: 'Build Profit & Loss statements from natural language. Automated financial calculations and reporting.'
+    },
+    {
+      icon: FileText,
+      title: 'Excel to PowerPoint',
+      description: 'Convert Excel data into professional PowerPoint presentations with charts and visualizations.'
+    },
+    {
+      icon: Shield,
+      title: 'Privacy-First Architecture',
+      description: 'All data processing happens in your browser. Your data never leaves your device - complete privacy guaranteed.'
+    }
+  ];
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 py-12">
-      <div className="container mx-auto px-4">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+      {/* Hero Section */}
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center mb-16">
+          <Badge className="mb-6 bg-purple-500/20 text-purple-300 border-purple-500/30 text-base px-4 py-2">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Privacy-First Data Analysis Platform
+          </Badge>
+          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            Meldra
+          </h1>
+          <p className="text-2xl md:text-3xl text-slate-300 font-semibold mb-4">
+            Data Made Simple
+          </p>
+          <p className="text-xl text-slate-400 max-w-3xl mx-auto mb-8 leading-relaxed">
+            Transform your data into actionable insights with AI-powered analysis, automated workflows, and professional reporting. 
+            All while keeping your data completely private and secure.
+          </p>
+          
+          {!user && (
+            <div className="flex gap-4 justify-center mt-8">
+              <a
+                href="/register"
+                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2"
+              >
+                Get Started Free
+                <ArrowRight className="w-5 h-5" />
+              </a>
+              <a
+                href="/login"
+                className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-semibold text-lg transition-all border border-slate-700"
+              >
+                Login
+              </a>
+            </div>
+          )}
+        </div>
+
+        {/* Features Section */}
+        <div className="mb-20">
+          <h2 className="text-4xl font-bold text-white text-center mb-4">
+            What Can Meldra Do?
+          </h2>
+          <p className="text-xl text-slate-400 text-center mb-12 max-w-2xl mx-auto">
+            Everything you need to analyze, transform, and visualize your data - all in one powerful platform
+          </p>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {features.map((feature, idx) => (
+              <div
+                key={idx}
+                className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 hover:border-purple-500/50 transition-all group"
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <feature.icon className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Key Benefits */}
+        <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-2xl p-8 md:p-12 mb-20 border border-purple-500/20">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl font-bold text-white text-center mb-8">
+              Why Choose Meldra?
+            </h2>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <Lock className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+                <h3 className="text-lg font-bold text-white mb-2">100% Private</h3>
+                <p className="text-slate-400 text-sm">Your data never leaves your browser. Complete privacy and security.</p>
+              </div>
+              <div className="text-center">
+                <Zap className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+                <h3 className="text-lg font-bold text-white mb-2">AI-Powered</h3>
+                <p className="text-slate-400 text-sm">Advanced AI analyzes your data and provides actionable insights instantly.</p>
+              </div>
+              <div className="text-center">
+                <TrendingUp className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+                <h3 className="text-lg font-bold text-white mb-2">Professional Results</h3>
+                <p className="text-slate-400 text-sm">Generate reports, presentations, and visualizations ready for stakeholders.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pricing Section */}
+      <div className="container mx-auto px-4 py-12 border-t border-slate-800">
         <div className="text-center mb-12">
           <Badge className="mb-4 bg-purple-500/20 text-purple-300 border-purple-500/30">
             <Star className="w-4 h-4 mr-1" />
             Choose Your Plan
           </Badge>
-          <h1 className="text-5xl font-bold text-white mb-2">
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
             Simple, Transparent Pricing
-          </h1>
-          <p className="text-lg text-purple-300 font-semibold mb-4">
-            Meldra
-          </p>
+          </h2>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto mb-8">
             Start free, upgrade when you need more power
           </p>
 
-          {/* Billing Cycle Toggle - Only show when logged in */}
+          {/* Billing Cycle Toggle - Show when logged in */}
           {user && (
             <Tabs value={billingCycle} onValueChange={setBillingCycle} className="max-w-md mx-auto mb-8">
               <TabsList className="grid w-full grid-cols-3 bg-slate-900/80">
@@ -151,27 +268,6 @@ export default function Pricing() {
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-          )}
-          
-          {/* Call to action when not logged in */}
-          {!user && (
-            <div className="max-w-md mx-auto mb-8 text-center">
-              <p className="text-slate-300 mb-4">Start with our free plan - no credit card required!</p>
-              <div className="flex gap-4 justify-center">
-                <a
-                  href="/register"
-                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-semibold transition-all shadow-lg"
-                >
-                  Sign Up Free
-                </a>
-                <a
-                  href="/login"
-                  className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-all"
-                >
-                  Login
-                </a>
-              </div>
-            </div>
           )}
         </div>
 
@@ -235,19 +331,39 @@ export default function Pricing() {
 
                   {/* CTA Button */}
                   {plan.id === 'free' ? (
-                    <Button
-                      className="w-full bg-slate-700 hover:bg-slate-600 text-white"
-                    >
-                      Current Plan
-                    </Button>
+                    !user ? (
+                      <a
+                        href="/register"
+                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        Get Started Free
+                      </a>
+                    ) : (
+                      <Button
+                        className="w-full bg-slate-700 hover:bg-slate-600 text-white"
+                      >
+                        Current Plan
+                      </Button>
+                    )
                   ) : (
-                    <Button
-                      onClick={() => handleSubscribe(plan)}
-                      className={`w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white font-bold`}
-                    >
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      Subscribe Now
-                    </Button>
+                    !user ? (
+                      <a
+                        href="/register"
+                        className={`w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2`}
+                      >
+                        <CreditCard className="w-4 h-4" />
+                        Sign Up for Premium
+                      </a>
+                    ) : (
+                      <Button
+                        onClick={() => handleSubscribe(plan)}
+                        className={`w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white font-bold`}
+                      >
+                        <CreditCard className="w-4 h-4 mr-2" />
+                        Subscribe Now
+                      </Button>
+                    )
                   )}
                 </div>
               </div>

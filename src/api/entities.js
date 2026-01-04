@@ -1,4 +1,4 @@
-import { meldraAi } from './base44Client';
+import { meldraAi } from './meldraClient';
 
 
 export const Subscription = meldraAi.entities.Subscription;

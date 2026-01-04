@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: insightsheet-config
+  namespace: insightsheet
+data:
+  DATABASE_URL: "postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require"
+  JWT_SECRET_KEY: "CHANGE_THIS_IN_PRODUCTION"
+  JWT_ALGORITHM: "HS256"
+  ACCESS_TOKEN_EXPIRE_MINUTES: "30"
+  CORS_ORIGINS: "https://meldra.ai,https://*.meldra.ai"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"

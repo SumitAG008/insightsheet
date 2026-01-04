@@ -1,7 +1,7 @@
 
 // pages/FileToPPT.jsx - Advanced Excel to PowerPoint converter (browser-based) with file size limits
 import React, { useState, useEffect } from 'react';
-import { backendApi } from '@/api/base44Client';
+import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -522,20 +522,20 @@ export default function FileToPPT() {
   const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 py-12">
+    <div className="min-h-screen bg-white dark:bg-slate-950 py-12">
       <div className="container mx-auto px-4 max-w-4xl">
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-purple-500/50">
+            <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
               <FileText className="w-10 h-10 text-white" />
             </div>
           </div>
 
-          <h1 className="text-5xl font-bold text-white mb-4">
+          <h1 className="text-5xl font-bold text-slate-900 dark:text-white mb-4">
             Advanced Excel to PowerPoint
           </h1>
-          <p className="text-xl text-purple-200 mb-4">
+          <p className="text-xl text-slate-600 dark:text-slate-400 mb-4">
             Professional presentations with charts, tables & statistics
           </p>
           <div className="flex flex-wrap justify-center gap-3">

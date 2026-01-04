@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CreditCard, Loader2, CheckCircle, AlertCircle, ExternalLink } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { meldraAi } from '@/api/meldraClient';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function PaymentIntegration({ plan, amount, onSuccess }) {
@@ -33,7 +33,7 @@ export default function PaymentIntegration({ plan, amount, onSuccess }) {
     setError('');
 
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await meldraAi.auth.me();
 
       // Get Stripe payment link
       const paymentLink = STRIPE_PAYMENT_LINKS[plan];
@@ -46,7 +46,7 @@ export default function PaymentIntegration({ plan, amount, onSuccess }) {
       const checkoutUrl = `${paymentLink}?client_reference_id=${currentUser.email}&prefilled_email=${currentUser.email}`;
       
       // Save pending subscription
-      await base44.entities.Subscription.create({
+      await meldraAi.entities.Subscription.create({
         user_email: currentUser.email,
         plan: plan,
         status: 'pending',

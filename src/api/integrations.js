@@ -1,7 +1,10 @@
-import { meldraAi } from './base44Client';
+import { meldraAi } from './meldraClient';
 
+import { core } from '@/lib/meldra';
 
+export const Core = core.Core;
 
+export const InvokeLLM = core.InvokeLLM;
 
 export const Core = meldraAi.integrations.Core;
 

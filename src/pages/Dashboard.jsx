@@ -124,28 +124,23 @@ export default function Dashboard() {
 
   if (!data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-slate-950 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4" />
-          <p className="text-slate-400">Loading your data...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+          <p className="text-slate-600 dark:text-slate-400">Loading your data...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative z-10 container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-white dark:bg-slate-950">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-purple-200 mb-2">Analysis Dashboard</h1>
-            <p className="text-slate-400 flex items-center gap-2 flex-wrap">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Analysis Dashboard</h1>
+            <p className="text-slate-600 dark:text-slate-400 flex items-center gap-2 flex-wrap">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
               {filename} • {data.rows.length} rows • {data.headers.length} columns
               {cleanedRowCount > 0 && (
@@ -159,7 +154,7 @@ export default function Dashboard() {
           <div className="flex gap-3 flex-wrap">
             <Button
               onClick={handleExport}
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               <Download className="w-4 h-4 mr-2" />
               Export (Excel/CSV)
@@ -176,37 +171,37 @@ export default function Dashboard() {
         </div>
 
         {/* Privacy Notice */}
-        <div className="mb-6 bg-slate-900/50 backdrop-blur-sm border border-slate-700/50 rounded-lg p-4">
+        <div className="mb-6 bg-blue-50 dark:bg-slate-900/50 border border-blue-200 dark:border-slate-800 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-purple-400 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-slate-300">
-              <strong className="text-purple-300">Privacy Mode Active:</strong> All data is processed locally in your browser.
+            <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+            <div className="text-sm text-slate-700 dark:text-slate-300">
+              <strong className="text-blue-600 dark:text-blue-400">Privacy Mode Active:</strong> All data is processed locally in your browser.
               Nothing is stored on servers. Close this tab to permanently delete all data.
             </div>
           </div>
         </div>
 
         {/* AI Assistant Banner */}
-        <div className="mb-6 bg-gradient-to-r from-purple-600/10 to-pink-600/10 border border-purple-500/30 rounded-lg p-4">
+        <div className="mb-6 bg-blue-50 dark:bg-slate-900/50 border border-blue-200 dark:border-slate-800 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-purple-400" />
+            <Sparkles className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             <div>
-              <h3 className="text-lg font-bold text-purple-200">New: AI-Powered Operations</h3>
-              <p className="text-sm text-slate-300">Describe any operation in plain English - AI will execute it for you!</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">New: AI-Powered Operations</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Describe any operation in plain English - AI will execute it for you!</p>
             </div>
           </div>
         </div>
 
         {/* Tabs for Different Sections */}
         <Tabs defaultValue="analysis" className="space-y-6">
-          <TabsList className="bg-slate-900/80 border border-slate-700/50 p-1">
-            <TabsTrigger value="analysis" className="data-[state=active]:bg-purple-600">
+          <TabsList className="bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-1">
+            <TabsTrigger value="analysis" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               Analysis & Cleaning
             </TabsTrigger>
-            <TabsTrigger value="transform" className="data-[state=active]:bg-blue-600">
+            <TabsTrigger value="transform" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               Transform Data
             </TabsTrigger>
-            <TabsTrigger value="ai" className="data-[state=active]:bg-pink-600">
+            <TabsTrigger value="ai" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
               AI Tools
             </TabsTrigger>
           </TabsList>

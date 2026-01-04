@@ -31,6 +31,14 @@ import AgenticAI from "./AgenticAI";
 
 import FileToPPT from "./FileToPPT";
 
+import DataModelCreator from "./DataModelCreator";
+
+import PLBuilder from "./PLBuilder";
+
+import FileAnalyzer from "./FileAnalyzer";
+import Login from "./Login";
+import Reviews from "./Reviews";
+
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
@@ -60,9 +68,17 @@ const PAGES = {
     StripeSuccess: StripeSuccess,
     
     AgenticAI: AgenticAI,
-    
+
     FileToPPT: FileToPPT,
-    
+
+    DataModelCreator: DataModelCreator,
+
+    PLBuilder: PLBuilder,
+
+    FileAnalyzer: FileAnalyzer,
+
+    Reviews: Reviews,
+
 }
 
 function _getCurrentPage(url) {

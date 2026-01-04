@@ -61,9 +61,19 @@ app = FastAPI(
 # CORS Configuration
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
 
+# Add common Vercel patterns and meldra.ai domains
+ALLOWED_ORIGINS = CORS_ORIGINS + [
+    "https://meldra.ai",
+    "https://*.meldra.ai",
+    "https://insight.meldra.ai",
+    "https://*.vercel.app",  # Allow all Vercel preview deployments
+    "https://meldra-six.vercel.app",  # Specific Vercel URL
+    "https://insightsheet-jpci.vercel.app"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS + ["https://meldra.ai", "https://*.meldra.ai"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -763,6 +773,7 @@ async def get_all_subscriptions(
 # ============================================================================
 
 @app.get("/health")
+@app.get("/api/health")
 async def health_check():
     """Health check endpoint"""
     return {

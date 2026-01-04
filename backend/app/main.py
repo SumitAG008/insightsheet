@@ -402,7 +402,7 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
                 detail="Password must be at least 10 characters"
             )
         
-        # Bcrypt has 72-byte limit, warn if password is very long
+        # Bcrypt has 72-byte limit, validate and handle
         password_bytes = request.new_password.encode('utf-8')
         if len(password_bytes) > 72:
             raise HTTPException(
@@ -410,8 +410,18 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
                 detail="Password is too long. Maximum 72 characters allowed."
             )
         
-        # Update password
-        user.hashed_password = get_password_hash(request.new_password)
+        # Update password (get_password_hash handles truncation internally, but we validate first)
+        try:
+            user.hashed_password = get_password_hash(request.new_password)
+        except ValueError as e:
+            # If bcrypt still complains, provide user-friendly error
+            if "72 bytes" in str(e) or "longer than 72" in str(e):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Password is too long. Maximum 72 characters allowed."
+                )
+            # Re-raise other errors
+            raise
         
         # Clear reset token if columns exist
         if hasattr(user, 'reset_token'):

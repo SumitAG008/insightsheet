@@ -247,7 +247,14 @@ export const backendApi = {
           response_json_schema: options.responseSchema || null,
         },
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `LLM invocation failed: ${response.status}`);
+      }
+      
       const data = await response.json();
+      // Backend returns {"response": {...}}, so extract the response
       return data.response || data;
     },
 

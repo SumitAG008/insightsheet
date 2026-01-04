@@ -106,9 +106,11 @@ Return JSON:
         }
       });
       
-      // Validate response
-      const plan = planResponse?.response;
+      // Validate response - planResponse is already the parsed JSON response from the API client
+      // The API client returns data.response || data, so planResponse is the actual response object
+      const plan = planResponse;
       if (!plan || !plan.steps || !Array.isArray(plan.steps) || plan.steps.length === 0) {
+        console.error('Invalid plan response:', planResponse);
         throw new Error('Failed to generate execution plan. The AI response was invalid or incomplete. Please try again.');
       }
 

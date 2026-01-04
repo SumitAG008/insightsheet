@@ -514,11 +514,18 @@ async def invoke_llm_endpoint(
                 )
 
         # Invoke LLM
-        response = await invoke_llm(
-            prompt=request.prompt,
-            add_context=request.add_context_from_internet,
-            response_schema=request.response_json_schema
-        )
+        try:
+            response = await invoke_llm(
+                prompt=request.prompt,
+                add_context=request.add_context_from_internet,
+                response_schema=request.response_json_schema
+            )
+        except Exception as llm_error:
+            logger.error(f"LLM invocation failed: {str(llm_error)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"AI service error: {str(llm_error)}"
+            )
 
         # Update usage (only if not premium)
         if subscription.plan != "premium":

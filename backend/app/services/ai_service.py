@@ -64,7 +64,12 @@ async def invoke_llm(
                 max_tokens=max_tokens
             )
             content = response.choices[0].message.content
-            return json.loads(content) if content else {}
+            if not content:
+                raise Exception("OpenAI returned empty response")
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError as e:
+                raise Exception(f"Failed to parse JSON response from OpenAI: {str(e)}. Content: {content[:200]}")
 
         # Text response mode
         else:

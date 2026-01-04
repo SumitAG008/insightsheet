@@ -60,12 +60,24 @@ export default function Register() {
           }
         } catch (err) {
           // If auto-login fails, redirect to login page
-          navigate('/login');
+          setError('Registration successful, but auto-login failed. Please login manually.');
+          setTimeout(() => {
+            navigate('/login');
+          }, 3000);
         }
       }, 2000);
 
     } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.');
+      // Show specific error message
+      const errorMessage = err.message || 'Registration failed. Please try again.';
+      setError(errorMessage);
+      
+      // If email already exists, suggest login
+      if (errorMessage.includes('already registered') || errorMessage.includes('Email already')) {
+        setTimeout(() => {
+          navigate('/login');
+        }, 3000);
+      }
     } finally {
       setLoading(false);
     }

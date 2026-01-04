@@ -67,6 +67,13 @@ export const backendApi = {
         method: 'POST',
         body: { email, password, full_name: fullName },
       });
+      
+      // Check if response is ok
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Registration failed: ${response.status}`);
+      }
+      
       return response.json();
     },
 

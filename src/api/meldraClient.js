@@ -74,45 +74,74 @@ const apiCall = async (endpoint, options = {}) => {
     options.body = JSON.stringify(options.body);
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  // Handle unauthorized
-  if (response.status === 401) {
-    setToken(null);
-    window.location.href = '/login';
-    throw new Error('Unauthorized');
+    // Handle unauthorized
+    if (response.status === 401) {
+      setToken(null);
+      window.location.href = '/Login';
+      throw new Error('Unauthorized');
+    }
+
+    return response;
+  } catch (error) {
+    // Network error - backend not reachable
+    if (error.name === 'TypeError' && (error.message.includes('fetch') || error.message.includes('Failed to fetch'))) {
+      const errorMsg = `Cannot connect to backend server at ${API_URL}. Please ensure the backend is running.`;
+      console.error('Backend connection failed:', {
+        url: `${API_URL}${endpoint}`,
+        error: error.message,
+        apiUrl: API_URL
+      });
+      throw new Error(errorMsg);
+    }
+    throw error;
   }
-
-  return response;
 };
 
 // Backend API Client
 export const backendApi = {
   // Authentication
   auth: {
-    register: async (email, password, fullName) => {
+    register: async (userData) => {
       const response = await apiCall('/api/auth/register', {
         method: 'POST',
-        body: { email, password, full_name: fullName },
+        body: userData,
       });
       return response.json();
     },
 
     login: async (email, password) => {
-      const response = await apiCall('/api/auth/login', {
-        method: 'POST',
-        body: { email, password },
-      });
-      const data = await response.json();
+      try {
+        const response = await apiCall('/api/auth/login', {
+          method: 'POST',
+          body: { email, password },
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.detail || `Login failed: ${response.status}`);
+        }
+        
+        const data = await response.json();
 
-      if (data.access_token) {
-        setToken(data.access_token);
+        if (data.access_token) {
+          setToken(data.access_token);
+          // Store user info
+          if (data.user) {
+            localStorage.setItem('user', JSON.stringify(data.user));
+          }
+        }
+
+        return data;
+      } catch (error) {
+        console.error('Login error:', error);
+        throw error;
       }
-
-      return data;
     },
 
     logout: () => {
@@ -121,16 +150,79 @@ export const backendApi = {
     },
 
     me: async () => {
-      const response = await apiCall('/api/auth/me');
-      return response.json();
+      const token = getToken();
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+      
+      try {
+        const response = await apiCall('/api/auth/me');
+        
+        if (!response.ok) {
+          if (response.status === 401) {
+            setToken(null);
+            throw new Error('Not authenticated');
+          }
+          throw new Error('Failed to get user info');
+        }
+        
+        const data = await response.json();
+        
+        // Validate user data
+        if (!data || !data.email) {
+          setToken(null);
+          throw new Error('Invalid user data');
+        }
+        
+        return data;
+      } catch (error) {
+        // Clear token on any error
+        setToken(null);
+        throw error;
+      }
     },
 
     redirectToLogin: () => {
-      window.location.href = '/login';
+      window.location.href = '/Login';
     },
 
     isAuthenticated: () => {
       return !!getToken();
+    },
+
+    forgotPassword: async (email) => {
+      const response = await apiCall('/api/auth/forgot-password', {
+        method: 'POST',
+        body: { email },
+      });
+      return response.json();
+    },
+
+    resetPassword: async (token, newPassword) => {
+      const response = await apiCall('/api/auth/reset-password', {
+        method: 'POST',
+        body: { token, new_password: newPassword },
+      });
+      return response.json();
+    },
+
+    verify2FA: async (email, code) => {
+      const response = await apiCall('/api/auth/verify-2fa', {
+        method: 'POST',
+        body: { email, code },
+      });
+      const data = await response.json();
+      if (data.access_token) {
+        setToken(data.access_token);
+      }
+      return data;
+    },
+
+    setup2FA: async () => {
+      const response = await apiCall('/api/auth/setup-2fa', {
+        method: 'POST',
+      });
+      return response.json();
     },
   },
 
@@ -255,6 +347,40 @@ export const backendApi = {
       });
       const data = await response.json();
       return data.url;
+    },
+
+    analyzeFile: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await apiCall('/api/files/analyze', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Analysis failed');
+      }
+
+      return response.json();
+    },
+
+    generatePL: async (prompt, context = {}) => {
+      const response = await apiCall('/api/files/generate-pl', {
+        method: 'POST',
+        body: {
+          prompt,
+          context,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'P&L generation failed');
+      }
+
+      return response.blob();
     },
   },
 

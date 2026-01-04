@@ -28,6 +28,12 @@ import FileToPPT from "./FileToPPT";
 
 import DataModelCreator from "./DataModelCreator";
 
+import PLBuilder from "./PLBuilder";
+
+import FileAnalyzer from "./FileAnalyzer";
+import Login from "./Login";
+import Reviews from "./Reviews";
+
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 
 const PAGES = {
@@ -59,6 +65,12 @@ const PAGES = {
     FileToPPT: FileToPPT,
 
     DataModelCreator: DataModelCreator,
+
+    PLBuilder: PLBuilder,
+
+    FileAnalyzer: FileAnalyzer,
+
+    Reviews: Reviews,
 
 }
 
@@ -114,6 +126,14 @@ function PagesContent() {
                 <Route path="/FileToPPT" element={<FileToPPT />} />
 
                 <Route path="/DataModelCreator" element={<DataModelCreator />} />
+
+                <Route path="/PLBuilder" element={<PLBuilder />} />
+
+                <Route path="/FileAnalyzer" element={<FileAnalyzer />} />
+
+                <Route path="/Login" element={<Login />} />
+
+                <Route path="/Reviews" element={<Reviews />} />
 
             </Routes>
         </Layout>

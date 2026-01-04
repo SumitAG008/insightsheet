@@ -127,7 +127,7 @@ export default function Pricing() {
             Simple, Transparent Pricing
           </h1>
           <p className="text-lg text-purple-300 font-semibold mb-4">
-            InsightSheet-lite
+            Meldra
           </p>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto mb-8">
             Start free, upgrade when you need more power

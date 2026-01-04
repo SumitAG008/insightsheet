@@ -1,168 +1,138 @@
 """
-FastAPI Backend for InsightSheet-lite
-Privacy-first data analysis platform with ZERO data storage
+FastAPI Main Application for InsightSheet-lite (Meldra)
+Privacy-first data analysis platform with AI-powered insights
 """
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Request, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from pydantic import BaseModel, EmailStr
-from typing import Optional, Dict, Any, List
-from datetime import timedelta, datetime
+
 import os
 import logging
-from logging.handlers import RotatingFileHandler
-import io
-import secrets
+from typing import Optional, List
+from datetime import datetime, timedelta
+from io import BytesIO
 
-from dotenv import load_dotenv
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.security import HTTPBearer
+from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
-# Import local modules
-from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, init_db
+from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, Review, init_db
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
-    get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
+    get_password_hash, verify_password
 )
-from app.services.ai_service import (
-    invoke_llm, generate_image, generate_formula, analyze_data, suggest_chart_type
-)
-from app.services.zip_processor import ZipProcessorService
+from app.services.ai_service import invoke_llm, generate_image, generate_formula, analyze_data, suggest_chart_type
 from app.services.excel_to_ppt import ExcelToPPTService
+from app.services.zip_processor import ZipProcessorService
+from app.services.pl_builder import PLBuilderService
+from app.services.file_analyzer import FileAnalyzerService
+from app.services.excel_builder import ExcelBuilderService
 
-load_dotenv()
-
-# Logging configuration
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
-
-formatter = logging.Formatter(
-    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-
-file_handler = RotatingFileHandler(
-    os.path.join(LOG_DIR, 'app.log'),
-    maxBytes=10485760,  # 10MB
-    backupCount=5
-)
-file_handler.setFormatter(formatter)
-
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-logger.addHandler(file_handler)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="InsightSheet-lite Backend",
+    title="InsightSheet-lite API",
     description="Privacy-first data analysis platform with AI-powered insights",
     version="1.0.0"
 )
 
-# CORS Configuration - Allow ALL origins for development
-# CRITICAL: This MUST be the first middleware added
+# CORS Middleware
+CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://localhost:3000,https://meldra.ai,https://www.meldra.ai").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
-    allow_credentials=False,  # Must be False when using allow_origins=["*"]
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
 
-logger.info("CORS middleware configured with allow_origins=['*']")
+# HTTP Bearer security
+security = HTTPBearer()
 
-# Initialize database on startup
+# Startup event
 @app.on_event("startup")
 async def startup_event():
-    """Initialize database tables on startup"""
-    init_db()
-    logger.info("Database initialized")
+    """Initialize database on startup"""
+    try:
+        init_db()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Database initialization error: {str(e)}")
 
 
-# Pydantic Models
+# ============================================================================
+# PYDANTIC MODELS
+# ============================================================================
+
 class UserRegister(BaseModel):
     email: EmailStr
     password: str
-    full_name: Optional[str] = None
-
+    full_name: str
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
-
 
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
 
-
 class LLMRequest(BaseModel):
     prompt: str
     add_context_from_internet: bool = False
-    response_json_schema: Optional[Dict[str, Any]] = None
+    response_json_schema: Optional[dict] = None
 
-
-class ImageGenerationRequest(BaseModel):
+class ImageGenerateRequest(BaseModel):
     prompt: str
     size: str = "1024x1024"
-
 
 class FormulaRequest(BaseModel):
     description: str
     context: Optional[str] = None
 
-
-class DataAnalysisRequest(BaseModel):
+class AnalyzeRequest(BaseModel):
     data_summary: str
-    question: Optional[str] = None
+    question: str
 
+class ChartSuggestRequest(BaseModel):
+    columns: List[dict]
+    data_preview: List[dict]
 
-class ChartSuggestionRequest(BaseModel):
-    columns: List[Dict[str, str]]
-    data_preview: Optional[List[Dict]] = None
+class PLGenerationRequest(BaseModel):
+    prompt: str
+    company_name: str = "Company"
+    currency: str = "USD"
+    period_type: str = "monthly"
 
+class ExcelBuildRequest(BaseModel):
+    prompt: str
+    include_formulas: bool = True
+    include_charts: bool = True
 
-class ZipProcessingOptions(BaseModel):
-    allowed_chars: Optional[str] = None
-    disallowed_chars: Optional[str] = None
-    replace_char: str = "_"
-    remove_spaces: bool = False
-    max_length: int = 255
-    languages: Optional[List[str]] = None
+class ReviewCreate(BaseModel):
+    rating: int  # 1-5
+    title: Optional[str] = None
+    comment: str
+    feature_rated: Optional[str] = None
 
+class ReviewUpdate(BaseModel):
+    helpful: Optional[bool] = None
 
-class ActivityLog(BaseModel):
+class ActivityLogRequest(BaseModel):
     activity_type: str
-    page_name: Optional[str] = None
+    page_name: str
     details: Optional[str] = None
 
-
-# ============================================================================
-# CORS TEST ENDPOINT
-# ============================================================================
-
-@app.get("/api/cors-test")
-async def cors_test():
-    """Simple endpoint to test CORS configuration"""
-    return {
-        "message": "CORS is working!",
-        "cors_configured": True,
-        "timestamp": datetime.utcnow().isoformat()
-    }
-
-@app.options("/api/auth/register")
-async def register_options():
-    """Handle OPTIONS preflight for register endpoint"""
-    return JSONResponse(content={}, status_code=200)
-
-@app.options("/api/auth/login")
-async def login_options():
-    """Handle OPTIONS preflight for login endpoint"""
-    return JSONResponse(content={}, status_code=200)
 
 # ============================================================================
 # AUTHENTICATION ENDPOINTS
@@ -170,7 +140,7 @@ async def login_options():
 
 @app.post("/api/auth/register")
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
-    """Register new user"""
+    """Register a new user"""
     try:
         # Check if user exists
         existing_user = db.query(User).filter(User.email == user_data.email).first()
@@ -186,7 +156,8 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
             email=user_data.email,
             full_name=user_data.full_name,
             hashed_password=hashed_password,
-            role="admin" if user_data.email == "sumitagaria@gmail.com" else "user"
+            role="user",
+            is_active=True
         )
 
         db.add(new_user)
@@ -195,22 +166,22 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
 
         # Create free subscription
         subscription = Subscription(
-            user_email=user_data.email,
-            plan="free",
-            status="active",
-            ai_queries_limit=5,
-            ai_queries_used=0
+            user_id=new_user.id,
+            plan_type="free",
+            status="active"
         )
         db.add(subscription)
         db.commit()
 
-        logger.info(f"New user registered: {user_data.email}")
+        logger.info(f"User registered: {user_data.email}")
 
         return {
-            "message": "User registered successfully",
-            "email": new_user.email
+            "message": "Registration successful",
+            "user": {
+                "email": new_user.email,
+                "full_name": new_user.full_name
+            }
         }
-
     except HTTPException:
         raise
     except Exception as e:
@@ -244,6 +215,7 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
             )
 
         # Create access token
+        from app.utils.auth import ACCESS_TOKEN_EXPIRE_MINUTES
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": user.email, "role": user.role},
@@ -300,78 +272,49 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
     try:
         # Find user
         user = db.query(User).filter(User.email == request.email).first()
-
         if not user:
-            # Don't reveal if email exists - return success anyway
-            return {"message": "If the email exists, a reset link has been sent"}
+            # Don't reveal if user exists
+            return {"message": "If the email exists, a password reset link has been sent"}
 
-        # Generate reset token
-        reset_token = secrets.token_urlsafe(32)
-        reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+        # Generate reset token (simplified - in production, use proper token generation)
+        reset_token = create_access_token(data={"sub": user.email, "type": "password_reset"}, expires_delta=timedelta(hours=1))
 
-        # Update user
-        user.reset_token = reset_token
-        user.reset_token_expires = reset_token_expires
-        db.commit()
+        # TODO: Send email with reset link
+        # For now, just log it
+        logger.info(f"Password reset requested for {user.email}, token: {reset_token[:20]}...")
 
-        # In production, send email here
-        # For now, just log the token (REMOVE IN PRODUCTION!)
-        reset_url = f"http://localhost:5173/reset-password?token={reset_token}"
-        logger.info(f"Password reset requested for {request.email}")
-        logger.info(f"Reset URL: {reset_url}")
-
-        # TODO: Send email with reset_url
-        # For development, return the URL (REMOVE IN PRODUCTION!)
-        return {
-            "message": "If the email exists, a reset link has been sent",
-            "reset_url": reset_url  # REMOVE IN PRODUCTION!
-        }
-
+        return {"message": "If the email exists, a password reset link has been sent"}
     except Exception as e:
-        logger.error(f"Error in forgot password: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process request"
-        )
+        logger.error(f"Forgot password error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to process request")
 
 
 @app.post("/api/auth/reset-password")
-async def reset_password(
-    request: ResetPasswordRequest,
-    db: Session = Depends(get_db)
-):
+async def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
     """Reset password with token"""
     try:
-        # Find user with valid token
-        user = db.query(User).filter(
-            User.reset_token == request.token,
-            User.reset_token_expires > datetime.utcnow()
-        ).first()
+        from app.utils.auth import decode_token
+        
+        # Decode token
+        payload = decode_token(request.reset_token)
+        if payload.get("type") != "password_reset":
+            raise HTTPException(status_code=400, detail="Invalid token")
 
+        # Find user
+        user = db.query(User).filter(User.email == payload["sub"]).first()
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired reset token"
-            )
+            raise HTTPException(status_code=404, detail="User not found")
 
         # Update password
         user.hashed_password = get_password_hash(request.new_password)
-        user.reset_token = None
-        user.reset_token_expires = None
         db.commit()
 
-        logger.info(f"Password reset successful for {user.email}")
-
         return {"message": "Password reset successful"}
-
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error resetting password: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to reset password"
-        )
+        logger.error(f"Reset password error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to reset password")
 
 
 # ============================================================================
@@ -384,91 +327,36 @@ async def invoke_llm_endpoint(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Invoke LLM for data analysis
-    ZERO STORAGE: Prompt NOT stored, response NOT stored
-    """
+    """Invoke LLM for data analysis"""
     try:
-        # Check subscription and limits
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
-
-        if not subscription:
-            raise HTTPException(status_code=404, detail="Subscription not found")
-
-        # Check AI query limit (unlimited for premium)
-        if subscription.plan != "premium":
-            if subscription.ai_queries_used >= subscription.ai_queries_limit:
-                raise HTTPException(
-                    status_code=429,
-                    detail=f"AI query limit reached. Upgrade to Premium for unlimited queries."
-                )
-
-        # Invoke LLM
         response = await invoke_llm(
             prompt=request.prompt,
             add_context=request.add_context_from_internet,
             response_schema=request.response_json_schema
         )
-
-        # Update usage (only if not premium)
-        if subscription.plan != "premium":
-            subscription.ai_queries_used += 1
-            db.commit()
-
-        # Log activity (NO content stored)
-        activity = UserActivity(
-            user_email=current_user["email"],
-            activity_type="ai_query",
-            page_name="llm_invoke"
-        )
-        db.add(activity)
-        db.commit()
-
-        logger.info(f"LLM invoked by {current_user['email']}")
-
         return {"response": response}
-
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"LLM invocation error: {str(e)}")
+        logger.error(f"LLM invoke error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/integrations/image/generate")
 async def generate_image_endpoint(
-    request: ImageGenerationRequest,
+    request: ImageGenerateRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Generate image using DALL-E"""
     try:
         # Check subscription
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
+        user = db.query(User).filter(User.email == current_user["email"]).first()
+        subscription = db.query(Subscription).filter(Subscription.user_id == user.id).first()
+        
+        if subscription and subscription.plan_type != "premium":
+            raise HTTPException(status_code=403, detail="Image generation requires Premium plan")
 
-        if subscription.plan != "premium":
-            raise HTTPException(
-                status_code=403,
-                detail="Image generation is a Premium feature"
-            )
-
-        # Generate image
-        image_url = await generate_image(request.prompt, request.size)
-
-        # Log activity
-        activity = UserActivity(
-            user_email=current_user["email"],
-            activity_type="image_generation"
-        )
-        db.add(activity)
-        db.commit()
-
+        image_url = await generate_image(prompt=request.prompt, size=request.size)
         return {"image_url": image_url}
-
     except HTTPException:
         raise
     except Exception as e:
@@ -479,23 +367,12 @@ async def generate_image_endpoint(
 @app.post("/api/ai/formula")
 async def generate_formula_endpoint(
     request: FormulaRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user)
 ):
     """Generate Excel formula from description"""
     try:
-        formula_data = await generate_formula(request.description, request.context)
-
-        # Log activity
-        activity = UserActivity(
-            user_email=current_user["email"],
-            activity_type="formula_generation"
-        )
-        db.add(activity)
-        db.commit()
-
-        return formula_data
-
+        formula = await generate_formula(request.description, request.context)
+        return {"formula": formula}
     except Exception as e:
         logger.error(f"Formula generation error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -503,24 +380,13 @@ async def generate_formula_endpoint(
 
 @app.post("/api/ai/analyze")
 async def analyze_data_endpoint(
-    request: DataAnalysisRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    request: AnalyzeRequest,
+    current_user: dict = Depends(get_current_user)
 ):
-    """Analyze data and provide insights"""
+    """Analyze data and answer questions"""
     try:
         analysis = await analyze_data(request.data_summary, request.question)
-
-        # Log activity
-        activity = UserActivity(
-            user_email=current_user["email"],
-            activity_type="data_analysis"
-        )
-        db.add(activity)
-        db.commit()
-
-        return analysis
-
+        return {"analysis": analysis}
     except Exception as e:
         logger.error(f"Data analysis error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -528,24 +394,13 @@ async def analyze_data_endpoint(
 
 @app.post("/api/ai/suggest-chart")
 async def suggest_chart_endpoint(
-    request: ChartSuggestionRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    request: ChartSuggestRequest,
+    current_user: dict = Depends(get_current_user)
 ):
-    """Suggest best chart type for data"""
+    """Suggest chart type based on data"""
     try:
-        suggestion = await suggest_chart_type(request.columns, request.data_preview)
-
-        # Log activity
-        activity = UserActivity(
-            user_email=current_user["email"],
-            activity_type="chart_suggestion"
-        )
-        db.add(activity)
-        db.commit()
-
-        return suggestion
-
+        chart_type = await suggest_chart_type(request.columns, request.data_preview)
+        return {"chart_type": chart_type}
     except Exception as e:
         logger.error(f"Chart suggestion error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -561,159 +416,266 @@ async def excel_to_ppt(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Convert Excel file to PowerPoint
-    ZERO STORAGE: File content NOT stored, only processing history
-    """
+    """Convert Excel/CSV/PDF to PowerPoint"""
     try:
-        # Check file size based on subscription
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
-
-        max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
-        max_size_bytes = max_size_mb * 1024 * 1024
-
-        # Read file size
+        # Read file
         file_content = await file.read()
-        file_size_mb = len(file_content) / (1024 * 1024)
-
-        if len(file_content) > max_size_bytes:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File size ({file_size_mb:.1f}MB) exceeds {max_size_mb}MB limit"
-            )
-
-        # Validate file type
-        if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
-            raise HTTPException(status_code=400, detail="Invalid file type")
-
-        # Convert to PPT
-        ppt_service = ExcelToPPTService()
-        ppt_data = await ppt_service.convert_excel_to_ppt(
-            io.BytesIO(file_content),
-            file.filename
-        )
-
-        # Log processing history (NO file content)
-        processing_history = FileProcessingHistory(
-            user_email=current_user["email"],
+        
+        # Process
+        service = ExcelToPPTService()
+        ppt_bytes = await service.convert_to_ppt(file_content, file.filename)
+        
+        # Log processing
+        user = db.query(User).filter(User.email == current_user["email"]).first()
+        processing_log = FileProcessingHistory(
+            user_id=user.id,
             processing_type="excel_to_ppt",
             original_filename=file.filename,
-            file_size_mb=file_size_mb,
-            status="success"
+            file_size_mb=len(file_content) / (1024 * 1024)
         )
-        db.add(processing_history)
+        db.add(processing_log)
         db.commit()
 
-        logger.info(f"Excel to PPT conversion: {file.filename} by {current_user['email']}")
-
-        # Return file as download
         return StreamingResponse(
-            io.BytesIO(ppt_data),
+            BytesIO(ppt_bytes),
             media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-            headers={
-                "Content-Disposition": f"attachment; filename={file.filename.replace('.xlsx', '').replace('.xls', '')}_presentation.pptx"
-            }
+            headers={"Content-Disposition": f'attachment; filename="{file.filename.replace(".xlsx", "").replace(".xls", "").replace(".csv", "").replace(".pdf", "")}.pptx"'}
         )
-
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Excel to PPT error: {str(e)}")
-
-        # Log failed processing
-        processing_history = FileProcessingHistory(
-            user_email=current_user["email"],
-            processing_type="excel_to_ppt",
-            original_filename=file.filename,
-            file_size_mb=file_size_mb if 'file_size_mb' in locals() else 0,
-            status="failed",
-            error_message=str(e)
-        )
-        db.add(processing_history)
-        db.commit()
-
-        raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/files/process-zip")
 async def process_zip(
     file: UploadFile = File(...),
-    options: str = None,  # JSON string of options
+    options: Optional[str] = None,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Process ZIP file with filename cleaning
-    ZERO STORAGE: File content NOT stored
-    """
+    """Process ZIP file - clean and rename files"""
     try:
         import json
-
-        # Check file size
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
-
-        max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
-        max_size_bytes = max_size_mb * 1024 * 1024
-
+        
         file_content = await file.read()
-        file_size_mb = len(file_content) / (1024 * 1024)
-
-        if len(file_content) > max_size_bytes:
-            raise HTTPException(
-                status_code=413,
-                detail=f"File size ({file_size_mb:.1f}MB) exceeds {max_size_mb}MB limit"
-            )
-
-        # Validate file type
-        if not file.filename.endswith('.zip'):
-            raise HTTPException(status_code=400, detail="Invalid file type. Please upload a ZIP file.")
-
-        # Parse options
-        processing_options = json.loads(options) if options else {}
-
-        # Get language replacements
-        zip_service = ZipProcessorService()
-        languages = processing_options.get('languages', [])
-        language_replacements = zip_service.get_language_replacements(languages)
-
-        # Update options with language replacements
-        processing_options['language_replacements'] = language_replacements
-
-        # Process ZIP
-        processed_data = await zip_service.process_zip(io.BytesIO(file_content), processing_options)
-
-        # Log processing history
-        processing_history = FileProcessingHistory(
-            user_email=current_user["email"],
-            processing_type="zip_cleaning",
+        zip_options = json.loads(options) if options else {}
+        
+        service = ZipProcessorService()
+        processed_zip = await service.process_zip(file_content, zip_options)
+        
+        # Log processing
+        user = db.query(User).filter(User.email == current_user["email"]).first()
+        processing_log = FileProcessingHistory(
+            user_id=user.id,
+            processing_type="zip_processing",
             original_filename=file.filename,
-            file_size_mb=file_size_mb,
-            status="success"
+            file_size_mb=len(file_content) / (1024 * 1024)
         )
-        db.add(processing_history)
+        db.add(processing_log)
         db.commit()
 
-        logger.info(f"ZIP processing: {file.filename} by {current_user['email']}")
-
-        # Return processed ZIP
-        output_filename = f"processed_{secrets.token_hex(4)}.zip"
         return StreamingResponse(
-            io.BytesIO(processed_data),
+            BytesIO(processed_zip),
             media_type="application/zip",
-            headers={
-                "Content-Disposition": f"attachment; filename={output_filename}"
-            }
+            headers={"Content-Disposition": f'attachment; filename="processed_{file.filename}"'}
+        )
+    except Exception as e:
+        logger.error(f"ZIP processing error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/files/generate-pl")
+async def generate_pl(
+    request: PLGenerationRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Generate P&L Excel file from natural language"""
+    try:
+        service = PLBuilderService()
+        excel_bytes = await service.generate_pl(
+            prompt=request.prompt,
+            company_name=request.company_name,
+            currency=request.currency,
+            period_type=request.period_type
         )
 
+        return StreamingResponse(
+            BytesIO(excel_bytes),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="P&L_{request.company_name}.xlsx"'}
+        )
+    except Exception as e:
+        logger.error(f"P&L generation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/files/analyze-file")
+async def analyze_file(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Analyze uploaded Excel/CSV file using AI"""
+    try:
+        file_content = await file.read()
+        service = FileAnalyzerService()
+        analysis = await service.analyze_file(file_content, file.filename)
+        return analysis
+    except Exception as e:
+        logger.error(f"File analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/files/build-excel")
+async def build_excel(
+    request: ExcelBuildRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Build complex Excel file with formulas and charts"""
+    try:
+        service = ExcelBuilderService()
+        excel_bytes = await service.build_excel(
+            prompt=request.prompt,
+            include_formulas=request.include_formulas,
+            include_charts=request.include_charts
+        )
+
+        return StreamingResponse(
+            BytesIO(excel_bytes),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": 'attachment; filename="generated_spreadsheet.xlsx"'}
+        )
+    except Exception as e:
+        logger.error(f"Excel build error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# REVIEW ENDPOINTS
+# ============================================================================
+
+@app.post("/api/reviews")
+async def create_review(
+    review_data: ReviewCreate,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a customer review"""
+    try:
+        # Validate rating
+        if review_data.rating < 1 or review_data.rating > 5:
+            raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+        
+        # Create review
+        new_review = Review(
+            user_email=current_user["email"],
+            user_name=current_user.get("full_name", current_user["email"]),
+            rating=review_data.rating,
+            title=review_data.title,
+            comment=review_data.comment,
+            feature_rated=review_data.feature_rated,
+            is_approved=False  # Requires moderation
+        )
+        
+        db.add(new_review)
+        db.commit()
+        db.refresh(new_review)
+        
+        logger.info(f"Review created by {current_user['email']}")
+        
+        return {
+            "message": "Review submitted successfully. It will be published after moderation.",
+            "review": new_review.to_dict()
+        }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"ZIP processing error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
+        logger.error(f"Review creation error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to create review")
+
+
+@app.get("/api/reviews")
+async def get_reviews(
+    feature: Optional[str] = None,
+    approved_only: bool = True,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """Get reviews (public endpoint)"""
+    try:
+        query = db.query(Review)
+        
+        if approved_only:
+            query = query.filter(Review.is_approved == True)
+        
+        if feature:
+            query = query.filter(Review.feature_rated == feature)
+        
+        reviews = query.order_by(Review.created_date.desc()).limit(limit).all()
+        
+        # Calculate average rating
+        avg_rating = db.query(func.avg(Review.rating)).filter(
+            Review.is_approved == True
+        ).scalar() or 0
+        
+        return {
+            "reviews": [r.to_dict() for r in reviews],
+            "average_rating": round(float(avg_rating), 2),
+            "total_reviews": len(reviews)
+        }
+    except Exception as e:
+        logger.error(f"Get reviews error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get reviews")
+
+
+@app.post("/api/reviews/{review_id}/helpful")
+async def mark_helpful(
+    review_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Mark review as helpful"""
+    try:
+        review = db.query(Review).filter(Review.id == review_id).first()
+        if not review:
+            raise HTTPException(status_code=404, detail="Review not found")
+        
+        review.helpful_count += 1
+        db.commit()
+        
+        return {"message": "Marked as helpful", "helpful_count": review.helpful_count}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Mark helpful error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to mark helpful")
+
+
+@app.get("/api/reviews/stats")
+async def get_review_stats(db: Session = Depends(get_db)):
+    """Get review statistics (public)"""
+    try:
+        total = db.query(Review).filter(Review.is_approved == True).count()
+        avg_rating = db.query(func.avg(Review.rating)).filter(
+            Review.is_approved == True
+        ).scalar() or 0
+        
+        rating_distribution = {}
+        for i in range(1, 6):
+            count = db.query(Review).filter(
+                Review.is_approved == True,
+                Review.rating == i
+            ).count()
+            rating_distribution[i] = count
+        
+        return {
+            "total_reviews": total,
+            "average_rating": round(float(avg_rating), 2),
+            "rating_distribution": rating_distribution
+        }
+    except Exception as e:
+        logger.error(f"Review stats error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get stats")
 
 
 # ============================================================================
@@ -726,33 +688,30 @@ async def get_my_subscription(
     db: Session = Depends(get_db)
 ):
     """Get current user's subscription"""
-    subscription = db.query(Subscription).filter(
-        Subscription.user_email == current_user["email"]
-    ).first()
-
-    if not subscription:
-        # Create free subscription if doesn't exist
-        subscription = Subscription(
-            user_email=current_user["email"],
-            plan="free",
-            status="active",
-            ai_queries_limit=5,
-            ai_queries_used=0
-        )
-        db.add(subscription)
-        db.commit()
-        db.refresh(subscription)
-
-    return {
-        "id": subscription.id,
-        "user_email": subscription.user_email,
-        "plan": subscription.plan,
-        "status": subscription.status,
-        "ai_queries_used": subscription.ai_queries_used,
-        "ai_queries_limit": subscription.ai_queries_limit,
-        "files_uploaded": subscription.files_uploaded,
-        "created_date": subscription.created_date
-    }
+    try:
+        user = db.query(User).filter(User.email == current_user["email"]).first()
+        subscription = db.query(Subscription).filter(Subscription.user_id == user.id).first()
+        
+        if not subscription:
+            # Create free subscription if none exists
+            subscription = Subscription(
+                user_id=user.id,
+                plan_type="free",
+                status="active"
+            )
+            db.add(subscription)
+            db.commit()
+            db.refresh(subscription)
+        
+        return {
+            "plan_type": subscription.plan_type,
+            "status": subscription.status,
+            "start_date": subscription.start_date.isoformat() if subscription.start_date else None,
+            "end_date": subscription.end_date.isoformat() if subscription.end_date else None
+        }
+    except Exception as e:
+        logger.error(f"Get subscription error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get subscription")
 
 
 @app.post("/api/subscriptions/upgrade")
@@ -760,70 +719,77 @@ async def upgrade_subscription(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Upgrade to premium (simplified - integrate Stripe for real payments)"""
-    subscription = db.query(Subscription).filter(
-        Subscription.user_email == current_user["email"]
-    ).first()
-
-    if subscription:
-        subscription.plan = "premium"
-        subscription.ai_queries_limit = -1  # Unlimited
+    """Upgrade to premium (simplified - integrate Stripe in production)"""
+    try:
+        user = db.query(User).filter(User.email == current_user["email"]).first()
+        subscription = db.query(Subscription).filter(Subscription.user_id == user.id).first()
+        
+        if not subscription:
+            subscription = Subscription(
+                user_id=user.id,
+                plan_type="free",
+                status="active"
+            )
+            db.add(subscription)
+        
+        subscription.plan_type = "premium"
         subscription.status = "active"
-        subscription.subscription_start_date = datetime.utcnow()
         db.commit()
-
-    return {"message": "Subscription upgraded to Premium"}
+        
+        return {"message": "Upgraded to premium successfully"}
+    except Exception as e:
+        logger.error(f"Upgrade error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to upgrade")
 
 
 # ============================================================================
-# ACTIVITY & ANALYTICS ENDPOINTS
+# ACTIVITY ENDPOINTS
 # ============================================================================
 
 @app.post("/api/activity/log")
 async def log_activity(
-    activity: ActivityLog,
+    activity: ActivityLogRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Log user activity"""
     try:
-        user_activity = UserActivity(
-            user_email=current_user["email"],
+        user = db.query(User).filter(User.email == current_user["email"]).first()
+        
+        activity_log = UserActivity(
+            user_id=user.id,
             activity_type=activity.activity_type,
             page_name=activity.page_name,
             details=activity.details
         )
-        db.add(user_activity)
+        db.add(activity_log)
         db.commit()
-
+        
         return {"message": "Activity logged"}
-
     except Exception as e:
-        logger.error(f"Activity logging error: {str(e)}")
+        logger.error(f"Activity log error: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to log activity")
 
 
 @app.get("/api/activity/history")
 async def get_activity_history(
+    limit: int = 50,
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-    limit: int = 50
+    db: Session = Depends(get_db)
 ):
-    """Get user's activity history"""
-    activities = db.query(UserActivity).filter(
-        UserActivity.user_email == current_user["email"]
-    ).order_by(UserActivity.created_date.desc()).limit(limit).all()
-
-    return [
-        {
-            "id": a.id,
-            "activity_type": a.activity_type,
-            "page_name": a.page_name,
-            "details": a.details,
-            "created_date": a.created_date
+    """Get user activity history"""
+    try:
+        user = db.query(User).filter(User.email == current_user["email"]).first()
+        activities = db.query(UserActivity).filter(
+            UserActivity.user_id == user.id
+        ).order_by(UserActivity.created_date.desc()).limit(limit).all()
+        
+        return {
+            "activities": [a.to_dict() for a in activities]
         }
-        for a in activities
-    ]
+    except Exception as e:
+        logger.error(f"Get activity history error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get activity history")
 
 
 # ============================================================================
@@ -836,18 +802,21 @@ async def get_all_users(
     db: Session = Depends(get_db)
 ):
     """Get all users (admin only)"""
-    users = db.query(User).all()
-    return [
-        {
-            "id": u.id,
-            "email": u.email,
-            "full_name": u.full_name,
-            "role": u.role,
-            "is_active": u.is_active,
-            "created_date": u.created_date
+    try:
+        users = db.query(User).all()
+        return {
+            "users": [{
+                "id": u.id,
+                "email": u.email,
+                "full_name": u.full_name,
+                "role": u.role,
+                "is_active": u.is_active,
+                "created_date": u.created_date.isoformat() if u.created_date else None
+            } for u in users]
         }
-        for u in users
-    ]
+    except Exception as e:
+        logger.error(f"Get users error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get users")
 
 
 @app.get("/api/admin/subscriptions")
@@ -856,19 +825,14 @@ async def get_all_subscriptions(
     db: Session = Depends(get_db)
 ):
     """Get all subscriptions (admin only)"""
-    subscriptions = db.query(Subscription).all()
-    return [
-        {
-            "id": s.id,
-            "user_email": s.user_email,
-            "plan": s.plan,
-            "status": s.status,
-            "ai_queries_used": s.ai_queries_used,
-            "ai_queries_limit": s.ai_queries_limit,
-            "created_date": s.created_date
+    try:
+        subscriptions = db.query(Subscription).all()
+        return {
+            "subscriptions": [s.to_dict() for s in subscriptions]
         }
-        for s in subscriptions
-    ]
+    except Exception as e:
+        logger.error(f"Get subscriptions error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to get subscriptions")
 
 
 # ============================================================================
@@ -878,31 +842,9 @@ async def get_all_subscriptions(
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "service": "InsightSheet-lite Backend",
-        "version": "1.0.0",
-        "timestamp": datetime.utcnow().isoformat()
-    }
-
-
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "message": "InsightSheet-lite Backend API",
-        "version": "1.0.0",
-        "docs": "/docs",
-        "health": "/health"
-    }
+    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
 
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", "8000"))
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=port,
-        reload=True
-    )
+    uvicorn.run(app, host="0.0.0.0", port=8000)

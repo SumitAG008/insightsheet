@@ -138,6 +138,38 @@ class ZipProcessorService:
             logger.error(f"Error sanitizing filename: {str(e)}")
             return f"renamed_file_{secrets.token_hex(4)}"
 
+    def search_replace_filename(
+        self,
+        filename: str,
+        search_pattern: str,
+        replace_with: str,
+        use_regex: bool = False
+    ) -> str:
+        """
+        Search and replace in filename
+        
+        Args:
+            filename: Original filename
+            search_pattern: Pattern to search for
+            replace_with: Replacement string
+            use_regex: Whether to use regex pattern
+            
+        Returns:
+            str: Modified filename
+        """
+        try:
+            if use_regex:
+                # Use regex replacement
+                filename = re.sub(search_pattern, replace_with, filename)
+            else:
+                # Simple string replacement
+                filename = filename.replace(search_pattern, replace_with)
+            
+            return filename
+        except Exception as e:
+            logger.error(f"Error in search/replace: {str(e)}")
+            return filename
+
     async def process_zip(
         self,
         zip_file: BinaryIO,
@@ -182,6 +214,15 @@ class ZipProcessorService:
                     try:
                         # Get original name
                         original_name = os.path.basename(item.filename)
+
+                        # Apply search/replace if specified
+                        if options.get('search_pattern') and options.get('replace_with'):
+                            original_name = self.search_replace_filename(
+                                original_name,
+                                options['search_pattern'],
+                                options['replace_with'],
+                                options.get('use_regex', False)
+                            )
 
                         # Sanitize filename
                         new_name = self.sanitize_filename(

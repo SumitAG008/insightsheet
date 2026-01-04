@@ -3,7 +3,7 @@ Database models and configuration for InsightSheet (Meldra AI)
 PostgreSQL with SQLAlchemy
 """
 
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Text, Float, JSON, text
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Text, Float, JSON, text, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -50,6 +50,16 @@ class User(Base):
     # Password reset
     reset_token = Column(String(255), nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
+
+    # Two-Factor Authentication
+    mfa_enabled = Column(Boolean, default=False)
+    mfa_secret = Column(String(255), nullable=True)
+    mfa_backup_codes = Column(JSON, nullable=True)
+
+    # Security
+    failed_login_attempts = Column(Integer, default=0)
+    locked_until = Column(DateTime, nullable=True)
+    last_failed_login = Column(DateTime, nullable=True)
 
     # Timestamps
     created_date = Column(DateTime, default=datetime.utcnow)
@@ -220,6 +230,55 @@ class FileProcessingHistory(Base):
             "status": self.status,
             "error_message": self.error_message,
             "created_date": self.created_date.isoformat() if self.created_date else None
+        }
+
+
+# ============================================
+# 6. REVIEW MODEL
+# ============================================
+class Review(Base):
+    __tablename__ = "reviews"
+
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # User info
+    user_email = Column(String(255), index=True, nullable=False)
+    user_name = Column(String(255))
+    
+    # Review content
+    rating = Column(Integer, nullable=False)  # 1-5 stars
+    title = Column(String(255))
+    comment = Column(Text)
+    
+    # Review metadata
+    feature_rated = Column(String(100))  # Which feature (e.g., "Excel to PPT", "P&L Builder")
+    helpful_count = Column(Integer, default=0)
+    verified_purchase = Column(Boolean, default=False)
+    
+    # Moderation
+    is_approved = Column(Boolean, default=False)
+    is_featured = Column(Boolean, default=False)
+    moderation_notes = Column(Text, nullable=True)
+    
+    # Timestamps
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_email": self.user_email,
+            "user_name": self.user_name,
+            "rating": self.rating,
+            "title": self.title,
+            "comment": self.comment,
+            "feature_rated": self.feature_rated,
+            "helpful_count": self.helpful_count,
+            "verified_purchase": self.verified_purchase,
+            "is_approved": self.is_approved,
+            "is_featured": self.is_featured,
+            "created_date": self.created_date.isoformat() if self.created_date else None,
+            "updated_date": self.updated_date.isoformat() if self.updated_date else None
         }
 
 

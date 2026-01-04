@@ -10,6 +10,7 @@ import RelationshipManager from '@/components/datamodel/RelationshipManager';
 import SQLGenerator from '@/components/datamodel/SQLGenerator';
 import AISchemaAssistant from '@/components/datamodel/AISchemaAssistant';
 import { meldraAi } from '@/api/meldraClient';
+import { jsonToSchema, xmlToSchema, autoConvertToSchema } from '@/utils/schemaConverter';
 
 export default function DataModelCreator() {
   const navigate = useNavigate();
@@ -32,7 +33,8 @@ export default function DataModelCreator() {
       setUser(currentUser);
     } catch (error) {
       console.error('Auth check failed:', error);
-      navigate('/Login');
+      // User not logged in, but allow access
+      console.log('User not authenticated');
     }
   };
 
@@ -122,16 +124,88 @@ export default function DataModelCreator() {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const imported = JSON.parse(e.target.result);
-        if (imported.tables && Array.isArray(imported.tables)) {
-          setSchema(imported);
-          toast.success('Schema imported successfully');
-        } else {
-          toast.error('Invalid schema file format');
+        const fileContent = e.target.result;
+        const filename = file.name.toLowerCase();
+        
+        let importedSchema;
+        
+        // Check if it's a schema file (has tables array) or data file (array of objects)
+        try {
+          const parsed = JSON.parse(fileContent);
+          
+          // If it has 'tables' property, it's a schema file
+          if (parsed.tables && Array.isArray(parsed.tables)) {
+            // Import as schema directly
+            importedSchema = {
+              name: parsed.name || 'Imported Schema',
+              tables: parsed.tables.map((table, index) => ({
+                id: table.id || `table_${Date.now()}_${index}`,
+                name: table.name || `Table${index + 1}`,
+                x: table.x || (100 + (index * 200)),
+                y: table.y || (100 + (index * 150)),
+                columns: Array.isArray(table.columns) ? table.columns.map((col, colIndex) => ({
+                  id: col.id || `col_${Date.now()}_${index}_${colIndex}`,
+                  name: col.name || `column${colIndex + 1}`,
+                  type: col.type || 'VARCHAR',
+                  primaryKey: col.primaryKey || false,
+                  nullable: col.nullable !== undefined ? col.nullable : true,
+                  autoIncrement: col.autoIncrement || false,
+                  defaultValue: col.defaultValue || null,
+                  foreignKey: col.foreignKey || null
+                })) : []
+              })),
+              relationships: Array.isArray(parsed.relationships) ? parsed.relationships.map((rel, relIndex) => ({
+                id: rel.id || `rel_${Date.now()}_${relIndex}`,
+                fromTable: rel.fromTable,
+                toTable: rel.toTable,
+                fromColumn: rel.fromColumn,
+                toColumn: rel.toColumn,
+                type: rel.type || 'one-to-many'
+              })) : []
+            };
+          } else if (Array.isArray(parsed) || (typeof parsed === 'object' && parsed !== null)) {
+            // It's data - convert to schema
+            importedSchema = autoConvertToSchema(parsed, filename);
+            toast.info('Data file detected. Converting to schema...');
+          } else {
+            throw new Error('Invalid file format');
+          }
+        } catch (parseError) {
+          // Try XML
+          if (filename.endsWith('.xml') || fileContent.trim().startsWith('<?xml')) {
+            importedSchema = xmlToSchema(fileContent);
+            toast.info('XML file detected. Converting to schema...');
+          } else {
+            throw parseError;
+          }
         }
+
+        // Set the schema
+        setSchema(importedSchema);
+        
+        // Reset selected table
+        setSelectedTable(null);
+        
+        // Switch to canvas tab to see the imported schema
+        setActiveTab('canvas');
+        
+        const tableCount = importedSchema.tables.length;
+        const columnCount = importedSchema.tables.reduce((sum, t) => sum + t.columns.length, 0);
+        const relCount = importedSchema.relationships.length;
+        
+        toast.success(`Schema imported: ${tableCount} table(s), ${columnCount} columns, ${relCount} relationships`);
+        
+        // Reset file input so same file can be imported again
+        event.target.value = '';
       } catch (error) {
-        toast.error('Failed to parse JSON file');
+        console.error('Import error:', error);
+        toast.error(`Failed to import: ${error.message}`);
+        event.target.value = '';
       }
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read file');
+      event.target.value = '';
     };
     reader.readAsText(file);
   };
@@ -157,20 +231,20 @@ export default function DataModelCreator() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 p-4 md:p-8">
+    <div className="min-h-screen bg-white dark:bg-slate-950 p-4 md:p-8">
       <div className="max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+              <div className="p-2 bg-blue-600 rounded-lg">
                 <Database className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
                   Data Model Creator
                 </h1>
-                <p className="text-slate-400 text-sm">
+                <p className="text-slate-600 dark:text-slate-400 text-sm">
                   Design database schemas visually with AI-powered assistance
                 </p>
               </div>
@@ -180,24 +254,28 @@ export default function DataModelCreator() {
             <div className="flex items-center gap-2">
               <Button
                 onClick={handleAddTable}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Table
               </Button>
 
-              <label>
+              <label className="cursor-pointer">
                 <input
                   type="file"
-                  accept=".json"
+                  accept=".json,.xml,.js"
                   onChange={handleImportJSON}
                   className="hidden"
+                  id="import-json-input"
                 />
-                <Button variant="outline" className="cursor-pointer" asChild>
-                  <span>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Import
-                  </span>
+                <Button 
+                  variant="outline" 
+                  type="button"
+                  onClick={() => document.getElementById('import-json-input')?.click()}
+                  title="Import JSON/XML data or schema file"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import JSON/XML
                 </Button>
               </label>
 
@@ -221,10 +299,10 @@ export default function DataModelCreator() {
           </div>
 
           {/* Schema Info */}
-          <div className="flex items-center gap-6 text-sm text-slate-400">
-            <span>{schema.tables.length} Tables</span>
-            <span>{schema.relationships.length} Relationships</span>
-            <span>
+          <div className="flex items-center gap-6 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+            <span className="font-semibold">{schema.tables.length} Tables</span>
+            <span className="font-semibold">{schema.relationships.length} Relationships</span>
+            <span className="font-semibold">
               {schema.tables.reduce((sum, t) => sum + t.columns.length, 0)} Columns
             </span>
           </div>
@@ -232,7 +310,7 @@ export default function DataModelCreator() {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="bg-slate-900/50 border border-slate-800">
+          <TabsList className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
             <TabsTrigger value="canvas">
               <Database className="w-4 h-4 mr-2" />
               Visual Canvas
@@ -256,6 +334,7 @@ export default function DataModelCreator() {
 
           <TabsContent value="canvas" className="mt-4">
             <SchemaCanvas
+              key={`canvas-${schema.tables.length}-${schema.relationships.length}`}
               schema={schema}
               selectedTable={selectedTable}
               onSelectTable={setSelectedTable}
@@ -267,6 +346,7 @@ export default function DataModelCreator() {
 
           <TabsContent value="tables" className="mt-4">
             <TableDesigner
+              key={`tables-${schema.tables.length}`}
               tables={schema.tables}
               selectedTable={selectedTable}
               onSelectTable={setSelectedTable}

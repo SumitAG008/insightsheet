@@ -216,18 +216,6 @@ export default function Layout({ children }) {
                   </Link>
 
                   <Link
-                    to={createPageUrl('Pricing')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                      isActive(createPageUrl('Pricing'))
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <DollarSign className="w-4 h-4" />
-                    <span>Pricing</span>
-                  </Link>
-
-                  <Link
                     to={createPageUrl('Reviews')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('Reviews'))
@@ -411,18 +399,6 @@ export default function Layout({ children }) {
                   >
                     <FileArchive className="w-4 h-4" />
                     <span>ZIP Cleaner</span>
-                  </Link>
-                  <Link 
-                    to={createPageUrl('Pricing')}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                      isActive(createPageUrl('Pricing'))
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <DollarSign className="w-4 h-4" />
-                    <span>Pricing</span>
                   </Link>
                 </>
               ) : (

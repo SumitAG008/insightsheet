@@ -55,23 +55,13 @@ export default function Register() {
       );
 
       setSuccess(true);
+      setError(''); // Clear any previous errors
 
-      // Auto-login after 2 seconds
-      setTimeout(async () => {
-        try {
-          const result = await backendApi.auth.login(formData.email, formData.password);
-          if (result.access_token) {
-            localStorage.setItem('user', JSON.stringify(result.user));
-            navigate('/dashboard');
-          }
-        } catch (err) {
-          // If auto-login fails, redirect to login page
-          setError('Registration successful, but auto-login failed. Please login manually.');
-          setTimeout(() => {
-            navigate('/login');
-          }, 3000);
-        }
-      }, 2000);
+      // Show success message and redirect to login after 5 seconds
+      // User needs to verify email before they can login
+      setTimeout(() => {
+        navigate('/login');
+      }, 5000);
 
     } catch (err) {
       // Show specific error message

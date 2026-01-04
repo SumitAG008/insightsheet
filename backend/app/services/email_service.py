@@ -124,6 +124,110 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         return False
 
 
+async def send_verification_email(email: str, full_name: str, verification_link: str) -> bool:
+    """
+    Send email verification email to new user
+    
+    Args:
+        email: User's email address
+        full_name: User's full name
+        verification_link: Email verification link with token
+        
+    Returns:
+        bool: True if email sent successfully, False otherwise
+    """
+    try:
+        smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+        smtp_port = int(os.getenv("SMTP_PORT", "587"))
+        smtp_user = os.getenv("SMTP_USER", "")
+        smtp_password = os.getenv("SMTP_PASSWORD", "")
+        smtp_from_email = os.getenv("SMTP_FROM_EMAIL", smtp_user)
+        frontend_url = os.getenv("FRONTEND_URL", "https://insight.meldra.ai")
+        
+        if not smtp_user or not smtp_password:
+            logger.warning("SMTP credentials not configured. Verification email not sent. Verification link: " + verification_link)
+            return False
+        
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Verify Your Email - Meldra"
+        message["From"] = smtp_from_email
+        message["To"] = email
+        
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }}
+                .content {{ background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }}
+                .button {{ display: inline-block; padding: 12px 30px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }}
+                .footer {{ text-align: center; margin-top: 20px; font-size: 12px; color: #666; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>Verify Your Email Address</h1>
+                </div>
+                <div class="content">
+                    <p>Hello {full_name or 'there'},</p>
+                    <p>Thank you for registering with Meldra! To complete your registration and activate your account, please verify your email address by clicking the button below:</p>
+                    <div style="text-align: center;">
+                        <a href="{verification_link}" class="button">Verify Email Address</a>
+                    </div>
+                    <p>Or copy and paste this link into your browser:</p>
+                    <p style="word-break: break-all; color: #667eea;">{verification_link}</p>
+                    <p><strong>This verification link will expire in 24 hours.</strong></p>
+                    <p>If you didn't create an account with Meldra, please ignore this email.</p>
+                    <p>Best regards,<br>The Meldra Team</p>
+                </div>
+                <div class="footer">
+                    <p>This is an automated email. Please do not reply.</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_body = f"""
+        Verify Your Email Address
+        
+        Hello {full_name or 'there'},
+        
+        Thank you for registering with Meldra! To complete your registration and activate your account, please verify your email address by clicking this link:
+        
+        {verification_link}
+        
+        This verification link will expire in 24 hours.
+        
+        If you didn't create an account with Meldra, please ignore this email.
+        
+        Best regards,
+        The Meldra Team
+        """
+        
+        message.attach(MIMEText(text_body, "plain"))
+        message.attach(MIMEText(html_body, "html"))
+        
+        await aiosmtplib.send(
+            message,
+            hostname=smtp_host,
+            port=smtp_port,
+            username=smtp_user,
+            password=smtp_password,
+            use_tls=True,
+        )
+        
+        logger.info(f"Verification email sent successfully to {email}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to send verification email to {email}: {str(e)}")
+        return False
+
+
 async def send_welcome_email(email: str, full_name: str) -> bool:
     """
     Send welcome email to new user

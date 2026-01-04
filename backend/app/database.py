@@ -44,6 +44,9 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     role = Column(String(50), default="user")  # user, admin
     is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)  # Email verification status
+    verification_token = Column(String(255), nullable=True)
+    verification_token_expires = Column(DateTime, nullable=True)
     reset_token = Column(String(255), nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
     created_date = Column(DateTime, default=datetime.utcnow)
@@ -147,6 +150,27 @@ def init_db():
                 connection.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP;"))
                 connection.commit()
                 logger.info("✅ Added reset_token_expires column")
+            
+            # Add is_verified if it doesn't exist
+            if 'is_verified' not in columns:
+                logger.info("Adding is_verified column to users table...")
+                connection.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;"))
+                connection.commit()
+                logger.info("✅ Added is_verified column")
+            
+            # Add verification_token if it doesn't exist
+            if 'verification_token' not in columns:
+                logger.info("Adding verification_token column to users table...")
+                connection.execute(text("ALTER TABLE users ADD COLUMN verification_token VARCHAR(255);"))
+                connection.commit()
+                logger.info("✅ Added verification_token column")
+            
+            # Add verification_token_expires if it doesn't exist
+            if 'verification_token_expires' not in columns:
+                logger.info("Adding verification_token_expires column to users table...")
+                connection.execute(text("ALTER TABLE users ADD COLUMN verification_token_expires TIMESTAMP;"))
+                connection.commit()
+                logger.info("✅ Added verification_token_expires column")
     except Exception as e:
         # If table doesn't exist or other error, that's ok - tables will be created
         logger.warning(f"Could not add reset_token columns (may already exist or table not created yet): {str(e)}")

@@ -36,10 +36,48 @@ export default function Login() {
         setError('Login failed. Please try again.');
       }
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      // Check if error is about email verification
+      if (err.message && err.message.includes('verify your email')) {
+        setError(err.message + ' Click "Resend Verification" below if you need a new link.');
+      } else {
+        setError(err.message || 'Login failed. Please check your credentials.');
+      }
     } finally {
       setLoading(false);
     }
+  
+  const handleResendVerification = async () => {
+    if (!email) {
+      setError('Please enter your email address first.');
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8001'}/api/auth/resend-verification`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setError(''); // Clear error
+        alert(data.message || 'Verification email sent! Please check your inbox.');
+      } else {
+        setError(data.detail || 'Failed to resend verification email.');
+      }
+    } catch (err) {
+      setError('Failed to resend verification email. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
   };
 
   return (

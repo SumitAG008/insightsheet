@@ -102,10 +102,10 @@ function PagesContent() {
     const location = useLocation();
     const currentPage = _getCurrentPage(location.pathname);
 
-    // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword)
-    const noLayoutRoutes = ['/', '/pricing', '/login', '/register', '/forgot-password', '/reset-password'];
+    // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword/VerifyEmail)
+    const noLayoutRoutes = ['/', '/pricing', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
     const isNoLayoutRoute = noLayoutRoutes.some(route =>
-        location.pathname.toLowerCase() === route || location.pathname.toLowerCase() === route + '/'
+        location.pathname.toLowerCase() === route || location.pathname.toLowerCase().startsWith(route)
     );
 
     if (isNoLayoutRoute) {
@@ -118,6 +118,7 @@ function PagesContent() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/verify-email" element={<VerifyEmail />} />
             </Routes>
         );
     }

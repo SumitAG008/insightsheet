@@ -34,7 +34,7 @@ from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
-from app.services.email_service import send_password_reset_email, send_welcome_email
+from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email
 
 load_dotenv()
 
@@ -185,20 +185,27 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
                 detail="Password is too long. Maximum 72 characters allowed."
             )
 
-        # Create new user
+        # Generate verification token
+        verification_token = secrets.token_urlsafe(32)
+        verification_expires = datetime.utcnow() + timedelta(hours=24)  # Token expires in 24 hours
+        
+        # Create new user (unverified by default)
         hashed_password = get_password_hash(user_data.password)
         new_user = User(
             email=user_data.email,
             full_name=user_data.full_name,
             hashed_password=hashed_password,
-            role="admin" if user_data.email == "sumitagaria@gmail.com" else "user"
+            role="admin" if user_data.email == "sumitagaria@gmail.com" else "user",
+            is_verified=False,  # Account not verified until email is confirmed
+            verification_token=verification_token,
+            verification_token_expires=verification_expires
         )
 
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
 
-        # Create free subscription
+        # Create free subscription (but user can't use it until verified)
         subscription = Subscription(
             user_email=user_data.email,
             plan="free",
@@ -209,17 +216,23 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         db.add(subscription)
         db.commit()
 
-        logger.info(f"New user registered: {user_data.email}")
+        logger.info(f"New user registered (unverified): {user_data.email}")
         
-        # Send welcome email (non-blocking, don't fail registration if email fails)
+        # Send verification email
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        verification_link = f"{frontend_url}/verify-email?token={verification_token}"
+        
         try:
-            await send_welcome_email(user_data.email, user_data.full_name)
+            email_sent = await send_verification_email(user_data.email, user_data.full_name, verification_link)
+            if not email_sent:
+                logger.warning(f"Verification email not sent to {user_data.email} (SMTP not configured). Verification link: {verification_link}")
         except Exception as e:
-            logger.warning(f"Failed to send welcome email: {str(e)}")
+            logger.warning(f"Failed to send verification email: {str(e)}")
 
         return {
-            "message": "User registered successfully",
-            "email": new_user.email
+            "message": "Registration successful! Please check your email to verify your account.",
+            "email": new_user.email,
+            "verification_required": True
         }
 
     except HTTPException:
@@ -254,6 +267,13 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password"
+            )
+        
+        # Check if email is verified
+        if not user.is_verified:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Please verify your email address before logging in. Check your inbox for the verification link."
             )
 
         # Create access token

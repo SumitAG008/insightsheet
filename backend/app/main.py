@@ -61,13 +61,12 @@ app = FastAPI(
 # CORS Configuration
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
 
-# Add common Vercel patterns and meldra.ai domains
+# Add meldra.ai domains and common Vercel URLs
+# Note: FastAPI CORS doesn't support wildcards, so list specific domains
 ALLOWED_ORIGINS = CORS_ORIGINS + [
     "https://meldra.ai",
-    "https://*.meldra.ai",
     "https://insight.meldra.ai",
-    "https://*.vercel.app",  # Allow all Vercel preview deployments
-    "https://meldra-six.vercel.app",  # Specific Vercel URL
+    "https://meldra-six.vercel.app",
     "https://insightsheet-jpci.vercel.app"
 ]
 

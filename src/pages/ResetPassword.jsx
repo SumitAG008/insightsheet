@@ -135,7 +135,8 @@ export default function ResetPassword() {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                minLength={6}
+                minLength={10}
+                maxLength={72}
                 className="bg-slate-800/50 border-slate-700 text-slate-200"
               />
             </div>
@@ -148,7 +149,8 @@ export default function ResetPassword() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
-                minLength={6}
+                minLength={10}
+                maxLength={72}
                 className="bg-slate-800/50 border-slate-700 text-slate-200"
               />
             </div>

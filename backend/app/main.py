@@ -294,9 +294,24 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
         reset_token = secrets.token_urlsafe(32)
         reset_token_expires = datetime.utcnow() + timedelta(hours=1)  # Token valid for 1 hour
         
-        # Save token to database
-        user.reset_token = reset_token
-        user.reset_token_expires = reset_token_expires
+        # Save token to database (check if columns exist)
+        if hasattr(user, 'reset_token'):
+            user.reset_token = reset_token
+        else:
+            logger.error("reset_token column does not exist in database. Please run migration.")
+            # Still return success for security
+            return {
+                "message": "If an account with that email exists, a password reset link has been sent."
+            }
+            
+        if hasattr(user, 'reset_token_expires'):
+            user.reset_token_expires = reset_token_expires
+        else:
+            logger.error("reset_token_expires column does not exist in database. Please run migration.")
+            return {
+                "message": "If an account with that email exists, a password reset link has been sent."
+            }
+            
         db.commit()
         
         # Generate reset link
@@ -335,7 +350,16 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
     """Reset password using token"""
     try:
         # Find user by reset token
-        user = db.query(User).filter(User.reset_token == request.token).first()
+        # Handle case where reset_token column might not exist yet
+        try:
+            user = db.query(User).filter(User.reset_token == request.token).first()
+        except Exception as db_error:
+            # If column doesn't exist, log and return error
+            logger.error(f"Database error in reset_password: {str(db_error)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Database schema error. Please contact support."
+            )
         
         if not user:
             raise HTTPException(
@@ -344,10 +368,12 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
             )
         
         # Check if token expired
-        if user.reset_token_expires and user.reset_token_expires < datetime.utcnow():
+        if hasattr(user, 'reset_token_expires') and user.reset_token_expires and user.reset_token_expires < datetime.utcnow():
             # Clear expired token
-            user.reset_token = None
-            user.reset_token_expires = None
+            if hasattr(user, 'reset_token'):
+                user.reset_token = None
+            if hasattr(user, 'reset_token_expires'):
+                user.reset_token_expires = None
             db.commit()
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -363,8 +389,13 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
         
         # Update password
         user.hashed_password = get_password_hash(request.new_password)
-        user.reset_token = None
-        user.reset_token_expires = None
+        
+        # Clear reset token if columns exist
+        if hasattr(user, 'reset_token'):
+            user.reset_token = None
+        if hasattr(user, 'reset_token_expires'):
+            user.reset_token_expires = None
+            
         db.commit()
         
         logger.info(f"Password reset successful for {user.email}")
@@ -379,7 +410,7 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
         logger.error(f"Password reset error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Password reset failed"
+            detail=f"Password reset failed: {str(e)}"
         )
 
 

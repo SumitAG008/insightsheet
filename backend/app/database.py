@@ -120,8 +120,33 @@ class FileProcessingHistory(Base):
 
 # Create all tables
 def init_db():
-    """Initialize database tables"""
+    """Initialize database tables and add missing columns"""
+    # Create all tables
     Base.metadata.create_all(bind=engine)
+    
+    # Add reset_token columns if they don't exist (for existing databases)
+    try:
+        from sqlalchemy import text, inspect
+        inspector = inspect(engine)
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        
+        with engine.connect() as connection:
+            # Add reset_token if it doesn't exist
+            if 'reset_token' not in columns:
+                logger.info("Adding reset_token column to users table...")
+                connection.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255);"))
+                connection.commit()
+                logger.info("✅ Added reset_token column")
+            
+            # Add reset_token_expires if it doesn't exist
+            if 'reset_token_expires' not in columns:
+                logger.info("Adding reset_token_expires column to users table...")
+                connection.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP;"))
+                connection.commit()
+                logger.info("✅ Added reset_token_expires column")
+    except Exception as e:
+        # If table doesn't exist or other error, that's ok - tables will be created
+        logger.warning(f"Could not add reset_token columns (may already exist or table not created yet): {str(e)}")
 
 
 if __name__ == "__main__":

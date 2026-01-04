@@ -123,118 +123,136 @@ export default function Layout({ children }) {
       <nav className="border-b border-slate-200 dark:border-slate-800 backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <Link to={createPageUrl('Dashboard')} className="group">
+            <Link to={user && user.email ? createPageUrl('Dashboard') : '/pricing'} className="group">
               <Logo size="medium" className="group-hover:opacity-80 transition-opacity" />
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
-              <Link 
-                to={createPageUrl('Dashboard')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('Dashboard'))
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                <span>Dashboard</span>
-              </Link>
+              {/* Show menu items only when user is logged in */}
+              {user && user.email ? (
+                <>
+                  <Link 
+                    to={createPageUrl('Dashboard')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('Dashboard'))
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span>Dashboard</span>
+                  </Link>
 
-              <Link
-                to={createPageUrl('FileAnalyzer')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('FileAnalyzer'))
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span>Analyzer</span>
-              </Link>
+                  <Link
+                    to={createPageUrl('FileAnalyzer')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('FileAnalyzer'))
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    <span>Analyzer</span>
+                  </Link>
 
-              <Link
-                to={createPageUrl('PLBuilder')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('PLBuilder'))
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>P&L Builder</span>
-              </Link>
+                  <Link
+                    to={createPageUrl('PLBuilder')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('PLBuilder'))
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>P&L Builder</span>
+                  </Link>
 
-              <Link
-                to={createPageUrl('AgenticAI')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('AgenticAI'))
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Brain className="w-4 h-4" />
-                <span>AI Assistant</span>
-              </Link>
+                  <Link
+                    to={createPageUrl('AgenticAI')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('AgenticAI'))
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Brain className="w-4 h-4" />
+                    <span>AI Assistant</span>
+                  </Link>
 
-              <Link
-                to={createPageUrl('DataModelCreator')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('DataModelCreator'))
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Database className="w-4 h-4" />
-                <span>DB Schema</span>
-              </Link>
+                  <Link
+                    to={createPageUrl('DataModelCreator')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('DataModelCreator'))
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Database className="w-4 h-4" />
+                    <span>DB Schema</span>
+                  </Link>
 
-              <Link
-                to={createPageUrl('FileToPPT')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('FileToPPT'))
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                <span>Excel to PPT</span>
-              </Link>
+                  <Link
+                    to={createPageUrl('FileToPPT')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('FileToPPT'))
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Excel to PPT</span>
+                  </Link>
 
-              <Link 
-                to={createPageUrl('FilenameCleaner')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('FilenameCleaner'))
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <FileArchive className="w-4 h-4" />
-                <span>ZIP Cleaner</span>
-              </Link>
+                  <Link 
+                    to={createPageUrl('FilenameCleaner')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('FilenameCleaner'))
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <FileArchive className="w-4 h-4" />
+                    <span>ZIP Cleaner</span>
+                  </Link>
 
-              <Link
-                to={createPageUrl('Pricing')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('Pricing'))
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <DollarSign className="w-4 h-4" />
-                <span>Pricing</span>
-              </Link>
+                  <Link
+                    to={createPageUrl('Pricing')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('Pricing'))
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    <span>Pricing</span>
+                  </Link>
 
-              <Link
-                to={createPageUrl('Reviews')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('Reviews'))
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Reviews</span>
-              </Link>
+                  <Link
+                    to={createPageUrl('Reviews')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('Reviews'))
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Reviews</span>
+                  </Link>
+                </>
+              ) : (
+                /* Show only Pricing link when not logged in */
+                <Link
+                  to="/pricing"
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    isActive('/pricing') || isActive('/')
+                      ? 'bg-blue-600 text-white shadow-md'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <DollarSign className="w-4 h-4" />
+                  <span>Pricing</span>
+                </Link>
+              )}
 
               {user && user.email === 'sumit@meldra.ai' && (
                 <>
@@ -308,102 +326,119 @@ export default function Layout({ children }) {
           {/* Mobile menu */}
           {mobileMenuOpen && (
             <div className="md:hidden border-t border-slate-200 dark:border-slate-800 py-4 space-y-1">
-              <Link 
-                to={createPageUrl('Dashboard')}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('Dashboard'))
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                <span>Dashboard</span>
-              </Link>
-              <Link
-                to={createPageUrl('FileAnalyzer')}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('FileAnalyzer'))
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <BarChart3 className="w-4 h-4" />
-                <span>Analyzer</span>
-              </Link>
-              <Link
-                to={createPageUrl('PLBuilder')}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('PLBuilder'))
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>P&L Builder</span>
-              </Link>
-              <Link
-                to={createPageUrl('AgenticAI')}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('AgenticAI'))
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Brain className="w-4 h-4" />
-                <span>AI Assistant</span>
-              </Link>
-              <Link
-                to={createPageUrl('DataModelCreator')}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('DataModelCreator'))
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Database className="w-4 h-4" />
-                <span>DB Schema</span>
-              </Link>
-              <Link
-                to={createPageUrl('FileToPPT')}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('FileToPPT'))
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <FileText className="w-4 h-4" />
-                <span>Excel to PPT</span>
-              </Link>
-              <Link 
-                to={createPageUrl('FilenameCleaner')}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('FilenameCleaner'))
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <FileArchive className="w-4 h-4" />
-                <span>ZIP Cleaner</span>
-              </Link>
-              <Link 
-                to={createPageUrl('Pricing')}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('Pricing'))
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <DollarSign className="w-4 h-4" />
-                <span>Pricing</span>
-              </Link>
+              {user && user.email ? (
+                <>
+                  <Link 
+                    to={createPageUrl('Dashboard')}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('Dashboard'))
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                  <Link
+                    to={createPageUrl('FileAnalyzer')}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('FileAnalyzer'))
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    <span>Analyzer</span>
+                  </Link>
+                  <Link
+                    to={createPageUrl('PLBuilder')}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('PLBuilder'))
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>P&L Builder</span>
+                  </Link>
+                  <Link
+                    to={createPageUrl('AgenticAI')}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('AgenticAI'))
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Brain className="w-4 h-4" />
+                    <span>AI Assistant</span>
+                  </Link>
+                  <Link
+                    to={createPageUrl('DataModelCreator')}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('DataModelCreator'))
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Database className="w-4 h-4" />
+                    <span>DB Schema</span>
+                  </Link>
+                  <Link
+                    to={createPageUrl('FileToPPT')}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('FileToPPT'))
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                    <span>Excel to PPT</span>
+                  </Link>
+                  <Link 
+                    to={createPageUrl('FilenameCleaner')}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('FilenameCleaner'))
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <FileArchive className="w-4 h-4" />
+                    <span>ZIP Cleaner</span>
+                  </Link>
+                  <Link 
+                    to={createPageUrl('Pricing')}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('Pricing'))
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    <span>Pricing</span>
+                  </Link>
+                </>
+              ) : (
+                <Link 
+                  to="/pricing"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    isActive('/pricing') || isActive('/')
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  <DollarSign className="w-4 h-4" />
+                  <span>Pricing</span>
+                </Link>
+              )}
             </div>
           )}
         </div>

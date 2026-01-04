@@ -57,6 +57,9 @@ export default function Pricing() {
 
   const pricing = getPricing(billingCycle);
 
+  // Show only Free tier on landing page (when not logged in)
+  const showOnlyFree = !user;
+  
   const plans = [
     {
       id: 'free',
@@ -98,7 +101,7 @@ export default function Pricing() {
         'Import .XLS, .XLSX, .CSV'
       ]
     }
-  ];
+  ].filter(plan => !showOnlyFree || plan.id === 'free'); // Filter to show only Free when not logged in
 
   const handleSubscribe = (plan) => {
     if (plan.id === 'free') {
@@ -133,20 +136,43 @@ export default function Pricing() {
             Start free, upgrade when you need more power
           </p>
 
-          {/* Billing Cycle Toggle */}
-          <Tabs value={billingCycle} onValueChange={setBillingCycle} className="max-w-md mx-auto mb-8">
-            <TabsList className="grid w-full grid-cols-3 bg-slate-900/80">
-              <TabsTrigger value="monthly">Monthly</TabsTrigger>
-              <TabsTrigger value="quarterly">
-                Quarterly
-                <Badge className="ml-2 bg-emerald-500/20 text-emerald-300 text-xs">Save 5%</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="yearly">
-                Yearly
-                <Badge className="ml-2 bg-emerald-500/20 text-emerald-300 text-xs">Save 10%</Badge>
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {/* Billing Cycle Toggle - Only show when logged in */}
+          {user && (
+            <Tabs value={billingCycle} onValueChange={setBillingCycle} className="max-w-md mx-auto mb-8">
+              <TabsList className="grid w-full grid-cols-3 bg-slate-900/80">
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
+                <TabsTrigger value="quarterly">
+                  Quarterly
+                  <Badge className="ml-2 bg-emerald-500/20 text-emerald-300 text-xs">Save 5%</Badge>
+                </TabsTrigger>
+                <TabsTrigger value="yearly">
+                  Yearly
+                  <Badge className="ml-2 bg-emerald-500/20 text-emerald-300 text-xs">Save 10%</Badge>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
+          
+          {/* Call to action when not logged in */}
+          {!user && (
+            <div className="max-w-md mx-auto mb-8 text-center">
+              <p className="text-slate-300 mb-4">Start with our free plan - no credit card required!</p>
+              <div className="flex gap-4 justify-center">
+                <a
+                  href="/register"
+                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-semibold transition-all shadow-lg"
+                >
+                  Sign Up Free
+                </a>
+                <a
+                  href="/login"
+                  className="px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-semibold transition-all"
+                >
+                  Login
+                </a>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Admin Notice */}

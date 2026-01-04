@@ -193,29 +193,29 @@ export default function SQLGenerator({ schema }) {
 
   return (
     <div className="space-y-4">
-      <Card className="bg-slate-900/50 border-slate-800 p-6">
+      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-xl font-semibold text-slate-200 mb-1">
+            <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-200 mb-1">
               SQL Generator
             </h3>
-            <p className="text-sm text-slate-400">
-              Generate SQL DDL statements for your schema
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Generate SQL DDL statements for your schema. Copy or download the generated SQL code.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             <div className="w-48">
               <Select value={dialect} onValueChange={setDialect}>
-                <SelectTrigger className="bg-slate-800 border-slate-700">
+                <SelectTrigger className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-slate-200 font-semibold">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {SQL_DIALECTS.map(d => (
-                    <SelectItem key={d.value} value={d.value}>
-                      <div className="flex items-center gap-2">
+                    <SelectItem key={d.value} value={d.value} className="font-semibold">
+                      <div className="flex items-center gap-2 font-semibold">
                         <Database className="w-3 h-3" />
-                        {d.label}
+                        <span className="font-bold">{d.label}</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -226,7 +226,7 @@ export default function SQLGenerator({ schema }) {
             <Button
               variant="outline"
               onClick={handleCopy}
-              className={copied ? 'bg-green-600/20 border-green-600' : ''}
+              className={`border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 ${copied ? 'bg-emerald-50 dark:bg-green-600/20 border-emerald-500 dark:border-green-600 text-emerald-700 dark:text-green-400' : ''}`}
             >
               {copied ? (
                 <>
@@ -252,37 +252,37 @@ export default function SQLGenerator({ schema }) {
         </div>
 
         <Tabs defaultValue="create" className="w-full">
-          <TabsList className="bg-slate-800/50 border border-slate-700">
-            <TabsTrigger value="create">CREATE Tables</TabsTrigger>
-            <TabsTrigger value="insert">INSERT Samples</TabsTrigger>
-            <TabsTrigger value="drop">DROP Tables</TabsTrigger>
+          <TabsList className="bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700">
+            <TabsTrigger value="create" className="text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100">CREATE Tables</TabsTrigger>
+            <TabsTrigger value="insert" className="text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100">INSERT Samples</TabsTrigger>
+            <TabsTrigger value="drop" className="text-slate-700 dark:text-slate-300 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100">DROP Tables</TabsTrigger>
           </TabsList>
 
           <TabsContent value="create" className="mt-4">
             <div className="relative">
-              <pre className="bg-slate-950 border border-slate-800 rounded-lg p-4 overflow-x-auto text-sm text-slate-300 font-mono max-h-[600px] overflow-y-auto">
-                {generateSQL}
+              <pre className="bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-lg p-6 overflow-x-auto text-sm text-slate-900 dark:text-slate-100 font-mono max-h-[600px] overflow-y-auto leading-relaxed shadow-inner">
+                <code className="text-slate-900 dark:text-slate-100">{generateSQL}</code>
               </pre>
             </div>
           </TabsContent>
 
           <TabsContent value="insert" className="mt-4">
             <div className="relative">
-              <pre className="bg-slate-950 border border-slate-800 rounded-lg p-4 overflow-x-auto text-sm text-slate-300 font-mono max-h-[600px] overflow-y-auto">
-                {generateInsertStatements()}
+              <pre className="bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-lg p-6 overflow-x-auto text-sm text-slate-900 dark:text-slate-100 font-mono max-h-[600px] overflow-y-auto leading-relaxed shadow-inner">
+                <code className="text-slate-900 dark:text-slate-100">{generateInsertStatements()}</code>
               </pre>
             </div>
           </TabsContent>
 
           <TabsContent value="drop" className="mt-4">
-            <div className="mb-3 p-3 bg-red-900/20 border border-red-700 rounded-lg">
-              <div className="text-sm text-red-400">
+            <div className="mb-3 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-300 dark:border-red-700 rounded-lg">
+              <div className="text-sm font-semibold text-red-700 dark:text-red-400">
                 ⚠️ Warning: These DROP statements will permanently delete tables and all their data. Use with extreme caution!
               </div>
             </div>
             <div className="relative">
-              <pre className="bg-slate-950 border border-slate-800 rounded-lg p-4 overflow-x-auto text-sm text-slate-300 font-mono max-h-[600px] overflow-y-auto">
-                {generateDropStatements()}
+              <pre className="bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-lg p-6 overflow-x-auto text-sm text-slate-900 dark:text-slate-100 font-mono max-h-[600px] overflow-y-auto leading-relaxed shadow-inner">
+                <code className="text-slate-900 dark:text-slate-100">{generateDropStatements()}</code>
               </pre>
             </div>
           </TabsContent>
@@ -290,31 +290,31 @@ export default function SQLGenerator({ schema }) {
       </Card>
 
       {/* Stats Card */}
-      <Card className="bg-slate-900/50 border-slate-800 p-4">
+      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-4">
         <div className="grid grid-cols-4 gap-4 text-center">
           <div>
-            <div className="text-2xl font-bold text-purple-400">
+            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
               {schema.tables?.length || 0}
             </div>
-            <div className="text-xs text-slate-400">Tables</div>
+            <div className="text-xs font-medium text-slate-700 dark:text-slate-400">Tables</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-pink-400">
+            <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
               {schema.tables?.reduce((sum, t) => sum + t.columns.length, 0) || 0}
             </div>
-            <div className="text-xs text-slate-400">Columns</div>
+            <div className="text-xs font-medium text-slate-700 dark:text-slate-400">Columns</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-blue-400">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {schema.relationships?.length || 0}
             </div>
-            <div className="text-xs text-slate-400">Relationships</div>
+            <div className="text-xs font-medium text-slate-700 dark:text-slate-400">Relationships</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-green-400">
+            <div className="text-2xl font-bold text-emerald-600 dark:text-green-400">
               {generateSQL.split('\n').length}
             </div>
-            <div className="text-xs text-slate-400">Lines of SQL</div>
+            <div className="text-xs font-medium text-slate-700 dark:text-slate-400">Lines of SQL</div>
           </div>
         </div>
       </Card>

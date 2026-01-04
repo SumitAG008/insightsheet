@@ -14,6 +14,7 @@ import ActivityLogger from '@/components/tracking/ActivityLogger';
 
 export default function Layout({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const [user, setUser] = React.useState(null);
   const [loginTime, setLoginTime] = React.useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);

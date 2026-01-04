@@ -195,6 +195,12 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         db.commit()
 
         logger.info(f"New user registered: {user_data.email}")
+        
+        # Send welcome email (non-blocking, don't fail registration if email fails)
+        try:
+            await send_welcome_email(user_data.email, user_data.full_name)
+        except Exception as e:
+            logger.warning(f"Failed to send welcome email: {str(e)}")
 
         return {
             "message": "User registered successfully",

@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Key, Link2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Key, Link2, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
@@ -108,12 +108,22 @@ export default function SchemaCanvas({
   }, [draggingTable, dragOffset, zoom]);
 
   return (
-    <Card className="bg-slate-900/50 border-slate-800 p-4">
+    <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-4">
       <div className="flex items-center justify-between mb-4">
-        <div className="text-sm text-slate-400">
-          {connectingFrom
-            ? 'Click on a column in another table to create relationship'
-            : 'Drag tables to arrange • Click columns to create relationships'}
+        <div className="text-sm text-slate-600 dark:text-slate-400">
+          {connectingFrom ? (
+            <div className="flex items-center gap-2">
+              <span className="text-purple-600 dark:text-purple-400 font-semibold">Creating Relationship:</span>
+              <span>Click on a column in another table to connect</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1">
+                <span className="font-semibold">💡 Tips:</span>
+                <span>Drag tables to arrange • Click a column, then click another column in a different table to create relationship</span>
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -145,10 +155,10 @@ export default function SchemaCanvas({
 
       <div
         ref={canvasRef}
-        className="relative bg-slate-950/50 rounded-lg border border-slate-800 overflow-auto"
+        className="relative bg-slate-50 dark:bg-slate-950/50 rounded-lg border border-slate-200 dark:border-slate-800 overflow-auto"
         style={{
           height: '600px',
-          backgroundImage: 'radial-gradient(circle, #334155 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)',
           backgroundSize: '20px 20px'
         }}
       >
@@ -177,10 +187,10 @@ export default function SchemaCanvas({
           {schema.tables.map(table => (
             <div
               key={table.id}
-              className={`absolute bg-slate-800 border-2 rounded-lg shadow-lg cursor-move transition-all ${
+              className={`absolute bg-white dark:bg-slate-800 border-2 rounded-lg shadow-lg cursor-move transition-all ${
                 selectedTable === table.id
-                  ? 'border-purple-500 shadow-purple-500/50'
-                  : 'border-slate-700 hover:border-slate-600'
+                  ? 'border-purple-500 shadow-purple-500/50 ring-2 ring-purple-500/20'
+                  : 'border-slate-300 dark:border-slate-700 hover:border-purple-400 dark:hover:border-slate-600'
               }`}
               style={{
                 left: `${table.x}px`,
@@ -209,31 +219,37 @@ export default function SchemaCanvas({
               </div>
 
               {/* Columns */}
-              <div className="p-2 space-y-1 max-h-[300px] overflow-y-auto">
+              <div className="p-2 space-y-1 max-h-[300px] overflow-y-auto bg-slate-50 dark:bg-slate-900/30">
                 {table.columns.map(column => (
                   <div
                     key={column.id}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-slate-700/50 cursor-pointer ${
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-purple-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors group ${
                       connectingFrom?.column === column.id
-                        ? 'bg-purple-600/30 border border-purple-500'
-                        : ''
+                        ? 'bg-purple-200 dark:bg-purple-600/30 border-2 border-purple-500'
+                        : 'border border-transparent hover:border-purple-300 dark:hover:border-purple-600'
                     }`}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleConnectColumn(table, column);
                     }}
+                    title={connectingFrom ? `Click to connect from ${schema.tables.find(t => t.id === connectingFrom.table)?.name}.${schema.tables.find(t => t.id === connectingFrom.table)?.columns.find(c => c.id === connectingFrom.column)?.name}` : `Click to start relationship from ${column.name}`}
                   >
                     {column.primaryKey && (
-                      <Key className="w-3 h-3 text-amber-500 flex-shrink-0" />
+                      <Key className="w-3 h-3 text-amber-500 dark:text-amber-400 flex-shrink-0" />
                     )}
-                    <span className="text-slate-200 flex-1 truncate">
+                    <span className="text-slate-900 dark:text-slate-200 flex-1 truncate font-medium">
                       {column.name}
                     </span>
-                    <span className="text-slate-400 text-xs">
+                    <span className="text-slate-500 dark:text-slate-400 text-xs bg-slate-200 dark:bg-slate-700 px-1.5 py-0.5 rounded">
                       {column.type}
                     </span>
                     {!column.nullable && (
-                      <span className="text-red-400 text-xs">*</span>
+                      <span className="text-red-500 dark:text-red-400 text-xs font-bold" title="NOT NULL">*</span>
+                    )}
+                    {connectingFrom && connectingFrom.table !== table.id && (
+                      <span className="text-xs text-purple-600 dark:text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                        Click to connect
+                      </span>
                     )}
                   </div>
                 ))}
@@ -248,15 +264,41 @@ export default function SchemaCanvas({
 
           {schema.tables.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center p-8 bg-slate-800/50 rounded-lg border border-slate-700 max-w-md">
-                <div className="text-slate-300 text-xl font-semibold mb-3">No tables yet</div>
-                <div className="text-slate-400 text-sm mb-4">
-                  Get started by adding your first table or importing a schema
+              <div className="text-center p-8 bg-white dark:bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 max-w-lg shadow-lg">
+                <Database className="w-16 h-16 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+                <div className="text-slate-900 dark:text-slate-200 text-2xl font-bold mb-2">Start Building Your Database Schema</div>
+                <div className="text-slate-600 dark:text-slate-400 text-sm mb-6">
+                  Create tables, define relationships, and generate SQL code
                 </div>
-                <div className="flex flex-col gap-2 text-xs text-slate-500">
-                  <div>• Click "Add Table" button above</div>
-                  <div>• Or import JSON/XML data file</div>
-                  <div>• Or use AI Assistant to generate schema</div>
+                <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 text-left space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm flex-shrink-0 mt-0.5">1</div>
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">Add Your First Table</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Click "Add Table" button at the top, or go to "Table Designer" tab</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold text-sm flex-shrink-0 mt-0.5">2</div>
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">Design Your Tables</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Add columns, set data types, and define primary keys in the "Table Designer" tab</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-sm flex-shrink-0 mt-0.5">3</div>
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">Create Relationships</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Click a column in one table, then click a column in another table to connect them. Or use the "Relationships" tab.</div>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-bold text-sm flex-shrink-0 mt-0.5">4</div>
+                    <div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">Generate SQL</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">Go to "SQL Generator" tab to create database creation scripts</div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

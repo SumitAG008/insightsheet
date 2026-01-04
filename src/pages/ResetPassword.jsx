@@ -40,8 +40,13 @@ export default function ResetPassword() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (formData.password.length < 10) {
+      setError('Password must be at least 10 characters');
+      return;
+    }
+    
+    if (formData.password.length > 72) {
+      setError('Password is too long. Maximum 72 characters allowed.');
       return;
     }
 

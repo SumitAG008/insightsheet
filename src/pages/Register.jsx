@@ -35,8 +35,14 @@ export default function Register() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (formData.password.length < 10) {
+      setError('Password must be at least 10 characters');
+      setLoading(false);
+      return;
+    }
+    
+    if (formData.password.length > 72) {
+      setError('Password is too long. Maximum 72 characters allowed.');
       setLoading(false);
       return;
     }
@@ -143,7 +149,8 @@ export default function Register() {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                minLength={6}
+                minLength={10}
+                maxLength={72}
                 className="bg-slate-800/50 border-slate-700 text-slate-200"
               />
             </div>

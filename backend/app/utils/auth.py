@@ -9,11 +9,14 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 import os
+import logging
 from dotenv import load_dotenv
 
 from app.database import get_db, User
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 # Configuration
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this")
@@ -33,7 +36,19 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-    """Hash password"""
+    """
+    Hash password with bcrypt
+    
+    Note: bcrypt has a 72-byte limit, so we truncate if necessary
+    """
+    # Bcrypt has a 72-byte limit, truncate if password is too long
+    # Convert to bytes to check length properly (handles unicode)
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        # Truncate to 72 bytes, then decode back to string
+        truncated = password_bytes[:72].decode('utf-8', errors='ignore')
+        logger.warning(f"Password truncated from {len(password_bytes)} bytes to 72 bytes")
+        return pwd_context.hash(truncated)
     return pwd_context.hash(password)
 
 

@@ -4,6 +4,7 @@ import Login from "./Login";
 import Register from "./Register";
 import ForgotPassword from "./ForgotPassword";
 import ResetPassword from "./ResetPassword";
+import VerifyEmail from "./VerifyEmail";
 
 import Upload from "./Upload";
 

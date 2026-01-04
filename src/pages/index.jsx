@@ -138,9 +138,9 @@ function PagesContent() {
                 <Route path="/disclaimer" element={<Disclaimer />} />
 
                 {/* Protected routes - require authentication */}
-                <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                <Route path="/Dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/Dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
                 <Route path="/PDFEditor" element={<ProtectedRoute><PDFEditor /></ProtectedRoute>} />
                 <Route path="/pdfeditor" element={<ProtectedRoute><PDFEditor /></ProtectedRoute>} />

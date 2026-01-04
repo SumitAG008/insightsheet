@@ -1,39 +1,37 @@
-<<<<<<< HEAD
-# Web Framework
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-python-multipart==0.0.6
-pydantic==2.5.3
-pydantic-settings==2.1.0
+# FastAPI and Server
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+python-multipart==0.0.12
 
 # Database
-sqlalchemy==2.0.25
-psycopg2-binary==2.9.9  # PostgreSQL
-alembic==1.13.1  # Database migrations
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+alembic==1.14.0
 
 # Authentication & Security
-python-jose[cryptography]==3.3.0
+PyJWT==2.10.1
 passlib[bcrypt]==1.7.4
+cryptography==44.0.0
 python-dotenv==1.0.1
-bcrypt==4.1.2
+pydantic==2.9.2
+pydantic-settings==2.6.1
 
-# AI/LLM Integration
-openai==1.10.0
+# AI/OpenAI
+openai==1.54.5
 
 # Excel/Office Processing
-openpyxl==3.1.2  # Excel read/write
-xlrd==2.0.1  # Old Excel format
-pandas==2.1.4  # Data processing
-python-pptx==0.6.23  # PowerPoint generation
-Pillow==10.2.0  # Image processing
+openpyxl==3.1.2
+xlrd==2.0.1
+pandas==2.1.4
+python-pptx==0.6.23
+Pillow==10.2.0
 
 # PDF Processing
 PyPDF2==3.0.1
 pdfplumber==0.10.3
 
 # File Processing & Utilities
-python-magic==0.4.27  # File type detection
-aiofiles==23.2.1  # Async file operations
+aiofiles==23.2.1
 
 # HTTP Client
 httpx==0.26.0
@@ -46,42 +44,5 @@ stripe==7.11.0
 aiosmtplib==3.0.1
 email-validator==2.1.0.post1
 
-# Logging & Monitoring
-python-json-logger==2.0.7
-
-# Development & Testing
-pytest==7.4.4
-pytest-asyncio==0.23.3
-black==24.1.1
-flake8==7.0.0
-
-# CORS & Middleware
-python-cors==1.0.0
-=======
-# FastAPI and Server
-fastapi==0.115.0
-uvicorn[standard]==0.32.0
-python-multipart==0.0.12
-
-# Database
-sqlalchemy==2.0.36
-psycopg2-binary==2.9.10
-alembic==1.14.0
-
-# Authentication
-PyJWT==2.10.1
-passlib[bcrypt]==1.7.4
-cryptography==44.0.0
-python-dotenv==1.0.1
-pydantic==2.9.2
-pydantic-settings==2.6.1
-
-# AI/OpenAI
-openai==1.54.5
-
-# Email (commented out - install manually if needed)
-# sendgrid==6.11.0
-
 # Utilities
 python-dateutil==2.9.0.post0
->>>>>>> 58194c7fbb5d6cfa982aaf3d15ce3ba47988e1ba

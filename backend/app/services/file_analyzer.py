@@ -191,12 +191,23 @@ class FileAnalyzerService:
                 logger.warning(f"Error getting sample values for column {col}: {str(e)}")
                 sample_values = []
             
+            # Safely convert counts to int
+            null_count = df[col].isna().sum()
+            if hasattr(null_count, 'item'):
+                null_count = null_count.item()
+            null_count = int(null_count)
+            
+            unique_count = df[col].nunique()
+            if hasattr(unique_count, 'item'):
+                unique_count = unique_count.item()
+            unique_count = int(unique_count)
+            
             col_info = {
                 'name': str(col),  # Ensure name is string
                 'type': 'unknown',
-                'null_count': int(df[col].isna().sum()),
-                'null_percentage': float((df[col].isna().sum() / len(df)) * 100) if len(df) > 0 else 0.0,
-                'unique_count': int(df[col].nunique()),
+                'null_count': null_count,
+                'null_percentage': float((null_count / len(df)) * 100) if len(df) > 0 else 0.0,
+                'unique_count': unique_count,
                 'sample_values': sample_values
             }
 
@@ -246,10 +257,15 @@ class FileAnalyzerService:
 
         # Duplicate rows
         duplicate_count = df.duplicated().sum()
+        # Safely convert to int
+        if hasattr(duplicate_count, 'item'):
+            duplicate_count = duplicate_count.item()
+        duplicate_count = int(duplicate_count)
+        
         if duplicate_count > 0:
             quality_issues.append({
                 'type': 'duplicates',
-                'count': int(duplicate_count),
+                'count': duplicate_count,
                 'severity': 'medium',
                 'message': f"{duplicate_count} duplicate rows found"
             })
@@ -267,7 +283,7 @@ class FileAnalyzerService:
             'date_columns': date_columns,
             'text_columns': text_columns,
             'quality_issues': quality_issues,
-            'duplicate_rows': int(duplicate_count),
+            'duplicate_rows': duplicate_count,
             'ai_summary': ai_summary,
             'data_preview': df.head(10).to_dict('records') if len(df) > 0 else []
         }

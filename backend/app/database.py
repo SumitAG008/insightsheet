@@ -130,50 +130,90 @@ def init_db():
     # Create all tables
     Base.metadata.create_all(bind=engine)
     
-    # Add reset_token columns if they don't exist (for existing databases)
+    # Add missing columns if they don't exist (for existing databases)
     try:
         from sqlalchemy import text, inspect
-        inspector = inspect(engine)
-        columns = [col['name'] for col in inspector.get_columns('users')]
+        from sqlalchemy.exc import ProgrammingError, OperationalError
         
-        with engine.connect() as connection:
+        inspector = inspect(engine)
+        
+        # Check if users table exists
+        if 'users' not in inspector.get_table_names():
+            logger.info("Users table doesn't exist yet, will be created by Base.metadata.create_all")
+            return
+        
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        logger.info(f"Existing columns in users table: {columns}")
+        
+        with engine.begin() as connection:  # Use begin() for transaction management
             # Add reset_token if it doesn't exist
             if 'reset_token' not in columns:
-                logger.info("Adding reset_token column to users table...")
-                connection.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255);"))
-                connection.commit()
-                logger.info("✅ Added reset_token column")
+                try:
+                    logger.info("Adding reset_token column to users table...")
+                    if DATABASE_URL.startswith("postgresql"):
+                        connection.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255);"))
+                    else:
+                        connection.execute(text("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255);"))
+                    logger.info("✅ Added reset_token column")
+                except (ProgrammingError, OperationalError) as e:
+                    if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                        logger.warning(f"Could not add reset_token column: {str(e)}")
             
             # Add reset_token_expires if it doesn't exist
             if 'reset_token_expires' not in columns:
-                logger.info("Adding reset_token_expires column to users table...")
-                connection.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP;"))
-                connection.commit()
-                logger.info("✅ Added reset_token_expires column")
+                try:
+                    logger.info("Adding reset_token_expires column to users table...")
+                    if DATABASE_URL.startswith("postgresql"):
+                        connection.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP;"))
+                    else:
+                        connection.execute(text("ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP;"))
+                    logger.info("✅ Added reset_token_expires column")
+                except (ProgrammingError, OperationalError) as e:
+                    if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                        logger.warning(f"Could not add reset_token_expires column: {str(e)}")
             
             # Add is_verified if it doesn't exist
             if 'is_verified' not in columns:
-                logger.info("Adding is_verified column to users table...")
-                connection.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;"))
-                connection.commit()
-                logger.info("✅ Added is_verified column")
+                try:
+                    logger.info("Adding is_verified column to users table...")
+                    if DATABASE_URL.startswith("postgresql"):
+                        connection.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;"))
+                    else:
+                        connection.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN DEFAULT 0;"))
+                    logger.info("✅ Added is_verified column")
+                except (ProgrammingError, OperationalError) as e:
+                    if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                        logger.warning(f"Could not add is_verified column: {str(e)}")
             
             # Add verification_token if it doesn't exist
             if 'verification_token' not in columns:
-                logger.info("Adding verification_token column to users table...")
-                connection.execute(text("ALTER TABLE users ADD COLUMN verification_token VARCHAR(255);"))
-                connection.commit()
-                logger.info("✅ Added verification_token column")
+                try:
+                    logger.info("Adding verification_token column to users table...")
+                    if DATABASE_URL.startswith("postgresql"):
+                        connection.execute(text("ALTER TABLE users ADD COLUMN verification_token VARCHAR(255);"))
+                    else:
+                        connection.execute(text("ALTER TABLE users ADD COLUMN verification_token VARCHAR(255);"))
+                    logger.info("✅ Added verification_token column")
+                except (ProgrammingError, OperationalError) as e:
+                    if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                        logger.warning(f"Could not add verification_token column: {str(e)}")
             
             # Add verification_token_expires if it doesn't exist
             if 'verification_token_expires' not in columns:
-                logger.info("Adding verification_token_expires column to users table...")
-                connection.execute(text("ALTER TABLE users ADD COLUMN verification_token_expires TIMESTAMP;"))
-                connection.commit()
-                logger.info("✅ Added verification_token_expires column")
+                try:
+                    logger.info("Adding verification_token_expires column to users table...")
+                    if DATABASE_URL.startswith("postgresql"):
+                        connection.execute(text("ALTER TABLE users ADD COLUMN verification_token_expires TIMESTAMP;"))
+                    else:
+                        connection.execute(text("ALTER TABLE users ADD COLUMN verification_token_expires TIMESTAMP;"))
+                    logger.info("✅ Added verification_token_expires column")
+                except (ProgrammingError, OperationalError) as e:
+                    if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                        logger.warning(f"Could not add verification_token_expires column: {str(e)}")
+                        
     except Exception as e:
         # If table doesn't exist or other error, that's ok - tables will be created
-        logger.warning(f"Could not add reset_token columns (may already exist or table not created yet): {str(e)}")
+        logger.warning(f"Could not add missing columns (may already exist or table not created yet): {str(e)}")
 
 
 if __name__ == "__main__":

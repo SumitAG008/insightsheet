@@ -1030,11 +1030,20 @@ async def log_activity(
 ):
     """Log user activity"""
     try:
+        # Convert details to JSON string if it's a dict
+        details_str = None
+        if activity.details:
+            if isinstance(activity.details, dict):
+                import json
+                details_str = json.dumps(activity.details)
+            else:
+                details_str = str(activity.details)
+        
         user_activity = UserActivity(
             user_email=current_user["email"],
             activity_type=activity.activity_type,
             page_name=activity.page_name,
-            details=activity.details
+            details=details_str
         )
         db.add(user_activity)
         db.commit()

@@ -170,6 +170,21 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
                 detail="Email already registered"
             )
 
+        # Validate password strength
+        if len(user_data.password) < 10:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 10 characters"
+            )
+        
+        # Bcrypt has 72-byte limit, warn if password is very long
+        password_bytes = user_data.password.encode('utf-8')
+        if len(password_bytes) > 72:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password is too long. Maximum 72 characters allowed."
+            )
+
         # Create new user
         hashed_password = get_password_hash(user_data.password)
         new_user = User(

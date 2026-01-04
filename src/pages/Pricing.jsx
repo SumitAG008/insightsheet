@@ -26,30 +26,30 @@ export default function Pricing() {
     }
   };
 
-  // Pricing tiers with different billing cycles
+  // Pricing tiers with different billing cycles (in GBP)
   const getPricing = (cycle) => {
     if (cycle === 'monthly') {
       return {
-        monthly: 10,
-        display: '$10',
+        monthly: 20,
+        display: '£20',
         period: '/month',
-        total: '$10/month',
+        total: '£20/month',
         savings: null
       };
     } else if (cycle === 'quarterly') {
       return {
-        monthly: 9.5,
-        display: '$9.50',
+        monthly: 19,
+        display: '£19',
         period: '/month',
-        total: '$38 billed quarterly',
+        total: '£57 billed quarterly',
         savings: '5% off'
       };
     } else { // yearly
       return {
-        monthly: 9,
-        display: '$9',
+        monthly: 18,
+        display: '£18',
         period: '/month',
-        total: '$108 billed annually',
+        total: '£216 billed annually',
         savings: '10% off'
       };
     }
@@ -63,7 +63,7 @@ export default function Pricing() {
       id: 'free',
       name: 'Free',
       price: 0,
-      priceDisplay: '$0',
+      priceDisplay: '£0',
       period: 'forever',
       icon: Sparkles,
       color: 'from-gray-600 to-gray-700',
@@ -150,97 +150,8 @@ export default function Pricing() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
-      {/* Hero Section */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-16">
-          <Badge className="mb-6 bg-purple-500/20 text-purple-300 border-purple-500/30 text-base px-4 py-2">
-            <Sparkles className="w-4 h-4 mr-2" />
-            Privacy-First Data Analysis Platform
-          </Badge>
-          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Meldra
-          </h1>
-          <p className="text-2xl md:text-3xl text-slate-300 font-semibold mb-4">
-            Data Made Simple
-          </p>
-          <p className="text-xl text-slate-400 max-w-3xl mx-auto mb-8 leading-relaxed">
-            Transform your data into actionable insights with AI-powered analysis, automated workflows, and professional reporting. 
-            All while keeping your data completely private and secure.
-          </p>
-          
-          {!user && (
-            <div className="flex gap-4 justify-center mt-8">
-              <a
-                href="/register"
-                className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2"
-              >
-                Get Started Free
-                <ArrowRight className="w-5 h-5" />
-              </a>
-              <a
-                href="/login"
-                className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-semibold text-lg transition-all border border-slate-700"
-              >
-                Login
-              </a>
-            </div>
-          )}
-        </div>
-
-        {/* Features Section */}
-        <div className="mb-20">
-          <h2 className="text-4xl font-bold text-white text-center mb-4">
-            What Can Meldra Do?
-          </h2>
-          <p className="text-xl text-slate-400 text-center mb-12 max-w-2xl mx-auto">
-            Everything you need to analyze, transform, and visualize your data - all in one powerful platform
-          </p>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {features.map((feature, idx) => (
-              <div
-                key={idx}
-                className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 hover:border-purple-500/50 transition-all group"
-              >
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <feature.icon className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Key Benefits */}
-        <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-2xl p-8 md:p-12 mb-20 border border-purple-500/20">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-white text-center mb-8">
-              Why Choose Meldra?
-            </h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <Lock className="w-10 h-10 text-purple-400 mx-auto mb-3" />
-                <h3 className="text-lg font-bold text-white mb-2">100% Private</h3>
-                <p className="text-slate-400 text-sm">Your data never leaves your browser. Complete privacy and security.</p>
-              </div>
-              <div className="text-center">
-                <Zap className="w-10 h-10 text-purple-400 mx-auto mb-3" />
-                <h3 className="text-lg font-bold text-white mb-2">AI-Powered</h3>
-                <p className="text-slate-400 text-sm">Advanced AI analyzes your data and provides actionable insights instantly.</p>
-              </div>
-              <div className="text-center">
-                <TrendingUp className="w-10 h-10 text-purple-400 mx-auto mb-3" />
-                <h3 className="text-lg font-bold text-white mb-2">Professional Results</h3>
-                <p className="text-slate-400 text-sm">Generate reports, presentations, and visualizations ready for stakeholders.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Pricing Section */}
-      <div className="container mx-auto px-4 py-12 border-t border-slate-800">
+      <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <Badge className="mb-4 bg-purple-500/20 text-purple-300 border-purple-500/30">
             <Star className="w-4 h-4 mr-1" />
@@ -271,16 +182,14 @@ export default function Pricing() {
           )}
         </div>
 
-        {/* Admin Notice */}
-        {user && user.email === 'sumit@meldra.ai' && (
-          <Alert className="mb-8 max-w-4xl mx-auto bg-amber-500/10 border-amber-500/30">
-            <AlertCircle className="h-5 w-5 text-amber-400" />
-            <AlertDescription className="text-amber-200">
-              <strong>Admin Notice:</strong> Stripe payment links need to be configured for monthly, quarterly, and yearly billing.
-              Click "Subscribe Now" to see the setup guide.
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Stripe Integration Notice */}
+        <Alert className="mb-8 max-w-4xl mx-auto bg-blue-500/10 border-blue-500/30">
+          <AlertCircle className="h-5 w-5 text-blue-400" />
+          <AlertDescription className="text-blue-200">
+            <strong>Coming Soon:</strong> Stripe payment integration is being set up. Premium subscriptions will be available soon. 
+            For now, you can enjoy all features with the free tier.
+          </AlertDescription>
+        </Alert>
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">

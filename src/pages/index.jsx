@@ -9,6 +9,7 @@ import Upload from "./Upload";
 
 import Dashboard from "./Dashboard";
 
+import Landing from "./Landing";
 import Pricing from "./Pricing";
 
 import PDFEditor from "./PDFEditor";
@@ -101,7 +102,7 @@ function PagesContent() {
     const location = useLocation();
     const currentPage = _getCurrentPage(location.pathname);
 
-    // Routes without layout (Landing/Pricing, Login/Register/ForgotPassword/ResetPassword)
+    // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword)
     const noLayoutRoutes = ['/', '/pricing', '/login', '/register', '/forgot-password', '/reset-password'];
     const isNoLayoutRoute = noLayoutRoutes.some(route =>
         location.pathname.toLowerCase() === route || location.pathname.toLowerCase() === route + '/'
@@ -110,7 +111,7 @@ function PagesContent() {
     if (isNoLayoutRoute) {
         return (
             <Routes>
-                <Route path="/" element={<Pricing />} />
+                <Route path="/" element={<Landing />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/Pricing" element={<Pricing />} />
                 <Route path="/login" element={<Login />} />

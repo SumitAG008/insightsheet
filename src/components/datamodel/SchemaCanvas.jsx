@@ -248,10 +248,15 @@ export default function SchemaCanvas({
 
           {schema.tables.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-slate-500 text-lg mb-2">No tables yet</div>
-                <div className="text-slate-600 text-sm">
-                  Click "Add Table" to create your first table
+              <div className="text-center p-8 bg-slate-800/50 rounded-lg border border-slate-700 max-w-md">
+                <div className="text-slate-300 text-xl font-semibold mb-3">No tables yet</div>
+                <div className="text-slate-400 text-sm mb-4">
+                  Get started by adding your first table or importing a schema
+                </div>
+                <div className="flex flex-col gap-2 text-xs text-slate-500">
+                  <div>• Click "Add Table" button above</div>
+                  <div>• Or import JSON/XML data file</div>
+                  <div>• Or use AI Assistant to generate schema</div>
                 </div>
               </div>
             </div>

@@ -48,6 +48,10 @@ export default function Layout({ children }) {
       }
     } catch (error) {
       // User not logged in - clear any stale data
+      // Only log if it's not an expected authentication error
+      if (!error.message || (!error.message.includes('Not authenticated') && !error.message.includes('Unauthorized'))) {
+        console.error('Error loading user:', error);
+      }
       setUser(null);
       localStorage.removeItem('auth_token');
       sessionStorage.removeItem('sessionLogged');

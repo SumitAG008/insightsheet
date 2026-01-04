@@ -118,30 +118,55 @@ function PagesContent() {
             <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/Dashboard" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
 
                 <Route path="/Pricing" element={<Pricing />} />
+                <Route path="/pricing" element={<Pricing />} />
 
                 <Route path="/PDFEditor" element={<PDFEditor />} />
+                <Route path="/pdfeditor" element={<PDFEditor />} />
 
                 <Route path="/Privacy" element={<Privacy />} />
+                <Route path="/privacy" element={<Privacy />} />
 
                 <Route path="/Security" element={<Security />} />
+                <Route path="/security" element={<Security />} />
 
                 <Route path="/Disclaimer" element={<Disclaimer />} />
+                <Route path="/disclaimer" element={<Disclaimer />} />
 
                 <Route path="/FilenameCleaner" element={<FilenameCleaner />} />
+                <Route path="/filenamecleaner" element={<FilenameCleaner />} />
 
                 <Route path="/AdminDashboard" element={<AdminDashboard />} />
+                <Route path="/admindashboard" element={<AdminDashboard />} />
 
                 <Route path="/ActivityDashboard" element={<ActivityDashboard />} />
+                <Route path="/activitydashboard" element={<ActivityDashboard />} />
 
                 <Route path="/DownloadCode" element={<DownloadCode />} />
+                <Route path="/downloadcode" element={<DownloadCode />} />
 
                 <Route path="/StripeSuccess" element={<StripeSuccess />} />
+                <Route path="/stripesuccess" element={<StripeSuccess />} />
 
                 <Route path="/AgenticAI" element={<AgenticAI />} />
+                <Route path="/agenticai" element={<AgenticAI />} />
 
                 <Route path="/FileToPPT" element={<FileToPPT />} />
+                <Route path="/filetoppt" element={<FileToPPT />} />
+
+                <Route path="/FileAnalyzer" element={<FileAnalyzer />} />
+                <Route path="/fileanalyzer" element={<FileAnalyzer />} />
+
+                <Route path="/PLBuilder" element={<PLBuilder />} />
+                <Route path="/plbuilder" element={<PLBuilder />} />
+
+                <Route path="/DataModelCreator" element={<DataModelCreator />} />
+                <Route path="/datamodelcreator" element={<DataModelCreator />} />
+
+                <Route path="/Reviews" element={<Reviews />} />
+                <Route path="/reviews" element={<Reviews />} />
 
             </Routes>
         </Layout>

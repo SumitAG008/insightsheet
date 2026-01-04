@@ -49,7 +49,13 @@ export default function SubscriptionChecker({ children }) {
         }
       }
     } catch (error) {
-      console.error('Error checking subscription:', error);
+      // User not authenticated - this is expected for public pages
+      // Only log if it's not an authentication error
+      if (!error.message || !error.message.includes('Not authenticated') && !error.message.includes('Unauthorized')) {
+        console.error('Error checking subscription:', error);
+      }
+      setUser(null);
+      setSubscription(null);
     }
     setLoading(false);
   };

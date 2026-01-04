@@ -34,6 +34,7 @@ from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
+from app.services.email_service import send_password_reset_email, send_welcome_email
 
 load_dotenv()
 
@@ -292,18 +293,27 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
         user.reset_token_expires = reset_token_expires
         db.commit()
         
-        # In production, send email with reset link
-        # For now, log the token (in production, send email)
+        # Generate reset link
         reset_link = f"{os.getenv('FRONTEND_URL', 'https://insight.meldra.ai')}/reset-password?token={reset_token}"
         
         logger.info(f"Password reset token generated for {request.email}: {reset_link}")
         
-        # TODO: Send email with reset link
-        # send_password_reset_email(user.email, reset_link)
+        # Send email with reset link
+        email_sent = await send_password_reset_email(user.email, reset_link)
+        
+        if not email_sent:
+            # If email sending fails, still return success (security)
+            # But log the reset link for manual use
+            logger.warning(f"Email sending failed. Reset link for {request.email}: {reset_link}")
+            # In development, include reset_link in response if email not configured
+            if not os.getenv("SMTP_USER"):
+                return {
+                    "message": "If an account with that email exists, a password reset link has been sent.",
+                    "reset_link": reset_link  # Only shown if SMTP not configured
+                }
         
         return {
-            "message": "If an account with that email exists, a password reset link has been sent.",
-            "reset_link": reset_link  # Remove this in production - only for development
+            "message": "If an account with that email exists, a password reset link has been sent."
         }
         
     except Exception as e:

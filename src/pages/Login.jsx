@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { backendApi } from '@/api/backendClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,10 +9,14 @@ import { Loader2, LogIn, Sparkles } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Get the page user was trying to access (if any)
+  const from = location.state?.from?.pathname || '/dashboard';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -26,8 +30,8 @@ export default function Login() {
         // Store user info
         localStorage.setItem('user', JSON.stringify(result.user));
 
-        // Navigate to dashboard
-        navigate('/dashboard');
+        // Navigate to the page they were trying to access, or dashboard
+        navigate(from, { replace: true });
       } else {
         setError('Login failed. Please try again.');
       }

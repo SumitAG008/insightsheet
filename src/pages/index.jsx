@@ -39,6 +39,7 @@ import FileAnalyzer from "./FileAnalyzer";
 import Reviews from "./Reviews";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import ProtectedRoute from '../components/auth/ProtectedRoute';
 
 const PAGES = {
     
@@ -116,15 +117,9 @@ function PagesContent() {
     return (
         <Layout currentPageName={currentPage}>
             <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/Dashboard" element={<Dashboard />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-
+                {/* Public routes - no auth required */}
                 <Route path="/Pricing" element={<Pricing />} />
                 <Route path="/pricing" element={<Pricing />} />
-
-                <Route path="/PDFEditor" element={<PDFEditor />} />
-                <Route path="/pdfeditor" element={<PDFEditor />} />
 
                 <Route path="/Privacy" element={<Privacy />} />
                 <Route path="/privacy" element={<Privacy />} />
@@ -135,38 +130,46 @@ function PagesContent() {
                 <Route path="/Disclaimer" element={<Disclaimer />} />
                 <Route path="/disclaimer" element={<Disclaimer />} />
 
-                <Route path="/FilenameCleaner" element={<FilenameCleaner />} />
-                <Route path="/filenamecleaner" element={<FilenameCleaner />} />
+                {/* Protected routes - require authentication */}
+                <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/Dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
-                <Route path="/AdminDashboard" element={<AdminDashboard />} />
-                <Route path="/admindashboard" element={<AdminDashboard />} />
+                <Route path="/PDFEditor" element={<ProtectedRoute><PDFEditor /></ProtectedRoute>} />
+                <Route path="/pdfeditor" element={<ProtectedRoute><PDFEditor /></ProtectedRoute>} />
 
-                <Route path="/ActivityDashboard" element={<ActivityDashboard />} />
-                <Route path="/activitydashboard" element={<ActivityDashboard />} />
+                <Route path="/FilenameCleaner" element={<ProtectedRoute><FilenameCleaner /></ProtectedRoute>} />
+                <Route path="/filenamecleaner" element={<ProtectedRoute><FilenameCleaner /></ProtectedRoute>} />
 
-                <Route path="/DownloadCode" element={<DownloadCode />} />
-                <Route path="/downloadcode" element={<DownloadCode />} />
+                <Route path="/AdminDashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+                <Route path="/admindashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
 
-                <Route path="/StripeSuccess" element={<StripeSuccess />} />
-                <Route path="/stripesuccess" element={<StripeSuccess />} />
+                <Route path="/ActivityDashboard" element={<ProtectedRoute><ActivityDashboard /></ProtectedRoute>} />
+                <Route path="/activitydashboard" element={<ProtectedRoute><ActivityDashboard /></ProtectedRoute>} />
 
-                <Route path="/AgenticAI" element={<AgenticAI />} />
-                <Route path="/agenticai" element={<AgenticAI />} />
+                <Route path="/DownloadCode" element={<ProtectedRoute><DownloadCode /></ProtectedRoute>} />
+                <Route path="/downloadcode" element={<ProtectedRoute><DownloadCode /></ProtectedRoute>} />
 
-                <Route path="/FileToPPT" element={<FileToPPT />} />
-                <Route path="/filetoppt" element={<FileToPPT />} />
+                <Route path="/StripeSuccess" element={<ProtectedRoute><StripeSuccess /></ProtectedRoute>} />
+                <Route path="/stripesuccess" element={<ProtectedRoute><StripeSuccess /></ProtectedRoute>} />
 
-                <Route path="/FileAnalyzer" element={<FileAnalyzer />} />
-                <Route path="/fileanalyzer" element={<FileAnalyzer />} />
+                <Route path="/AgenticAI" element={<ProtectedRoute><AgenticAI /></ProtectedRoute>} />
+                <Route path="/agenticai" element={<ProtectedRoute><AgenticAI /></ProtectedRoute>} />
 
-                <Route path="/PLBuilder" element={<PLBuilder />} />
-                <Route path="/plbuilder" element={<PLBuilder />} />
+                <Route path="/FileToPPT" element={<ProtectedRoute><FileToPPT /></ProtectedRoute>} />
+                <Route path="/filetoppt" element={<ProtectedRoute><FileToPPT /></ProtectedRoute>} />
 
-                <Route path="/DataModelCreator" element={<DataModelCreator />} />
-                <Route path="/datamodelcreator" element={<DataModelCreator />} />
+                <Route path="/FileAnalyzer" element={<ProtectedRoute><FileAnalyzer /></ProtectedRoute>} />
+                <Route path="/fileanalyzer" element={<ProtectedRoute><FileAnalyzer /></ProtectedRoute>} />
 
-                <Route path="/Reviews" element={<Reviews />} />
-                <Route path="/reviews" element={<Reviews />} />
+                <Route path="/PLBuilder" element={<ProtectedRoute><PLBuilder /></ProtectedRoute>} />
+                <Route path="/plbuilder" element={<ProtectedRoute><PLBuilder /></ProtectedRoute>} />
+
+                <Route path="/DataModelCreator" element={<ProtectedRoute><DataModelCreator /></ProtectedRoute>} />
+                <Route path="/datamodelcreator" element={<ProtectedRoute><DataModelCreator /></ProtectedRoute>} />
+
+                <Route path="/Reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
+                <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
 
             </Routes>
         </Layout>

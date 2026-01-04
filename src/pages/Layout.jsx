@@ -4,7 +4,7 @@
 import React, { useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { Upload, LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu } from 'lucide-react';
 import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
 import Logo from '@/components/branding/Logo';
 import { meldraAi } from '@/api/meldraClient';
@@ -119,23 +119,11 @@ export default function Layout({ children }) {
       <nav className="border-b border-slate-200 dark:border-slate-800 backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <Link to={createPageUrl('Upload')} className="group">
+            <Link to={createPageUrl('Dashboard')} className="group">
               <Logo size="medium" className="group-hover:opacity-80 transition-opacity" />
             </Link>
 
             <div className="hidden md:flex items-center gap-1">
-              <Link 
-                to={createPageUrl('Upload')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('Upload'))
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Upload className="w-4 h-4" />
-                <span>Upload</span>
-              </Link>
-              
               <Link 
                 to={createPageUrl('Dashboard')}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
@@ -316,18 +304,6 @@ export default function Layout({ children }) {
           {/* Mobile menu */}
           {mobileMenuOpen && (
             <div className="md:hidden border-t border-slate-200 dark:border-slate-800 py-4 space-y-1">
-              <Link 
-                to={createPageUrl('Upload')}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
-                  isActive(createPageUrl('Upload'))
-                    ? 'bg-blue-600 text-white'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-              >
-                <Upload className="w-4 h-4" />
-                <span>Upload</span>
-              </Link>
               <Link 
                 to={createPageUrl('Dashboard')}
                 onClick={() => setMobileMenuOpen(false)}

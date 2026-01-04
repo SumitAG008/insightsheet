@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Brain, Sparkles, Loader2, CheckCircle, AlertCircle,
-  Play, Eye, Download, Zap, Target, TrendingUp, Lightbulb
+  Play, Eye, Download, Zap, Target, TrendingUp, Lightbulb, Upload, FileText, X, Shield
 } from 'lucide-react';
+import FileUploadZone from '@/components/upload/FileUploadZone';
 
 export default function AgenticAI() {
   const [task, setTask] = useState('');
@@ -347,12 +348,56 @@ Create a clear, business-ready summary.`;
           </AlertDescription>
         </Alert>
 
-        {/* Data Required Notice */}
-        {!data && (
-          <Alert className="mb-8 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
-            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+        {/* File Upload Section */}
+        {!data ? (
+          <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <Upload className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              Upload Your Data File
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              Upload a CSV or Excel file to get started with the AI Assistant. Your data stays private and is processed in your browser.
+            </p>
+            <FileUploadZone
+              onFileUpload={(file, uploadedData) => {
+                setData(uploadedData);
+                sessionStorage.setItem('insightsheet_data', JSON.stringify(uploadedData));
+                sessionStorage.setItem('insightsheet_filename', file.name);
+              }}
+              acceptedFormats={['.csv', '.xlsx', '.xls']}
+            />
+            <div className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+              <p className="flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                <span>Your file is processed locally and never stored on our servers</span>
+              </p>
+            </div>
+          </div>
+        ) : (
+          <Alert className="mb-8 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800">
+            <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             <AlertDescription className="text-slate-700 dark:text-slate-300">
-              <strong className="text-amber-600 dark:text-amber-400">Data Required:</strong> Please upload a CSV file in the Dashboard first. The AI Assistant needs data to analyze and process.
+              <div className="flex items-center justify-between">
+                <div>
+                  <strong className="text-emerald-600 dark:text-emerald-400">Data Loaded:</strong> {sessionStorage.getItem('insightsheet_filename') || 'File'} 
+                  <span className="text-sm text-slate-500 dark:text-slate-400 ml-2">
+                    ({data.rows.length} rows, {data.headers.length} columns)
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setData(null);
+                    sessionStorage.removeItem('insightsheet_data');
+                    sessionStorage.removeItem('insightsheet_filename');
+                  }}
+                  className="border-slate-300 dark:border-slate-600"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Remove File
+                </Button>
+              </div>
             </AlertDescription>
           </Alert>
         )}

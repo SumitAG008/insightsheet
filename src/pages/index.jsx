@@ -2,6 +2,8 @@ import Layout from "./Layout.jsx";
 
 import Login from "./Login";
 import Register from "./Register";
+import ForgotPassword from "./ForgotPassword";
+import ResetPassword from "./ResetPassword";
 
 import Upload from "./Upload";
 
@@ -99,8 +101,8 @@ function PagesContent() {
     const location = useLocation();
     const currentPage = _getCurrentPage(location.pathname);
 
-    // Routes without layout (Login/Register)
-    const noLayoutRoutes = ['/login', '/register'];
+    // Routes without layout (Login/Register/ForgotPassword/ResetPassword)
+    const noLayoutRoutes = ['/login', '/register', '/forgot-password', '/reset-password'];
     const isNoLayoutRoute = noLayoutRoutes.some(route =>
         location.pathname.toLowerCase() === route
     );
@@ -110,6 +112,8 @@ function PagesContent() {
             <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
             </Routes>
         );
     }

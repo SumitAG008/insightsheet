@@ -103,6 +103,15 @@ class UserLogin(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
 class LLMRequest(BaseModel):
     prompt: str
     add_context_from_internet: bool = False
@@ -258,6 +267,103 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
+        )
+
+
+@app.post("/api/auth/forgot-password")
+async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Request password reset - sends reset token to email"""
+    try:
+        user = db.query(User).filter(User.email == request.email).first()
+        
+        # Always return success (security: don't reveal if email exists)
+        if not user:
+            logger.warning(f"Password reset requested for non-existent email: {request.email}")
+            return {
+                "message": "If an account with that email exists, a password reset link has been sent."
+            }
+        
+        # Generate reset token
+        reset_token = secrets.token_urlsafe(32)
+        reset_token_expires = datetime.utcnow() + timedelta(hours=1)  # Token valid for 1 hour
+        
+        # Save token to database
+        user.reset_token = reset_token
+        user.reset_token_expires = reset_token_expires
+        db.commit()
+        
+        # In production, send email with reset link
+        # For now, log the token (in production, send email)
+        reset_link = f"{os.getenv('FRONTEND_URL', 'https://insight.meldra.ai')}/reset-password?token={reset_token}"
+        
+        logger.info(f"Password reset token generated for {request.email}: {reset_link}")
+        
+        # TODO: Send email with reset link
+        # send_password_reset_email(user.email, reset_link)
+        
+        return {
+            "message": "If an account with that email exists, a password reset link has been sent.",
+            "reset_link": reset_link  # Remove this in production - only for development
+        }
+        
+    except Exception as e:
+        logger.error(f"Password reset error: {str(e)}")
+        # Still return success for security
+        return {
+            "message": "If an account with that email exists, a password reset link has been sent."
+        }
+
+
+@app.post("/api/auth/reset-password")
+async def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """Reset password using token"""
+    try:
+        # Find user by reset token
+        user = db.query(User).filter(User.reset_token == request.token).first()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired reset token"
+            )
+        
+        # Check if token expired
+        if user.reset_token_expires and user.reset_token_expires < datetime.utcnow():
+            # Clear expired token
+            user.reset_token = None
+            user.reset_token_expires = None
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Reset token has expired. Please request a new one."
+            )
+        
+        # Validate password strength
+        if len(request.new_password) < 6:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 6 characters"
+            )
+        
+        # Update password
+        user.hashed_password = get_password_hash(request.new_password)
+        user.reset_token = None
+        user.reset_token_expires = None
+        db.commit()
+        
+        logger.info(f"Password reset successful for {user.email}")
+        
+        return {
+            "message": "Password has been reset successfully. You can now login with your new password."
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Password reset error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Password reset failed"
         )
 
 

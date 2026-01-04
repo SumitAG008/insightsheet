@@ -104,6 +104,34 @@ export const backendApi = {
     isAuthenticated: () => {
       return !!getToken();
     },
+
+    forgotPassword: async (email) => {
+      const response = await apiCall('/api/auth/forgot-password', {
+        method: 'POST',
+        body: { email },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Failed to send reset email: ${response.status}`);
+      }
+      
+      return response.json();
+    },
+
+    resetPassword: async (token, newPassword) => {
+      const response = await apiCall('/api/auth/reset-password', {
+        method: 'POST',
+        body: { token, new_password: newPassword },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Password reset failed: ${response.status}`);
+      }
+      
+      return response.json();
+    },
   },
 
   // AI/LLM Integration

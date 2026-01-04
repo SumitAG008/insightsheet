@@ -42,13 +42,30 @@ def get_password_hash(password: str) -> str:
     Note: bcrypt has a 72-byte limit, so we truncate if necessary
     """
     # Bcrypt has a 72-byte limit, truncate if password is too long
+    # We need to truncate to ensure it fits in 72 bytes
     # Convert to bytes to check length properly (handles unicode)
     password_bytes = password.encode('utf-8')
+    
     if len(password_bytes) > 72:
-        # Truncate to 72 bytes, then decode back to string
-        truncated = password_bytes[:72].decode('utf-8', errors='ignore')
-        logger.warning(f"Password truncated from {len(password_bytes)} bytes to 72 bytes")
+        # Truncate byte-by-byte to exactly 72 bytes
+        # This ensures we don't cut multi-byte characters incorrectly
+        truncated_bytes = password_bytes[:72]
+        # Try to decode, but if it fails (cut in middle of char), remove last byte(s)
+        while True:
+            try:
+                truncated = truncated_bytes.decode('utf-8')
+                break
+            except UnicodeDecodeError:
+                # Remove last byte and try again
+                truncated_bytes = truncated_bytes[:-1]
+                if len(truncated_bytes) == 0:
+                    # Fallback: use first 72 characters of string
+                    truncated = password[:72]
+                    break
+        
+        logger.warning(f"Password truncated from {len(password_bytes)} bytes to {len(truncated_bytes)} bytes")
         return pwd_context.hash(truncated)
+    
     return pwd_context.hash(password)
 
 

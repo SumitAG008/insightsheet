@@ -347,6 +347,16 @@ Create a clear, business-ready summary.`;
           </AlertDescription>
         </Alert>
 
+        {/* Data Required Notice */}
+        {!data && (
+          <Alert className="mb-8 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800">
+            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <AlertDescription className="text-slate-700 dark:text-slate-300">
+              <strong className="text-amber-600 dark:text-amber-400">Data Required:</strong> Please upload a CSV file in the Dashboard first. The AI Assistant needs data to analyze and process.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Task Input */}
         <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-sm">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">

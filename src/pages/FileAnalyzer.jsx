@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,6 +67,27 @@ export default function FileAnalyzer() {
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
+  // Check backend connection
+  const [backendConnected, setBackendConnected] = useState(true);
+  const [backendError, setBackendError] = useState(null);
+
+  useEffect(() => {
+    // Check if backend is reachable
+    const checkBackend = async () => {
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${API_URL}/api/health`, { method: 'GET' });
+        if (!response.ok) throw new Error('Backend not responding');
+        setBackendConnected(true);
+        setBackendError(null);
+      } catch (err) {
+        setBackendConnected(false);
+        setBackendError('Backend server is not connected. Please ensure the backend is deployed and running.');
+      }
+    };
+    checkBackend();
+  }, []);
+
   return (
     <div className="container mx-auto p-6 max-w-6xl">
       <div className="mb-8">
@@ -76,6 +97,15 @@ export default function FileAnalyzer() {
           data quality, and suggested operations. Understand your data instantly!
         </p>
       </div>
+
+      {!backendConnected && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Backend Connection Required:</strong> {backendError || 'The backend server is not reachable. This feature requires a connected backend. Please check your backend deployment or contact support.'}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card className="mb-6">
         <CardHeader>

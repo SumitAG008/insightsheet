@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Download, Sparkles, FileSpreadsheet } from 'lucide-react';
+import { Loader2, Download, Sparkles, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function PLBuilder() {
@@ -61,6 +61,27 @@ export default function PLBuilder() {
     setPrompt(example);
   };
 
+  // Check backend connection
+  const [backendConnected, setBackendConnected] = useState(true);
+  const [backendError, setBackendError] = useState(null);
+
+  useEffect(() => {
+    // Check if backend is reachable
+    const checkBackend = async () => {
+      try {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const response = await fetch(`${API_URL}/api/health`, { method: 'GET' });
+        if (!response.ok) throw new Error('Backend not responding');
+        setBackendConnected(true);
+        setBackendError(null);
+      } catch (err) {
+        setBackendConnected(false);
+        setBackendError('Backend server is not connected. Please ensure the backend is deployed and running.');
+      }
+    };
+    checkBackend();
+  }, []);
+
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-8">
@@ -70,6 +91,15 @@ export default function PLBuilder() {
           Just describe what you need, and we'll create a fully formatted Excel file with formulas and charts.
         </p>
       </div>
+
+      {!backendConnected && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Backend Connection Required:</strong> {backendError || 'The backend server is not reachable. This feature requires a connected backend. Please check your backend deployment or contact support.'}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card className="mb-6">
         <CardHeader>

@@ -233,11 +233,11 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
       <Alert className={`mb-6 ${subscription?.plan === 'premium' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
         <Info className={`h-4 w-4 ${subscription?.plan === 'premium' ? 'text-emerald-400' : 'text-amber-400'}`} />
         <AlertDescription className="text-slate-300">
-          <strong className={subscription?.plan === 'premium' ? 'text-emerald-300' : 'text-amber-300'}>
-            {subscription?.plan === 'premium' ? '✨ Premium: Unlimited file size!' : `File Size Limit: ${maxSize}MB`}
+          <strong className={`font-bold text-base ${subscription?.plan === 'premium' ? 'text-emerald-300' : 'text-amber-600 dark:text-amber-300'}`}>
+            {subscription?.plan === 'premium' ? '✨ Premium: Unlimited file size!' : `⚠️ File Size Limit: ${maxSize}MB`}
           </strong>
           <br />
-          <span className="text-sm">
+          <span className="text-sm font-medium">
             {subscription?.plan === 'premium' 
               ? 'You can upload files up to 500MB with your Premium plan.'
               : 'Free plan limited to 10MB. Upgrade to Premium for unlimited size!'}

@@ -105,7 +105,12 @@ Return JSON:
           }
         }
       });
-      const plan = planResponse.response;
+      
+      // Validate response
+      const plan = planResponse?.response;
+      if (!plan || !plan.steps || !Array.isArray(plan.steps) || plan.steps.length === 0) {
+        throw new Error('Failed to generate execution plan. The AI response was invalid or incomplete. Please try again.');
+      }
 
       setAgent({ phase: 'planning', plan });
 
@@ -478,17 +483,17 @@ Create a clear, business-ready summary.`;
 
                 <div className="bg-blue-50 dark:bg-slate-800/50 border border-blue-200 dark:border-slate-700 rounded-lg p-4">
                   <p className="text-slate-900 dark:text-white mb-3">
-                    <strong>Understanding:</strong> {agent.plan.task_understood}
+                    <strong>Understanding:</strong> {agent.plan?.task_understood || 'Analyzing task...'}
                   </p>
                   <p className="text-slate-600 dark:text-slate-400 text-sm mb-2">
-                    <strong>Estimated Time:</strong> {agent.plan.estimated_time} • 
-                    <strong className="ml-2">Confidence:</strong> {(agent.plan.confidence * 100).toFixed(0)}%
+                    <strong>Estimated Time:</strong> {agent.plan?.estimated_time || 'Calculating...'} • 
+                    <strong className="ml-2">Confidence:</strong> {agent.plan?.confidence ? `${(agent.plan.confidence * 100).toFixed(0)}%` : 'N/A'}
                   </p>
 
                   <div className="mt-4">
                     <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-2">Execution Plan:</p>
                     <ol className="space-y-2">
-                      {agent.plan.steps.map((step, idx) => (
+                      {agent.plan?.steps?.map((step, idx) => (
                         <li key={idx} className="text-sm text-slate-700 dark:text-slate-300">
                           <span className="font-bold text-blue-600 dark:text-blue-400">Step {step.step}:</span> {step.description}
                           <p className="text-xs text-slate-500 dark:text-slate-500 ml-4 mt-1">💭 {step.reasoning}</p>
@@ -523,7 +528,7 @@ Create a clear, business-ready summary.`;
                 </div>
 
                 <div className="space-y-2">
-                  {agent.plan.steps.map((step, idx) => (
+                  {agent.plan?.steps?.map((step, idx) => (
                     <div
                       key={idx}
                       className={`p-3 rounded-lg border ${

@@ -224,7 +224,7 @@ export default function SchemaCanvas({
                     }}
                   >
                     {column.primaryKey && (
-                      <Key className="w-3 h-3 text-yellow-400 flex-shrink-0" />
+                      <Key className="w-3 h-3 text-amber-500 flex-shrink-0" />
                     )}
                     <span className="text-slate-200 flex-1 truncate">
                       {column.name}

@@ -443,38 +443,38 @@ export default function Layout({ children }) {
       {/* Footer */}
       <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mt-auto">
         <div className="container mx-auto px-4 py-8">
-          <div className="grid md:grid-cols-3 gap-8">
-            <div>
+          <div className="grid md:grid-cols-3 gap-8 items-start">
+            <div className="min-w-0">
               <Logo size="medium" showText={true} />
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
                 Privacy-first data & file management
               </p>
             </div>
 
-            <div>
+            <div className="min-w-0">
               <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">Legal</h3>
               <div className="space-y-2">
                 <Link 
                   to={createPageUrl('Privacy')}
                   className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
                 >
-                  <Shield className="w-4 h-4" />
-                  Privacy Policy
+                  <Shield className="w-4 h-4 flex-shrink-0" />
+                  <span>Privacy Policy</span>
                 </Link>
                 <Link 
                   to={createPageUrl('Disclaimer')}
                   className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
                 >
-                  <AlertTriangle className="w-4 h-4" />
-                  Disclaimer & Terms
+                  <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                  <span>Disclaimer & Terms</span>
                 </Link>
               </div>
             </div>
 
-            <div>
-              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+            <div className="min-w-0">
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 h-full">
                 <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
                   <span className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Privacy First</span>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">

@@ -194,7 +194,7 @@ export default function Reviews() {
                       key={star}
                       className={`w-5 h-5 ${
                         star <= Math.round(stats.average_rating)
-                          ? 'fill-yellow-400 text-yellow-400'
+                          ? 'fill-amber-500 text-amber-500'
                           : 'text-slate-300'
                       }`}
                     />
@@ -282,7 +282,7 @@ export default function Reviews() {
                       <Star
                         className={`w-8 h-8 transition-colors ${
                           star <= (hoverRating || rating)
-                            ? 'fill-yellow-400 text-yellow-400'
+                            ? 'fill-amber-500 text-amber-500'
                             : 'text-slate-300'
                         }`}
                       />
@@ -399,7 +399,7 @@ export default function Reviews() {
                           key={star}
                           className={`w-4 h-4 ${
                             star <= review.rating
-                              ? 'fill-yellow-400 text-yellow-400'
+                              ? 'fill-amber-500 text-amber-500'
                               : 'text-slate-300'
                           }`}
                         />

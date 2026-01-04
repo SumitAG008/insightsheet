@@ -6,7 +6,6 @@ import { Check, Crown, Sparkles, Zap, Star, CreditCard, AlertCircle, BarChart3, 
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import PaymentIntegration from '../components/subscription/PaymentIntegration';
 
 export default function Pricing() {
   const [user, setUser] = useState(null);
@@ -257,13 +256,18 @@ export default function Pricing() {
                     )
                   ) : (
                     !user ? (
-                      <a
-                        href="/register"
-                        className={`w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2`}
-                      >
-                        <CreditCard className="w-4 h-4" />
-                        Sign Up for Premium
-                      </a>
+                      <div className="space-y-2">
+                        <a
+                          href="/register"
+                          className={`w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2 block`}
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          Sign Up for Premium
+                        </a>
+                        <p className="text-xs text-slate-400 text-center">
+                          Stripe integration coming soon
+                        </p>
+                      </div>
                     ) : (
                       <Button
                         onClick={() => handleSubscribe(plan)}
@@ -299,16 +303,13 @@ export default function Pricing() {
                 )}
               </p>
               
-              <PaymentIntegration
-                plan={selectedPlan.id}
-                amount={selectedPlan.price}
-                billingCycle={billingCycle}
-                onSuccess={() => {
-                  setSelectedPlan(null);
-                  alert('Subscription successful!');
-                  window.location.reload();
-                }}
-              />
+              <Alert className="mb-6 bg-blue-500/10 border-blue-500/30">
+                <AlertCircle className="h-5 w-5 text-blue-400" />
+                <AlertDescription className="text-blue-200 text-sm">
+                  Stripe payment integration is currently being set up. Premium subscriptions will be available soon. 
+                  In the meantime, enjoy all features with the free tier!
+                </AlertDescription>
+              </Alert>
 
               <Button
                 onClick={() => setSelectedPlan(null)}

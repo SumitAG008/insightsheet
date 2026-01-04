@@ -105,9 +105,12 @@ function PagesContent() {
 
     // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword/VerifyEmail)
     const noLayoutRoutes = ['/', '/pricing', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
-    const isNoLayoutRoute = noLayoutRoutes.some(route =>
-        location.pathname.toLowerCase() === route || location.pathname.toLowerCase().startsWith(route)
-    );
+    const isNoLayoutRoute = noLayoutRoutes.some(route => {
+        const path = location.pathname.toLowerCase();
+        const routeLower = route.toLowerCase();
+        // Exact match or starts with route (but not /dashboard which starts with /)
+        return path === routeLower || (routeLower !== '/' && path.startsWith(routeLower + '/'));
+    });
 
     if (isNoLayoutRoute) {
         return (

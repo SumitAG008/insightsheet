@@ -136,10 +136,13 @@ class FileAnalyzerService:
         else:
             raise ValueError("Could not decode CSV file")
 
+        # Convert DataFrame to list of lists safely
+        rows = df.values.tolist() if len(df) > 0 else []
+        
         return [{
             'name': filename.replace('.csv', ''),
             'headers': list(df.columns),
-            'rows': df.values.tolist()
+            'rows': rows
         }]
 
     async def _analyze_sheet(self, sheet_data: Dict, filename: str) -> Dict[str, Any]:
@@ -169,13 +172,32 @@ class FileAnalyzerService:
         text_columns = []
 
         for col in df.columns:
+            try:
+                # Get column as Series - ensure it's a Series, not DataFrame
+                col_data = df[col]
+                if isinstance(col_data, pd.DataFrame):
+                    # If somehow we got a DataFrame, take first column
+                    col_data = col_data.iloc[:, 0]
+                
+                # Get sample values safely
+                col_series = col_data.dropna().head(5)
+                if isinstance(col_series, pd.Series):
+                    sample_values = col_series.tolist()
+                elif hasattr(col_series, 'values'):
+                    sample_values = col_series.values.tolist() if len(col_series) > 0 else []
+                else:
+                    sample_values = list(col_series) if len(col_series) > 0 else []
+            except Exception as e:
+                logger.warning(f"Error getting sample values for column {col}: {str(e)}")
+                sample_values = []
+            
             col_info = {
-                'name': col,
+                'name': str(col),  # Ensure name is string
                 'type': 'unknown',
-                'null_count': df[col].isna().sum(),
-                'null_percentage': (df[col].isna().sum() / len(df)) * 100,
-                'unique_count': df[col].nunique(),
-                'sample_values': df[col].dropna().head(5).tolist()
+                'null_count': int(df[col].isna().sum()),
+                'null_percentage': float((df[col].isna().sum() / len(df)) * 100) if len(df) > 0 else 0.0,
+                'unique_count': int(df[col].nunique()),
+                'sample_values': sample_values
             }
 
             # Determine type

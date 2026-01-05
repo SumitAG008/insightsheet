@@ -69,11 +69,13 @@ CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost
 
 # Add meldra.ai domains and common Vercel URLs
 # Note: FastAPI CORS doesn't support wildcards, so list specific domains
+# For Vercel preview deployments, add them here or via CORS_ORIGINS env var
 ALLOWED_ORIGINS = CORS_ORIGINS + [
     "https://meldra.ai",
     "https://insight.meldra.ai",
     "https://meldra-six.vercel.app",
-    "https://insightsheet-jpci.vercel.app"
+    "https://insightsheet-jpci.vercel.app",
+    "https://meldra-q8c867yf4-sumit-ags-projects.vercel.app",
 ]
 
 app.add_middleware(

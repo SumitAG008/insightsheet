@@ -45,8 +45,16 @@ export default function ResetPassword() {
       return;
     }
     
+    // Check byte length (bcrypt has 72-byte limit, not character limit)
+    const passwordBytes = new TextEncoder().encode(formData.password);
+    if (passwordBytes.length > 72) {
+      setError(`Password is too long. Maximum 72 bytes allowed (your password is ${passwordBytes.length} bytes). Please use a shorter password.`);
+      return;
+    }
+    
+    // Also check character length as a warning (most passwords are 1 byte per char)
     if (formData.password.length > 72) {
-      setError('Password is too long. Maximum 72 characters allowed.');
+      setError('Password is too long. Maximum 72 characters recommended.');
       return;
     }
 

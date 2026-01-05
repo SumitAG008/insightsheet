@@ -76,6 +76,8 @@ ALLOWED_ORIGINS = CORS_ORIGINS + [
     "https://meldra-six.vercel.app",
     "https://insightsheet-jpci.vercel.app",
     "https://meldra-q8c867yf4-sumit-ags-projects.vercel.app",
+    "https://meldra-git-main-sumit-ags-projects.vercel.app",
+    "https://meldra-ln9n3ezi7-sumit-ags-projects.vercel.app",
 ]
 
 app.add_middleware(

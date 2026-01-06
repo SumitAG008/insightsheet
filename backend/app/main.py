@@ -186,7 +186,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         if len(password_bytes) > 72:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password is too long. Maximum 72 characters allowed."
+                detail=f"Password is too long. Maximum 72 bytes allowed (your password is {len(password_bytes)} bytes). Please use a shorter password or remove special characters."
             )
 
         # Generate verification token
@@ -433,7 +433,7 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
         if len(password_bytes) > 72:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Password is too long. Maximum 72 characters allowed."
+                detail=f"Password is too long. Maximum 72 bytes allowed (your password is {len(password_bytes)} bytes). Please use a shorter password or remove special characters."
             )
         
         # Update password (get_password_hash handles truncation internally, but we validate first)
@@ -442,9 +442,10 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
         except ValueError as e:
             # If bcrypt still complains, provide user-friendly error
             if "72 bytes" in str(e) or "longer than 72" in str(e):
+                password_bytes = request.new_password.encode('utf-8')
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Password is too long. Maximum 72 characters allowed."
+                    detail=f"Password is too long. Maximum 72 bytes allowed (your password is {len(password_bytes)} bytes). Please use a shorter password or remove special characters."
                 )
             # Re-raise other errors
             raise

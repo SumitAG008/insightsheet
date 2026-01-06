@@ -139,9 +139,11 @@ export default function ResetPassword() {
                 onChange={handleChange}
                 required
                 minLength={10}
-                maxLength={72}
                 className="bg-slate-800/50 border-slate-700 text-slate-200"
               />
+              <p className="text-xs text-slate-400">
+                Minimum 10 characters. Maximum 72 bytes (some special characters count as multiple bytes).
+              </p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-300">Confirm Password</label>
@@ -153,7 +155,6 @@ export default function ResetPassword() {
                 onChange={handleChange}
                 required
                 minLength={10}
-                maxLength={72}
                 className="bg-slate-800/50 border-slate-700 text-slate-200"
               />
             </div>

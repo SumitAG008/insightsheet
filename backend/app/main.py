@@ -155,7 +155,7 @@ class ZipProcessingOptions(BaseModel):
 class ActivityLog(BaseModel):
     activity_type: str
     page_name: Optional[str] = None
-    details: Optional[str] = None
+    details: Optional[Any] = None  # Can be str, dict, or None - accepts any type
 
 
 # ============================================================================
@@ -1095,6 +1095,69 @@ async def get_activity_history(
         }
         for a in activities
     ]
+
+
+@app.post("/api/login-history")
+async def create_login_history(
+    login_data: dict,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create login history entry"""
+    try:
+        login_history = LoginHistory(
+            user_email=login_data.get("user_email", current_user["email"]),
+            event_type=login_data.get("event_type", "login"),
+            ip_address=login_data.get("ip_address"),
+            location=login_data.get("location"),
+            browser=login_data.get("browser"),
+            device=login_data.get("device"),
+            session_duration=login_data.get("session_duration")
+        )
+        db.add(login_history)
+        db.commit()
+        
+        return {"message": "Login history created", "id": login_history.id}
+    except Exception as e:
+        logger.error(f"Login history creation error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create login history: {str(e)}"
+        )
+
+
+@app.get("/api/login-history")
+async def get_login_history(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    limit: int = 50
+):
+    """Get user's login history"""
+    try:
+        history = db.query(LoginHistory).filter(
+            LoginHistory.user_email == current_user["email"]
+        ).order_by(LoginHistory.created_date.desc()).limit(limit).all()
+        
+        return [
+            {
+                "id": h.id,
+                "user_email": h.user_email,
+                "event_type": h.event_type,
+                "ip_address": h.ip_address,
+                "location": h.location,
+                "browser": h.browser,
+                "device": h.device,
+                "session_duration": h.session_duration,
+                "created_date": h.created_date.isoformat() if h.created_date else None
+            }
+            for h in history
+        ]
+    except Exception as e:
+        logger.error(f"Get login history error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get login history: {str(e)}"
+        )
 
 
 # ============================================================================

@@ -430,10 +430,16 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
         
         # Bcrypt has 72-byte limit, validate and handle
         password_bytes = request.new_password.encode('utf-8')
-        if len(password_bytes) > 72:
+        password_char_length = len(request.new_password)
+        password_byte_length = len(password_bytes)
+        
+        logger.info(f"Password reset attempt - Characters: {password_char_length}, Bytes: {password_byte_length}")
+        
+        if password_byte_length > 72:
+            logger.warning(f"Password too long: {password_byte_length} bytes (max 72)")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Password is too long. Maximum 72 bytes allowed (your password is {len(password_bytes)} bytes). Please use a shorter password or remove special characters."
+                detail=f"Password is too long. Maximum 72 bytes allowed (your password is {password_byte_length} bytes). Please use a shorter password or remove special characters."
             )
         
         # Update password (get_password_hash handles truncation internally, but we validate first)
@@ -441,11 +447,12 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
             user.hashed_password = get_password_hash(request.new_password)
         except ValueError as e:
             # If bcrypt still complains, provide user-friendly error
+            logger.error(f"Bcrypt error during password hash: {str(e)}")
             if "72 bytes" in str(e) or "longer than 72" in str(e):
-                password_bytes = request.new_password.encode('utf-8')
+                password_byte_length = len(request.new_password.encode('utf-8'))
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Password is too long. Maximum 72 bytes allowed (your password is {len(password_bytes)} bytes). Please use a shorter password or remove special characters."
+                    detail=f"Password is too long. Maximum 72 bytes allowed (your password is {password_byte_length} bytes). Please use a shorter password or remove special characters."
                 )
             # Re-raise other errors
             raise

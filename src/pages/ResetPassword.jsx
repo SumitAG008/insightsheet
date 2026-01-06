@@ -48,8 +48,18 @@ export default function ResetPassword() {
     // Check byte length (bcrypt has 72-byte limit, not character limit)
     // Some characters (emojis, special Unicode) can be multiple bytes
     const passwordBytes = new TextEncoder().encode(formData.password);
-    if (passwordBytes.length > 72) {
-      setError(`Password is too long. Maximum 72 bytes allowed (your password is ${passwordBytes.length} bytes). Please use a shorter password or remove special characters.`);
+    const passwordByteLength = passwordBytes.length;
+    const passwordCharLength = formData.password.length;
+    
+    // Debug logging
+    console.log('Password validation:', {
+      characters: passwordCharLength,
+      bytes: passwordByteLength,
+      password: formData.password.replace(/./g, '*') // Mask password for logging
+    });
+    
+    if (passwordByteLength > 72) {
+      setError(`Password is too long. Maximum 72 bytes allowed (your password is ${passwordByteLength} bytes). Please use a shorter password or remove special characters.`);
       return;
     }
 
@@ -69,7 +79,23 @@ export default function ResetPassword() {
         navigate('/login');
       }, 3000);
     } catch (err) {
-      setError(err.message || 'Password reset failed. Please try again.');
+      // Log the actual error for debugging
+      console.error('Password reset error:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response,
+        status: err.status
+      });
+      
+      // Extract error message from response if available
+      let errorMessage = 'Password reset failed. Please try again.';
+      if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

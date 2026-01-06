@@ -62,7 +62,7 @@ export default function ForgotPassword() {
             {success && (
               <Alert className="bg-green-500/10 border-green-500/30">
                 <AlertDescription className="text-green-300">
-                  {resetLink ? (
+                  {resetLink && import.meta.env.MODE === 'development' ? (
                     <div>
                       <p className="mb-2">Password reset link generated!</p>
                       <p className="text-xs mb-2">Development mode - Reset link:</p>
@@ -79,7 +79,7 @@ export default function ForgotPassword() {
                       </p>
                     </div>
                   ) : (
-                    "If an account with that email exists, a password reset link has been sent to your email."
+                    "If an account with that email exists, a password reset link has been sent to your email. Please check your inbox (and spam folder)."
                   )}
                 </AlertDescription>
               </Alert>

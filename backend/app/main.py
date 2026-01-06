@@ -369,11 +369,13 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
             # If email sending fails, still return success (security)
             # But log the reset link for manual use
             logger.warning(f"Email sending failed. Reset link for {request.email}: {reset_link}")
-            # In development, include reset_link in response if email not configured
-            if not os.getenv("SMTP_USER"):
+            # Only return reset_link in development (when ENVIRONMENT is not production)
+            # Never show reset link in production for security
+            environment = os.getenv("ENVIRONMENT", "development")
+            if environment.lower() != "production" and not os.getenv("SMTP_USER"):
                 return {
                     "message": "If an account with that email exists, a password reset link has been sent.",
-                    "reset_link": reset_link  # Only shown if SMTP not configured
+                    "reset_link": reset_link  # Only in development when SMTP not configured
                 }
         
         return {

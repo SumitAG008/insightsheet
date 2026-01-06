@@ -356,7 +356,9 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
         db.commit()
         
         # Generate reset link
-        reset_link = f"{os.getenv('FRONTEND_URL', 'https://insight.meldra.ai')}/reset-password?token={reset_token}"
+        # Use localhost for development, production URL for production
+        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+        reset_link = f"{frontend_url}/reset-password?token={reset_token}"
         
         logger.info(f"Password reset token generated for {request.email}: {reset_link}")
         

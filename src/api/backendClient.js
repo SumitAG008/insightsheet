@@ -245,15 +245,28 @@ export const backendApi = {
   // Activity
   activity: {
     log: async (activityType, pageName, details) => {
-      const response = await apiCall('/api/activity/log', {
-        method: 'POST',
-        body: {
-          activity_type: activityType,
-          page_name: pageName,
-          details,
-        },
-      });
-      return response.json();
+      try {
+        const response = await apiCall('/api/activity/log', {
+          method: 'POST',
+          body: {
+            activity_type: activityType,
+            page_name: pageName,
+            details: details || null,
+          },
+        });
+        
+        // Silently fail if activity logging fails - it's not critical
+        if (!response.ok) {
+          console.warn('Activity logging failed:', response.status);
+          return null;
+        }
+        
+        return await response.json();
+      } catch (error) {
+        // Silently fail - activity logging should never break the app
+        console.warn('Activity logging skipped:', error.message);
+        return null;
+      }
     },
 
     getHistory: async (limit = 50) => {

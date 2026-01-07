@@ -62,7 +62,8 @@ export default function ActivityLogger({ children }) {
       });
     } catch (error) {
       // User not logged in or error logging activity
-      console.log('Activity logging skipped');
+      // Silently fail - activity logging should never break the app
+      console.warn('Activity logging skipped:', error.message);
     }
   }, [location.pathname]);
 
@@ -94,7 +95,8 @@ export const logActivity = async (activityType, details = {}) => {
       last_activity_date: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Error logging activity:', error);
+    // Silently fail - activity logging should never break the app
+    console.warn('Activity logging skipped:', error.message);
   }
 };
 

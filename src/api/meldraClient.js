@@ -545,7 +545,16 @@ meldraAi.entities.LoginHistory = {
 };
 
 meldraAi.entities.UserActivity = {
-  create: backendApi.activity.log,
+  create: async (data) => {
+    // Map UserActivity.create({...}) to backendApi.activity.log(activityType, pageName, details)
+    // Extract only the fields the backend accepts
+    const activityType = data.activity_type || data.activityType || 'unknown';
+    const pageName = data.page_name || data.pageName || window?.location?.pathname || '';
+    const details = data.details || null;
+    
+    // Call the backend endpoint with correct format
+    return await backendApi.activity.log(activityType, pageName, details);
+  },
   filter: backendApi.activity.getHistory,
 };
 

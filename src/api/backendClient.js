@@ -3,7 +3,15 @@
  * Connects to Python FastAPI backend
  */
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// SECURITY: Require HTTPS API URL - no localhost fallback in production
+const API_URL = import.meta.env.VITE_API_URL || (() => {
+  // Only allow localhost in development (when running on localhost)
+  if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return 'http://localhost:8001';
+  }
+  // Production must use HTTPS
+  throw new Error('VITE_API_URL environment variable must be set to HTTPS URL in production');
+})();
 
 // Token management
 let authToken = null;

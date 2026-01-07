@@ -38,7 +38,10 @@ export default function Reviews() {
   const loadReviews = async () => {
     try {
       setLoading(true);
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8001' : '');
+      if (!API_URL) {
+        throw new Error('API URL not configured');
+      }
       const featureParam = filterFeature !== 'all' ? `&feature=${filterFeature}` : '';
       const response = await fetch(
         `${API_URL}/api/reviews?approved_only=true&limit=50${featureParam}`
@@ -60,7 +63,10 @@ export default function Reviews() {
 
   const loadStats = async () => {
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8001' : '');
+      if (!API_URL) {
+        throw new Error('API URL not configured');
+      }
       const response = await fetch(`${API_URL}/api/reviews/stats`);
       
       if (!response.ok) {
@@ -96,7 +102,10 @@ export default function Reviews() {
         return;
       }
 
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8001' : '');
+      if (!API_URL) {
+        throw new Error('API URL not configured');
+      }
       const response = await fetch(`${API_URL}/api/reviews`, {
         method: 'POST',
         headers: {
@@ -140,7 +149,10 @@ export default function Reviews() {
         return;
       }
 
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8001' : '');
+      if (!API_URL) {
+        throw new Error('API URL not configured');
+      }
       const response = await fetch(`${API_URL}/api/reviews/${reviewId}/helpful`, {
         method: 'POST',
         headers: {

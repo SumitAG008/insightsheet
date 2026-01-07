@@ -69,7 +69,10 @@ export default function PLBuilder() {
     // Check if backend is reachable
     const checkBackend = async () => {
       try {
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8001' : '');
+        if (!API_URL) {
+          throw new Error('API URL not configured');
+        }
         const response = await fetch(`${API_URL}/api/health`, { method: 'GET' });
         if (!response.ok) throw new Error('Backend not responding');
         setBackendConnected(true);

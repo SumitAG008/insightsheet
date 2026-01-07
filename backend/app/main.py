@@ -64,13 +64,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS Configuration
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
+# CORS Configuration - SECURITY: Only HTTPS in production
+# Detect if we're in production (Railway/Vercel) or local development
+ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
+IS_PRODUCTION = ENVIRONMENT == "production" or os.getenv("RAILWAY_ENVIRONMENT") is not None
 
-# Add meldra.ai domains and common Vercel URLs
-# Note: FastAPI CORS doesn't support wildcards, so list specific domains
-# For Vercel preview deployments, add them here or via CORS_ORIGINS env var
-ALLOWED_ORIGINS = CORS_ORIGINS + [
+# Base production origins (always HTTPS)
+PRODUCTION_ORIGINS = [
     "https://meldra.ai",
     "https://insight.meldra.ai",
     "https://meldra-six.vercel.app",
@@ -80,12 +80,39 @@ ALLOWED_ORIGINS = CORS_ORIGINS + [
     "https://meldra-ln9n3ezi7-sumit-ags-projects.vercel.app",
 ]
 
+# Parse CORS_ORIGINS from environment (comma-separated)
+CORS_ORIGINS_ENV = os.getenv("CORS_ORIGINS", "")
+if CORS_ORIGINS_ENV:
+    # Filter to only HTTPS origins in production
+    env_origins = [origin.strip() for origin in CORS_ORIGINS_ENV.split(",")]
+    if IS_PRODUCTION:
+        # In production: ONLY allow HTTPS origins
+        env_origins = [origin for origin in env_origins if origin.startswith("https://")]
+    # Add environment origins
+    PRODUCTION_ORIGINS.extend(env_origins)
+
+# Add localhost ONLY in development
+if not IS_PRODUCTION:
+    PRODUCTION_ORIGINS.extend([
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ])
+
+# Remove duplicates while preserving order
+ALLOWED_ORIGINS = list(dict.fromkeys(PRODUCTION_ORIGINS))
+
+logger.info(f"CORS configured for environment: {ENVIRONMENT}")
+logger.info(f"Allowed origins: {ALLOWED_ORIGINS}")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=True,  # Required for cookies/auth
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Initialize database on startup
@@ -223,7 +250,8 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         logger.info(f"New user registered (unverified): {user_data.email}")
         
         # Send verification email
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        # SECURITY: Use HTTPS production URL by default, not localhost
+        frontend_url = os.getenv("FRONTEND_URL", "https://insight.meldra.ai")
         verification_link = f"{frontend_url}/verify-email?token={verification_token}"
         
         try:
@@ -298,7 +326,8 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
 
         logger.info(f"User logged in: {user.email}")
 
-        return {
+        # Create response with token
+        response_data = {
             "access_token": access_token,
             "token_type": "bearer",
             "user": {
@@ -307,6 +336,27 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
                 "role": user.role
             }
         }
+
+        # SECURITY: Optionally set secure cookie (if USE_SECURE_COOKIES is enabled)
+        # Currently using Bearer token in Authorization header (more secure for SPAs)
+        # If you want to use cookies instead, uncomment below and set USE_SECURE_COOKIES=true
+        use_cookies = os.getenv("USE_SECURE_COOKIES", "false").lower() == "true"
+        if use_cookies:
+            from fastapi.responses import JSONResponse
+            response = JSONResponse(content=response_data)
+            # SECURITY: Set secure cookie with proper flags for Safari/iOS
+            response.set_cookie(
+                key="access_token",
+                value=access_token,
+                httponly=True,  # Prevent XSS attacks
+                secure=True,    # Only send over HTTPS
+                samesite="none",  # Required for cross-origin requests
+                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Match token expiry
+                path="/",
+            )
+            return response
+
+        return response_data
 
     except HTTPException:
         raise
@@ -356,8 +406,8 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
         db.commit()
         
         # Generate reset link
-        # Use localhost for development, production URL for production
-        frontend_url = os.getenv('FRONTEND_URL', 'http://localhost:5173')
+        # SECURITY: Use HTTPS production URL by default, not localhost
+        frontend_url = os.getenv('FRONTEND_URL', 'https://insight.meldra.ai')
         reset_link = f"{frontend_url}/reset-password?token={reset_token}"
         
         logger.info(f"Password reset token generated for {request.email}: {reset_link}")

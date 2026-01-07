@@ -29,7 +29,8 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         smtp_user = os.getenv("SMTP_USER", "")
         smtp_password = os.getenv("SMTP_PASSWORD", "")
         smtp_from_email = os.getenv("SMTP_FROM_EMAIL", smtp_user)
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        # SECURITY: Use HTTPS production URL by default, not localhost
+        frontend_url = os.getenv("FRONTEND_URL", "https://insight.meldra.ai")
         
         # If SMTP credentials not configured, log and return False
         if not smtp_user or not smtp_password:
@@ -142,7 +143,8 @@ async def send_verification_email(email: str, full_name: str, verification_link:
         smtp_user = os.getenv("SMTP_USER", "")
         smtp_password = os.getenv("SMTP_PASSWORD", "")
         smtp_from_email = os.getenv("SMTP_FROM_EMAIL", smtp_user)
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        # SECURITY: Use HTTPS production URL by default, not localhost
+        frontend_url = os.getenv("FRONTEND_URL", "https://insight.meldra.ai")
         
         if not smtp_user or not smtp_password:
             logger.warning("SMTP credentials not configured. Verification email not sent. Verification link: " + verification_link)

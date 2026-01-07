@@ -28,7 +28,13 @@ export default function VerifyEmail() {
 
   const verifyEmail = async (token) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8001'}/api/auth/verify-email?token=${token}`);
+      const apiUrl = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8001' : '');
+      if (!apiUrl) {
+        setStatus('error');
+        setMessage('API URL not configured. Please contact support.');
+        return;
+      }
+      const response = await fetch(`${apiUrl}/api/auth/verify-email?token=${token}`);
       const data = await response.json();
 
       if (response.ok) {
@@ -62,7 +68,12 @@ export default function VerifyEmail() {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8001'}/api/auth/resend-verification`, {
+      const apiUrl = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8001' : '');
+      if (!apiUrl) {
+        setMessage('API URL not configured. Please contact support.');
+        return;
+      }
+      const response = await fetch(`${apiUrl}/api/auth/resend-verification`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

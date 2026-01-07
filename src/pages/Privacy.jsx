@@ -34,7 +34,7 @@ export default function Privacy() {
             </div>
             <div className="space-y-3 text-slate-700">
               <p className="leading-relaxed">
-                <strong className="text-slate-900">InsightSheet</strong> is designed with privacy as the foundation. 
+                <strong className="text-slate-900">Meldra</strong> is designed with privacy as the foundation. 
                 Unlike traditional web applications, we process ALL your data locally in your browser.
               </p>
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-2">
@@ -158,7 +158,7 @@ export default function Privacy() {
               </div>
               <div className="bg-slate-100 border border-slate-300 rounded-lg p-4">
                 <p className="text-sm text-slate-700">
-                  <strong>Contact for security concerns:</strong> security@insightsheet.com
+                  <strong>Contact for security concerns:</strong> security@meldra.ai
                 </p>
                 <p className="text-sm text-slate-700 mt-1">
                   <strong>Report vulnerabilities:</strong> We have a responsible disclosure policy. 
@@ -190,7 +190,7 @@ export default function Privacy() {
               <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
                 <p className="text-sm font-semibold text-purple-900 mb-2">To exercise your rights:</p>
                 <p className="text-sm text-purple-800">
-                  Email: privacy@insightsheet.com<br />
+                  Email: privacy@meldra.ai<br />
                   Response time: Within 30 days
                 </p>
               </div>
@@ -218,14 +218,12 @@ export default function Privacy() {
           <section className="border-t border-slate-200 pt-6">
             <h2 className="text-2xl font-bold text-slate-800 mb-3">Contact Us</h2>
             <div className="space-y-2 text-slate-700">
-              <p><strong>Data Protection Officer:</strong> dpo@insightsheet.com</p>
-              <p><strong>General Privacy Questions:</strong> privacy@insightsheet.com</p>
-              <p><strong>Security Concerns:</strong> security@insightsheet.com</p>
+              <p><strong>Data Protection Officer:</strong> dpo@meldra.ai</p>
+              <p><strong>General Privacy Questions:</strong> privacy@meldra.ai</p>
+              <p><strong>Security Concerns:</strong> security@meldra.ai</p>
               <p className="text-sm text-slate-600 mt-4">
-                InsightSheet<br />
-                Privacy Department<br />
-                [Your Address]<br />
-                [Your Country]
+                Meldra<br />
+                Privacy Department
               </p>
             </div>
           </section>

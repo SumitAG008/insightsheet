@@ -32,9 +32,13 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         # SECURITY: Use HTTPS production URL by default, not localhost
         frontend_url = os.getenv("FRONTEND_URL", "https://insight.meldra.ai")
         
+        # Log SMTP configuration status (without exposing passwords)
+        logger.info(f"SMTP Configuration Check - Host: {smtp_host}, Port: {smtp_port}, User: {smtp_user[:3] + '***' if smtp_user else 'NOT SET'}, From: {smtp_from_email}")
+        
         # If SMTP credentials not configured, log and return False
         if not smtp_user or not smtp_password:
-            logger.warning("SMTP credentials not configured. Email not sent. Reset link: " + reset_link)
+            logger.error(f"❌ SMTP credentials not configured. SMTP_USER: {'SET' if smtp_user else 'NOT SET'}, SMTP_PASSWORD: {'SET' if smtp_password else 'NOT SET'}")
+            logger.error(f"Email not sent to {email}. Reset link: {reset_link}")
             return False
         
         # SECURITY: Ensure reset_link uses HTTPS
@@ -159,20 +163,31 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         message.attach(MIMEText(html_body, "html"))
         
         # Send email using aiosmtplib
-        await aiosmtplib.send(
-            message,
-            hostname=smtp_host,
-            port=smtp_port,
-            username=smtp_user,
-            password=smtp_password,
-            use_tls=True,
-        )
-        
-        logger.info(f"Password reset email sent successfully to {email}")
-        return True
+        logger.info(f"Attempting to send password reset email to {email} via {smtp_host}:{smtp_port}")
+        try:
+            await aiosmtplib.send(
+                message,
+                hostname=smtp_host,
+                port=smtp_port,
+                username=smtp_user,
+                password=smtp_password,
+                use_tls=True,
+            )
+            logger.info(f"✅ Password reset email sent successfully to {email}")
+            return True
+        except Exception as send_error:
+            logger.error(f"❌ SMTP send error: {type(send_error).__name__}: {str(send_error)}")
+            raise
         
     except Exception as e:
-        logger.error(f"Failed to send password reset email to {email}: {str(e)}")
+        error_type = type(e).__name__
+        error_message = str(e)
+        logger.error(f"❌ Failed to send password reset email to {email}")
+        logger.error(f"   Error Type: {error_type}")
+        logger.error(f"   Error Message: {error_message}")
+        logger.error(f"   SMTP Host: {smtp_host}")
+        logger.error(f"   SMTP Port: {smtp_port}")
+        logger.error(f"   SMTP User: {smtp_user[:3] + '***' if smtp_user else 'NOT SET'}")
         return False
 
 

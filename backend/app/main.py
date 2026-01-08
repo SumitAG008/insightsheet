@@ -413,12 +413,16 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
         logger.info(f"Password reset token generated for {request.email}: {reset_link}")
         
         # Send email with reset link
+        logger.info(f"Calling send_password_reset_email for {user.email}")
         email_sent = await send_password_reset_email(user.email, reset_link)
+        logger.info(f"Email sending result: {'SUCCESS' if email_sent else 'FAILED'}")
         
         if not email_sent:
             # If email sending fails, still return success (security)
             # But log the reset link for manual use
-            logger.warning(f"Email sending failed. Reset link for {request.email}: {reset_link}")
+            logger.error(f"❌ Email sending FAILED for {request.email}")
+            logger.error(f"   Reset link (for manual use): {reset_link}")
+            logger.error(f"   Check Railway logs above for SMTP error details")
             # Only return reset_link in development (when ENVIRONMENT is not production)
             # Never show reset link in production for security
             environment = os.getenv("ENVIRONMENT", "development")

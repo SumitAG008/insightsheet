@@ -84,7 +84,7 @@ export default function Pricing() {
       totalDisplay: pricing.total,
       savings: pricing.savings,
       icon: Crown,
-      color: 'from-purple-600 to-indigo-600',
+      color: 'from-blue-600 to-emerald-600',
       popular: true,
       features: [
         'Unlimited file size',
@@ -148,11 +148,11 @@ export default function Pricing() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
       {/* Pricing Section */}
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <Badge className="mb-4 bg-purple-500/20 text-purple-300 border-purple-500/30">
+          <Badge className="mb-4 bg-blue-500/20 text-blue-300 border-blue-500/30">
             <Star className="w-4 h-4 mr-1" />
             Choose Your Plan
           </Badge>
@@ -199,7 +199,7 @@ export default function Pricing() {
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-1">
+                  <Badge className="bg-gradient-to-r from-blue-600 to-emerald-600 text-white px-4 py-1">
                     Most Popular
                   </Badge>
                 </div>
@@ -211,7 +211,7 @@ export default function Pricing() {
                 <div className="relative bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 h-full flex flex-col">
                   {/* Plan Header */}
                   <div className="text-center mb-6">
-                    <plan.icon className="w-12 h-12 mx-auto mb-4 text-purple-400" />
+                    <plan.icon className="w-12 h-12 mx-auto mb-4 text-blue-400" />
                     <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
                     <div className="flex items-baseline justify-center gap-2">
                       <span className="text-4xl font-bold text-white">{plan.priceDisplay}</span>
@@ -242,7 +242,7 @@ export default function Pricing() {
                     !user ? (
                       <a
                         href="/register"
-                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2"
+                        className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2"
                       >
                         <Sparkles className="w-4 h-4" />
                         Get Started Free
@@ -329,21 +329,21 @@ export default function Pricing() {
           </h2>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6">
-              <Zap className="w-10 h-10 text-purple-400 mb-4" />
+              <Zap className="w-10 h-10 text-blue-400 mb-4" />
               <h3 className="text-lg font-bold text-white mb-2">Unlimited Everything</h3>
               <p className="text-slate-400 text-sm">
                 No file size limits, unlimited transactions, unlimited AI queries
               </p>
             </div>
             <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6">
-              <Crown className="w-10 h-10 text-purple-400 mb-4" />
+              <Crown className="w-10 h-10 text-blue-400 mb-4" />
               <h3 className="text-lg font-bold text-white mb-2">Excel Support</h3>
               <p className="text-slate-400 text-sm">
                 Import .XLS, .XLSX files directly. Export to Excel format
               </p>
             </div>
             <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6">
-              <Star className="w-10 h-10 text-purple-400 mb-4" />
+              <Star className="w-10 h-10 text-blue-400 mb-4" />
               <h3 className="text-lg font-bold text-white mb-2">Save More</h3>
               <p className="text-slate-400 text-sm">
                 Get 5% off with quarterly billing, 10% off with yearly billing

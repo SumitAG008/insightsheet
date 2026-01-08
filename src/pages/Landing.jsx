@@ -19,7 +19,7 @@ export default function Landing() {
             <Sparkles className="w-4 h-4 mr-2" />
             Privacy-First Data Analysis Platform
           </Badge>
-          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
             Meldra
           </h1>
           <p className="text-2xl md:text-3xl text-slate-300 font-semibold mb-4">
@@ -32,7 +32,7 @@ export default function Landing() {
           
           <div className="flex gap-4 justify-center mt-8">
             <Link to="/register">
-              <Button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2">
+              <Button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2">
                 Get Started Free
                 <ArrowRight className="w-5 h-5" />
               </Button>
@@ -91,7 +91,7 @@ export default function Landing() {
                 key={idx}
                 className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 hover:border-blue-500/50 transition-all group"
               >
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-emerald-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <feature.icon className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
@@ -102,7 +102,7 @@ export default function Landing() {
         </div>
 
         {/* Key Benefits */}
-        <div className="bg-gradient-to-r from-blue-900/30 to-cyan-900/30 rounded-2xl p-8 md:p-12 mb-20 border border-blue-500/20">
+        <div className="bg-gradient-to-r from-blue-900/30 to-emerald-900/30 rounded-2xl p-8 md:p-12 mb-20 border border-blue-500/20">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-white text-center mb-8">
               Why Choose Meldra?
@@ -267,7 +267,7 @@ export default function Landing() {
       {/* Free Tier CTA Section */}
       <div className="container mx-auto px-4 py-16 border-t border-slate-800">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-r from-blue-900/40 to-cyan-900/40 rounded-2xl p-12 border border-blue-500/30">
+          <div className="bg-gradient-to-r from-blue-900/40 to-emerald-900/40 rounded-2xl p-12 border border-blue-500/30">
             <Sparkles className="w-16 h-16 text-blue-400 mx-auto mb-6" />
             <h2 className="text-4xl font-bold text-white mb-4">
               Start Free Today
@@ -292,7 +292,7 @@ export default function Landing() {
             </div>
             <div className="flex gap-4 justify-center">
               <Link to="/register">
-                <Button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-semibold text-lg transition-all shadow-lg">
+                <Button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white rounded-lg font-semibold text-lg transition-all shadow-lg">
                   Get Started Free
                 </Button>
               </Link>
@@ -316,7 +316,7 @@ export default function Landing() {
             Ready to transform your data into insights?
           </p>
           <Link to="/register">
-            <Button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-semibold">
+            <Button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white rounded-lg font-semibold">
               Create Your Free Account
             </Button>
           </Link>

@@ -39,11 +39,11 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
       <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-emerald-600 rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
               <Sparkles className="w-6 h-6 text-white" />
             </div>
           </div>
@@ -101,7 +101,8 @@ export default function ForgotPassword() {
             <Button
               type="submit"
               disabled={loading || success}
-              className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700"
+              className="w-full hover:opacity-90"
+              style={{ background: '#00E5FF' }}
             >
               {loading ? (
                 <>
@@ -123,7 +124,8 @@ export default function ForgotPassword() {
             <div className="flex items-center justify-between w-full text-sm">
               <Link 
                 to="/login" 
-                className="text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                className="flex items-center gap-1 hover:opacity-80"
+                style={{ color: '#4FC3F7' }}
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Login

@@ -12,15 +12,15 @@ import {
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-20">
         <div className="text-center mb-20">
-          <Badge className="mb-6 bg-blue-500/20 text-blue-300 border-blue-500/30 text-base px-4 py-2">
+          <Badge className="mb-6" style={{ background: 'rgba(0, 191, 166, 0.2)', color: '#4FC3F7', borderColor: 'rgba(0, 191, 166, 0.3)' }} className="text-base px-4 py-2 border">
             <Sparkles className="w-4 h-4 mr-2" />
             Privacy-First Data Analysis Platform
           </Badge>
-          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6" style={{ background: 'linear-gradient(to right, #4FC3F7, #00BFA6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
             Meldra
           </h1>
           <p className="text-2xl md:text-3xl text-slate-300 font-semibold mb-4">
@@ -34,7 +34,7 @@ export default function Landing() {
           {/* Single Strategic CTA - Only in Hero */}
           <div className="flex gap-4 justify-center mt-8">
             <Link to="/register">
-              <Button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2">
+              <Button className="px-8 py-4 text-white rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2 hover:opacity-90" style={{ background: '#00E5FF' }}>
                 Get Started Free
                 <ArrowRight className="w-5 h-5" />
               </Button>
@@ -106,15 +106,15 @@ export default function Landing() {
                 className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 hover:border-blue-500/50 transition-all group relative overflow-hidden"
               >
                 {/* Animated Background Gradient */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500`} />
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }} />
                 
                 {/* Creative Icon Combination */}
                 <div className="relative mb-4">
-                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-emerald-600 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/20">
+                  <div className="w-16 h-16 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-lg" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
                     <feature.icon className="w-8 h-8 text-white" />
                   </div>
                   {/* Secondary Icon Overlay */}
-                  <div className="absolute -top-1 -right-1 w-8 h-8 bg-gradient-to-br from-emerald-400 to-blue-400 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md">
+                  <div className="absolute -top-1 -right-1 w-8 h-8 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-md" style={{ background: '#4FC3F7' }}>
                     <feature.icon2 className="w-4 h-4 text-white" />
                   </div>
                 </div>
@@ -123,35 +123,35 @@ export default function Landing() {
                 <p className="text-slate-400 text-sm leading-relaxed relative z-10">{feature.description}</p>
                 
                 {/* Decorative Element */}
-                <div className="absolute bottom-0 right-0 w-20 h-20 bg-gradient-to-tl from-blue-500/5 to-emerald-500/5 rounded-tl-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute bottom-0 right-0 w-20 h-20 rounded-tl-full opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'linear-gradient(to top left, rgba(0, 191, 166, 0.05), rgba(79, 195, 247, 0.05))' }} />
               </div>
             ))}
           </div>
         </div>
 
         {/* Key Benefits */}
-        <div className="bg-gradient-to-r from-blue-900/30 to-emerald-900/30 rounded-2xl p-8 md:p-12 mb-20 border border-blue-500/20">
+        <div className="rounded-2xl p-8 md:p-12 mb-20 border" style={{ background: 'linear-gradient(to right, rgba(0, 191, 166, 0.15), rgba(79, 195, 247, 0.15))', borderColor: 'rgba(0, 191, 166, 0.3)' }}>
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-white text-center mb-8">
               Why Choose Meldra?
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-emerald-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
                   <Lock className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">100% Private</h3>
                 <p className="text-slate-400 text-sm">Your data never leaves your browser. Complete privacy and security guaranteed.</p>
               </div>
               <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/20">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ background: 'linear-gradient(to bottom right, #4FC3F7, #00BFA6)' }}>
                   <Zap className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">AI-Powered</h3>
                 <p className="text-slate-400 text-sm">Advanced AI analyzes your data and provides actionable insights instantly.</p>
               </div>
               <div className="text-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
                   <TrendingUp className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">Professional Results</h3>
@@ -174,7 +174,7 @@ export default function Landing() {
 
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 mb-8">
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-emerald-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
                 <Rocket className="w-5 h-5 text-white" />
               </div>
               Our Mission
@@ -192,7 +192,7 @@ export default function Landing() {
 
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 mb-8">
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #4FC3F7, #00BFA6)' }}>
                 <Code className="w-5 h-5 text-white" />
               </div>
               Technology & Innovation
@@ -212,7 +212,7 @@ export default function Landing() {
 
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8">
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-emerald-500 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
                 <Star className="w-5 h-5 text-white" />
               </div>
               What Makes Us Different
@@ -265,21 +265,21 @@ export default function Landing() {
 
           <div className="grid md:grid-cols-3 gap-6 mb-12">
             <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 text-center">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-emerald-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
                 <Globe className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Worldwide Access</h3>
               <p className="text-slate-400 text-sm">Available globally, accessible from anywhere</p>
             </div>
             <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 text-center">
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(to bottom right, #4FC3F7, #00BFA6)' }}>
                 <Cpu className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Lightning Fast</h3>
               <p className="text-slate-400 text-sm">Process data in seconds, not hours</p>
             </div>
             <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 text-center">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-emerald-500 rounded-lg flex items-center justify-center mx-auto mb-4">
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
                 <Lightbulb className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-lg font-bold text-white mb-2">Smart Insights</h3>

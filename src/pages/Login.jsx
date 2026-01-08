@@ -87,11 +87,11 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
       <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-emerald-600 rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
               <Sparkles className="w-6 h-6 text-white" />
             </div>
           </div>
@@ -124,7 +124,8 @@ export default function Login() {
                 <label className="text-sm font-medium text-slate-300">Password</label>
                 <Link 
                   to="/forgot-password" 
-                  className="text-sm text-blue-400 hover:text-blue-300 underline"
+                  className="text-sm underline hover:opacity-80"
+                  style={{ color: '#4FC3F7' }}
                 >
                   Forgot password?
                 </Link>
@@ -158,7 +159,8 @@ export default function Login() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700"
+              className="w-full hover:opacity-90"
+              style={{ background: '#00E5FF' }}
             >
               {loading ? (
                 <>
@@ -174,7 +176,7 @@ export default function Login() {
             </Button>
             <p className="text-sm text-center text-slate-400">
               Don't have an account?{' '}
-              <Link to="/register" className="text-blue-400 hover:text-blue-300 underline">
+              <Link to="/register" className="underline hover:opacity-80" style={{ color: '#4FC3F7' }}>
                 Sign up
               </Link>
             </p>

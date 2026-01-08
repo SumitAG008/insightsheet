@@ -39,14 +39,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         if not smtp_user or not smtp_password:
             logger.error(f"❌ SMTP credentials not configured. SMTP_USER: {'SET' if smtp_user else 'NOT SET'}, SMTP_PASSWORD: {'SET' if smtp_password else 'NOT SET'}")
             logger.error(f"Email not sent to {email}. Reset link: {reset_link}")
-            # If connection timeout, suggest trying port 465 or alternative email service
-        if "Timeout" in error_type or "timeout" in error_message.lower() or "connect" in error_message.lower():
-            logger.error(f"   💡 SUGGESTION: Railway may be blocking port {smtp_port}. Try:")
-            logger.error(f"      1. Change SMTP_PORT to 465 in Railway variables")
-            logger.error(f"      2. Or use an email API service (SendGrid, Mailgun, Resend)")
-            logger.error(f"      3. Or check Railway network/firewall settings")
-        
-        return False
+            return False
         
         # SECURITY: Ensure reset_link uses HTTPS
         if not reset_link.startswith("https://"):

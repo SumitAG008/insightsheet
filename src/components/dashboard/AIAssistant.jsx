@@ -53,7 +53,7 @@ Format your response in a clear, structured way.`;
       });
 
       setResponse(result);
-    } catch (error) {
+    } catch {
       setResponse('Error: Unable to process request. Please try again.');
     }
     
@@ -163,6 +163,9 @@ Format your response in a clear, structured way.`;
 }
 
 AIAssistant.propTypes = {
-  data: PropTypes.object.isRequired,
-  onDataUpdate: PropTypes.func.isRequired,
+  data: PropTypes.shape({
+    headers: PropTypes.arrayOf(PropTypes.string).isRequired,
+    rows: PropTypes.arrayOf(PropTypes.object).isRequired,
+  }).isRequired,
+  onDataUpdate: PropTypes.func,
 };

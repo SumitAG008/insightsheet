@@ -220,12 +220,12 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         logger.error(f"❌ Failed to send password reset email to {email}")
         logger.error(f"   Error Type: {error_type}")
         logger.error(f"   Error Message: {error_message}")
-        logger.error(f"   SMTP Host: {smtp_host}")
-        logger.error(f"   SMTP Port: {smtp_port}")
+        logger.error(f"   SMTP Host: {smtp_host if smtp_host else 'NOT SET'}")
+        logger.error(f"   SMTP Port: {smtp_port if smtp_port else 'NOT SET'}")
         logger.error(f"   SMTP User: {smtp_user[:3] + '***' if smtp_user else 'NOT SET'}")
         # If connection timeout, suggest trying port 465 or alternative email service
-        if "Timeout" in error_type or "timeout" in error_message.lower() or "connect" in error_message.lower():
-            logger.error(f"   💡 SUGGESTION: Railway may be blocking port {smtp_port}. Try:")
+        if error_type and ("Timeout" in error_type or "timeout" in error_message.lower() or "connect" in error_message.lower()):
+            logger.error(f"   💡 SUGGESTION: Railway may be blocking port {smtp_port if smtp_port else 'UNKNOWN'}. Try:")
             logger.error(f"      1. Change SMTP_PORT to 465 in Railway variables")
             logger.error(f"      2. Or use an email API service (SendGrid, Mailgun, Resend)")
             logger.error(f"      3. Or check Railway network/firewall settings")

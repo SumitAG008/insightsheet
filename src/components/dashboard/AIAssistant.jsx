@@ -167,5 +167,5 @@ AIAssistant.propTypes = {
     headers: PropTypes.arrayOf(PropTypes.string).isRequired,
     rows: PropTypes.arrayOf(PropTypes.object).isRequired,
   }).isRequired,
-  onDataUpdate: PropTypes.func,
+  onDataUpdate: PropTypes.func, // Optional - not currently used but may be needed in future
 };

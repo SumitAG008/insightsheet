@@ -165,14 +165,42 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         # Send email using aiosmtplib
         logger.info(f"Attempting to send password reset email to {email} via {smtp_host}:{smtp_port}")
         try:
-            await aiosmtplib.send(
-                message,
-                hostname=smtp_host,
-                port=smtp_port,
-                username=smtp_user,
-                password=smtp_password,
-                use_tls=True,
-            )
+            # Try port 587 with STARTTLS first (most common)
+            if smtp_port == 587:
+                logger.info(f"Connecting to {smtp_host}:{smtp_port} with STARTTLS...")
+                await aiosmtplib.send(
+                    message,
+                    hostname=smtp_host,
+                    port=smtp_port,
+                    username=smtp_user,
+                    password=smtp_password,
+                    use_tls=True,
+                    timeout=30,  # 30 second timeout
+                )
+            # Try port 465 with SSL (alternative for Gmail)
+            elif smtp_port == 465:
+                logger.info(f"Connecting to {smtp_host}:{smtp_port} with SSL...")
+                await aiosmtplib.send(
+                    message,
+                    hostname=smtp_host,
+                    port=smtp_port,
+                    username=smtp_user,
+                    password=smtp_password,
+                    use_tls=False,  # Port 465 uses SSL, not STARTTLS
+                    start_tls=False,
+                    timeout=30,
+                )
+            else:
+                # Default behavior
+                await aiosmtplib.send(
+                    message,
+                    hostname=smtp_host,
+                    port=smtp_port,
+                    username=smtp_user,
+                    password=smtp_password,
+                    use_tls=True,
+                    timeout=30,
+                )
             logger.info(f"✅ Password reset email sent successfully to {email}")
             return True
         except Exception as send_error:

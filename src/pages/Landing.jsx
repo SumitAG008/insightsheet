@@ -34,7 +34,7 @@ export default function Landing() {
           {/* Single Strategic CTA - Only in Hero */}
           <div className="flex gap-4 justify-center mt-8">
             <Link to="/register">
-              <Button className="px-8 py-4 text-white rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2 hover:opacity-90" style={{ background: '#00E5FF' }}>
+              <Button className="px-8 py-4 rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2 hover:opacity-90" style={{ background: '#000000', color: '#FFFFFF', border: '2px solid #00E5FF' }}>
                 Get Started Free
                 <ArrowRight className="w-5 h-5" />
               </Button>
@@ -166,7 +166,7 @@ export default function Landing() {
       </div>
 
       {/* About the Application Section */}
-      <div className="container mx-auto px-4 py-16 border-t border-slate-800">
+      <div className="container mx-auto px-4 py-8 border-t border-slate-800">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-4xl font-bold text-white text-center mb-4">
             About Meldra

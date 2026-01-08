@@ -11,15 +11,15 @@ import {
 
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-20">
         <div className="text-center mb-20">
-          <Badge className="mb-6 bg-purple-500/20 text-purple-300 border-purple-500/30 text-base px-4 py-2">
+          <Badge className="mb-6 bg-blue-500/20 text-blue-300 border-blue-500/30 text-base px-4 py-2">
             <Sparkles className="w-4 h-4 mr-2" />
             Privacy-First Data Analysis Platform
           </Badge>
-          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
             Meldra
           </h1>
           <p className="text-2xl md:text-3xl text-slate-300 font-semibold mb-4">
@@ -32,7 +32,7 @@ export default function Landing() {
           
           <div className="flex gap-4 justify-center mt-8">
             <Link to="/register">
-              <Button className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2">
+              <Button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2">
                 Get Started Free
                 <ArrowRight className="w-5 h-5" />
               </Button>
@@ -89,9 +89,9 @@ export default function Landing() {
             ].map((feature, idx) => (
               <div
                 key={idx}
-                className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 hover:border-purple-500/50 transition-all group"
+                className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 hover:border-blue-500/50 transition-all group"
               >
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <feature.icon className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
@@ -102,24 +102,24 @@ export default function Landing() {
         </div>
 
         {/* Key Benefits */}
-        <div className="bg-gradient-to-r from-purple-900/30 to-pink-900/30 rounded-2xl p-8 md:p-12 mb-20 border border-purple-500/20">
+        <div className="bg-gradient-to-r from-blue-900/30 to-cyan-900/30 rounded-2xl p-8 md:p-12 mb-20 border border-blue-500/20">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-white text-center mb-8">
               Why Choose Meldra?
             </h2>
             <div className="grid md:grid-cols-3 gap-6">
               <div className="text-center">
-                <Lock className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+                <Lock className="w-10 h-10 text-blue-400 mx-auto mb-3" />
                 <h3 className="text-lg font-bold text-white mb-2">100% Private</h3>
                 <p className="text-slate-400 text-sm">Your data never leaves your browser. Complete privacy and security.</p>
               </div>
               <div className="text-center">
-                <Zap className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+                <Zap className="w-10 h-10 text-blue-400 mx-auto mb-3" />
                 <h3 className="text-lg font-bold text-white mb-2">AI-Powered</h3>
                 <p className="text-slate-400 text-sm">Advanced AI analyzes your data and provides actionable insights instantly.</p>
               </div>
               <div className="text-center">
-                <TrendingUp className="w-10 h-10 text-purple-400 mx-auto mb-3" />
+                <TrendingUp className="w-10 h-10 text-blue-400 mx-auto mb-3" />
                 <h3 className="text-lg font-bold text-white mb-2">Professional Results</h3>
                 <p className="text-slate-400 text-sm">Generate reports, presentations, and visualizations ready for stakeholders.</p>
               </div>
@@ -140,7 +140,7 @@ export default function Landing() {
 
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 mb-8">
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <Rocket className="w-6 h-6 text-purple-400" />
+              <Rocket className="w-6 h-6 text-blue-400" />
               Our Mission
             </h3>
             <p className="text-slate-300 leading-relaxed mb-4">
@@ -156,7 +156,7 @@ export default function Landing() {
 
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 mb-8">
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <Code className="w-6 h-6 text-purple-400" />
+              <Code className="w-6 h-6 text-blue-400" />
               Technology & Innovation
             </h3>
             <p className="text-slate-300 leading-relaxed mb-4">
@@ -174,7 +174,7 @@ export default function Landing() {
 
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 mb-8">
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <Users className="w-6 h-6 text-purple-400" />
+              <Users className="w-6 h-6 text-blue-400" />
               About the Creator
             </h3>
             <p className="text-slate-300 leading-relaxed mb-4">
@@ -189,7 +189,7 @@ export default function Landing() {
 
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8">
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <Star className="w-6 h-6 text-purple-400" />
+              <Star className="w-6 h-6 text-blue-400" />
               What Makes Us Different
             </h3>
             <div className="grid md:grid-cols-2 gap-4">
@@ -257,7 +257,7 @@ export default function Landing() {
                 <p className="text-sm text-slate-400">LLMs, Data Analysis, Automation</p>
               </div>
             </div>
-            <Button variant="outline" className="border-purple-500 text-purple-400 hover:bg-purple-500/10">
+            <Button variant="outline" className="border-blue-500 text-blue-400 hover:bg-blue-500/10">
               Contact Us for Opportunities
             </Button>
           </div>
@@ -267,8 +267,8 @@ export default function Landing() {
       {/* Free Tier CTA Section */}
       <div className="container mx-auto px-4 py-16 border-t border-slate-800">
         <div className="max-w-4xl mx-auto text-center">
-          <div className="bg-gradient-to-r from-purple-900/40 to-pink-900/40 rounded-2xl p-12 border border-purple-500/30">
-            <Sparkles className="w-16 h-16 text-purple-400 mx-auto mb-6" />
+          <div className="bg-gradient-to-r from-blue-900/40 to-cyan-900/40 rounded-2xl p-12 border border-blue-500/30">
+            <Sparkles className="w-16 h-16 text-blue-400 mx-auto mb-6" />
             <h2 className="text-4xl font-bold text-white mb-4">
               Start Free Today
             </h2>
@@ -292,12 +292,12 @@ export default function Landing() {
             </div>
             <div className="flex gap-4 justify-center">
               <Link to="/register">
-                <Button className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-semibold text-lg transition-all shadow-lg">
+                <Button className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-semibold text-lg transition-all shadow-lg">
                   Get Started Free
                 </Button>
               </Link>
               <Link to="/pricing">
-                <Button variant="outline" className="px-8 py-4 border-purple-500 text-purple-400 hover:bg-purple-500/10 rounded-lg font-semibold text-lg">
+                <Button variant="outline" className="px-8 py-4 border-blue-500 text-blue-400 hover:bg-blue-500/10 rounded-lg font-semibold text-lg">
                   View Premium Plans
                 </Button>
               </Link>
@@ -316,7 +316,7 @@ export default function Landing() {
             Ready to transform your data into insights?
           </p>
           <Link to="/register">
-            <Button className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded-lg font-semibold">
+            <Button className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-semibold">
               Create Your Free Account
             </Button>
           </Link>

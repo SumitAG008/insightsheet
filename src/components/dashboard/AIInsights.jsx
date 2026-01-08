@@ -76,7 +76,7 @@ Provide detailed answer based on the data.`;
       });
       
       setInsights({ type, content: response });
-    } catch (error) {
+    } catch {
       setInsights({ type, content: 'Error analyzing data. Please try again.' });
     }
     

@@ -1,6 +1,7 @@
 
 // components/dashboard/ChartPanel.jsx - Fixed colors, labels, and added export
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BarChart3, LineChart, PieChart, TrendingUp, Activity, Layers, BarChart2, AlertCircle, Download } from 'lucide-react';
@@ -572,3 +573,10 @@ export default function ChartPanel({ data }) {
     </div>
   );
 }
+
+ChartPanel.propTypes = {
+  data: PropTypes.shape({
+    headers: PropTypes.arrayOf(PropTypes.string),
+    rows: PropTypes.arrayOf(PropTypes.object),
+  }).isRequired,
+};

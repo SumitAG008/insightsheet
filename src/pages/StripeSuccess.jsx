@@ -1,5 +1,5 @@
 // pages/StripeSuccess.jsx - Stripe payment success handler (FIXED IMPORTS)
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { meldraAi } from '@/api/meldraClient';
@@ -11,9 +11,7 @@ export default function StripeSuccess() {
   const [processing, setProcessing] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    handlePaymentSuccess();
-  }, []);
+  const handlePaymentSuccess = useCallback(async () => {
 
   const handlePaymentSuccess = async () => {
     try {
@@ -88,7 +86,11 @@ InsightSheet-lite Team`
       setError('Error activating subscription. Please contact support.');
       setProcessing(false);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    handlePaymentSuccess();
+  }, [handlePaymentSuccess]);
 
   if (processing) {
     return (

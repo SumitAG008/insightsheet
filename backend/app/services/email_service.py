@@ -22,6 +22,13 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
     Returns:
         bool: True if email sent successfully, False otherwise
     """
+    # Initialize variables at function scope to avoid UnboundLocalError
+    smtp_host = None
+    smtp_port = None
+    smtp_user = None
+    smtp_password = None
+    smtp_from_email = None
+    
     try:
         # Get email configuration from environment variables
         smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")

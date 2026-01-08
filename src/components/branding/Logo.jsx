@@ -36,10 +36,10 @@ export default function Logo({ className = "", size = "medium", showText = true 
       {/* Brand Text */}
       {showText && (
         <div className="flex flex-col">
-          <h1 className={`${currentSize.text} font-bold text-slate-900 dark:text-white leading-tight`}>
+          <h1 className={`${currentSize.text} font-bold leading-tight`} style={{ color: 'inherit' }}>
             Meldra
           </h1>
-          <p className="text-xs text-slate-600 dark:text-slate-400 font-medium tracking-wide">
+          <p className="text-xs font-medium tracking-wide" style={{ color: 'inherit', opacity: 0.8 }}>
             DATA MADE SIMPLE
           </p>
         </div>

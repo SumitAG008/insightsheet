@@ -3,11 +3,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import Logo from '@/components/branding/Logo';
 import {
   Shield, Zap, TrendingUp, Brain, Lock, FileText, 
   ArrowRight, Sparkles, BarChart3, Database, FileSpreadsheet, 
   Code, Rocket, CheckCircle, Star, Layers, Cpu, Workflow, 
-  Eye, Globe, FileCheck, Target, Lightbulb
+  Eye, Globe, FileCheck, Target, Lightbulb, Mail
 } from 'lucide-react';
 
 export default function Landing() {
@@ -16,6 +17,11 @@ export default function Landing() {
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-20">
         <div className="text-center mb-20">
+          {/* Logo */}
+          <div className="flex justify-center mb-8">
+            <Logo size="large" showText={true} style={{ color: '#FFFFFF' }} />
+          </div>
+          
           <Badge className="mb-6 text-base px-4 py-2 border" style={{ background: 'rgba(0, 191, 166, 0.2)', color: '#4FC3F7', borderColor: 'rgba(0, 191, 166, 0.3)' }}>
             <Sparkles className="w-4 h-4 mr-2" />
             Privacy-First Data Analysis Platform

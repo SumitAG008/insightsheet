@@ -141,8 +141,29 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
                 logger.info(f"✅ Password reset email sent successfully via Resend to {email}")
                 return True
             except Exception as resend_error:
-                logger.error(f"❌ Resend API send error: {type(resend_error).__name__}: {str(resend_error)}")
-                raise
+                error_message = str(resend_error).lower()
+                # If domain not verified error, fall back to test email
+                if "domain is not verified" in error_message or "not verified" in error_message:
+                    logger.warning(f"⚠️ Domain not verified for {from_email}. Falling back to Resend test email...")
+                    from_email = "onboarding@resend.dev"
+                    # Retry with test email
+                    try:
+                        result = resend.Emails.send({
+                            "from": from_email,
+                            "to": [email],
+                            "subject": "Reset Your Password - Meldra",
+                            "html": html_content,
+                            "text": text_content,
+                        })
+                        logger.info(f"✅ Password reset email sent successfully via Resend (test email) to {email}")
+                        logger.info(f"💡 To use {configured_from}, verify domain in Resend dashboard: https://resend.com/domains")
+                        return True
+                    except Exception as retry_error:
+                        logger.error(f"❌ Resend API retry error: {type(retry_error).__name__}: {str(retry_error)}")
+                        raise
+                else:
+                    logger.error(f"❌ Resend API send error: {type(resend_error).__name__}: {str(resend_error)}")
+                    raise
             
         except Exception as e:
             logger.error(f"❌ Resend API error: {type(e).__name__}: {str(e)}")

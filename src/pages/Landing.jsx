@@ -16,7 +16,7 @@ export default function Landing() {
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-20">
         <div className="text-center mb-20">
-          <Badge className="mb-6" style={{ background: 'rgba(0, 191, 166, 0.2)', color: '#4FC3F7', borderColor: 'rgba(0, 191, 166, 0.3)' }} className="text-base px-4 py-2 border">
+          <Badge className="mb-6 text-base px-4 py-2 border" style={{ background: 'rgba(0, 191, 166, 0.2)', color: '#4FC3F7', borderColor: 'rgba(0, 191, 166, 0.3)' }}>
             <Sparkles className="w-4 h-4 mr-2" />
             Privacy-First Data Analysis Platform
           </Badge>
@@ -40,7 +40,7 @@ export default function Landing() {
               </Button>
             </Link>
             <Link to="/pricing">
-              <Button variant="outline" className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-semibold text-lg transition-all border border-slate-700">
+              <Button variant="outline" className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-semibold text-lg transition-all border" style={{ borderColor: 'rgba(79, 195, 247, 0.3)' }}>
                 View Pricing
               </Button>
             </Link>
@@ -103,7 +103,10 @@ export default function Landing() {
             ].map((feature, idx) => (
               <div
                 key={idx}
-                className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 hover:border-blue-500/50 transition-all group relative overflow-hidden"
+                className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 transition-all group relative overflow-hidden"
+                style={{ borderColor: 'rgba(79, 195, 247, 0.3)' }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(0, 191, 166, 0.5)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(79, 195, 247, 0.3)'}
               >
                 {/* Animated Background Gradient */}
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }} />

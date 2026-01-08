@@ -33,6 +33,7 @@ export default function Reviews() {
   useEffect(() => {
     loadReviews();
     loadStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterFeature]);
 
   const loadReviews = async () => {

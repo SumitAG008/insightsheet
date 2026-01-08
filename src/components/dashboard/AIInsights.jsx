@@ -1,10 +1,11 @@
 
 // components/dashboard/AIInsights.jsx - AI-powered data analysis component
-import React, { useState } from 'react';
+import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { InvokeLLM } from '@/api/integrations';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Loader2, Lightbulb, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Sparkles, Loader2, Lightbulb, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 export default function AIInsights({ data }) {
@@ -165,3 +166,10 @@ Provide detailed answer based on the data.`;
     </div>
   );
 }
+
+AIInsights.propTypes = {
+  data: PropTypes.shape({
+    headers: PropTypes.arrayOf(PropTypes.string).isRequired,
+    rows: PropTypes.arrayOf(PropTypes.object).isRequired,
+  }).isRequired,
+};

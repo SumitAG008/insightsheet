@@ -30,11 +30,6 @@ export default function AIAssistant({ data, onDataUpdate }) {
     try {
       // Prepare data context for AI
       const sampleData = data.rows.slice(0, 5);
-      const dataContext = {
-        headers: data.headers,
-        rowCount: data.rows.length,
-        sampleRows: sampleData
-      };
 
       const aiPrompt = `You are a data analysis assistant. The user has a CSV file with the following structure:
 

@@ -163,6 +163,7 @@ export default function ResetPassword() {
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
+                autoComplete="new-password"
                 required
                 minLength={10}
                 className="bg-slate-800/50 border-slate-700 text-slate-200"
@@ -179,6 +180,7 @@ export default function ResetPassword() {
                 placeholder="••••••••"
                 value={formData.confirmPassword}
                 onChange={handleChange}
+                autoComplete="new-password"
                 required
                 minLength={10}
                 className="bg-slate-800/50 border-slate-700 text-slate-200"

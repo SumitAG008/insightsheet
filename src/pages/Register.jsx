@@ -119,6 +119,7 @@ export default function Register() {
                 placeholder="John Doe"
                 value={formData.fullName}
                 onChange={handleChange}
+                autoComplete="name"
                 className="bg-slate-800/50 border-slate-700 text-slate-200"
               />
             </div>
@@ -130,6 +131,7 @@ export default function Register() {
                 placeholder="your@email.com"
                 value={formData.email}
                 onChange={handleChange}
+                autoComplete="email"
                 required
                 className="bg-slate-800/50 border-slate-700 text-slate-200"
               />
@@ -142,6 +144,7 @@ export default function Register() {
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleChange}
+                autoComplete="new-password"
                 required
                 minLength={10}
                 className="bg-slate-800/50 border-slate-700 text-slate-200"
@@ -158,6 +161,7 @@ export default function Register() {
                 placeholder="••••••••"
                 value={formData.confirmPassword}
                 onChange={handleChange}
+                autoComplete="new-password"
                 required
                 className="bg-slate-800/50 border-slate-700 text-slate-200"
               />

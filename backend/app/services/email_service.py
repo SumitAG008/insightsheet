@@ -23,6 +23,7 @@ except ImportError:
 async def send_password_reset_email(email: str, reset_link: str) -> bool:
     """
     Send password reset email to user
+    Uses Resend API if configured (recommended for cloud platforms), otherwise falls back to SMTP
     
     Args:
         email: User's email address
@@ -31,6 +32,104 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
     Returns:
         bool: True if email sent successfully, False otherwise
     """
+    # SECURITY: Ensure reset_link uses HTTPS
+    if not reset_link.startswith("https://"):
+        logger.warning(f"Reset link is not HTTPS: {reset_link}")
+        reset_link = reset_link.replace("http://", "https://")
+    
+    # Try Resend API first (works on all cloud platforms, no port blocking)
+    resend_api_key = os.getenv("RESEND_API_KEY", "")
+    if resend_api_key and RESEND_AVAILABLE:
+        try:
+            resend.api_key = resend_api_key
+            from_email = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "noreply@meldra.ai"))
+            
+            # HTML email content
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }}
+                    .container {{ max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }}
+                    .header h1 {{ margin: 0; font-size: 24px; }}
+                    .content {{ padding: 30px; }}
+                    .button {{ display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }}
+                    .security-notice {{ background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px; }}
+                    .link-box {{ background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 4px; margin: 20px 0; word-break: break-all; font-size: 12px; color: #667eea; }}
+                    .footer {{ background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #dee2e6; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>🔐 Password Reset Request</h1>
+                    </div>
+                    <div class="content">
+                        <p>Hello,</p>
+                        <p>We received a request to reset your password for your <strong>Meldra</strong> account (<strong>insight.meldra.ai</strong>).</p>
+                        <div class="security-notice">
+                            <strong>🔒 Security Notice:</strong> This email is from Meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>.
+                        </div>
+                        <p>Click the button below to reset your password:</p>
+                        <p style="text-align: center;">
+                            <a href="{reset_link}" class="button" style="color: white;">Reset Password</a>
+                        </p>
+                        <p>Or copy and paste this secure link into your browser:</p>
+                        <div class="link-box">{reset_link}</div>
+                        <p><strong>⏰ This link will expire in 1 hour for your security.</strong></p>
+                        <p><strong>If you didn't request this:</strong> Please ignore this email. Your password will remain unchanged.</p>
+                        <p>Best regards,<br><strong>The Meldra Team</strong></p>
+                    </div>
+                    <div class="footer">
+                        <p><strong>Meldra</strong> - Privacy-First Data Analysis Platform</p>
+                        <p>This is an automated email. Please do not reply.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            text_content = f"""
+            Password Reset Request - Meldra
+            
+            Hello,
+            
+            We received a request to reset your password for your Meldra account (insight.meldra.ai).
+            
+            Click this secure link to reset your password:
+            {reset_link}
+            
+            This link will expire in 1 hour for your security.
+            
+            If you didn't request this: Please ignore this email. Your password will remain unchanged.
+            
+            Best regards,
+            The Meldra Team
+            """
+            
+            # Send via Resend API
+            params = resend.Emails.SendParams(
+                from_=from_email,
+                to=[email],
+                subject="Reset Your Password - Meldra",
+                html=html_content,
+                text=text_content,
+            )
+            
+            result = resend.Emails.send(params)
+            logger.info(f"✅ Password reset email sent successfully via Resend to {email}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Resend API error: {type(e).__name__}: {str(e)}")
+            logger.warning("Falling back to SMTP...")
+            # Fall through to SMTP method
+    
+    # Fallback to SMTP if Resend not configured or failed
     # Initialize variables at function scope to avoid UnboundLocalError
     smtp_host = None
     smtp_port = None
@@ -55,6 +154,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         if not smtp_user or not smtp_password:
             logger.error(f"❌ SMTP credentials not configured. SMTP_USER: {'SET' if smtp_user else 'NOT SET'}, SMTP_PASSWORD: {'SET' if smtp_password else 'NOT SET'}")
             logger.error(f"Email not sent to {email}. Reset link: {reset_link}")
+            logger.error(f"💡 SUGGESTION: Use Resend API instead. Add RESEND_API_KEY to Railway variables.")
             return False
         
         # SECURITY: Ensure reset_link uses HTTPS

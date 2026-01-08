@@ -39,7 +39,14 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         if not smtp_user or not smtp_password:
             logger.error(f"❌ SMTP credentials not configured. SMTP_USER: {'SET' if smtp_user else 'NOT SET'}, SMTP_PASSWORD: {'SET' if smtp_password else 'NOT SET'}")
             logger.error(f"Email not sent to {email}. Reset link: {reset_link}")
-            return False
+            # If connection timeout, suggest trying port 465 or alternative email service
+        if "Timeout" in error_type or "timeout" in error_message.lower() or "connect" in error_message.lower():
+            logger.error(f"   💡 SUGGESTION: Railway may be blocking port {smtp_port}. Try:")
+            logger.error(f"      1. Change SMTP_PORT to 465 in Railway variables")
+            logger.error(f"      2. Or use an email API service (SendGrid, Mailgun, Resend)")
+            logger.error(f"      3. Or check Railway network/firewall settings")
+        
+        return False
         
         # SECURITY: Ensure reset_link uses HTTPS
         if not reset_link.startswith("https://"):
@@ -216,6 +223,13 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         logger.error(f"   SMTP Host: {smtp_host}")
         logger.error(f"   SMTP Port: {smtp_port}")
         logger.error(f"   SMTP User: {smtp_user[:3] + '***' if smtp_user else 'NOT SET'}")
+        # If connection timeout, suggest trying port 465 or alternative email service
+        if "Timeout" in error_type or "timeout" in error_message.lower() or "connect" in error_message.lower():
+            logger.error(f"   💡 SUGGESTION: Railway may be blocking port {smtp_port}. Try:")
+            logger.error(f"      1. Change SMTP_PORT to 465 in Railway variables")
+            logger.error(f"      2. Or use an email API service (SendGrid, Mailgun, Resend)")
+            logger.error(f"      3. Or check Railway network/firewall settings")
+        
         return False
 
 
@@ -242,7 +256,14 @@ async def send_verification_email(email: str, full_name: str, verification_link:
         
         if not smtp_user or not smtp_password:
             logger.warning("SMTP credentials not configured. Verification email not sent. Verification link: " + verification_link)
-            return False
+            # If connection timeout, suggest trying port 465 or alternative email service
+        if "Timeout" in error_type or "timeout" in error_message.lower() or "connect" in error_message.lower():
+            logger.error(f"   💡 SUGGESTION: Railway may be blocking port {smtp_port}. Try:")
+            logger.error(f"      1. Change SMTP_PORT to 465 in Railway variables")
+            logger.error(f"      2. Or use an email API service (SendGrid, Mailgun, Resend)")
+            logger.error(f"      3. Or check Railway network/firewall settings")
+        
+        return False
         
         # SECURITY: Ensure verification_link uses HTTPS
         if not verification_link.startswith("https://"):
@@ -374,6 +395,13 @@ async def send_verification_email(email: str, full_name: str, verification_link:
         
     except Exception as e:
         logger.error(f"Failed to send verification email to {email}: {str(e)}")
+        # If connection timeout, suggest trying port 465 or alternative email service
+        if "Timeout" in error_type or "timeout" in error_message.lower() or "connect" in error_message.lower():
+            logger.error(f"   💡 SUGGESTION: Railway may be blocking port {smtp_port}. Try:")
+            logger.error(f"      1. Change SMTP_PORT to 465 in Railway variables")
+            logger.error(f"      2. Or use an email API service (SendGrid, Mailgun, Resend)")
+            logger.error(f"      3. Or check Railway network/firewall settings")
+        
         return False
 
 
@@ -397,7 +425,14 @@ async def send_welcome_email(email: str, full_name: str) -> bool:
         
         if not smtp_user or not smtp_password:
             logger.warning("SMTP credentials not configured. Welcome email not sent.")
-            return False
+            # If connection timeout, suggest trying port 465 or alternative email service
+        if "Timeout" in error_type or "timeout" in error_message.lower() or "connect" in error_message.lower():
+            logger.error(f"   💡 SUGGESTION: Railway may be blocking port {smtp_port}. Try:")
+            logger.error(f"      1. Change SMTP_PORT to 465 in Railway variables")
+            logger.error(f"      2. Or use an email API service (SendGrid, Mailgun, Resend)")
+            logger.error(f"      3. Or check Railway network/firewall settings")
+        
+        return False
         
         message = MIMEMultipart("alternative")
         message["Subject"] = "Welcome to Meldra! 🎉"
@@ -468,4 +503,11 @@ async def send_welcome_email(email: str, full_name: str) -> bool:
         
     except Exception as e:
         logger.error(f"Failed to send welcome email to {email}: {str(e)}")
+        # If connection timeout, suggest trying port 465 or alternative email service
+        if "Timeout" in error_type or "timeout" in error_message.lower() or "connect" in error_message.lower():
+            logger.error(f"   💡 SUGGESTION: Railway may be blocking port {smtp_port}. Try:")
+            logger.error(f"      1. Change SMTP_PORT to 465 in Railway variables")
+            logger.error(f"      2. Or use an email API service (SendGrid, Mailgun, Resend)")
+            logger.error(f"      3. Or check Railway network/firewall settings")
+        
         return False

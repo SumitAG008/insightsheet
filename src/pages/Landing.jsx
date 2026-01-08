@@ -133,7 +133,7 @@ export default function Landing() {
         </div>
 
         {/* Key Benefits */}
-        <div className="rounded-2xl p-8 md:p-12 mb-20 border" style={{ background: 'linear-gradient(to right, rgba(0, 191, 166, 0.15), rgba(79, 195, 247, 0.15))', borderColor: 'rgba(0, 191, 166, 0.3)' }}>
+        <div className="rounded-2xl p-8 md:p-12 mb-8 border" style={{ background: 'linear-gradient(to right, rgba(0, 191, 166, 0.15), rgba(79, 195, 247, 0.15))', borderColor: 'rgba(0, 191, 166, 0.3)' }}>
           <div className="max-w-4xl mx-auto">
             <h2 className="text-3xl font-bold text-white text-center mb-8">
               Why Choose Meldra?

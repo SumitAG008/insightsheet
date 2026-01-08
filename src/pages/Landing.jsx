@@ -297,6 +297,36 @@ export default function Landing() {
           </div>
         </div>
       </div>
+
+      {/* Contact & Support Section */}
+      <div className="container mx-auto px-4 py-16 border-t border-slate-800">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 md:p-12 text-center">
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+              <Mail className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-3xl font-bold text-white mb-4">
+              Have Questions?
+            </h2>
+            <p className="text-xl text-slate-300 mb-6 max-w-2xl mx-auto">
+              We're here to help! Reach out to our support team for any enquiries, technical assistance, or feedback.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <Mail className="w-5 h-5" style={{ color: '#4FC3F7' }} />
+              <a 
+                href="mailto:support@meldra.ai" 
+                className="text-xl font-semibold hover:opacity-80 transition-opacity"
+                style={{ color: '#00E5FF' }}
+              >
+                support@meldra.ai
+              </a>
+            </div>
+            <p className="text-sm text-slate-400 mt-4">
+              We typically respond within 24 hours
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

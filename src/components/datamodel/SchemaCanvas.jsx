@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Edit2, Key, Link2, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -31,7 +31,7 @@ export default function SchemaCanvas({
     onSelectTable(table.id);
   };
 
-  const handleMouseMove = (e) => {
+  const handleMouseMove = useCallback((e) => {
     if (!draggingTable) return;
 
     const canvasRect = canvasRef.current.getBoundingClientRect();
@@ -39,11 +39,11 @@ export default function SchemaCanvas({
     const newY = (e.clientY - canvasRect.top - dragOffset.y) / zoom;
 
     onUpdateTable(draggingTable, { x: newX, y: newY });
-  };
+  }, [draggingTable, dragOffset, zoom, onUpdateTable]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setDraggingTable(null);
-  };
+  }, []);
 
   const handleConnectColumn = (table, column) => {
     if (!connectingFrom) {
@@ -105,7 +105,7 @@ export default function SchemaCanvas({
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [draggingTable, dragOffset, zoom]);
+  }, [draggingTable, handleMouseMove, handleMouseUp]);
 
   return (
     <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-4">

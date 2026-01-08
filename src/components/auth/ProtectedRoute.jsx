@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import PropTypes from 'prop-types';
 import { Navigate, useLocation } from 'react-router-dom';
 import { backendApi } from '@/api/backendClient';
 
@@ -32,7 +33,7 @@ export default function ProtectedRoute({ children }) {
       } else {
         setIsAuthenticated(false);
       }
-    } catch (error) {
+    } catch {
       // Not authenticated
       setIsAuthenticated(false);
       localStorage.removeItem('auth_token');
@@ -63,3 +64,7 @@ export default function ProtectedRoute({ children }) {
   // User is authenticated, render the protected content
   return children;
 }
+
+ProtectedRoute.propTypes = {
+  children: PropTypes.node.isRequired,
+};

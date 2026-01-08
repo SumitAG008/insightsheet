@@ -1,5 +1,6 @@
 // components/dashboard/AIAssistant.jsx - AI-powered data operations assistant
-import React, { useState } from 'react';
+import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { InvokeLLM } from '@/api/integrations';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -165,3 +166,8 @@ Format your response in a clear, structured way.`;
     </div>
   );
 }
+
+AIAssistant.propTypes = {
+  data: PropTypes.object.isRequired,
+  onDataUpdate: PropTypes.func.isRequired,
+};

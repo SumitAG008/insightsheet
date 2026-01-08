@@ -1,5 +1,5 @@
 // components/branding/Logo.jsx - Meldra Logo Component
-import React from 'react';
+import PropTypes from 'prop-types';
 
 export default function Logo({ className = "", size = "medium", showText = true }) {
   const sizes = {
@@ -47,3 +47,9 @@ export default function Logo({ className = "", size = "medium", showText = true 
     </div>
   );
 }
+
+Logo.propTypes = {
+  className: PropTypes.string,
+  size: PropTypes.oneOf(['small', 'medium', 'large']),
+  showText: PropTypes.bool,
+};

@@ -514,7 +514,7 @@ meldraAi.integrations.Core.GenerateImage = backendApi.llm.generateImage;
 meldraAi.integrations.Core.UploadFile = backendApi.files.upload;
 meldraAi.integrations.Core.ExtractDataFromUploadedFile = backendApi.files.extractData;
 meldraAi.integrations.Core.CreateFileSignedUrl = backendApi.files.createSignedUrl;
-meldraAi.integrations.Core.SendEmail = async (options) => {
+meldraAi.integrations.Core.SendEmail = async () => {
   // Placeholder for email sending
   console.warn('SendEmail not implemented yet');
   return { success: false, message: 'Email sending not implemented' };

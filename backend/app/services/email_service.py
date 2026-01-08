@@ -42,7 +42,27 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
     if resend_api_key and RESEND_AVAILABLE:
         try:
             resend.api_key = resend_api_key
-            from_email = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "noreply@meldra.ai"))
+            
+            # Resend requires verified domain. 
+            # For now, always use Resend's test email (onboarding@resend.dev) which works without domain verification
+            # TODO: Once meldra.ai domain is verified in Resend, can use noreply@meldra.ai
+            configured_from = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "noreply@meldra.ai"))
+            
+            # Check if using Gmail/Outlook/Hotmail or if domain is not verified - use Resend test email
+            # Resend test email works immediately without domain verification
+            if any(domain in configured_from.lower() for domain in ["@gmail.com", "@outlook.com", "@hotmail.com", "@yahoo.com", "@icloud.com"]):
+                # Use Resend's test email (works without domain verification)
+                from_email = "onboarding@resend.dev"
+                logger.info(f"Using Resend test email (onboarding@resend.dev) because FROM email ({configured_from}) uses unverified domain")
+            elif "@meldra.ai" in configured_from.lower():
+                # If using meldra.ai, check if domain is verified (for now, use test email to be safe)
+                # Once domain is verified in Resend dashboard, this can be changed
+                from_email = "onboarding@resend.dev"  # Use test email until domain verified
+                logger.info(f"Using Resend test email (onboarding@resend.dev). To use {configured_from}, verify meldra.ai domain in Resend dashboard first.")
+            else:
+                # For any other domain, use test email to avoid verification errors
+                from_email = "onboarding@resend.dev"
+                logger.info(f"Using Resend test email (onboarding@resend.dev) for safety. Configured FROM was: {configured_from}")
             
             # HTML email content
             html_content = f"""

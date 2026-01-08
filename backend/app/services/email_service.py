@@ -386,6 +386,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
 async def send_verification_email(email: str, full_name: str, verification_link: str) -> bool:
     """
     Send email verification email to new user
+    Uses Resend API if configured (recommended for cloud platforms), otherwise falls back to SMTP
     
     Args:
         email: User's email address
@@ -395,7 +396,187 @@ async def send_verification_email(email: str, full_name: str, verification_link:
     Returns:
         bool: True if email sent successfully, False otherwise
     """
+    # SECURITY: Ensure verification_link uses HTTPS
+    if not verification_link.startswith("https://"):
+        logger.warning(f"Verification link is not HTTPS: {verification_link}")
+        verification_link = verification_link.replace("http://", "https://")
+    
+    # Try Resend API first (works on all cloud platforms, no port blocking)
+    resend_api_key = os.getenv("RESEND_API_KEY", "")
+    if resend_api_key and RESEND_AVAILABLE:
+        try:
+            resend.api_key = resend_api_key
+            
+            # Resend requires verified domain for custom emails
+            # Strategy: Try to use configured email, fall back to test email if domain not verified
+            configured_from = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "noreply@meldra.ai"))
+            
+            # Check if using Gmail/Outlook/Hotmail - these can't be verified, use test email
+            if any(domain in configured_from.lower() for domain in ["@gmail.com", "@outlook.com", "@hotmail.com", "@yahoo.com", "@icloud.com"]):
+                # Use Resend's test email (works without domain verification)
+                from_email = "onboarding@resend.dev"
+                logger.info(f"Using Resend test email (onboarding@resend.dev) because FROM email ({configured_from}) uses unverifiable domain")
+            elif "@meldra.ai" in configured_from.lower():
+                # Try to use meldra.ai email - Resend will error if domain not verified, then we'll fall back
+                from_email = configured_from
+                logger.info(f"Attempting to use verified domain email: {from_email}")
+                logger.info(f"Note: If domain not verified in Resend, will fall back to onboarding@resend.dev")
+            else:
+                # For any other domain, try to use it (will error if not verified)
+                from_email = configured_from
+                logger.info(f"Attempting to use configured FROM email: {from_email}")
+            
+            # HTML email content
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }}
+                    .container {{ max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+                    .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }}
+                    .header h1 {{ margin: 0; font-size: 24px; }}
+                    .content {{ padding: 30px; }}
+                    .button {{ display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }}
+                    .button:hover {{ opacity: 0.9; }}
+                    .security-notice {{ background: #d1ecf1; border-left: 4px solid #0c5460; padding: 15px; margin: 20px 0; border-radius: 4px; }}
+                    .security-notice strong {{ color: #0c5460; }}
+                    .link-box {{ background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 4px; margin: 20px 0; word-break: break-all; font-size: 12px; color: #667eea; }}
+                    .footer {{ background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #dee2e6; }}
+                    .footer a {{ color: #667eea; text-decoration: none; }}
+                    .company-info {{ margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6; font-size: 11px; color: #999; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>✅ Verify Your Email Address</h1>
+                    </div>
+                    <div class="content">
+                        <p>Hello {full_name or 'there'},</p>
+                        <p>Thank you for registering with <strong>Meldra</strong>! To complete your registration and activate your account, please verify your email address.</p>
+                        
+                        <div class="security-notice">
+                            <strong>🔒 Security Notice:</strong> This email is from Meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>.
+                        </div>
+                        
+                        <p>Click the button below to verify your email:</p>
+                        <div style="text-align: center;">
+                            <a href="{verification_link}" class="button" style="color: white;">Verify Email Address</a>
+                        </div>
+                        
+                        <p>Or copy and paste this secure link into your browser:</p>
+                        <div class="link-box">
+                            {verification_link}
+                        </div>
+                        
+                        <p><strong>⏰ This verification link will expire in 24 hours.</strong></p>
+                        
+                        <p>If you didn't create an account with Meldra, please ignore this email. No account will be created.</p>
+                        
+                        <p>Best regards,<br><strong>The Meldra Team</strong></p>
+                    </div>
+                    <div class="footer">
+                        <p><strong>Meldra</strong> - Privacy-First Data Analysis Platform</p>
+                        <p>
+                            <a href="https://insight.meldra.ai">Visit our website</a> | 
+                            <a href="https://insight.meldra.ai/privacy">Privacy Policy</a> | 
+                            <a href="mailto:support@meldra.ai">Support</a>
+                        </p>
+                        <div class="company-info">
+                            <p>This is an automated email from Meldra. Please do not reply to this email.</p>
+                            <p>Meldra | insight.meldra.ai | © 2026 Meldra. All rights reserved.</p>
+                            <p>This email was sent to {email} because you registered for a Meldra account.</p>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            text_content = f"""
+            Verify Your Email Address - Meldra
+            
+            Hello {full_name or 'there'},
+            
+            Thank you for registering with Meldra! To complete your registration and activate your account, please verify your email address.
+            
+            SECURITY NOTICE: This email is from Meldra. Always verify the sender is @meldra.ai and links go to https://insight.meldra.ai.
+            
+            Click this secure link to verify your email:
+            {verification_link}
+            
+            This verification link will expire in 24 hours.
+            
+            If you didn't create an account with Meldra, please ignore this email. No account will be created.
+            
+            Best regards,
+            The Meldra Team
+            
+            ---
+            Meldra - Privacy-First Data Analysis Platform
+            Website: https://insight.meldra.ai
+            Privacy Policy: https://insight.meldra.ai/privacy
+            Support: support@meldra.ai
+            
+            This is an automated email from Meldra. Please do not reply to this email.
+            This email was sent to {email} because you registered for a Meldra account.
+            © 2026 Meldra. All rights reserved.
+            """
+            
+            # Send via Resend API
+            try:
+                result = resend.Emails.send({
+                    "from": from_email,
+                    "to": [email],
+                    "subject": "Verify Your Email - Meldra",
+                    "html": html_content,
+                    "text": text_content,
+                })
+                logger.info(f"✅ Verification email sent successfully via Resend to {email}")
+                return True
+            except Exception as resend_error:
+                error_message = str(resend_error).lower()
+                # If domain not verified error, fall back to test email
+                if "domain is not verified" in error_message or "not verified" in error_message:
+                    logger.warning(f"⚠️ Domain not verified for {from_email}. Falling back to Resend test email...")
+                    from_email = "onboarding@resend.dev"
+                    # Retry with test email
+                    try:
+                        result = resend.Emails.send({
+                            "from": from_email,
+                            "to": [email],
+                            "subject": "Verify Your Email - Meldra",
+                            "html": html_content,
+                            "text": text_content,
+                        })
+                        logger.info(f"✅ Verification email sent successfully via Resend (test email) to {email}")
+                        logger.info(f"💡 To use {configured_from}, verify domain in Resend dashboard: https://resend.com/domains")
+                        return True
+                    except Exception as retry_error:
+                        logger.error(f"❌ Resend API retry error: {type(retry_error).__name__}: {str(retry_error)}")
+                        raise
+                else:
+                    logger.error(f"❌ Resend API send error: {type(resend_error).__name__}: {str(resend_error)}")
+                    raise
+            
+        except Exception as e:
+            logger.error(f"❌ Resend API error: {type(e).__name__}: {str(e)}")
+            logger.warning("Falling back to SMTP for verification email...")
+            # Fall through to SMTP method
+    
+    # Fallback to SMTP if Resend not configured or failed
+    # Initialize variables at function scope to avoid UnboundLocalError
+    smtp_host = None
+    smtp_port = None
+    smtp_user = None
+    smtp_password = None
+    smtp_from_email = None
+    
     try:
+        # Get email configuration from environment variables
         smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
         smtp_port = int(os.getenv("SMTP_PORT", "587"))
         smtp_user = os.getenv("SMTP_USER", "")
@@ -404,16 +585,128 @@ async def send_verification_email(email: str, full_name: str, verification_link:
         # SECURITY: Use HTTPS production URL by default, not localhost
         frontend_url = os.getenv("FRONTEND_URL", "https://insight.meldra.ai")
         
-        if not smtp_user or not smtp_password:
-            logger.warning("SMTP credentials not configured. Verification email not sent. Verification link: " + verification_link)
-            # If connection timeout, suggest trying port 465 or alternative email service
-        if "Timeout" in error_type or "timeout" in error_message.lower() or "connect" in error_message.lower():
-            logger.error(f"   💡 SUGGESTION: Railway may be blocking port {smtp_port}. Try:")
-            logger.error(f"      1. Change SMTP_PORT to 465 in Railway variables")
-            logger.error(f"      2. Or use an email API service (SendGrid, Mailgun, Resend)")
-            logger.error(f"      3. Or check Railway network/firewall settings")
+        # Log SMTP configuration status (without exposing passwords)
+        logger.info(f"SMTP Configuration Check - Host: {smtp_host}, Port: {smtp_port}, User: {smtp_user[:3] + '***' if smtp_user else 'NOT SET'}, From: {smtp_from_email}")
         
-        return False
+        # If SMTP credentials not configured, log and return False
+        if not smtp_user or not smtp_password:
+            logger.error(f"❌ SMTP credentials not configured. SMTP_USER: {'SET' if smtp_user else 'NOT SET'}, SMTP_PASSWORD: {'SET' if smtp_password else 'NOT SET'}")
+            logger.error(f"Verification email not sent to {email}. Verification link: {verification_link}")
+            logger.error(f"💡 SUGGESTION: Use Resend API instead. Add RESEND_API_KEY to Railway variables.")
+            return False
+        
+        # SECURITY: Ensure verification_link uses HTTPS
+        if not verification_link.startswith("https://"):
+            logger.warning(f"Verification link is not HTTPS: {verification_link}")
+            verification_link = verification_link.replace("http://", "https://")
+        
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Verify Your Email - Meldra"
+        message["From"] = f"Meldra <{smtp_from_email}>"
+        message["To"] = email
+        message["Reply-To"] = "noreply@meldra.ai"
+        message["List-Unsubscribe"] = "<https://insight.meldra.ai/unsubscribe>"
+        message["X-Mailer"] = "Meldra Email Service"
+        message["X-Entity-Ref-ID"] = "meldra-email-verification"
+        
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background-color: #f5f5f5; }}
+                .container {{ max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+                .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }}
+                .header h1 {{ margin: 0; font-size: 24px; }}
+                .content {{ padding: 30px; }}
+                .button {{ display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; font-weight: 600; }}
+                .button:hover {{ opacity: 0.9; }}
+                .security-notice {{ background: #d1ecf1; border-left: 4px solid #0c5460; padding: 15px; margin: 20px 0; border-radius: 4px; }}
+                .security-notice strong {{ color: #0c5460; }}
+                .link-box {{ background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; border-radius: 4px; margin: 20px 0; word-break: break-all; font-size: 12px; color: #667eea; }}
+                .footer {{ background: #f8f9fa; padding: 20px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #dee2e6; }}
+                .footer a {{ color: #667eea; text-decoration: none; }}
+                .company-info {{ margin-top: 20px; padding-top: 20px; border-top: 1px solid #dee2e6; font-size: 11px; color: #999; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h1>✅ Verify Your Email Address</h1>
+                </div>
+                <div class="content">
+                    <p>Hello {full_name or 'there'},</p>
+                    <p>Thank you for registering with <strong>Meldra</strong>! To complete your registration and activate your account, please verify your email address.</p>
+                    
+                    <div class="security-notice">
+                        <strong>🔒 Security Notice:</strong> This email is from Meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>.
+                    </div>
+                    
+                    <p>Click the button below to verify your email:</p>
+                    <div style="text-align: center;">
+                        <a href="{verification_link}" class="button" style="color: white;">Verify Email Address</a>
+                    </div>
+                    
+                    <p>Or copy and paste this secure link into your browser:</p>
+                    <div class="link-box">
+                        {verification_link}
+                    </div>
+                    
+                    <p><strong>⏰ This verification link will expire in 24 hours.</strong></p>
+                    
+                    <p>If you didn't create an account with Meldra, please ignore this email. No account will be created.</p>
+                    
+                    <p>Best regards,<br><strong>The Meldra Team</strong></p>
+                </div>
+                <div class="footer">
+                    <p><strong>Meldra</strong> - Privacy-First Data Analysis Platform</p>
+                    <p>
+                        <a href="https://insight.meldra.ai">Visit our website</a> | 
+                        <a href="https://insight.meldra.ai/privacy">Privacy Policy</a> | 
+                        <a href="mailto:support@meldra.ai">Support</a>
+                    </p>
+                    <div class="company-info">
+                        <p>This is an automated email from Meldra. Please do not reply to this email.</p>
+                        <p>Meldra | insight.meldra.ai | © 2026 Meldra. All rights reserved.</p>
+                        <p>This email was sent to {email} because you registered for a Meldra account.</p>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_body = f"""
+        Verify Your Email Address - Meldra
+        
+        Hello {full_name or 'there'},
+        
+        Thank you for registering with Meldra! To complete your registration and activate your account, please verify your email address.
+        
+        SECURITY NOTICE: This email is from Meldra. Always verify the sender is @meldra.ai and links go to https://insight.meldra.ai.
+        
+        Click this secure link to verify your email:
+        {verification_link}
+        
+        This verification link will expire in 24 hours.
+        
+        If you didn't create an account with Meldra, please ignore this email. No account will be created.
+        
+        Best regards,
+        The Meldra Team
+        
+        ---
+        Meldra - Privacy-First Data Analysis Platform
+        Website: https://insight.meldra.ai
+        Privacy Policy: https://insight.meldra.ai/privacy
+        Support: support@meldra.ai
+        
+        This is an automated email from Meldra. Please do not reply to this email.
+        This email was sent to {email} because you registered for a Meldra account.
+        © 2026 Meldra. All rights reserved.
+        """
         
         # SECURITY: Ensure verification_link uses HTTPS
         if not verification_link.startswith("https://"):
@@ -540,13 +833,14 @@ async def send_verification_email(email: str, full_name: str, verification_link:
             use_tls=True,
         )
         
-        logger.info(f"Verification email sent successfully to {email}")
+        logger.info(f"Verification email sent successfully via SMTP to {email}")
         return True
         
     except Exception as e:
-        logger.error(f"Failed to send verification email to {email}: {str(e)}")
+        error_message = str(e)
+        logger.error(f"Failed to send verification email to {email}: {error_message}")
         # If connection timeout, suggest trying port 465 or alternative email service
-        if "Timeout" in error_type or "timeout" in error_message.lower() or "connect" in error_message.lower():
+        if "timeout" in error_message.lower() or "connect" in error_message.lower():
             logger.error(f"   💡 SUGGESTION: Railway may be blocking port {smtp_port}. Try:")
             logger.error(f"      1. Change SMTP_PORT to 465 in Railway variables")
             logger.error(f"      2. Or use an email API service (SendGrid, Mailgun, Resend)")

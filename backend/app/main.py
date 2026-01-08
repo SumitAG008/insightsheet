@@ -520,6 +520,12 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
             user.reset_token = None
         if hasattr(user, 'reset_token_expires'):
             user.reset_token_expires = None
+        
+        # SECURITY: Automatically verify email when password is reset
+        # If user clicked reset link sent to their email, they proved email ownership
+        if hasattr(user, 'is_verified') and not user.is_verified:
+            user.is_verified = True
+            logger.info(f"Email automatically verified for {user.email} after password reset (proved email ownership)")
             
         db.commit()
         

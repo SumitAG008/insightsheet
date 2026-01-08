@@ -112,17 +112,19 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
             """
             
             # Send via Resend API
-            params = resend.Emails.SendParams(
-                from_=from_email,
-                to=[email],
-                subject="Reset Your Password - Meldra",
-                html=html_content,
-                text=text_content,
-            )
-            
-            result = resend.Emails.send(params)
-            logger.info(f"✅ Password reset email sent successfully via Resend to {email}")
-            return True
+            try:
+                result = resend.Emails.send({
+                    "from": from_email,
+                    "to": [email],
+                    "subject": "Reset Your Password - Meldra",
+                    "html": html_content,
+                    "text": text_content,
+                })
+                logger.info(f"✅ Password reset email sent successfully via Resend to {email}")
+                return True
+            except Exception as resend_error:
+                logger.error(f"❌ Resend API send error: {type(resend_error).__name__}: {str(resend_error)}")
+                raise
             
         except Exception as e:
             logger.error(f"❌ Resend API error: {type(e).__name__}: {str(e)}")

@@ -1,5 +1,6 @@
 """
 Email Service for sending password reset and notification emails
+Supports both SMTP and Resend API (Resend recommended for cloud platforms)
 """
 import os
 import logging
@@ -9,6 +10,14 @@ from email.mime.multipart import MIMEMultipart
 from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+# Try to import Resend (optional dependency)
+try:
+    import resend
+    RESEND_AVAILABLE = True
+except ImportError:
+    RESEND_AVAILABLE = False
+    logger.warning("Resend package not installed. Install with: pip install resend")
 
 
 async def send_password_reset_email(email: str, reset_link: str) -> bool:

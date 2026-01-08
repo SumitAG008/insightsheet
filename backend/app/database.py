@@ -15,9 +15,37 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./insightsheet.db")
 
-# Create engine
+# Create engine with proper connection pooling and SSL for PostgreSQL
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+elif DATABASE_URL.startswith("postgresql"):
+    # PostgreSQL/Neon connection with SSL and connection pooling
+    # Parse DATABASE_URL to ensure SSL mode is set
+    import urllib.parse
+    parsed = urllib.parse.urlparse(DATABASE_URL)
+    query_params = urllib.parse.parse_qs(parsed.query)
+    
+    # Ensure SSL mode is set (required for Neon)
+    if 'sslmode' not in query_params:
+        if '?' in DATABASE_URL:
+            DATABASE_URL += "&sslmode=require"
+        else:
+            DATABASE_URL += "?sslmode=require"
+    
+    # Create engine with connection pooling and retry logic
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=5,  # Number of connections to maintain
+        max_overflow=10,  # Additional connections beyond pool_size
+        pool_pre_ping=True,  # Verify connections before using (auto-reconnect)
+        pool_recycle=3600,  # Recycle connections after 1 hour
+        connect_args={
+            "connect_timeout": 10,  # 10 second connection timeout
+            "sslmode": "require"  # Force SSL for security
+        },
+        echo=False  # Set to True for SQL debugging
+    )
+    logger.info("PostgreSQL engine created with SSL and connection pooling")
 else:
     engine = create_engine(DATABASE_URL)
 

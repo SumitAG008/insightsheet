@@ -8,10 +8,10 @@ import {
   BarChart3, LineChart, PieChart, TrendingUp, Activity, Layers, BarChart2, 
   AlertCircle, Download, FileSpreadsheet, FileText, Zap, Target, Gauge,
   TrendingDown, ArrowUpDown, Box, Scatter, Bubble, Heatmap, Funnel, 
-  Calendar, Clock, DollarSign, Percent, BarChart
+  Calendar, Clock, DollarSign, Percent
 } from 'lucide-react';
 import { 
-  BarChart, Bar, 
+  BarChart as RechartsBarChart, Bar, 
   LineChart as RechartsLineChart, Line, 
   PieChart as RechartsPieChart, Pie, 
   AreaChart, Area,
@@ -39,7 +39,7 @@ const CHART_CATEGORIES = {
       { id: 'combo', name: 'Combo (Column + Line)', icon: TrendingUp, description: 'Actual vs target' },
       { id: 'waterfall', name: 'Waterfall', icon: ArrowUpDown, description: 'P&L bridge, variance bridges' },
       { id: 'pareto', name: 'Pareto (80/20)', icon: Target, description: 'Defect causes, spend drivers' },
-      { id: 'histogram', name: 'Histogram', icon: BarChart, description: 'Distribution analysis' },
+      { id: 'histogram', name: 'Histogram', icon: BarChart2, description: 'Distribution analysis' },
       { id: 'box_whisker', name: 'Box & Whisker', icon: Box, description: 'Variability/outliers' },
       { id: 'scatter', name: 'Scatter (XY)', icon: Scatter, description: 'Correlation analysis' },
       { id: 'bubble', name: 'Bubble', icon: Bubble, description: '3D comparison' },
@@ -275,8 +275,8 @@ export default function EnhancedChartPanel({ data }) {
         scale: 2
       });
 
-      canvas.toBlob(async (blob) => {
-        const arrayBuffer = await blob.arrayBuffer();
+      canvas.toBlob(async (imageBlob) => {
+        const arrayBuffer = await imageBlob.arrayBuffer();
         const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
         const imageData = `data:image/png;base64,${base64}`;
 
@@ -334,8 +334,8 @@ export default function EnhancedChartPanel({ data }) {
           }],
         });
 
-        const blob = await Packer.toBlob(doc);
-        saveAs(blob, `chart_${chartType}_${Date.now()}.docx`);
+        const docBlob = await Packer.toBlob(doc);
+        saveAs(docBlob, `chart_${chartType}_${Date.now()}.docx`);
         setIsExporting(false);
       });
     } catch (error) {
@@ -424,14 +424,14 @@ export default function EnhancedChartPanel({ data }) {
       case 'bar':
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart {...commonProps} layout="horizontal">
+            <RechartsBarChart {...commonProps} layout="horizontal">
               <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
               <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} interval={0} angle={-45} textAnchor="end" height={100} />
               <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
               <Bar dataKey={yColumn} fill={primaryColor} radius={[8, 8, 0, 0]} />
-            </BarChart>
+            </RechartsBarChart>
           </ResponsiveContainer>
         );
 
@@ -440,7 +440,7 @@ export default function EnhancedChartPanel({ data }) {
       case 'stacked_100':
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <BarChart {...commonProps}>
+            <RechartsBarChart {...commonProps}>
               <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
               <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
               <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
@@ -454,7 +454,7 @@ export default function EnhancedChartPanel({ data }) {
               ) : (
                 <Bar dataKey={yColumn} fill={primaryColor} radius={[8, 8, 0, 0]} />
               )}
-            </BarChart>
+            </RechartsBarChart>
           </ResponsiveContainer>
         );
 

@@ -9,6 +9,7 @@ import DataGrid from '../components/dashboard/DataGrid';
 import CleaningTools from '../components/dashboard/CleaningTools';
 import AIInsights from '../components/dashboard/AIInsights';
 import ChartPanel from '../components/dashboard/ChartPanel';
+import EnhancedChartPanel from '../components/dashboard/EnhancedChartPanel';
 import AIAssistant from '../components/dashboard/AIAssistant';
 import DataTransform from '../components/dashboard/DataTransform';
 import SmartFormula from '../components/dashboard/SmartFormula';
@@ -615,7 +616,7 @@ export default function Dashboard() {
 
               <div className="space-y-6">
                 <AIInsights data={displayData || data} />
-                <ChartPanel data={displayData || data} />
+                <EnhancedChartPanel data={displayData || data} />
               </div>
             </div>
           </TabsContent>

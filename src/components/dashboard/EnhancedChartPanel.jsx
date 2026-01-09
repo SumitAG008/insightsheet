@@ -495,16 +495,17 @@ export default function EnhancedChartPanel({ data }) {
 
       case 'scatter':
       case 'scatter_regression':
-        // Scatter chart using ComposedChart as fallback
+        // Scatter chart visualization using line chart with dots
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <ComposedChart {...commonProps}>
+            <RechartsLineChart {...commonProps}>
               <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
               <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
               <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
               <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey={yColumn} fill={primaryColor} radius={[4, 4, 0, 0]} />
-            </ComposedChart>
+              <Line type="monotone" dataKey={yColumn} stroke={primaryColor} strokeWidth={2} dot={{ fill: primaryColor, r: 6 }} />
+              {chartType === 'scatter_regression' && <ReferenceLine stroke={secondaryColor} strokeDasharray="5 5" />}
+            </RechartsLineChart>
           </ResponsiveContainer>
         );
 

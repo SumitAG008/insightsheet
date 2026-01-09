@@ -26,7 +26,7 @@ const CHART_COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#E
 // Chart categories with all 30+ chart types - Clean, professional names
 const CHART_CATEGORIES = {
   stakeholder: {
-    name: 'Stakeholder & P&L',
+    name: 'Core P&L',
     icon: DollarSign,
     charts: [
       { id: 'line', name: 'Line Chart', icon: LineChart, description: 'Trends over time' },
@@ -47,7 +47,7 @@ const CHART_CATEGORIES = {
     ]
   },
   forecasting: {
-    name: 'Forecasting & Performance',
+    name: 'Forecasting',
     icon: Target,
     charts: [
       { id: 'variance_column', name: 'Variance Column', icon: TrendingDown, description: 'Budget vs actual' },

@@ -10,6 +10,13 @@ module.exports = {
   			sm: 'calc(var(--radius) - 4px)'
   		},
   		colors: {
+  			// Trust & Clarity Theme Colors
+  			meldra: {
+  				navy: '#0A1F44',      // Deep navy background
+  				teal: '#00BFA6',      // Primary accent (Teal)
+  				sky: '#4FC3F7',       // Secondary accent (Sky blue)
+  				aqua: '#00E5FF',      // CTA buttons (Aqua)
+  			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

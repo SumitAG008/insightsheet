@@ -34,6 +34,8 @@ export default function ChartPanel({ data }) {
   const [yColumn2, setYColumn2] = useState('');
   const [chartData, setChartData] = useState(null);
   const [error, setError] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#8B5CF6');
+  const [secondaryColor, setSecondaryColor] = useState('#EC4899');
 
   const validHeaders = data?.headers?.filter(header => header && header.trim() !== '') || [];
 
@@ -243,7 +245,7 @@ export default function ChartPanel({ data }) {
               <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
-              <Bar dataKey={yColumn} fill="#8B5CF6" radius={[8, 8, 0, 0]} />
+              <Bar dataKey={yColumn} fill={primaryColor} radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -265,7 +267,7 @@ export default function ChartPanel({ data }) {
               <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
-              <Bar dataKey={yColumn} fill="#EC4899" radius={[8, 8, 0, 0]} />
+              <Bar dataKey={yColumn} fill={primaryColor} radius={[8, 8, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -290,9 +292,9 @@ export default function ChartPanel({ data }) {
               <Line 
                 type="monotone" 
                 dataKey={yColumn} 
-                stroke="#10B981" 
+                stroke={primaryColor} 
                 strokeWidth={3}
-                dot={{ fill: '#10B981', r: 6 }}
+                dot={{ fill: primaryColor, r: 6 }}
               />
             </RechartsLineChart>
           </ResponsiveContainer>
@@ -304,8 +306,8 @@ export default function ChartPanel({ data }) {
             <AreaChart {...commonProps}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.1}/>
+                  <stop offset="5%" stopColor={primaryColor} stopOpacity={0.8}/>
+                  <stop offset="95%" stopColor={primaryColor} stopOpacity={0.1}/>
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
@@ -324,7 +326,7 @@ export default function ChartPanel({ data }) {
               <Area 
                 type="monotone" 
                 dataKey={yColumn} 
-                stroke="#3B82F6" 
+                stroke={primaryColor} 
                 strokeWidth={2}
                 fillOpacity={1} 
                 fill="url(#colorValue)" 
@@ -346,9 +348,11 @@ export default function ChartPanel({ data }) {
                 outerRadius={130}
                 dataKey={yColumn}
               >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                ))}
+                {chartData.map((entry, index) => {
+                  // Use custom colors if available, otherwise use default palette
+                  const colors = [primaryColor, secondaryColor, ...CHART_COLORS];
+                  return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                })}
               </Pie>
               <Tooltip content={<CustomTooltip />} />
               <Legend 
@@ -406,9 +410,9 @@ export default function ChartPanel({ data }) {
                 <Line 
                   type="monotone" 
                   dataKey={yColumn2} 
-                  stroke="#EC4899" 
+                  stroke={secondaryColor} 
                   strokeWidth={3}
-                  dot={{ fill: '#EC4899', r: 6 }}
+                  dot={{ fill: secondaryColor, r: 6 }}
                 />
               )}
             </ComposedChart>
@@ -541,6 +545,54 @@ export default function ChartPanel({ data }) {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+
+          {/* Color Customization */}
+          {chartData && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs md:text-sm text-slate-300 mb-2 block font-medium">
+                  Primary Color
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="w-12 h-10 rounded border border-slate-700 cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="flex-1 bg-slate-800/50 border border-slate-700 text-slate-200 rounded px-3 h-10 text-sm"
+                    placeholder="#8B5CF6"
+                  />
+                </div>
+              </div>
+              {(chartType === 'combo' || chartType === 'pie') && (
+                <div>
+                  <label className="text-xs md:text-sm text-slate-300 mb-2 block font-medium">
+                    Secondary Color
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={secondaryColor}
+                      onChange={(e) => setSecondaryColor(e.target.value)}
+                      className="w-12 h-10 rounded border border-slate-700 cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={secondaryColor}
+                      onChange={(e) => setSecondaryColor(e.target.value)}
+                      className="flex-1 bg-slate-800/50 border border-slate-700 text-slate-200 rounded px-3 h-10 text-sm"
+                      placeholder="#EC4899"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

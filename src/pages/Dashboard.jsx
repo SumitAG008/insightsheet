@@ -1,7 +1,9 @@
 
 // pages/Dashboard.js - Enhanced dashboard with upload functionality integrated
-import React, { useState, useEffect, useCallback } from 'react';
-import { Shield, Zap, TrendingUp, Brain, Lock, Gauge, FileText, Download, Trash2, AlertCircle, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Shield, Zap, TrendingUp, Brain, Lock, Gauge, FileText, Download, Trash2, AlertCircle, Sparkles, FileDown, Undo2, Redo2, Save } from 'lucide-react';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 import DataGrid from '../components/dashboard/DataGrid';
 import CleaningTools from '../components/dashboard/CleaningTools';
 import AIInsights from '../components/dashboard/AIInsights';
@@ -10,8 +12,15 @@ import AIAssistant from '../components/dashboard/AIAssistant';
 import DataTransform from '../components/dashboard/DataTransform';
 import SmartFormula from '../components/dashboard/SmartFormula';
 import FileUploadZone from '../components/upload/FileUploadZone';
+import TemplateSelector from '../components/dashboard/TemplateSelector';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../components/ui/dropdown-menu';
 
 export default function Dashboard() {
   const [data, setData] = useState(null);
@@ -19,16 +28,99 @@ export default function Dashboard() {
   const [cleanedRowCount, setCleanedRowCount] = useState(0);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Undo/Redo functionality
+  const [history, setHistory] = useState([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const historyRef = useRef({ history: [], index: -1 });
 
   useEffect(() => {
     const storedData = sessionStorage.getItem('insightsheet_data');
     const storedFilename = sessionStorage.getItem('insightsheet_filename');
     
     if (storedData) {
-      setData(JSON.parse(storedData));
+      const parsedData = JSON.parse(storedData);
+      setData(parsedData);
       setFilename(storedFilename || 'spreadsheet.csv');
+      // Initialize history with initial data
+      historyRef.current.history = [parsedData];
+      historyRef.current.index = 0;
+      setHistory([parsedData]);
+      setHistoryIndex(0);
     }
   }, []);
+
+  // Add to history when data changes
+  const addToHistory = useCallback((newData) => {
+    const currentHistory = historyRef.current.history;
+    const currentIndex = historyRef.current.index;
+    
+    // Remove any history after current index (if user did undo and then made a change)
+    const newHistory = currentHistory.slice(0, currentIndex + 1);
+    newHistory.push(JSON.parse(JSON.stringify(newData))); // Deep copy
+    
+    // Limit history to 50 states
+    if (newHistory.length > 50) {
+      newHistory.shift();
+      historyRef.current.index = newHistory.length - 1;
+    } else {
+      historyRef.current.index = newHistory.length - 1;
+    }
+    
+    historyRef.current.history = newHistory;
+    setHistory(newHistory);
+    setHistoryIndex(historyRef.current.index);
+  }, []);
+
+  const undo = useCallback(() => {
+    if (historyRef.current.index > 0) {
+      historyRef.current.index -= 1;
+      const previousData = historyRef.current.history[historyRef.current.index];
+      setData(previousData);
+      setHistoryIndex(historyRef.current.index);
+      sessionStorage.setItem('insightsheet_data', JSON.stringify(previousData));
+    }
+  }, []);
+
+  const redo = useCallback(() => {
+    if (historyRef.current.index < historyRef.current.history.length - 1) {
+      historyRef.current.index += 1;
+      const nextData = historyRef.current.history[historyRef.current.index];
+      setData(nextData);
+      setHistoryIndex(historyRef.current.index);
+      sessionStorage.setItem('insightsheet_data', JSON.stringify(nextData));
+    }
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl+Z or Cmd+Z for undo
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      // Ctrl+Shift+Z or Ctrl+Y for redo
+      if (((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') || 
+          ((e.ctrlKey || e.metaKey) && e.key === 'y')) {
+        e.preventDefault();
+        redo();
+      }
+      // Ctrl+S for save
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        handleSave();
+      }
+      // Ctrl+E for export
+      if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        e.preventDefault();
+        handleExport();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
 
   const handleFileUpload = useCallback((file, uploadedData) => {
     setUploadedFile({ file, data: uploadedData });
@@ -41,12 +133,83 @@ export default function Dashboard() {
       setIsProcessing(false);
       setData(uploadedData);
       setFilename(file.name);
+      addToHistory(uploadedData);
     }, 1000);
-  }, []);
+  }, [addToHistory]);
+
+  const handleTemplateLoad = useCallback((templateData) => {
+    setIsProcessing(true);
+    const templateFilename = 'template_data.csv';
+    
+    sessionStorage.setItem('insightsheet_data', JSON.stringify(templateData));
+    sessionStorage.setItem('insightsheet_filename', templateFilename);
+    
+    setTimeout(() => {
+      setIsProcessing(false);
+      setData(templateData);
+      setFilename(templateFilename);
+      addToHistory(templateData);
+    }, 500);
+  }, [addToHistory]);
 
   const handleDataUpdate = (newData) => {
     setData(newData);
     sessionStorage.setItem('insightsheet_data', JSON.stringify(newData));
+    addToHistory(newData);
+  };
+
+  const handleSave = () => {
+    if (!data) return;
+    sessionStorage.setItem('insightsheet_data', JSON.stringify(data));
+    sessionStorage.setItem('insightsheet_filename', filename);
+    // Show brief success message
+    const button = document.querySelector('[data-save-button]');
+    if (button) {
+      const originalText = button.textContent;
+      button.textContent = 'Saved!';
+      button.classList.add('bg-green-600');
+      setTimeout(() => {
+        button.textContent = originalText;
+        button.classList.remove('bg-green-600');
+      }, 2000);
+    }
+  };
+
+  const exportAsPDF = () => {
+    if (!data) return;
+    
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(18);
+    doc.text('Data Report', 14, 22);
+    
+    // Add filename and metadata
+    doc.setFontSize(10);
+    doc.text(`File: ${filename}`, 14, 30);
+    doc.text(`Rows: ${data.rows.length} | Columns: ${data.headers.length}`, 14, 36);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 42);
+    
+    // Add table
+    const tableData = data.rows.map(row => 
+      data.headers.map(header => {
+        const value = row[header];
+        return value !== null && value !== undefined ? String(value) : '';
+      })
+    );
+    
+    doc.autoTable({
+      head: [data.headers],
+      body: tableData,
+      startY: 48,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [10, 31, 68], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [245, 247, 250] },
+      margin: { top: 48 },
+    });
+    
+    // Save PDF
+    doc.save(`${filename.replace(/\.[^/.]+$/, '')}_report.pdf`);
   };
 
   const exportAsCSV = () => {
@@ -110,18 +273,18 @@ export default function Dashboard() {
     window.XLSX.writeFile(wb, `cleaned_${filename.replace(/\.[^/.]+$/, '')}.xlsx`);
   };
 
-  const handleExport = () => {
+  const handleExport = (format) => {
     if (!data) return;
     
-    // Ask user which format
-    const format = confirm('Export as Excel?\n\nClick OK for Excel (.xlsx)\nClick Cancel for CSV (.csv)');
-    
-    if (format) {
-      // Export as Excel
+    if (format === 'pdf') {
+      exportAsPDF();
+    } else if (format === 'excel') {
       exportAsExcel();
-    } else {
-      // Export as CSV
+    } else if (format === 'csv') {
       exportAsCSV();
+    } else {
+      // Default: show menu (handled by dropdown)
+      exportAsExcel();
     }
   };
 
@@ -178,6 +341,21 @@ export default function Dashboard() {
                   <span className="font-semibold">{feature.text}</span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Template Selector */}
+          <div className="max-w-4xl mx-auto mb-8">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  Quick Start with Templates
+                </h3>
+                <TemplateSelector onTemplateLoad={handleTemplateLoad} />
+              </div>
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Choose from pre-built templates for Sales, Finance, HR, and more to get started instantly.
+              </p>
             </div>
           </div>
 
@@ -284,17 +462,76 @@ export default function Dashboard() {
           </div>
           
           <div className="flex gap-3 flex-wrap">
+            {/* Template Selector */}
+            <TemplateSelector onTemplateLoad={handleTemplateLoad} />
+            
+            {/* Undo/Redo Buttons */}
+            <div className="flex gap-1 border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
+              <Button
+                onClick={undo}
+                disabled={historyIndex <= 0}
+                variant="outline"
+                size="sm"
+                className="rounded-none border-0 border-r border-slate-300 dark:border-slate-700"
+                title="Undo (Ctrl+Z)"
+              >
+                <Undo2 className="w-4 h-4" />
+              </Button>
+              <Button
+                onClick={redo}
+                disabled={historyIndex >= history.length - 1}
+                variant="outline"
+                size="sm"
+                className="rounded-none border-0"
+                title="Redo (Ctrl+Y)"
+              >
+                <Redo2 className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Save Button */}
             <Button
-              onClick={handleExport}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handleSave}
+              variant="outline"
+              className="border-slate-300 dark:border-slate-700"
+              data-save-button
+              title="Save (Ctrl+S)"
             >
-              <Download className="w-4 h-4 mr-2" />
-              Export (Excel/CSV)
+              <Save className="w-4 h-4 mr-2" />
+              Save
             </Button>
+
+            {/* Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  title="Export (Ctrl+E)"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleExport('pdf')}>
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Export as PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('excel')}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export as Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleExport('csv')}>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Export as CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
             <Button
               onClick={handleClearData}
               variant="outline"
-              className="border-slate-700 hover:bg-slate-800"
+              className="border-slate-300 dark:border-slate-700"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Clear All

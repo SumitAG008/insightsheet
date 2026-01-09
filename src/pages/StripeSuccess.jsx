@@ -12,8 +12,6 @@ export default function StripeSuccess() {
   const [error, setError] = useState('');
 
   const handlePaymentSuccess = useCallback(async () => {
-
-  const handlePaymentSuccess = async () => {
     try {
       // Get URL parameters
       const urlParams = new URLSearchParams(window.location.search);

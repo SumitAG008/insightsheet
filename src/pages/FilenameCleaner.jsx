@@ -316,13 +316,18 @@ export default function FilenameCleaner() {
 
     setProcessing(true);
     setPreview([]);
+    setProcessedCount(0);
 
     try {
       const files = await readZipFile(zipFile);
+      const totalFiles = files.length;
       
-      const previewData = files.map(file => {
+      // Process files with progress updates for large ZIPs
+      const previewData = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
         const processedName = processFilename(file.filename);
-        return {
+        previewData.push({
           original: file.filename,
           processed: processedName,
           changed: file.filename !== processedName,
@@ -333,10 +338,17 @@ export default function FilenameCleaner() {
           uncompressedSize: file.uncompressedSize,
           time: file.time,
           date: file.date
-        };
-      });
+        });
+        
+        // Update progress every 10 files for large ZIPs
+        if (totalFiles > 50 && (i + 1) % 10 === 0) {
+          setProcessedCount(i + 1);
+          await new Promise(resolve => setTimeout(resolve, 10)); // Small delay to update UI
+        }
+      }
 
       setPreview(previewData);
+      setProcessedCount(totalFiles);
     } catch (error) {
       console.error('Error reading ZIP:', error);
       alert('Error reading ZIP file. Please ensure it is a valid ZIP file.');
@@ -561,15 +573,29 @@ export default function FilenameCleaner() {
                   <h3 className="text-lg font-bold text-indigo-200">
                     Preview Changes ({preview.length} files)
                   </h3>
-                  {processedCount > 0 && processedCount < preview.length && (
-                    <span className="text-sm text-indigo-400">
-                      Processing: {processedCount}/{preview.length}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-400">
+                      {preview.filter(p => p.changed).length} files will be renamed
                     </span>
-                  )}
+                    {processing && processedCount < preview.length && (
+                      <span className="text-sm text-indigo-400">
+                        Processing: {processedCount}/{preview.length}
+                      </span>
+                    )}
+                  </div>
                 </div>
+                
+                {preview.length > 100 && (
+                  <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                    <p className="text-sm text-blue-300">
+                      <strong>Large ZIP Detected:</strong> Showing first 100 files in preview. 
+                      All {preview.length} files will be processed when you click "Process & Download".
+                    </p>
+                  </div>
+                )}
 
                 <div className="max-h-96 overflow-y-auto space-y-2 mb-4">
-                  {preview.map((item, idx) => (
+                  {preview.slice(0, 100).map((item, idx) => (
                     <div key={idx} className={`p-3 rounded-lg ${item.changed ? 'bg-indigo-500/10 border border-indigo-500/30' : 'bg-slate-800/50'}`}>
                       <div className="flex items-start gap-2">
                         {item.changed ? (

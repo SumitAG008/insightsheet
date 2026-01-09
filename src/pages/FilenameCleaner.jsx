@@ -22,7 +22,7 @@ export default function FilenameCleaner() {
   const [options, setOptions] = useState({
     allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-',
     disallowedCharacters: '',
-    replacementCharacter: '_',
+    replacementCharacter: '-',
     maxLength: 255,
     preserveExtension: true,
     customRules: []
@@ -107,10 +107,10 @@ export default function FilenameCleaner() {
   };
 
   const quickPresets = [
-    { name: 'Basic', config: { allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-', disallowedCharacters: '', replacementCharacter: '_' } },
+    { name: 'Basic', config: { allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-', disallowedCharacters: '', replacementCharacter: '-' } },
     { name: 'Basic Underscore', config: { allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_', disallowedCharacters: ' -', replacementCharacter: '_' } },
     { name: 'Basic Dash', config: { allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-', disallowedCharacters: ' _', replacementCharacter: '-' } },
-    { name: 'Windows Safe', config: { allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._- ()', disallowedCharacters: '<>:"/\\|?*', replacementCharacter: '_' } },
+    { name: 'Windows Safe', config: { allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._- ()', disallowedCharacters: '<>:"/\\|?*', replacementCharacter: '-' } },
     { name: 'URL Safe', config: { allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-', disallowedCharacters: ' _', replacementCharacter: '-' } }
   ];
 
@@ -736,13 +736,14 @@ export default function FilenameCleaner() {
 
               {/* Disallowed Characters */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-2 block">Remove Underscore/ Dash</label>
+                <label className="text-sm font-semibold text-indigo-300 mb-2 block">Characters to remove</label>
                 <Input
                   value={options.disallowedCharacters}
                   onChange={(e) => setOptions({...options, disallowedCharacters: e.target.value})}
                   className="bg-slate-800/50 border-slate-700 text-slate-200"
                   placeholder="Characters to remove"
                 />
+                <p className="text-xs text-slate-500 mt-1">Characters that will be removed or replaced from filenames</p>
               </div>
 
               {/* Replacement Character */}

@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   BarChart3, LineChart, PieChart, TrendingUp, Activity, Layers, BarChart2, 
   AlertCircle, Download, FileSpreadsheet, FileText, Zap, Target, Gauge,
-  TrendingDown, ArrowUpDown, Box, Scatter, Bubble, Heatmap, Funnel, 
+  TrendingDown, ArrowUpDown, Box, Circle, Grid3x3, Filter, 
   Calendar, Clock, DollarSign, Percent
 } from 'lucide-react';
 import { 
@@ -41,9 +41,9 @@ const CHART_CATEGORIES = {
       { id: 'pareto', name: 'Pareto (80/20)', icon: Target, description: 'Defect causes, spend drivers' },
       { id: 'histogram', name: 'Histogram', icon: BarChart2, description: 'Distribution analysis' },
       { id: 'box_whisker', name: 'Box & Whisker', icon: Box, description: 'Variability/outliers' },
-      { id: 'scatter', name: 'Scatter (XY)', icon: Scatter, description: 'Correlation analysis' },
-      { id: 'bubble', name: 'Bubble', icon: Bubble, description: '3D comparison' },
-      { id: 'heatmap', name: 'Heatmap', icon: Heatmap, description: 'Cost centers vs months' },
+      { id: 'scatter', name: 'Scatter (XY)', icon: Circle, description: 'Correlation analysis' },
+      { id: 'bubble', name: 'Bubble', icon: Circle, description: '3D comparison' },
+      { id: 'heatmap', name: 'Heatmap', icon: Grid3x3, description: 'Cost centers vs months' },
     ]
   },
   forecasting: {
@@ -57,7 +57,7 @@ const CHART_CATEGORIES = {
       { id: 'control_chart', name: 'Control Chart (SPC)', icon: Gauge, description: 'Mean + UCL/LCL' },
       { id: 'cusum', name: 'Cumulative Sum (CUSUM)', icon: TrendingUp, description: 'Drift detection' },
       { id: 'scurve', name: 'S-Curve (Cumulative)', icon: TrendingUp, description: 'Project tracking' },
-      { id: 'funnel', name: 'Funnel', icon: Funnel, description: 'Pipeline stages' },
+      { id: 'funnel', name: 'Funnel', icon: Filter, description: 'Pipeline stages' },
     ]
   },
   engineering: {
@@ -67,7 +67,7 @@ const CHART_CATEGORIES = {
       { id: 'log_scale', name: 'Log-Scale Line', icon: LineChart, description: 'Exponential growth/decay' },
       { id: 'semi_log', name: 'Semi-log Plot', icon: TrendingUp, description: 'Linearize exponential' },
       { id: 'error_bars', name: 'Error Bar Chart', icon: AlertCircle, description: 'Measurement uncertainty' },
-      { id: 'scatter_regression', name: 'Scatter with Regression', icon: Scatter, description: 'Model fit & R²' },
+      { id: 'scatter_regression', name: 'Scatter with Regression', icon: Circle, description: 'Model fit & R²' },
       { id: 'radar', name: 'Radar (Spider)', icon: Layers, description: 'Multi-metric comparison' },
       { id: 'gantt', name: 'Gantt (Stacked Bar)', icon: Calendar, description: 'Schedule + phases' },
       { id: 'pie', name: 'Pie Chart', icon: PieChart, description: 'Composition analysis' },

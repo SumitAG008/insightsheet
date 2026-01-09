@@ -1024,9 +1024,8 @@ async def process_zip(
 
         logger.info(f"ZIP processing: {file.filename} by {current_user['email']}")
 
-        # Generate filename: original_name_timestamp.zip
-        from datetime import datetime
-        original_name = file.filename.replace('.zip', '').replace('.ZIP', '')
+        # Generate filename: original_name_timestamp.zip (IMMEDIATE DOWNLOAD, NO STORAGE)
+        original_name = file.filename.replace('.zip', '').replace('.ZIP', '').replace(' ', '_')
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # YYYYMMDD_HHMMSS_mmm
         output_filename = f"{original_name}_{timestamp}.zip"
         

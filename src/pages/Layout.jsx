@@ -127,103 +127,103 @@ export default function Layout({ children }) {
               <Logo size="medium" className="group-hover:opacity-80 transition-opacity" />
             </Link>
 
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden md:flex items-center gap-2">
               {/* Show menu items only when user is logged in */}
               {user && user.email ? (
                 <>
                   <Link 
                     to={createPageUrl('Dashboard')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                       isActive(createPageUrl('Dashboard'))
-                        ? 'bg-blue-600 text-white shadow-md font-semibold'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
                     }`}
                   >
-                    <LayoutDashboard className="w-4 h-4" />
+                    <LayoutDashboard className={`w-4 h-4 ${isActive(createPageUrl('Dashboard')) ? 'text-white' : ''}`} />
                     <span>Dashboard</span>
                   </Link>
 
                   <Link
                     to={createPageUrl('FileAnalyzer')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                       isActive(createPageUrl('FileAnalyzer'))
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
                     }`}
                   >
-                    <BarChart3 className="w-4 h-4" />
+                    <BarChart3 className={`w-4 h-4 ${isActive(createPageUrl('FileAnalyzer')) ? 'text-white' : ''}`} />
                     <span>Analyzer</span>
                   </Link>
 
                   <Link
                     to={createPageUrl('PLBuilder')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                       isActive(createPageUrl('PLBuilder'))
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
                     }`}
                   >
-                    <FileSpreadsheet className="w-4 h-4" />
+                    <FileSpreadsheet className={`w-4 h-4 ${isActive(createPageUrl('PLBuilder')) ? 'text-white' : ''}`} />
                     <span>P&L Builder</span>
                   </Link>
 
                   <Link
                     to={createPageUrl('AgenticAI')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                       isActive(createPageUrl('AgenticAI'))
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
                     }`}
                   >
-                    <Brain className="w-4 h-4" />
+                    <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : ''}`} />
                     <span>AI Assistant</span>
                   </Link>
 
                   <Link
                     to={createPageUrl('DataModelCreator')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                       isActive(createPageUrl('DataModelCreator'))
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
                     }`}
                   >
-                    <Database className="w-4 h-4" />
+                    <Database className={`w-4 h-4 ${isActive(createPageUrl('DataModelCreator')) ? 'text-white' : ''}`} />
                     <span>DB Schema</span>
                   </Link>
 
                   <Link
                     to={createPageUrl('FileToPPT')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                       isActive(createPageUrl('FileToPPT'))
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
                     }`}
                   >
-                    <FileText className="w-4 h-4" />
+                    <FileText className={`w-4 h-4 ${isActive(createPageUrl('FileToPPT')) ? 'text-white' : ''}`} />
                     <span>Excel to PPT</span>
                   </Link>
 
                   <Link 
                     to={createPageUrl('FilenameCleaner')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                       isActive(createPageUrl('FilenameCleaner'))
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
                     }`}
                   >
-                    <FileArchive className="w-4 h-4" />
+                    <FileArchive className={`w-4 h-4 ${isActive(createPageUrl('FilenameCleaner')) ? 'text-white' : ''}`} />
                     <span>ZIP Cleaner</span>
                   </Link>
 
                   <Link
                     to={createPageUrl('Reviews')}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                       isActive(createPageUrl('Reviews'))
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
                     }`}
                   >
-                    <MessageSquare className="w-4 h-4" />
+                    <MessageSquare className={`w-4 h-4 ${isActive(createPageUrl('Reviews')) ? 'text-white' : ''}`} />
                     <span>Reviews</span>
                   </Link>
                 </>
@@ -283,11 +283,18 @@ export default function Layout({ children }) {
               )}
 
               {user && user.email ? (
-                <div className="ml-4 flex items-center gap-3">
-                  <span className="text-sm text-slate-900 dark:text-slate-100 font-medium hidden sm:inline">{user.email}</span>
+                <div className="ml-4 flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
+                  <span className="text-sm text-slate-700 dark:text-slate-300 font-medium hidden sm:inline max-w-[150px] truncate">{user.email}</span>
+                  <Link
+                    to={createPageUrl('Security')}
+                    className="px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all font-medium"
+                    title="Security Settings"
+                  >
+                    <Shield className="w-4 h-4" />
+                  </Link>
                   <button
                     onClick={handleLogout}
-                    className="px-4 py-2 text-sm text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all font-semibold border border-slate-300 dark:border-slate-700"
+                    className="px-4 py-2 text-sm text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg transition-all font-semibold shadow-md hover:shadow-lg"
                   >
                     Logout
                   </button>
@@ -295,7 +302,7 @@ export default function Layout({ children }) {
               ) : (
                 <Link
                   to="/Login"
-                  className="ml-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all shadow-md font-medium"
+                  className="ml-4 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg font-semibold"
                 >
                   Login
                 </Link>
@@ -313,16 +320,16 @@ export default function Layout({ children }) {
 
           {/* Mobile menu */}
           {mobileMenuOpen && (
-            <div className="md:hidden border-t border-slate-200 dark:border-slate-800 py-4 space-y-1">
+            <div className="md:hidden border-t border-slate-200 dark:border-slate-800 py-4 space-y-2">
               {user && user.email ? (
                 <>
                   <Link 
                     to={createPageUrl('Dashboard')}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('Dashboard'))
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
                     <LayoutDashboard className="w-4 h-4" />
@@ -331,10 +338,10 @@ export default function Layout({ children }) {
                   <Link
                     to={createPageUrl('FileAnalyzer')}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('FileAnalyzer'))
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
                     <BarChart3 className="w-4 h-4" />
@@ -343,10 +350,10 @@ export default function Layout({ children }) {
                   <Link
                     to={createPageUrl('PLBuilder')}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('PLBuilder'))
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
                     <FileSpreadsheet className="w-4 h-4" />
@@ -355,10 +362,10 @@ export default function Layout({ children }) {
                   <Link
                     to={createPageUrl('AgenticAI')}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('AgenticAI'))
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
                     <Brain className="w-4 h-4" />
@@ -367,10 +374,10 @@ export default function Layout({ children }) {
                   <Link
                     to={createPageUrl('DataModelCreator')}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('DataModelCreator'))
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
                     <Database className="w-4 h-4" />
@@ -379,10 +386,10 @@ export default function Layout({ children }) {
                   <Link
                     to={createPageUrl('FileToPPT')}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('FileToPPT'))
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
                     <FileText className="w-4 h-4" />
@@ -391,24 +398,55 @@ export default function Layout({ children }) {
                   <Link 
                     to={createPageUrl('FilenameCleaner')}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('FilenameCleaner'))
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
                     <FileArchive className="w-4 h-4" />
                     <span>ZIP Cleaner</span>
                   </Link>
+                  <Link
+                    to={createPageUrl('Reviews')}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('Reviews'))
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Reviews</span>
+                  </Link>
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800 mt-2 space-y-2">
+                    <Link
+                      to={createPageUrl('Security')}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm"
+                    >
+                      <Shield className="w-4 h-4" />
+                      <span>Security</span>
+                    </Link>
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 font-semibold text-sm"
+                    >
+                      Logout
+                    </button>
+                  </div>
                 </>
               ) : (
                 <Link 
                   to="/pricing"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
                     isActive('/pricing') || isActive('/')
-                      ? 'bg-blue-600 text-white'
-                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
+                      : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
                   }`}
                 >
                   <DollarSign className="w-4 h-4" />

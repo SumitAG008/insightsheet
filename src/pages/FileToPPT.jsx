@@ -5,6 +5,7 @@ import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { generateDownloadFilename } from '@/utils/fileNaming';
 import {
   FileSpreadsheet, FileText, Download, Upload,
   Loader2, CheckCircle, AlertCircle, Sparkles,
@@ -381,7 +382,8 @@ export default function FileToPPT() {
           setProgress(95);
           setProgressMessage('Saving PowerPoint file...');
 
-          const fileName = file.name.replace(/\.[^/.]+$/, '') + '_presentation.pptx';
+          // Use consistent naming: original_name_timestamp.pptx
+          const fileName = generateDownloadFilename(file.name, '.pptx');
           await pptx.writeFile({ fileName });
 
           setProgress(100);
@@ -486,7 +488,8 @@ export default function FileToPPT() {
           setProgress(95);
           setProgressMessage('Saving PowerPoint...');
 
-          const fileName = file.name.replace(/\.[^/.]+$/, '') + '.pptx';
+          // Use consistent naming: original_name_timestamp.pptx
+          const fileName = generateDownloadFilename(file.name, '.pptx');
           await pptx.writeFile({ fileName });
 
           setProgress(100);

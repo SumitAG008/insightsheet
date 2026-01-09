@@ -554,7 +554,7 @@ export default function EnhancedChartPanel({ data }) {
       <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
         <h2 className="text-xl font-bold text-indigo-200 flex items-center gap-2 mb-4">
           <BarChart3 className="w-5 h-5 text-indigo-400" />
-          Enhanced Charts (30+ Types)
+          Enhanced Charts
         </h2>
         <div className="text-center py-8 text-slate-400">
           <AlertCircle className="w-12 h-12 mx-auto mb-3 text-yellow-500" />
@@ -576,7 +576,7 @@ export default function EnhancedChartPanel({ data }) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-indigo-200 flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-indigo-400" />
-          Enhanced Charts (30+ Types)
+          Enhanced Charts
         </h2>
         {chartData && (
           <div className="flex gap-2">

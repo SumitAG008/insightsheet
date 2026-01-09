@@ -1024,8 +1024,13 @@ async def process_zip(
 
         logger.info(f"ZIP processing: {file.filename} by {current_user['email']}")
 
-        # Return processed ZIP
-        output_filename = f"processed_{secrets.token_hex(4)}.zip"
+        # Generate filename: original_name_timestamp.zip
+        from datetime import datetime
+        original_name = file.filename.replace('.zip', '').replace('.ZIP', '')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # YYYYMMDD_HHMMSS_mmm
+        output_filename = f"{original_name}_{timestamp}.zip"
+        
+        # Return processed ZIP - IMMEDIATE DOWNLOAD, NO STORAGE
         return StreamingResponse(
             io.BytesIO(processed_data),
             media_type="application/zip",

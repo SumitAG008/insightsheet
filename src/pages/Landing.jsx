@@ -44,10 +44,43 @@ export default function Landing() {
           <p className="text-2xl md:text-3xl text-slate-300 font-semibold mb-4">
             Data Made Simple
           </p>
-          <p className="text-xl text-slate-400 max-w-3xl mx-auto mb-12 leading-relaxed">
+          <p className="text-xl text-slate-400 max-w-3xl mx-auto mb-8 leading-relaxed">
             Transform your data into actionable insights with AI-powered analysis, automated workflows, and professional reporting. 
             All while keeping your data completely private and secure.
           </p>
+          
+          {/* Zero Storage Promise - Prominent */}
+          <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-6 mb-12 max-w-3xl mx-auto">
+            <div className="flex items-start gap-4">
+              <Shield className="w-8 h-8 text-emerald-400 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="text-lg font-bold text-emerald-300 mb-2">Zero Data Storage Guarantee</h3>
+                <p className="text-slate-300 text-sm leading-relaxed mb-3">
+                  <strong className="text-white">Your data is NEVER stored on our servers.</strong> All processing happens in your browser. 
+                  After processing, files are immediately downloaded to your device with the original filename plus timestamp. 
+                  No input or output files remain on our servers - complete privacy guaranteed.
+                </p>
+                <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    No file storage
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    Immediate download
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    Browser-only processing
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    Auto-delete after processing
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
           
           {/* Single Strategic CTA - Only in Hero */}
           <div className="flex justify-center mt-8">
@@ -60,10 +93,10 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Enhanced Features Section with Creative Visuals */}
+        {/* Comprehensive Features Section */}
         <div className="mb-20">
           <h2 className="text-4xl font-bold text-white text-center mb-4">
-            What Can Meldra Do?
+            Complete Feature Suite
           </h2>
           <p className="text-xl text-slate-400 text-center mb-12 max-w-2xl mx-auto">
             Everything you need to analyze, transform, and visualize your data - all in one powerful platform
@@ -75,42 +108,63 @@ export default function Landing() {
                 icon: BarChart3,
                 icon2: Brain,
                 title: 'AI-Powered Data Analysis',
-                description: 'Upload CSV/Excel files and get instant AI-powered insights, trends, and patterns from your data. No coding required.',
+                description: 'Upload CSV/Excel files and get instant AI-powered insights, trends, and patterns. Smart data validation, type detection, and anomaly identification. Export to PDF, Excel, Word, or PNG.',
                 gradient: 'from-blue-500 via-blue-400 to-emerald-500'
               },
               {
                 icon: Workflow,
                 icon2: Target,
                 title: 'Agentic AI Assistant',
-                description: 'Autonomous AI agent that plans, executes, and reports on complex data operations using natural language commands.',
+                description: 'Autonomous AI agent that plans, executes, and reports on complex data operations using natural language. Handles multi-step workflows automatically.',
                 gradient: 'from-emerald-500 via-blue-500 to-emerald-600'
+              },
+              {
+                icon: BarChart3,
+                icon2: TrendingUp,
+                title: 'Enhanced Chart System',
+                description: '30+ professional chart types organized by category: Core P&L, Forecasting, and Analytics. Export charts to Excel (.xlsx), Word (.docx), or PNG with one click.',
+                gradient: 'from-blue-600 via-emerald-500 to-blue-500'
               },
               {
                 icon: Database,
                 icon2: Layers,
                 title: 'Database Schema Designer',
-                description: 'Visual database schema creator with AI assistance. Design relationships and generate SQL schemas effortlessly.',
-                gradient: 'from-blue-600 via-emerald-500 to-blue-500'
+                description: 'Visual database schema creator with AI assistance. Design relationships, generate SQL schemas, and export database structures effortlessly.',
+                gradient: 'from-emerald-600 via-blue-500 to-emerald-500'
               },
               {
                 icon: FileSpreadsheet,
                 icon2: TrendingUp,
                 title: 'P&L Builder',
-                description: 'Build Profit & Loss statements from natural language. Automated financial calculations and professional reporting.',
-                gradient: 'from-emerald-600 via-blue-500 to-emerald-500'
+                description: 'Build Profit & Loss statements from natural language. Automated financial calculations, variance analysis, and professional reporting with charts.',
+                gradient: 'from-blue-500 via-emerald-500 to-blue-600'
               },
               {
                 icon: FileText,
                 icon2: FileCheck,
                 title: 'Excel to PowerPoint',
-                description: 'Convert Excel data into professional PowerPoint presentations with charts and visualizations in one click.',
-                gradient: 'from-blue-500 via-emerald-500 to-blue-600'
+                description: 'Convert Excel data into professional PowerPoint presentations with charts, tables, and visualizations. Automatic formatting and styling.',
+                gradient: 'from-emerald-500 via-blue-600 to-emerald-600'
+              },
+              {
+                icon: FileCheck,
+                icon2: Zap,
+                title: 'ZIP File Cleaner',
+                description: 'Clean and rename files in ZIP archives. Remove special characters, sanitize filenames, and organize files with batch processing.',
+                gradient: 'from-blue-600 via-emerald-500 to-blue-500'
+              },
+              {
+                icon: BarChart3,
+                icon2: Target,
+                title: 'Advanced Data Tools',
+                description: 'Smart data cleaning (remove duplicates, trim spaces, fix types), advanced filtering with multi-column support, undo/redo, keyboard shortcuts, and data templates library.',
+                gradient: 'from-emerald-500 via-blue-500 to-emerald-600'
               },
               {
                 icon: Shield,
                 icon2: Eye,
-                title: 'Privacy-First Architecture',
-                description: 'All data processing happens in your browser. Your data never leaves your device - complete privacy guaranteed.',
+                title: 'Zero Storage Architecture',
+                description: 'All processing happens in your browser. Files download immediately with original name + timestamp. No data stored on servers - complete privacy guaranteed.',
                 gradient: 'from-emerald-500 via-blue-600 to-emerald-600'
               }
             ].map((feature, idx) => (
@@ -187,6 +241,84 @@ export default function Landing() {
           <p className="text-xl text-slate-400 text-center mb-12">
             Your trusted partner for data analysis and insights
           </p>
+
+          {/* Comprehensive Features Documentation */}
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 mb-8">
+            <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+                <Rocket className="w-5 h-5 text-white" />
+              </div>
+              Complete Feature Suite
+            </h3>
+            
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-blue-400" />
+                  Data Analysis & Visualization
+                </h4>
+                <ul className="list-disc list-inside space-y-2 text-slate-300 ml-4">
+                  <li><strong className="text-white">AI-Powered Analysis:</strong> Upload CSV/Excel files for instant insights, trend detection, and pattern recognition</li>
+                  <li><strong className="text-white">Smart Data Validation:</strong> Auto-detect data types (email, phone, date, number) and validate data quality</li>
+                  <li><strong className="text-white">Enhanced Chart System:</strong> 30+ professional chart types organized by Core P&L, Forecasting, and Analytics categories</li>
+                  <li><strong className="text-white">Advanced Filtering:</strong> Multi-column filters with AND/OR operators, global search across all columns</li>
+                  <li><strong className="text-white">Data Cleaning Tools:</strong> Remove duplicates, trim spaces, fix data types, and clean all with one click</li>
+                  <li><strong className="text-white">Export Options:</strong> Export to PDF, Excel (.xlsx), Word (.docx), CSV, or PNG with professional formatting</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-purple-400" />
+                  AI & Automation
+                </h4>
+                <ul className="list-disc list-inside space-y-2 text-slate-300 ml-4">
+                  <li><strong className="text-white">Agentic AI Assistant:</strong> Autonomous AI agent that plans, executes, and reports on complex data operations</li>
+                  <li><strong className="text-white">Natural Language Processing:</strong> Ask questions about your data in plain English, get instant answers</li>
+                  <li><strong className="text-white">Formula Suggestions:</strong> AI-powered formula recommendations for Excel calculations</li>
+                  <li><strong className="text-white">Data Templates Library:</strong> Pre-built templates for Sales, Finance, HR, Marketing, and more</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                  Professional Reporting
+                </h4>
+                <ul className="list-disc list-inside space-y-2 text-slate-300 ml-4">
+                  <li><strong className="text-white">P&L Builder:</strong> Generate Profit & Loss statements from natural language with automated calculations</li>
+                  <li><strong className="text-white">Excel to PowerPoint:</strong> Convert Excel data into professional presentations with charts and visualizations</li>
+                  <li><strong className="text-white">PDF Export:</strong> Export tables, charts, and reports as PDF with customizable formatting</li>
+                  <li><strong className="text-white">Undo/Redo:</strong> Full action history with Ctrl+Z/Ctrl+Y support for data modifications</li>
+                  <li><strong className="text-white">Keyboard Shortcuts:</strong> Ctrl+S (save), Ctrl+E (export), Ctrl+Z/Y (undo/redo) for faster workflow</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                  <Database className="w-5 h-5 text-cyan-400" />
+                  Database & File Management
+                </h4>
+                <ul className="list-disc list-inside space-y-2 text-slate-300 ml-4">
+                  <li><strong className="text-white">Database Schema Designer:</strong> Visual schema creator with AI assistance, generate SQL schemas</li>
+                  <li><strong className="text-white">ZIP File Cleaner:</strong> Clean and rename files in ZIP archives with batch processing</li>
+                  <li><strong className="text-white">File Processing:</strong> Support for Excel (.xlsx, .xls), CSV, ZIP, and PDF files</li>
+                </ul>
+              </div>
+
+              <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-4">
+                <h4 className="text-lg font-semibold text-emerald-300 mb-2 flex items-center gap-2">
+                  <Shield className="w-5 h-5" />
+                  Zero Storage Architecture
+                </h4>
+                <p className="text-slate-300 text-sm leading-relaxed">
+                  <strong className="text-white">Critical Privacy Feature:</strong> All files are processed in-memory and immediately downloaded to your device. 
+                  Files are automatically deleted after processing - no input or output files remain on our servers. 
+                  Download format: <code className="bg-slate-800 px-2 py-1 rounded text-emerald-300">originalname_YYYYMMDD_HHMMSS_mmm.extension</code>
+                </p>
+              </div>
+            </div>
+          </div>
 
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 mb-8">
             <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">

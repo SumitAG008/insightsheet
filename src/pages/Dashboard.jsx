@@ -2,8 +2,9 @@
 // pages/Dashboard.js - Enhanced dashboard with upload functionality integrated
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Shield, Zap, TrendingUp, Brain, Lock, Gauge, FileText, Download, Trash2, AlertCircle, Sparkles, FileDown, Undo2, Redo2, Save } from 'lucide-react';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+// Dynamic import for jspdf to avoid build issues
+// import { jsPDF } from 'jspdf';
+// import 'jspdf-autotable';
 import DataGrid from '../components/dashboard/DataGrid';
 import CleaningTools from '../components/dashboard/CleaningTools';
 import AIInsights from '../components/dashboard/AIInsights';
@@ -185,41 +186,50 @@ export default function Dashboard() {
     }
   };
 
-  const exportAsPDF = () => {
+  const exportAsPDF = async () => {
     if (!data) return;
     
-    const doc = new jsPDF();
-    
-    // Add title
-    doc.setFontSize(18);
-    doc.text('Data Report', 14, 22);
-    
-    // Add filename and metadata
-    doc.setFontSize(10);
-    doc.text(`File: ${filename}`, 14, 30);
-    doc.text(`Rows: ${data.rows.length} | Columns: ${data.headers.length}`, 14, 36);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 42);
-    
-    // Add table
-    const tableData = data.rows.map(row => 
-      data.headers.map(header => {
-        const value = row[header];
-        return value !== null && value !== undefined ? String(value) : '';
-      })
-    );
-    
-    doc.autoTable({
-      head: [data.headers],
-      body: tableData,
-      startY: 48,
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [10, 31, 68], textColor: 255, fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [245, 247, 250] },
-      margin: { top: 48 },
-    });
-    
-    // Save PDF
-    doc.save(`${filename.replace(/\.[^/.]+$/, '')}_report.pdf`);
+    try {
+      // Dynamic import to avoid build issues
+      const { jsPDF } = await import('jspdf');
+      await import('jspdf-autotable');
+      
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(18);
+      doc.text('Data Report', 14, 22);
+      
+      // Add filename and metadata
+      doc.setFontSize(10);
+      doc.text(`File: ${filename}`, 14, 30);
+      doc.text(`Rows: ${data.rows.length} | Columns: ${data.headers.length}`, 14, 36);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 42);
+      
+      // Add table
+      const tableData = data.rows.map(row => 
+        data.headers.map(header => {
+          const value = row[header];
+          return value !== null && value !== undefined ? String(value) : '';
+        })
+      );
+      
+      doc.autoTable({
+        head: [data.headers],
+        body: tableData,
+        startY: 48,
+        styles: { fontSize: 8, cellPadding: 2 },
+        headStyles: { fillColor: [10, 31, 68], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+        margin: { top: 48 },
+      });
+      
+      // Save PDF
+      doc.save(`${filename.replace(/\.[^/.]+$/, '')}_report.pdf`);
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      alert('Failed to export PDF. Please try again.');
+    }
   };
 
   const exportAsCSV = () => {
@@ -283,11 +293,11 @@ export default function Dashboard() {
     window.XLSX.writeFile(wb, `cleaned_${filename.replace(/\.[^/.]+$/, '')}.xlsx`);
   };
 
-  const handleExport = (format) => {
+  const handleExport = async (format) => {
     if (!data) return;
     
     if (format === 'pdf') {
-      exportAsPDF();
+      await exportAsPDF();
     } else if (format === 'excel') {
       exportAsExcel();
     } else if (format === 'csv') {

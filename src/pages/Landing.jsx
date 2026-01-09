@@ -13,14 +13,34 @@ import {
 
 export default function Landing() {
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
-      {/* Hero Section */}
-      <div className="container mx-auto px-4 py-20">
-        <div className="text-center mb-20">
-          {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <Logo size="large" showText={true} style={{ color: '#FFFFFF' }} />
+    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
+      {/* Header with Logo on Left */}
+      <header className="w-full border-b border-slate-800 py-4 px-4">
+        <div className="container mx-auto flex items-center justify-between">
+          <Logo size="medium" showText={true} style={{ color: '#FFFFFF' }} />
+          <div className="flex gap-4">
+            <Link to="/pricing">
+              <Button variant="ghost" className="text-white hover:text-slate-300">
+                Pricing
+              </Button>
+            </Link>
+            <Link to="/login">
+              <Button variant="ghost" className="text-white hover:text-slate-300">
+                Login
+              </Button>
+            </Link>
+            <Link to="/register">
+              <Button className="text-white" style={{ background: 'linear-gradient(to right, #00BFA6, #4FC3F7)' }}>
+                Get Started
+              </Button>
+            </Link>
           </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <div className="container mx-auto px-4 py-20 flex-1">
+        <div className="text-center mb-20">
           
           <Badge className="mb-6 text-base px-4 py-2 border" style={{ background: 'rgba(0, 191, 166, 0.2)', color: '#4FC3F7', borderColor: 'rgba(0, 191, 166, 0.3)' }}>
             <Sparkles className="w-4 h-4 mr-2" />
@@ -327,6 +347,22 @@ export default function Landing() {
           </div>
         </div>
       </div>
+
+      {/* Footer with Logo on Left */}
+      <footer className="w-full border-t border-slate-800 py-6 px-4 mt-auto">
+        <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <Logo size="small" showText={true} style={{ color: '#FFFFFF' }} />
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
+            <a href="mailto:support@meldra.ai" className="hover:text-slate-300 transition-colors">
+              Support
+            </a>
+            <Link to="/pricing" className="hover:text-slate-300 transition-colors">
+              Pricing
+            </Link>
+            <span className="text-slate-600">© {new Date().getFullYear()} Meldra. All rights reserved.</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

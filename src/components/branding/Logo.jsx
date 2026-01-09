@@ -1,7 +1,7 @@
 // components/branding/Logo.jsx - Meldra Logo Component
 import PropTypes from 'prop-types';
 
-export default function Logo({ className = "", size = "medium", showText = true }) {
+export default function Logo({ className = "", size = "medium", showText = true, style = {} }) {
   const sizes = {
     small: { container: "w-8 h-8", text: "text-sm" },
     medium: { container: "w-10 h-10", text: "text-xl" },
@@ -11,7 +11,7 @@ export default function Logo({ className = "", size = "medium", showText = true 
   const currentSize = sizes[size];
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div className={`flex items-center gap-3 ${className}`} style={style}>
       {/* Meldra Logo Image */}
       <div className={`${currentSize.container} flex items-center justify-center`}>
         <img 
@@ -52,4 +52,5 @@ Logo.propTypes = {
   className: PropTypes.string,
   size: PropTypes.oneOf(['small', 'medium', 'large']),
   showText: PropTypes.bool,
+  style: PropTypes.object,
 };

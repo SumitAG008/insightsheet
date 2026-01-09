@@ -59,8 +59,44 @@ export default function FilenameCleaner() {
     }
   };
 
+  // Comprehensive Unicode to ASCII character mapping
+  const unicodeToAsciiMap = {
+    // German
+    'ä': 'a', 'ö': 'o', 'ü': 'u', 'ß': 'ss', 
+    'Ä': 'A', 'Ö': 'O', 'Ü': 'U',
+    // French
+    'à': 'a', 'â': 'a', 'ç': 'c', 'è': 'e', 'é': 'e', 'ê': 'e', 'ë': 'e',
+    'ì': 'i', 'î': 'i', 'ï': 'i', 'ò': 'o', 'ô': 'o', 'ù': 'u', 'û': 'u', 'ÿ': 'y',
+    'À': 'A', 'Â': 'A', 'Ç': 'C', 'È': 'E', 'É': 'E', 'Ê': 'E', 'Ë': 'E',
+    'Ì': 'I', 'Î': 'I', 'Ï': 'I', 'Ò': 'O', 'Ô': 'O', 'Ù': 'U', 'Û': 'U', 'Ÿ': 'Y',
+    // Spanish
+    'á': 'a', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ñ': 'n',
+    'Á': 'A', 'Í': 'I', 'Ó': 'O', 'Ú': 'U', 'Ñ': 'N',
+    // Italian
+    // Portuguese
+    'ã': 'a', 'õ': 'o', 'ç': 'c',
+    'Ã': 'A', 'Õ': 'O', 'Ç': 'C',
+    // Scandinavian
+    'å': 'a', 'æ': 'ae', 'ø': 'o',
+    'Å': 'A', 'Æ': 'AE', 'Ø': 'O',
+    // Czech/Slovak
+    'č': 'c', 'ď': 'd', 'ě': 'e', 'ň': 'n', 'ř': 'r', 'š': 's', 'ť': 't', 'ů': 'u', 'ž': 'z',
+    'Č': 'C', 'Ď': 'D', 'Ě': 'E', 'Ň': 'N', 'Ř': 'R', 'Š': 'S', 'Ť': 'T', 'Ů': 'U', 'Ž': 'Z',
+    // Polish
+    'ą': 'a', 'ć': 'c', 'ę': 'e', 'ł': 'l', 'ń': 'n', 'ó': 'o', 'ś': 's', 'ź': 'z', 'ż': 'z',
+    'Ą': 'A', 'Ć': 'C', 'Ę': 'E', 'Ł': 'L', 'Ń': 'N', 'Ó': 'O', 'Ś': 'S', 'Ź': 'Z', 'Ż': 'Z',
+    // Romanian
+    'ă': 'a', 'â': 'a', 'î': 'i', 'ș': 's', 'ț': 't',
+    'Ă': 'A', 'Â': 'A', 'Î': 'I', 'Ș': 'S', 'Ț': 'T',
+    // Turkish
+    'ğ': 'g', 'ı': 'i', 'ş': 's',
+    'Ğ': 'G', 'İ': 'I', 'Ş': 'S',
+    // Other special characters
+    '¿': '', '¡': '', '°': '', '©': 'c', '®': 'r', '™': 'tm'
+  };
+
   const languageCharMaps = {
-    german: { 'ä': 'ae', 'ö': 'oe', 'ü': 'ue', 'ß': 'ss', 'Ä': 'Ae', 'Ö': 'Oe', 'Ü': 'Ue' },
+    german: { 'ä': 'a', 'ö': 'o', 'ü': 'u', 'ß': 'ss', 'Ä': 'A', 'Ö': 'O', 'Ü': 'U' },
     italian: { 'à': 'a', 'è': 'e', 'é': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u' },
     greek: { regex: /[\u0370-\u03FF\u1F00-\u1FFF]/g, replacement: '' },
     chinese: { regex: /[\u4E00-\u9FFF]/g, replacement: '' },
@@ -111,11 +147,41 @@ export default function FilenameCleaner() {
     setPreview([]);
   };
 
+  // Convert Unicode characters to ASCII equivalents
+  const convertUnicodeToAscii = (text) => {
+    let result = text;
+    
+    // First, apply comprehensive Unicode to ASCII mapping
+    Object.keys(unicodeToAsciiMap).forEach(char => {
+      result = result.split(char).join(unicodeToAsciiMap[char]);
+    });
+    
+    // Then, normalize remaining Unicode characters using Unicode normalization
+    // This handles characters that decompose (e.g., é → e + combining mark)
+    try {
+      // Normalize to NFD (decomposed form) to separate base characters from combining marks
+      result = result.normalize('NFD');
+      // Remove combining diacritical marks (Unicode category: Mn - Mark, nonspacing)
+      result = result.replace(/[\u0300-\u036f]/g, '');
+      // Normalize back to NFC (composed form)
+      result = result.normalize('NFC');
+    } catch (e) {
+      // If normalization fails, continue with what we have
+      console.warn('Unicode normalization failed:', e);
+    }
+    
+    return result;
+  };
+
   const processFilename = (filename) => {
     const parts = filename.split('.');
     const extension = parts.length > 1 && options.preserveExtension ? '.' + parts.pop() : '';
     let baseName = parts.join('.');
 
+    // Step 1: Convert Unicode to ASCII (handles ü→u, é→e, etc.)
+    baseName = convertUnicodeToAscii(baseName);
+
+    // Step 2: Apply language-specific replacements (if enabled)
     Object.keys(selectedLanguages).forEach(lang => {
       if (selectedLanguages[lang]) {
         const map = languageCharMaps[lang];
@@ -129,18 +195,21 @@ export default function FilenameCleaner() {
       }
     });
 
+    // Step 3: Apply custom rules (user-defined find & replace)
     options.customRules.forEach(rule => {
       if (rule.find && rule.replace !== undefined) {
         baseName = baseName.split(rule.find).join(rule.replace);
       }
     });
 
+    // Step 4: Remove disallowed characters
     if (options.disallowedCharacters) {
       options.disallowedCharacters.split('').forEach(char => {
         baseName = baseName.split(char).join(options.replacementCharacter);
       });
     }
 
+    // Step 5: Filter to allowed characters only
     if (options.allowedCharacters) {
       const allowed = new Set(options.allowedCharacters.split(''));
       baseName = baseName.split('').map(char => 
@@ -148,9 +217,11 @@ export default function FilenameCleaner() {
       ).join('');
     }
 
+    // Step 6: Clean up multiple replacement characters
     baseName = baseName.replace(new RegExp(`\\${options.replacementCharacter}{2,}`, 'g'), options.replacementCharacter);
     baseName = baseName.replace(new RegExp(`^\\${options.replacementCharacter}+|\\${options.replacementCharacter}+$`, 'g'), '');
 
+    // Step 7: Truncate if too long
     if (options.maxLength && baseName.length > options.maxLength) {
       baseName = baseName.substring(0, options.maxLength);
     }

@@ -89,6 +89,16 @@ class ZipProcessorService:
             # Remove null bytes and control characters
             filename = "".join(char for char in filename if ord(char) >= 32)
 
+            # Normalize Unicode to ASCII (handles ü→u, é→e, etc.)
+            filename = unicodedata.normalize('NFD', filename)
+            # Remove combining diacritical marks (Unicode category: Mn - Mark, nonspacing)
+            filename = ''.join(
+                c for c in filename
+                if unicodedata.category(c) != 'Mn'
+            )
+            # Normalize back to NFC
+            filename = unicodedata.normalize('NFC', filename)
+
             # Handle language-specific replacements
             if language_replacements:
                 for old_char, new_char in language_replacements.items():

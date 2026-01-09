@@ -29,11 +29,6 @@ export default function Landing() {
                 Login
               </Button>
             </Link>
-            <Link to="/register">
-              <Button className="text-white" style={{ background: 'linear-gradient(to right, #00BFA6, #4FC3F7)' }}>
-                Get Started
-              </Button>
-            </Link>
           </div>
         </div>
       </header>
@@ -46,9 +41,6 @@ export default function Landing() {
             <Sparkles className="w-4 h-4 mr-2" />
             Privacy-First Data Analysis Platform
           </Badge>
-          <h1 className="text-6xl md:text-7xl font-bold text-white mb-6" style={{ background: 'linear-gradient(to right, #4FC3F7, #00BFA6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            Meldra
-          </h1>
           <p className="text-2xl md:text-3xl text-slate-300 font-semibold mb-4">
             Data Made Simple
           </p>
@@ -58,16 +50,11 @@ export default function Landing() {
           </p>
           
           {/* Single Strategic CTA - Only in Hero */}
-          <div className="flex gap-4 justify-center mt-8">
+          <div className="flex justify-center mt-8">
             <Link to="/register">
               <Button className="px-8 py-4 rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2 hover:opacity-90" style={{ background: '#000000', color: '#FFFFFF', border: '2px solid #00E5FF' }}>
                 Get Started Free
                 <ArrowRight className="w-5 h-5" />
-              </Button>
-            </Link>
-            <Link to="/pricing">
-              <Button variant="outline" className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-semibold text-lg transition-all border" style={{ borderColor: 'rgba(79, 195, 247, 0.3)' }}>
-                View Pricing
               </Button>
             </Link>
           </div>

@@ -61,7 +61,7 @@ const CHART_CATEGORIES = {
     ]
   },
   engineering: {
-    name: 'Engineering Analytics',
+    name: 'Analytics',
     icon: Zap,
     charts: [
       { id: 'log_scale', name: 'Log Scale Line', icon: LineChart, description: 'Exponential trends' },

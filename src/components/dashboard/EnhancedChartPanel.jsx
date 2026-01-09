@@ -189,6 +189,42 @@ export default function EnhancedChartPanel({ data }) {
       chartDataArray = histogram;
     }
 
+    if (type === 'error_bars') {
+      // For error bars, calculate error values if not provided
+      // If yColumn2 exists, use it as error value, otherwise calculate standard deviation
+      chartDataArray = chartDataArray.map(item => {
+        const value = item[yColumn];
+        let errorValue = 0;
+        
+        if (yColumn2 && item[yColumn2] !== undefined) {
+          // Use provided error column
+          errorValue = Math.abs(parseFloat(item[yColumn2]) || 0);
+        } else {
+          // Calculate standard deviation from all values in this category
+          const categoryValues = chartDataArray
+            .filter(d => d.name === item.name)
+            .map(d => parseFloat(d[yColumn]))
+            .filter(v => !isNaN(v));
+          
+          if (categoryValues.length > 1) {
+            const mean = categoryValues.reduce((a, b) => a + b, 0) / categoryValues.length;
+            const variance = categoryValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / categoryValues.length;
+            errorValue = Math.sqrt(variance);
+          } else {
+            // If only one value, use 10% as default error
+            errorValue = Math.abs(value) * 0.1;
+          }
+        }
+        
+        return {
+          ...item,
+          errorValue,
+          errorUpper: value + errorValue,
+          errorLower: Math.max(0, value - errorValue) // Ensure non-negative for display
+        };
+      });
+    }
+
     return chartDataArray.slice(0, 50); // Limit to 50 items for performance
   };
 

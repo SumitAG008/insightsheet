@@ -23,53 +23,53 @@ import {
 
 const CHART_COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#06B6D4', '#F472B6'];
 
-// Chart categories with all 30+ chart types
+// Chart categories with all 30+ chart types - Clean, professional names
 const CHART_CATEGORIES = {
   stakeholder: {
     name: 'Core Stakeholder & P&L',
     icon: DollarSign,
     charts: [
-      { id: 'line', name: 'Line (Time Series)', icon: LineChart, description: 'Trends over time' },
-      { id: 'multiline', name: 'Multi-Line Comparison', icon: TrendingUp, description: 'Compare products/regions' },
-      { id: 'column', name: 'Column (Clustered)', icon: BarChart2, description: 'Compare categories side-by-side' },
-      { id: 'bar', name: 'Bar (Horizontal)', icon: BarChart3, description: 'Rankings (top customers, cost buckets)' },
+      { id: 'line', name: 'Line Chart', icon: LineChart, description: 'Trends over time' },
+      { id: 'multiline', name: 'Multi-Line', icon: TrendingUp, description: 'Compare products/regions' },
+      { id: 'column', name: 'Column Chart', icon: BarChart2, description: 'Compare categories side-by-side' },
+      { id: 'bar', name: 'Bar Chart', icon: BarChart3, description: 'Rankings and comparisons' },
       { id: 'stacked_column', name: 'Stacked Column', icon: Layers, description: 'Composition over time' },
-      { id: 'stacked_100', name: '100% Stacked Column', icon: Percent, description: 'Mix change over time' },
-      { id: 'area', name: 'Area (Stacked)', icon: Activity, description: 'Cumulative contribution' },
-      { id: 'combo', name: 'Combo (Column + Line)', icon: TrendingUp, description: 'Actual vs target' },
-      { id: 'waterfall', name: 'Waterfall', icon: ArrowUpDown, description: 'P&L bridge, variance bridges' },
-      { id: 'pareto', name: 'Pareto (80/20)', icon: Target, description: 'Defect causes, spend drivers' },
+      { id: 'stacked_100', name: '100% Stacked', icon: Percent, description: 'Mix change over time' },
+      { id: 'area', name: 'Area Chart', icon: Activity, description: 'Cumulative contribution' },
+      { id: 'combo', name: 'Combo Chart', icon: TrendingUp, description: 'Column and line combined' },
+      { id: 'waterfall', name: 'Waterfall', icon: ArrowUpDown, description: 'P&L bridge analysis' },
+      { id: 'pareto', name: 'Pareto Chart', icon: Target, description: '80/20 analysis' },
       { id: 'histogram', name: 'Histogram', icon: BarChart2, description: 'Distribution analysis' },
-      { id: 'box_whisker', name: 'Box & Whisker', icon: Box, description: 'Variability/outliers' },
-      { id: 'scatter', name: 'Scatter (XY)', icon: Circle, description: 'Correlation analysis' },
-      { id: 'bubble', name: 'Bubble', icon: Circle, description: '3D comparison' },
-      { id: 'heatmap', name: 'Heatmap', icon: Grid3x3, description: 'Cost centers vs months' },
+      { id: 'box_whisker', name: 'Box & Whisker', icon: Box, description: 'Variability analysis' },
+      { id: 'scatter', name: 'Scatter Plot', icon: Circle, description: 'Correlation analysis' },
+      { id: 'bubble', name: 'Bubble Chart', icon: Circle, description: '3D comparison' },
+      { id: 'heatmap', name: 'Heatmap', icon: Grid3x3, description: 'Matrix visualization' },
     ]
   },
   forecasting: {
     name: 'Forecasting & KPI',
     icon: Target,
     charts: [
-      { id: 'variance_column', name: 'Actual vs Budget Variance', icon: TrendingDown, description: 'Month-by-month variance' },
-      { id: 'variance_waterfall', name: 'Variance Waterfall', icon: ArrowUpDown, description: 'Explain variance drivers' },
-      { id: 'moving_average', name: 'Moving Average Line', icon: TrendingUp, description: 'Smoothing noisy trends' },
+      { id: 'variance_column', name: 'Variance Column', icon: TrendingDown, description: 'Budget vs actual' },
+      { id: 'variance_waterfall', name: 'Variance Waterfall', icon: ArrowUpDown, description: 'Variance drivers' },
+      { id: 'moving_average', name: 'Moving Average', icon: TrendingUp, description: 'Trend smoothing' },
       { id: 'run_chart', name: 'Run Chart', icon: Activity, description: 'Process monitoring' },
-      { id: 'control_chart', name: 'Control Chart (SPC)', icon: Gauge, description: 'Mean + UCL/LCL' },
-      { id: 'cusum', name: 'Cumulative Sum (CUSUM)', icon: TrendingUp, description: 'Drift detection' },
-      { id: 'scurve', name: 'S-Curve (Cumulative)', icon: TrendingUp, description: 'Project tracking' },
-      { id: 'funnel', name: 'Funnel', icon: Filter, description: 'Pipeline stages' },
+      { id: 'control_chart', name: 'Control Chart', icon: Gauge, description: 'SPC analysis' },
+      { id: 'cusum', name: 'CUSUM Chart', icon: TrendingUp, description: 'Drift detection' },
+      { id: 'scurve', name: 'S-Curve', icon: TrendingUp, description: 'Cumulative tracking' },
+      { id: 'funnel', name: 'Funnel Chart', icon: Filter, description: 'Pipeline stages' },
     ]
   },
   engineering: {
-    name: 'Engineering / PhD Analytics',
+    name: 'Engineering Analytics',
     icon: Zap,
     charts: [
-      { id: 'log_scale', name: 'Log-Scale Line', icon: LineChart, description: 'Exponential growth/decay' },
-      { id: 'semi_log', name: 'Semi-log Plot', icon: TrendingUp, description: 'Linearize exponential' },
-      { id: 'error_bars', name: 'Error Bar Chart', icon: AlertCircle, description: 'Measurement uncertainty' },
-      { id: 'scatter_regression', name: 'Scatter with Regression', icon: Circle, description: 'Model fit & R²' },
-      { id: 'radar', name: 'Radar (Spider)', icon: Layers, description: 'Multi-metric comparison' },
-      { id: 'gantt', name: 'Gantt (Stacked Bar)', icon: Calendar, description: 'Schedule + phases' },
+      { id: 'log_scale', name: 'Log Scale Line', icon: LineChart, description: 'Exponential trends' },
+      { id: 'semi_log', name: 'Semi-Log Plot', icon: TrendingUp, description: 'Linearized exponential' },
+      { id: 'error_bars', name: 'Error Bars', icon: AlertCircle, description: 'Uncertainty intervals' },
+      { id: 'scatter_regression', name: 'Regression Plot', icon: Circle, description: 'Model fit analysis' },
+      { id: 'radar', name: 'Radar Chart', icon: Layers, description: 'Multi-metric comparison' },
+      { id: 'gantt', name: 'Gantt Chart', icon: Calendar, description: 'Project timeline' },
       { id: 'pie', name: 'Pie Chart', icon: PieChart, description: 'Composition analysis' },
     ]
   }

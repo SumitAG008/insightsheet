@@ -348,10 +348,9 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Footer with Logo on Left */}
+      {/* Footer */}
       <footer className="w-full border-t border-slate-800 py-6 px-4 mt-auto">
-        <div className="container mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <Logo size="small" showText={true} style={{ color: '#FFFFFF' }} />
+        <div className="container mx-auto flex flex-col md:flex-row items-center justify-center gap-4">
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
             <a href="mailto:support@meldra.ai" className="hover:text-slate-300 transition-colors">
               Support

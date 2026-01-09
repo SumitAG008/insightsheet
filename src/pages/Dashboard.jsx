@@ -11,6 +11,8 @@ import ChartPanel from '../components/dashboard/ChartPanel';
 import AIAssistant from '../components/dashboard/AIAssistant';
 import DataTransform from '../components/dashboard/DataTransform';
 import SmartFormula from '../components/dashboard/SmartFormula';
+import DataValidator from '../components/dashboard/DataValidator';
+import AdvancedFilter from '../components/dashboard/AdvancedFilter';
 import FileUploadZone from '../components/upload/FileUploadZone';
 import TemplateSelector from '../components/dashboard/TemplateSelector';
 import { Button } from '@/components/ui/button';
@@ -28,6 +30,7 @@ export default function Dashboard() {
   const [cleanedRowCount, setCleanedRowCount] = useState(0);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [displayData, setDisplayData] = useState(null);
   
   // Undo/Redo functionality
   const [history, setHistory] = useState([]);
@@ -41,6 +44,7 @@ export default function Dashboard() {
     if (storedData) {
       const parsedData = JSON.parse(storedData);
       setData(parsedData);
+      setDisplayData(parsedData);
       setFilename(storedFilename || 'spreadsheet.csv');
       // Initialize history with initial data
       historyRef.current.history = [parsedData];
@@ -49,6 +53,12 @@ export default function Dashboard() {
       setHistoryIndex(0);
     }
   }, []);
+
+  useEffect(() => {
+    if (data) {
+      setDisplayData(data);
+    }
+  }, [data]);
 
   // Add to history when data changes
   const addToHistory = useCallback((newData) => {
@@ -452,7 +462,12 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Analysis Dashboard</h1>
             <p className="text-slate-600 dark:text-slate-400 flex items-center gap-2 flex-wrap">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              {filename} • {data.rows.length} rows • {data.headers.length} columns
+              {filename} • {(displayData || data).rows.length} rows • {(displayData || data).headers.length} columns
+              {displayData && displayData.rows.length !== data.rows.length && (
+                <span className="ml-2 px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full">
+                  Filtered: {data.rows.length - displayData.rows.length} hidden
+                </span>
+              )}
               {cleanedRowCount > 0 && (
                 <span className="ml-2 px-2 py-1 bg-amber-500/20 text-amber-400 text-xs rounded-full">
                   {cleanedRowCount} cleaned
@@ -578,32 +593,34 @@ export default function Dashboard() {
           <TabsContent value="analysis" className="space-y-6">
             <div className="grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
+                <AdvancedFilter data={data} onFilteredData={setDisplayData} />
                 <CleaningTools 
-                  data={data} 
+                  data={displayData || data} 
                   onDataUpdate={handleDataUpdate}
                   onCleanedCount={setCleanedRowCount}
                 />
-                <DataGrid data={data} />
+                <DataValidator data={displayData || data} onDataUpdate={handleDataUpdate} />
+                <DataGrid data={displayData || data} />
               </div>
 
               <div className="space-y-6">
-                <AIInsights data={data} />
-                <ChartPanel data={data} />
+                <AIInsights data={displayData || data} />
+                <ChartPanel data={displayData || data} />
               </div>
             </div>
           </TabsContent>
 
           <TabsContent value="transform" className="space-y-6">
             <div className="grid lg:grid-cols-2 gap-6">
-              <DataTransform data={data} onDataUpdate={handleDataUpdate} />
-              <SmartFormula data={data} onDataUpdate={handleDataUpdate} />
+              <DataTransform data={displayData || data} onDataUpdate={handleDataUpdate} />
+              <SmartFormula data={displayData || data} onDataUpdate={handleDataUpdate} />
             </div>
-            <DataGrid data={data} />
+            <DataGrid data={displayData || data} />
           </TabsContent>
 
           <TabsContent value="ai" className="space-y-6">
-            <AIAssistant data={data} onDataUpdate={handleDataUpdate} />
-            <DataGrid data={data} />
+            <AIAssistant data={displayData || data} onDataUpdate={handleDataUpdate} />
+            <DataGrid data={displayData || data} />
           </TabsContent>
         </Tabs>
       </div>

@@ -135,8 +135,8 @@ export default function Layout({ children }) {
                     to={createPageUrl('Dashboard')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('Dashboard'))
-                        ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        ? 'bg-blue-600 text-white shadow-md font-semibold'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <LayoutDashboard className="w-4 h-4" />
@@ -148,7 +148,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('FileAnalyzer'))
                         ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <BarChart3 className="w-4 h-4" />
@@ -160,7 +160,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('PLBuilder'))
                         ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <FileSpreadsheet className="w-4 h-4" />
@@ -172,7 +172,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('AgenticAI'))
                         ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <Brain className="w-4 h-4" />
@@ -184,7 +184,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('DataModelCreator'))
                         ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <Database className="w-4 h-4" />
@@ -196,7 +196,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('FileToPPT'))
                         ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <FileText className="w-4 h-4" />
@@ -208,7 +208,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('FilenameCleaner'))
                         ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <FileArchive className="w-4 h-4" />
@@ -220,7 +220,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('Reviews'))
                         ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <MessageSquare className="w-4 h-4" />
@@ -249,7 +249,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('AdminDashboard'))
                         ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <DollarSign className="w-4 h-4" />
@@ -261,7 +261,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('UserManagement'))
                         ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <Users className="w-4 h-4" />
@@ -273,7 +273,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('DownloadCode'))
                         ? 'bg-blue-600 text-white shadow-md'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <Download className="w-4 h-4" />
@@ -284,10 +284,10 @@ export default function Layout({ children }) {
 
               {user && user.email ? (
                 <div className="ml-4 flex items-center gap-3">
-                  <span className="text-sm text-slate-600 dark:text-slate-300 hidden sm:inline">{user.email}</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100 font-medium hidden sm:inline">{user.email}</span>
                   <button
                     onClick={handleLogout}
-                    className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all font-medium"
+                    className="px-4 py-2 text-sm text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all font-semibold border border-slate-300 dark:border-slate-700"
                   >
                     Logout
                   </button>
@@ -322,7 +322,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('Dashboard'))
                         ? 'bg-blue-600 text-white'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <LayoutDashboard className="w-4 h-4" />
@@ -334,7 +334,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('FileAnalyzer'))
                         ? 'bg-blue-600 text-white'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <BarChart3 className="w-4 h-4" />
@@ -346,7 +346,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('PLBuilder'))
                         ? 'bg-blue-600 text-white'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <FileSpreadsheet className="w-4 h-4" />
@@ -358,7 +358,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('AgenticAI'))
                         ? 'bg-blue-600 text-white'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <Brain className="w-4 h-4" />
@@ -370,7 +370,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('DataModelCreator'))
                         ? 'bg-blue-600 text-white'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <Database className="w-4 h-4" />
@@ -382,7 +382,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('FileToPPT'))
                         ? 'bg-blue-600 text-white'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <FileText className="w-4 h-4" />
@@ -394,7 +394,7 @@ export default function Layout({ children }) {
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
                       isActive(createPageUrl('FilenameCleaner'))
                         ? 'bg-blue-600 text-white'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
                     }`}
                   >
                     <FileArchive className="w-4 h-4" />

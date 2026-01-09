@@ -509,6 +509,85 @@ export default function EnhancedChartPanel({ data }) {
           </ResponsiveContainer>
         );
 
+      case 'error_bars':
+        // Error Bars chart - shows uncertainty intervals (standard deviation, confidence intervals, etc.)
+        // Uses Line chart with custom error bar visualization
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsLineChart {...commonProps}>
+              <defs>
+                {/* Custom shape for error bars */}
+                <g id="errorBar">
+                  <line x1="0" y1="0" x2="0" y2="1" stroke="currentColor" strokeWidth="2" />
+                  <line x1="-5" y1="0" x2="5" y2="0" stroke="currentColor" strokeWidth="2" />
+                  <line x1="-5" y1="1" x2="5" y2="1" stroke="currentColor" strokeWidth="2" />
+                </g>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip 
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const data = payload[0].payload;
+                    return (
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-lg">
+                        <p className="text-white font-semibold mb-1">{data.name}</p>
+                        <p className="text-slate-300 text-sm">
+                          Value: <span className="text-white">{data[yColumn]?.toFixed(2)}</span>
+                        </p>
+                        {data.errorValue !== undefined && (
+                          <>
+                            <p className="text-slate-300 text-sm">
+                              Error: ±<span className="text-white">{data.errorValue?.toFixed(2)}</span>
+                            </p>
+                            <p className="text-slate-400 text-xs mt-1">
+                              Range: {data.errorLower?.toFixed(2)} - {data.errorUpper?.toFixed(2)}
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              {/* Error bars as reference lines */}
+              {chartData.map((entry, index) => {
+                if (entry.errorUpper === undefined || entry.errorLower === undefined) return null;
+                return (
+                  <g key={`error-${index}`}>
+                    <ReferenceLine 
+                      y={entry.errorUpper} 
+                      stroke={primaryColor} 
+                      strokeWidth={1} 
+                      strokeDasharray="2 2"
+                      opacity={0.5}
+                    />
+                    <ReferenceLine 
+                      y={entry.errorLower} 
+                      stroke={primaryColor} 
+                      strokeWidth={1} 
+                      strokeDasharray="2 2"
+                      opacity={0.5}
+                    />
+                  </g>
+                );
+              })}
+              {/* Main data line with points */}
+              <Line 
+                type="monotone" 
+                dataKey={yColumn} 
+                stroke={primaryColor} 
+                strokeWidth={3} 
+                dot={{ fill: primaryColor, r: 6, strokeWidth: 2, stroke: '#fff' }}
+                activeDot={{ r: 8 }}
+              />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        );
+
       case 'pie':
         return (
           <ResponsiveContainer width="100%" height={400}>
@@ -675,14 +754,14 @@ export default function EnhancedChartPanel({ data }) {
           </div>
         </div>
 
-        {(chartType === 'multiline' || chartType === 'combo' || chartType === 'stacked_column' || chartType === 'stacked_100') && (
+        {(chartType === 'multiline' || chartType === 'combo' || chartType === 'stacked_column' || chartType === 'stacked_100' || chartType === 'error_bars') && (
           <div>
             <label className="text-sm text-slate-300 mb-2 block font-medium">
-              Y-Axis 2 (Second Value)
+              {chartType === 'error_bars' ? 'Error Value (Optional)' : 'Y-Axis 2 (Second Value)'}
             </label>
             <Select value={yColumn2 || ''} onValueChange={setYColumn2}>
               <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-200 h-10">
-                <SelectValue placeholder="Select second numeric column" />
+                <SelectValue placeholder={chartType === 'error_bars' ? 'Select error column (or leave empty for auto-calculated)' : 'Select second numeric column'} />
               </SelectTrigger>
               <SelectContent>
                 {numericColumns.filter(col => col !== yColumn).map(col => (
@@ -690,6 +769,11 @@ export default function EnhancedChartPanel({ data }) {
                 ))}
               </SelectContent>
             </Select>
+            {chartType === 'error_bars' && (
+              <p className="text-xs text-slate-500 mt-1">
+                Optional: Select a column with error values. If not provided, standard deviation will be calculated automatically.
+              </p>
+            )}
           </div>
         )}
 

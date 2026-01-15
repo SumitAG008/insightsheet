@@ -131,13 +131,16 @@ export default function Register() {
               <Input
                 name="email"
                 type="email"
-                placeholder="your@email.com"
+                placeholder="your@email.com (any email provider)"
                 value={formData.email}
                 onChange={handleChange}
                 autoComplete="email"
                 required
                 className="bg-slate-800/50 border-slate-700 text-slate-200"
               />
+              <p className="text-xs text-slate-400">
+                ✓ All email providers accepted (Gmail, Outlook, Yahoo, custom domains, etc.)
+              </p>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-300">Password</label>

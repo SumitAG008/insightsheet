@@ -121,37 +121,54 @@ export default function SQLGenerator({ schema }) {
 
   const generateInsertStatements = () => {
     if (!schema.tables || schema.tables.length === 0) {
-      return '-- No tables to generate INSERT statements';
+      return '-- No tables defined in schema\n-- Add tables to generate INSERT statements';
     }
 
-    let sql = `-- Sample INSERT statements\n\n`;
+    let sql = `-- Sample INSERT Statements\n`;
+    sql += `-- Generated: ${new Date().toLocaleString()}\n`;
+    sql += `-- These are example INSERT statements with sample data\n`;
+    sql += `-- Modify the values according to your requirements\n\n`;
 
     schema.tables.forEach((table, index) => {
       if (index > 0) sql += '\n';
+      
+      sql += `-- Insert sample data into ${table.name}\n`;
 
       const columns = table.columns
         .filter(col => !col.autoIncrement)
         .map(col => col.name)
         .join(', ');
 
-      const values = table.columns
-        .filter(col => !col.autoIncrement)
-        .map(col => {
-          if (col.type.includes('CHAR') || col.type.includes('TEXT')) {
-            return "'sample_value'";
-          } else if (col.type.includes('INT') || col.type.includes('NUMERIC') || col.type.includes('DECIMAL')) {
-            return '1';
-          } else if (col.type.includes('BOOL')) {
-            return 'true';
-          } else if (col.type.includes('DATE') || col.type.includes('TIME')) {
-            return "'2024-01-01'";
-          } else {
-            return 'NULL';
-          }
-        })
-        .join(', ');
+      if (!columns) {
+        sql += `-- No insertable columns (all are auto-increment)\n`;
+        return;
+      }
 
-      sql += `INSERT INTO ${table.name} (${columns})\nVALUES (${values});\n`;
+      // Generate multiple sample rows
+      for (let row = 1; row <= 3; row++) {
+        const values = table.columns
+          .filter(col => !col.autoIncrement)
+          .map((col, idx) => {
+            if (col.type.includes('CHAR') || col.type.includes('TEXT') || col.type.includes('VARCHAR')) {
+              return `'sample_${col.name}_${row}'`;
+            } else if (col.type.includes('INT') || col.type.includes('NUMERIC') || col.type.includes('DECIMAL') || col.type.includes('BIGINT')) {
+              return String(row * 10 + idx);
+            } else if (col.type.includes('BOOL') || col.type.includes('BOOLEAN')) {
+              return row % 2 === 0 ? 'true' : 'false';
+            } else if (col.type.includes('DATE')) {
+              return `'2024-01-${String(row).padStart(2, '0')}'`;
+            } else if (col.type.includes('TIME')) {
+              return `'12:00:00'`;
+            } else if (col.type.includes('TIMESTAMP')) {
+              return `'2024-01-${String(row).padStart(2, '0')} 12:00:00'`;
+            } else {
+              return 'NULL';
+            }
+          })
+          .join(', ');
+
+        sql += `INSERT INTO ${table.name} (${columns})\nVALUES (${values});\n`;
+      }
     });
 
     return sql;

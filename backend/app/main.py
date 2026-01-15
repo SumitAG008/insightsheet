@@ -545,6 +545,110 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
         )
 
 
+@app.get("/api/auth/verify-email")
+async def verify_email(token: str, db: Session = Depends(get_db)):
+    """Verify user email using verification token"""
+    try:
+        # Find user by verification token
+        user = db.query(User).filter(User.verification_token == token).first()
+        
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid verification token"
+            )
+        
+        # Check if token expired
+        if hasattr(user, 'verification_token_expires') and user.verification_token_expires:
+            if user.verification_token_expires < datetime.utcnow():
+                # Clear expired token
+                user.verification_token = None
+                user.verification_token_expires = None
+                db.commit()
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Verification token has expired. Please request a new verification email."
+                )
+        
+        # Verify the user
+        user.is_verified = True
+        user.verification_token = None
+        user.verification_token_expires = None
+        db.commit()
+        
+        logger.info(f"Email verified successfully for {user.email}")
+        
+        return {
+            "message": "Email verified successfully! You can now login.",
+            "email": user.email
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Email verification error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Email verification failed: {str(e)}"
+        )
+
+
+@app.post("/api/auth/resend-verification")
+async def resend_verification(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """Resend verification email to user"""
+    try:
+        user = db.query(User).filter(User.email == request.email).first()
+        
+        # Always return success (security: don't reveal if email exists)
+        if not user:
+            logger.warning(f"Verification resend requested for non-existent email: {request.email}")
+            return {
+                "message": "If an account with that email exists, a verification email has been sent."
+            }
+        
+        # Check if already verified
+        if user.is_verified:
+            return {
+                "message": "Your email is already verified. You can login now."
+            }
+        
+        # Generate new verification token
+        verification_token = secrets.token_urlsafe(32)
+        verification_expires = datetime.utcnow() + timedelta(hours=24)  # Token expires in 24 hours
+        
+        # Update user with new token
+        if hasattr(user, 'verification_token'):
+            user.verification_token = verification_token
+        if hasattr(user, 'verification_token_expires'):
+            user.verification_token_expires = verification_expires
+        db.commit()
+        
+        # Generate verification link
+        frontend_url = os.getenv("FRONTEND_URL", "https://insight.meldra.ai")
+        verification_link = f"{frontend_url}/verify-email?token={verification_token}"
+        
+        # Send verification email
+        try:
+            email_sent = await send_verification_email(user.email, user.full_name, verification_link)
+            if not email_sent:
+                logger.warning(f"Verification email not sent to {user.email} (SMTP/Resend not configured). Verification link: {verification_link}")
+        except Exception as e:
+            logger.warning(f"Failed to send verification email: {str(e)}")
+        
+        logger.info(f"Verification email resent to {user.email}")
+        
+        return {
+            "message": "If an account with that email exists, a verification email has been sent. Please check your inbox and spam folder."
+        }
+        
+    except Exception as e:
+        logger.error(f"Resend verification error: {str(e)}")
+        # Still return success for security
+        return {
+            "message": "If an account with that email exists, a verification email has been sent."
+        }
+
+
 @app.get("/api/auth/me")
 async def get_me(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get current user info"""

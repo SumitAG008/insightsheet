@@ -46,7 +46,8 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
-  
+  };
+
   const handleResendVerification = async () => {
     if (!email) {
       setError('Please enter your email address first.');
@@ -83,7 +84,6 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
-  };
   };
 
   return (

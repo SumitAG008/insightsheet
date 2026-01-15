@@ -108,7 +108,8 @@ export default function Register() {
             {success && (
               <Alert className="bg-blue-500/10 border-blue-500/30">
                 <AlertDescription className="text-blue-300">
-                  <strong>Registration successful!</strong> Please check your email to verify your account. 
+                  <strong>Registration successful!</strong> A verification email has been sent to <strong>{formData.email}</strong>. 
+                  Please check your inbox (and spam folder) and click the verification link to activate your account. 
                   You'll need to verify your email before you can login. Redirecting to login page...
                 </AlertDescription>
               </Alert>

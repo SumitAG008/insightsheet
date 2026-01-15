@@ -37,44 +37,46 @@ export default function Landing() {
       <div className="container mx-auto px-4 py-20 flex-1">
         <div className="text-center mb-20">
           
-          <Badge className="mb-6 text-base px-4 py-2 border" style={{ background: 'rgba(0, 191, 166, 0.2)', color: '#4FC3F7', borderColor: 'rgba(0, 191, 166, 0.3)' }}>
+          <Badge className="mb-8 text-base px-5 py-2.5 border tracking-wide" style={{ background: 'rgba(0, 191, 166, 0.2)', color: '#4FC3F7', borderColor: 'rgba(0, 191, 166, 0.3)', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600 }}>
             <Sparkles className="w-4 h-4 mr-2" />
             Privacy-First Data Analysis Platform
           </Badge>
-          <p className="text-2xl md:text-3xl text-slate-300 font-semibold mb-4">
+          <h1 className="text-5xl md:text-7xl lg:text-8xl text-white font-bold mb-6 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", lineHeight: '1.1', letterSpacing: '-0.03em' }}>
             Data Made Simple
-          </p>
-          <p className="text-xl text-slate-400 max-w-3xl mx-auto mb-8 leading-relaxed">
-            Transform your data into actionable insights with AI-powered analysis, automated workflows, and professional reporting. 
-            All while keeping your data completely private and secure.
+          </h1>
+          <p className="text-xl md:text-2xl text-slate-300 max-w-4xl mx-auto mb-12 leading-relaxed font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>
+            Transform complex data into clear, actionable insights through intelligent AI analysis, seamless automation, and enterprise-grade reporting capabilities. 
+            Experience the power of advanced analytics while maintaining absolute control over your data privacy and security.
           </p>
           
           {/* Zero Storage Promise - Prominent */}
-          <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-6 mb-12 max-w-3xl mx-auto">
-            <div className="flex items-start gap-4">
-              <Shield className="w-8 h-8 text-emerald-400 flex-shrink-0 mt-1" />
+          <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-2xl p-8 md:p-10 mb-16 max-w-4xl mx-auto backdrop-blur-sm">
+            <div className="flex items-start gap-6">
+              <Shield className="w-10 h-10 text-emerald-400 flex-shrink-0 mt-1" />
               <div>
-                <h3 className="text-lg font-bold text-emerald-300 mb-2">Zero Data Storage Guarantee</h3>
-                <p className="text-slate-300 text-sm leading-relaxed mb-3">
-                  <strong className="text-white">Your data is NEVER stored on our servers.</strong> All processing happens in your browser. 
-                  After processing, files are immediately downloaded to your device with the original filename plus timestamp. 
-                  No input or output files remain on our servers - complete privacy guaranteed.
+                <h3 className="text-2xl md:text-3xl font-bold text-emerald-300 mb-4 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+                  Zero Data Storage Guarantee
+                </h3>
+                <p className="text-base md:text-lg text-slate-200 leading-relaxed mb-6 font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+                  <strong className="text-white font-semibold">Your data never touches our servers.</strong> Every operation executes entirely within your browser environment. 
+                  Upon completion, processed files download automatically to your device using the original filename with an appended timestamp. 
+                  Zero data persistence. Complete privacy assurance. Absolute control.
                 </p>
-                <div className="flex flex-wrap gap-3 text-xs text-slate-400">
-                  <span className="flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                <div className="flex flex-wrap gap-4 text-sm md:text-base text-slate-300">
+                  <span className="flex items-center gap-2 font-medium">
+                    <CheckCircle className="w-5 h-5 text-emerald-400" />
                     No file storage
                   </span>
-                  <span className="flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  <span className="flex items-center gap-2 font-medium">
+                    <CheckCircle className="w-5 h-5 text-emerald-400" />
                     Immediate download
                   </span>
-                  <span className="flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  <span className="flex items-center gap-2 font-medium">
+                    <CheckCircle className="w-5 h-5 text-emerald-400" />
                     Browser-only processing
                   </span>
-                  <span className="flex items-center gap-1">
-                    <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  <span className="flex items-center gap-2 font-medium">
+                    <CheckCircle className="w-5 h-5 text-emerald-400" />
                     Auto-delete after processing
                   </span>
                 </div>
@@ -83,23 +85,23 @@ export default function Landing() {
           </div>
           
           {/* Single Strategic CTA - Only in Hero */}
-          <div className="flex justify-center mt-8">
+          <div className="flex justify-center mt-12">
             <Link to="/register">
-              <Button className="px-8 py-4 rounded-lg font-semibold text-lg transition-all shadow-lg flex items-center gap-2 hover:opacity-90" style={{ background: '#000000', color: '#FFFFFF', border: '2px solid #00E5FF' }}>
+              <Button className="px-10 py-5 rounded-xl font-semibold text-xl md:text-2xl transition-all shadow-2xl flex items-center gap-3 hover:opacity-90 hover:scale-105" style={{ background: '#000000', color: '#FFFFFF', border: '2px solid #00E5FF', fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.01em' }}>
                 Get Started Free
-                <ArrowRight className="w-5 h-5" />
+                <ArrowRight className="w-6 h-6" />
               </Button>
             </Link>
           </div>
         </div>
 
         {/* Comprehensive Features Section */}
-        <div className="mb-20">
-          <h2 className="text-4xl font-bold text-white text-center mb-4">
+        <div className="mb-24">
+          <h2 className="text-5xl md:text-6xl font-bold text-white text-center mb-6 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.03em', lineHeight: '1.2' }}>
             Complete Feature Suite
           </h2>
-          <p className="text-xl text-slate-400 text-center mb-12 max-w-2xl mx-auto">
-            Everything you need to analyze, transform, and visualize your data - all in one powerful platform
+          <p className="text-xl md:text-2xl text-slate-300 text-center mb-16 max-w-3xl mx-auto font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>
+            Comprehensive tools for analysis, transformation, and visualization—unified in a single, powerful platform designed for professionals who demand excellence
           </p>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
@@ -189,8 +191,8 @@ export default function Landing() {
                   </div>
                 </div>
                 
-                <h3 className="text-xl font-bold text-white mb-2 relative z-10">{feature.title}</h3>
-                <p className="text-slate-400 text-sm leading-relaxed relative z-10">{feature.description}</p>
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-3 relative z-10 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>{feature.title}</h3>
+                <p className="text-slate-300 text-base md:text-lg leading-relaxed relative z-10 font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>{feature.description}</p>
                 
                 {/* Decorative Element */}
                 <div className="absolute bottom-0 right-0 w-20 h-20 rounded-tl-full opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: 'linear-gradient(to top left, rgba(0, 191, 166, 0.05), rgba(79, 195, 247, 0.05))' }} />
@@ -200,32 +202,32 @@ export default function Landing() {
         </div>
 
         {/* Key Benefits */}
-        <div className="rounded-2xl p-8 md:p-12 mb-8 border" style={{ background: 'linear-gradient(to right, rgba(0, 191, 166, 0.15), rgba(79, 195, 247, 0.15))', borderColor: 'rgba(0, 191, 166, 0.3)' }}>
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-white text-center mb-8">
+        <div className="rounded-2xl p-10 md:p-16 mb-12 border backdrop-blur-sm" style={{ background: 'linear-gradient(to right, rgba(0, 191, 166, 0.15), rgba(79, 195, 247, 0.15))', borderColor: 'rgba(0, 191, 166, 0.3)' }}>
+          <div className="max-w-5xl mx-auto">
+            <h2 className="text-4xl md:text-5xl font-bold text-white text-center mb-12 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.03em' }}>
               Why Choose Meldra?
             </h2>
-            <div className="grid md:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
-                  <Lock className="w-8 h-8 text-white" />
+                <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+                  <Lock className="w-10 h-10 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">100% Private</h3>
-                <p className="text-slate-400 text-sm">Your data never leaves your browser. Complete privacy and security guaranteed.</p>
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>100% Private</h3>
+                <p className="text-slate-300 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>Your data never leaves your browser. Complete privacy and security guaranteed with zero server-side storage.</p>
               </div>
               <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ background: 'linear-gradient(to bottom right, #4FC3F7, #00BFA6)' }}>
-                  <Zap className="w-8 h-8 text-white" />
+                <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg" style={{ background: 'linear-gradient(to bottom right, #4FC3F7, #00BFA6)' }}>
+                  <Zap className="w-10 h-10 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">AI-Powered</h3>
-                <p className="text-slate-400 text-sm">Advanced AI analyzes your data and provides actionable insights instantly.</p>
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>AI-Powered</h3>
+                <p className="text-slate-300 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>Advanced artificial intelligence analyzes your data and delivers actionable insights with enterprise-grade precision.</p>
               </div>
               <div className="text-center">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
-                  <TrendingUp className="w-8 h-8 text-white" />
+                <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+                  <TrendingUp className="w-10 h-10 text-white" />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">Professional Results</h3>
-                <p className="text-slate-400 text-sm">Generate reports, presentations, and visualizations ready for stakeholders.</p>
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>Professional Results</h3>
+                <p className="text-slate-300 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>Generate publication-ready reports, presentations, and visualizations that meet the highest professional standards.</p>
               </div>
             </div>
           </div>
@@ -243,98 +245,98 @@ export default function Landing() {
           </p>
 
           {/* Comprehensive Features Documentation */}
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 mb-8">
-            <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
-                <Rocket className="w-5 h-5 text-white" />
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-10 md:p-12 mb-10">
+            <h3 className="text-3xl md:text-4xl font-bold text-white mb-8 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+                <Rocket className="w-6 h-6 text-white" />
               </div>
               Complete Feature Suite
             </h3>
             
             <div className="space-y-6">
               <div>
-                <h4 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                  <BarChart3 className="w-5 h-5 text-blue-400" />
+                <h4 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+                  <BarChart3 className="w-6 h-6 text-blue-400" />
                   Data Analysis & Visualization
                 </h4>
-                <ul className="list-disc list-inside space-y-2 text-slate-300 ml-4">
-                  <li><strong className="text-white">AI-Powered Analysis:</strong> Upload CSV/Excel files for instant insights, trend detection, and pattern recognition</li>
-                  <li><strong className="text-white">Smart Data Validation:</strong> Auto-detect data types (email, phone, date, number) and validate data quality</li>
-                  <li><strong className="text-white">Enhanced Chart System:</strong> 30+ professional chart types organized by Core P&L, Forecasting, and Analytics categories</li>
-                  <li><strong className="text-white">Advanced Filtering:</strong> Multi-column filters with AND/OR operators, global search across all columns</li>
-                  <li><strong className="text-white">Data Cleaning Tools:</strong> Remove duplicates, trim spaces, fix data types, and clean all with one click</li>
-                  <li><strong className="text-white">Export Options:</strong> Export to PDF, Excel (.xlsx), Word (.docx), CSV, or PNG with professional formatting</li>
+                <ul className="list-disc list-inside space-y-3 text-slate-300 ml-4 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+                  <li><strong className="text-white font-semibold">AI-Powered Analysis:</strong> Upload CSV or Excel files to receive instant, intelligent insights with automated trend detection and comprehensive pattern recognition capabilities</li>
+                  <li><strong className="text-white font-semibold">Smart Data Validation:</strong> Automatically detect and validate data types including email addresses, phone numbers, dates, and numerical values with precision</li>
+                  <li><strong className="text-white font-semibold">Enhanced Chart System:</strong> Access over 30 professional chart types systematically organized across Core P&L, Forecasting, and Analytics categories</li>
+                  <li><strong className="text-white font-semibold">Advanced Filtering:</strong> Implement sophisticated multi-column filtering with AND/OR logical operators and comprehensive global search functionality</li>
+                  <li><strong className="text-white font-semibold">Data Cleaning Tools:</strong> Efficiently remove duplicates, trim whitespace, correct data types, and execute comprehensive data cleaning operations with a single action</li>
+                  <li><strong className="text-white font-semibold">Export Options:</strong> Export your work to PDF, Excel (.xlsx), Word (.docx), CSV, or PNG formats with enterprise-grade professional formatting</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-purple-400" />
+                <h4 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+                  <Brain className="w-6 h-6 text-purple-400" />
                   AI & Automation
                 </h4>
-                <ul className="list-disc list-inside space-y-2 text-slate-300 ml-4">
-                  <li><strong className="text-white">Agentic AI Assistant:</strong> Autonomous AI agent that plans, executes, and reports on complex data operations</li>
-                  <li><strong className="text-white">Natural Language Processing:</strong> Ask questions about your data in plain English, get instant answers</li>
-                  <li><strong className="text-white">Formula Suggestions:</strong> AI-powered formula recommendations for Excel calculations</li>
-                  <li><strong className="text-white">Data Templates Library:</strong> Pre-built templates for Sales, Finance, HR, Marketing, and more</li>
+                <ul className="list-disc list-inside space-y-3 text-slate-300 ml-4 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+                  <li><strong className="text-white font-semibold">Agentic AI Assistant:</strong> Deploy autonomous AI agents that strategically plan, execute, and comprehensively report on complex multi-step data operations</li>
+                  <li><strong className="text-white font-semibold">Natural Language Processing:</strong> Interact with your data using conversational language—ask questions in plain English and receive instant, accurate responses</li>
+                  <li><strong className="text-white font-semibold">Formula Suggestions:</strong> Leverage AI-powered intelligent formula recommendations optimized for Excel calculations and data manipulation</li>
+                  <li><strong className="text-white font-semibold">Data Templates Library:</strong> Access an extensive collection of pre-built templates spanning Sales, Finance, HR, Marketing, and numerous other professional domains</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                  <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                <h4 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+                  <FileSpreadsheet className="w-6 h-6 text-emerald-400" />
                   Professional Reporting
                 </h4>
-                <ul className="list-disc list-inside space-y-2 text-slate-300 ml-4">
-                  <li><strong className="text-white">P&L Builder:</strong> Generate Profit & Loss statements from natural language with automated calculations</li>
-                  <li><strong className="text-white">Excel to PowerPoint:</strong> Convert Excel data into professional presentations with charts and visualizations</li>
-                  <li><strong className="text-white">PDF Export:</strong> Export tables, charts, and reports as PDF with customizable formatting</li>
-                  <li><strong className="text-white">Undo/Redo:</strong> Full action history with Ctrl+Z/Ctrl+Y support for data modifications</li>
-                  <li><strong className="text-white">Keyboard Shortcuts:</strong> Ctrl+S (save), Ctrl+E (export), Ctrl+Z/Y (undo/redo) for faster workflow</li>
+                <ul className="list-disc list-inside space-y-3 text-slate-300 ml-4 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+                  <li><strong className="text-white font-semibold">P&L Builder:</strong> Generate comprehensive Profit & Loss statements directly from natural language descriptions with fully automated financial calculations</li>
+                  <li><strong className="text-white font-semibold">Excel to PowerPoint:</strong> Seamlessly convert Excel datasets into presentation-ready PowerPoint slides complete with charts, tables, and professional visualizations</li>
+                  <li><strong className="text-white font-semibold">PDF Export:</strong> Export tables, charts, and complete reports as high-quality PDF documents with fully customizable formatting options</li>
+                  <li><strong className="text-white font-semibold">Undo/Redo:</strong> Maintain complete action history with standard Ctrl+Z and Ctrl+Y keyboard shortcuts for comprehensive data modification control</li>
+                  <li><strong className="text-white font-semibold">Keyboard Shortcuts:</strong> Accelerate your workflow with intuitive shortcuts: Ctrl+S (save), Ctrl+E (export), Ctrl+Z/Y (undo/redo) for maximum efficiency</li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                  <Database className="w-5 h-5 text-cyan-400" />
+                <h4 className="text-xl md:text-2xl font-bold text-white mb-4 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+                  <Database className="w-6 h-6 text-cyan-400" />
                   Database & File Management
                 </h4>
-                <ul className="list-disc list-inside space-y-2 text-slate-300 ml-4">
-                  <li><strong className="text-white">Database Schema Designer:</strong> Visual schema creator with AI assistance, generate SQL schemas</li>
-                  <li><strong className="text-white">ZIP File Cleaner:</strong> Clean and rename files in ZIP archives with batch processing</li>
-                  <li><strong className="text-white">File Processing:</strong> Support for Excel (.xlsx, .xls), CSV, ZIP, and PDF files</li>
+                <ul className="list-disc list-inside space-y-3 text-slate-300 ml-4 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+                  <li><strong className="text-white font-semibold">Database Schema Designer:</strong> Create visual database schemas with intelligent AI assistance and automatically generate production-ready SQL schema definitions</li>
+                  <li><strong className="text-white font-semibold">ZIP File Cleaner:</strong> Systematically clean and rename files within ZIP archives using advanced batch processing capabilities</li>
+                  <li><strong className="text-white font-semibold">File Processing:</strong> Comprehensive support for Excel formats (.xlsx, .xls), CSV files, ZIP archives, and PDF documents</li>
                 </ul>
               </div>
 
-              <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-lg p-4">
-                <h4 className="text-lg font-semibold text-emerald-300 mb-2 flex items-center gap-2">
-                  <Shield className="w-5 h-5" />
+              <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-6 md:p-8">
+                <h4 className="text-xl md:text-2xl font-bold text-emerald-300 mb-4 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+                  <Shield className="w-6 h-6" />
                   Zero Storage Architecture
                 </h4>
-                <p className="text-slate-300 text-sm leading-relaxed">
-                  <strong className="text-white">Critical Privacy Feature:</strong> All files are processed in-memory and immediately downloaded to your device. 
-                  Files are automatically deleted after processing - no input or output files remain on our servers. 
-                  Download format: <code className="bg-slate-800 px-2 py-1 rounded text-emerald-300">originalname_YYYYMMDD_HHMMSS_mmm.extension</code>
+                <p className="text-slate-200 text-base md:text-lg leading-relaxed font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+                  <strong className="text-white font-semibold">Critical Privacy Feature:</strong> All file processing occurs entirely in-memory with immediate download to your local device. 
+                  Files are automatically and permanently deleted upon completion—zero input or output files persist on our infrastructure. 
+                  Download format: <code className="bg-slate-800 px-3 py-1.5 rounded-md text-emerald-300 font-mono text-sm md:text-base">originalname_YYYYMMDD_HHMMSS_mmm.extension</code>
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 mb-8">
-            <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
-                <Rocket className="w-5 h-5 text-white" />
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-10 md:p-12 mb-10">
+            <h3 className="text-3xl md:text-4xl font-bold text-white mb-6 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+                <Rocket className="w-6 h-6 text-white" />
               </div>
               Our Mission
             </h3>
-            <p className="text-slate-300 leading-relaxed mb-4">
-              Meldra was born from a simple belief: data analysis should be powerful, accessible, and completely private. 
-              We've built a platform that gives you enterprise-grade AI capabilities without compromising your data security.
+            <p className="text-slate-200 text-lg md:text-xl leading-relaxed mb-6 font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+              Meldra was founded on a fundamental principle: data analysis must be powerful, universally accessible, and absolutely private. 
+              We've engineered a platform that delivers enterprise-grade artificial intelligence capabilities while maintaining uncompromising data security standards.
             </p>
-            <p className="text-slate-300 leading-relaxed">
-              Every feature is designed with privacy-first principles. Your data is processed locally in your browser, 
-              never stored on our servers, and never shared with third parties. You get the insights you need while 
-              maintaining complete control over your information.
+            <p className="text-slate-200 text-lg md:text-xl leading-relaxed font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+              Every feature is architected with privacy-first design principles. Your data processes exclusively within your browser environment, 
+              remains permanently absent from our servers, and is never shared with external parties. You receive the insights you require while 
+              retaining absolute sovereignty over your information.
             </p>
           </div>
 
@@ -412,26 +414,26 @@ export default function Landing() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 mb-12">
-            <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 text-center">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
-                <Globe className="w-6 h-6 text-white" />
+            <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-8 text-center">
+              <div className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+                <Globe className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Worldwide Access</h3>
-              <p className="text-slate-400 text-sm">Available globally, accessible from anywhere</p>
+              <h3 className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>Worldwide Access</h3>
+              <p className="text-slate-300 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>Available globally, accessible from anywhere with enterprise-grade reliability</p>
             </div>
-            <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 text-center">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(to bottom right, #4FC3F7, #00BFA6)' }}>
-                <Cpu className="w-6 h-6 text-white" />
+            <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-8 text-center">
+              <div className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(to bottom right, #4FC3F7, #00BFA6)' }}>
+                <Cpu className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Lightning Fast</h3>
-              <p className="text-slate-400 text-sm">Process data in seconds, not hours</p>
+              <h3 className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>Lightning Fast</h3>
+              <p className="text-slate-300 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>Process complex datasets in seconds, not hours, with optimized performance</p>
             </div>
-            <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 text-center">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center mx-auto mb-4" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
-                <Lightbulb className="w-6 h-6 text-white" />
+            <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-xl p-8 text-center">
+              <div className="w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+                <Lightbulb className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">Smart Insights</h3>
-              <p className="text-slate-400 text-sm">AI discovers patterns you might miss</p>
+              <h3 className="text-xl md:text-2xl font-bold text-white mb-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>Smart Insights</h3>
+              <p className="text-slate-300 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>Advanced AI algorithms discover patterns and correlations you might otherwise miss</p>
             </div>
           </div>
         </div>
@@ -444,11 +446,11 @@ export default function Landing() {
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
               <Mail className="w-8 h-8 text-white" />
             </div>
-            <h2 className="text-3xl font-bold text-white mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.03em' }}>
               Have Questions?
             </h2>
-            <p className="text-xl text-slate-300 mb-6 max-w-2xl mx-auto">
-              We're here to help! Reach out to our support team for any enquiries, technical assistance, or feedback.
+            <p className="text-xl md:text-2xl text-slate-200 mb-8 max-w-3xl mx-auto font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>
+              We're here to help. Reach out to our dedicated support team for any enquiries, technical assistance, or feedback.
             </p>
             <div className="flex items-center justify-center gap-3">
               <Mail className="w-5 h-5" style={{ color: '#4FC3F7' }} />

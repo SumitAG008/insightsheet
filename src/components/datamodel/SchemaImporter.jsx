@@ -261,16 +261,16 @@ export default function SchemaImporter({ onImport, open, onOpenChange, defaultDb
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 border-indigo-800/50">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle className="text-2xl font-bold text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
               <Upload className="w-6 h-6" />
-              Import Database Schema
+              Schema Import Wizard
             </DialogTitle>
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <Label htmlFor="instructions-toggle" className="text-sm text-slate-300">Instructions</Label>
+                <Label htmlFor="instructions-toggle" className="text-sm text-slate-300">Show Guide</Label>
                 <Switch
                   id="instructions-toggle"
                   checked={showInstructions}
@@ -280,7 +280,7 @@ export default function SchemaImporter({ onImport, open, onOpenChange, defaultDb
             </div>
           </div>
           <DialogDescription className="text-slate-400">
-            Import database schema from SQL dumps or schema files
+            Convert SQL dumps or schema files into visual database models
           </DialogDescription>
         </DialogHeader>
 
@@ -289,10 +289,10 @@ export default function SchemaImporter({ onImport, open, onOpenChange, defaultDb
           {showInstructions && (
             <div className="space-y-4">
               <div>
-                <Label className="text-white mb-2 block font-semibold">Select Database Type</Label>
+                <Label className="text-white mb-2 block font-semibold">Source System</Label>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between bg-slate-800 border-slate-700 text-slate-200">
+                    <Button variant="outline" className="w-full justify-between bg-indigo-900/50 border-indigo-700/50 text-slate-200 hover:bg-indigo-800/70">
                       <div className="flex items-center gap-2">
                         <selectedConfig.icon className="w-4 h-4" />
                         {selectedConfig.name}
@@ -300,7 +300,7 @@ export default function SchemaImporter({ onImport, open, onOpenChange, defaultDb
                       <ChevronDown className="w-4 h-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="bg-slate-800 border-slate-700">
+                  <DropdownMenuContent className="bg-indigo-900/90 border-indigo-700/50 backdrop-blur-xl">
                     {Object.entries(DB_IMPORT_TYPES).map(([key, config]) => (
                       <DropdownMenuItem
                         key={key}
@@ -317,14 +317,14 @@ export default function SchemaImporter({ onImport, open, onOpenChange, defaultDb
                 </DropdownMenu>
               </div>
 
-              <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 space-y-3">
+              <div className="bg-indigo-900/30 border border-indigo-700/30 rounded-lg p-4 space-y-3">
                 <h3 className="text-lg font-semibold text-white">{selectedConfig.name}</h3>
                 {selectedConfig.instructions.map((instruction, idx) => (
                   <div key={idx} className="space-y-2">
                     <p className="text-sm text-slate-300">{idx + 1}. {instruction}</p>
                     {idx === 1 && (
                       <div className="space-y-2">
-                        <div className="bg-slate-900 rounded p-3 font-mono text-xs text-slate-300">
+                        <div className="bg-indigo-950/50 rounded p-3 font-mono text-xs text-indigo-200 border border-indigo-800/30">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-slate-400">Command:</span>
                             <Button
@@ -337,12 +337,12 @@ export default function SchemaImporter({ onImport, open, onOpenChange, defaultDb
                               Copy
                             </Button>
                           </div>
-                          <code className="text-emerald-300">{selectedConfig.command}</code>
+                          <code className="text-cyan-300">{selectedConfig.command}</code>
                         </div>
                         {selectedConfig.example && (
-                          <div className="bg-slate-900 rounded p-3 font-mono text-xs">
-                            <div className="text-slate-400 mb-1">Example:</div>
-                            <code className="text-blue-300">{selectedConfig.example}</code>
+                          <div className="bg-indigo-950/50 rounded p-3 font-mono text-xs border border-indigo-800/30">
+                            <div className="text-indigo-300 mb-1">Example:</div>
+                            <code className="text-amber-300">{selectedConfig.example}</code>
                           </div>
                         )}
                       </div>
@@ -357,7 +357,7 @@ export default function SchemaImporter({ onImport, open, onOpenChange, defaultDb
           <div className="space-y-4">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <Label className="text-white font-semibold">Paste SQL Content</Label>
+                <Label className="text-white font-semibold">Schema Content</Label>
                 <div className="flex gap-2">
                   <input
                     type="file"
@@ -385,10 +385,10 @@ export default function SchemaImporter({ onImport, open, onOpenChange, defaultDb
               />
             </div>
 
-            <Alert className="bg-blue-500/10 border-blue-500/30">
-              <AlertCircle className="h-4 w-4 text-blue-400" />
-              <AlertDescription className="text-blue-200 text-sm">
-                The SQL parser will extract table definitions, columns, and relationships from your dump file.
+            <Alert className="bg-cyan-500/10 border-cyan-500/30">
+              <AlertCircle className="h-4 w-4 text-cyan-400" />
+              <AlertDescription className="text-cyan-200 text-sm">
+                The parser will automatically extract table structures, column definitions, and relationships from your schema dump.
               </AlertDescription>
             </Alert>
           </div>
@@ -403,9 +403,9 @@ export default function SchemaImporter({ onImport, open, onOpenChange, defaultDb
               onChange={(e) => setAppendMode(e.target.checked)}
               className="rounded"
             />
-            <Label htmlFor="append-mode" className="text-sm text-slate-300 cursor-pointer">
-              Append converted schema to the end
-            </Label>
+                <Label htmlFor="append-mode" className="text-sm text-slate-300 cursor-pointer">
+                  Merge with existing schema
+                </Label>
           </div>
           <div className="flex gap-2">
             <Button

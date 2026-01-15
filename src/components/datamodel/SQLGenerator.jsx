@@ -159,16 +159,25 @@ export default function SQLGenerator({ schema }) {
 
   const generateDropStatements = () => {
     if (!schema.tables || schema.tables.length === 0) {
-      return '-- No tables to drop';
+      return '-- No tables defined in schema\n-- Add tables to generate DROP statements';
     }
 
-    let sql = `-- DROP statements (use with caution!)\n\n`;
+    let sql = `-- DROP TABLE Statements\n`;
+    sql += `-- Generated: ${new Date().toLocaleString()}\n`;
+    sql += `-- WARNING: These statements will permanently delete tables and all data!\n`;
+    sql += `-- Use with extreme caution. Always backup your data before executing.\n\n`;
 
-    // Drop in reverse order to handle foreign keys
+    // Drop in reverse order to handle foreign keys (drop dependent tables first)
     const reversedTables = [...schema.tables].reverse();
-    reversedTables.forEach(table => {
-      sql += `DROP TABLE IF EXISTS ${table.name};\n`;
+    
+    sql += `-- Dropping tables in reverse order to handle foreign key dependencies\n\n`;
+    
+    reversedTables.forEach((table, index) => {
+      if (index > 0) sql += '\n';
+      sql += `DROP TABLE IF EXISTS ${table.name} CASCADE;\n`;
     });
+
+    sql += `\n-- All tables have been dropped\n`;
 
     return sql;
   };
@@ -213,10 +222,7 @@ export default function SQLGenerator({ schema }) {
                 <SelectContent>
                   {SQL_DIALECTS.map(d => (
                     <SelectItem key={d.value} value={d.value} className="font-semibold">
-                      <div className="flex items-center gap-2 font-semibold">
-                        <Database className="w-3 h-3" />
-                        <span className="font-bold">{d.label}</span>
-                      </div>
+                      <span className="font-bold">{d.label}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>

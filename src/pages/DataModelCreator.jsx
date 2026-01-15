@@ -299,23 +299,23 @@ export default function DataModelCreator() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-white dark:bg-slate-800 w-56">
                   <DropdownMenuItem onClick={() => { setSelectedImportType('mysql'); setShowSchemaImporter(true); }}>
-                    <Database className="w-4 h-4 mr-2" />
+                    <FileCode className="w-4 h-4 mr-2" />
                     From MySQL
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('postgresql'); setShowSchemaImporter(true); }}>
-                    <Database className="w-4 h-4 mr-2" />
+                    <FileCode className="w-4 h-4 mr-2" />
                     From PostgreSQL
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('mssql'); setShowSchemaImporter(true); }}>
-                    <Database className="w-4 h-4 mr-2" />
+                    <FileCode className="w-4 h-4 mr-2" />
                     From SQL Server
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('snowflake'); setShowSchemaImporter(true); }}>
-                    <Database className="w-4 h-4 mr-2" />
+                    <FileCode className="w-4 h-4 mr-2" />
                     From Snowflake
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('oracle'); setShowSchemaImporter(true); }}>
-                    <Database className="w-4 h-4 mr-2" />
+                    <FileCode className="w-4 h-4 mr-2" />
                     From Oracle SQL
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('rails'); setShowSchemaImporter(true); }}>

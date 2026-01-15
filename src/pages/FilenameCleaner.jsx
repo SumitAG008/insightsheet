@@ -46,10 +46,52 @@ export default function FilenameCleaner() {
   });
 
   const [newRule, setNewRule] = useState({ find: '', replace: '' });
+  const [showNavigationWarning, setShowNavigationWarning] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
 
   useEffect(() => {
     loadUserAndSubscription();
   }, []);
+
+  // Check if user has unsaved work
+  const hasUnsavedWork = () => {
+    return zipFile || preview.length > 0 || options.customRules.length > 0;
+  };
+
+  // Handle browser close/refresh warning
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedWork()) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved work. All data will be permanently deleted when you leave this page.';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [zipFile, preview, options.customRules]);
+
+  const handleNavigationConfirm = () => {
+    setShowNavigationWarning(false);
+    if (pendingNavigation) {
+      // Clear all data
+      setZipFile(null);
+      setPreview([]);
+      setOptions({
+        allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-',
+        disallowedCharacters: '',
+        replacementCharacter: '-',
+        maxLength: 255,
+        preserveExtension: true,
+        customRules: []
+      });
+      if (pendingNavigation.to && pendingNavigation.to !== location.pathname) {
+        navigate(pendingNavigation.to, pendingNavigation.options || {});
+      }
+      setPendingNavigation(null);
+    }
+  };
 
   const loadUserAndSubscription = async () => {
     try {
@@ -883,6 +925,17 @@ export default function FilenameCleaner() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Navigation Warning Modal */}
+      <NavigationWarningModal
+        open={showNavigationWarning}
+        onCancel={() => {
+          setShowNavigationWarning(false);
+          setPendingNavigation(null);
+        }}
+        onConfirm={handleNavigationConfirm}
+        action={pendingNavigation ? 'navigate' : 'cancel'}
+      />
     </div>
   );
 }

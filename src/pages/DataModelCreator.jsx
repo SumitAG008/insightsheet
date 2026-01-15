@@ -30,6 +30,7 @@ export default function DataModelCreator() {
   const [selectedTable, setSelectedTable] = useState(null);
   const [activeTab, setActiveTab] = useState('canvas');
   const [showSchemaImporter, setShowSchemaImporter] = useState(false);
+  const [selectedImportType, setSelectedImportType] = useState('mysql');
 
   useEffect(() => {
     checkAuth();
@@ -296,14 +297,34 @@ export default function DataModelCreator() {
                     <ChevronDown className="w-4 h-4 ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-white dark:bg-slate-800">
-                  <DropdownMenuItem onClick={() => setShowSchemaImporter(true)}>
+                <DropdownMenuContent align="end" className="bg-white dark:bg-slate-800 w-56">
+                  <DropdownMenuItem onClick={() => { setSelectedImportType('mysql'); setShowSchemaImporter(true); }}>
                     <Database className="w-4 h-4 mr-2" />
-                    From SQL (MySQL, PostgreSQL, etc.)
+                    From MySQL
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => document.getElementById('import-json-input')?.click()}>
+                  <DropdownMenuItem onClick={() => { setSelectedImportType('postgresql'); setShowSchemaImporter(true); }}>
+                    <Database className="w-4 h-4 mr-2" />
+                    From PostgreSQL
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setSelectedImportType('mssql'); setShowSchemaImporter(true); }}>
+                    <Database className="w-4 h-4 mr-2" />
+                    From SQL Server
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setSelectedImportType('snowflake'); setShowSchemaImporter(true); }}>
+                    <Database className="w-4 h-4 mr-2" />
+                    From Snowflake
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setSelectedImportType('oracle'); setShowSchemaImporter(true); }}>
+                    <Database className="w-4 h-4 mr-2" />
+                    From Oracle SQL
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setSelectedImportType('rails'); setShowSchemaImporter(true); }}>
                     <FileCode className="w-4 h-4 mr-2" />
-                    From JSON/XML
+                    From Rails (schema.rb)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => { setSelectedImportType('csv'); setShowSchemaImporter(true); }}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    From CSV
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

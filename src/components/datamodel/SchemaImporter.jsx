@@ -105,12 +105,19 @@ const DB_IMPORT_TYPES = {
   }
 };
 
-export default function SchemaImporter({ onImport, open, onOpenChange }) {
-  const [selectedDbType, setSelectedDbType] = useState('mysql');
+export default function SchemaImporter({ onImport, open, onOpenChange, defaultDbType = 'mysql' }) {
+  const [selectedDbType, setSelectedDbType] = useState(defaultDbType);
   const [sqlContent, setSqlContent] = useState('');
   const [showInstructions, setShowInstructions] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [appendMode, setAppendMode] = useState(false);
+
+  // Update selectedDbType when defaultDbType changes (when modal opens with different type)
+  useEffect(() => {
+    if (open && defaultDbType) {
+      setSelectedDbType(defaultDbType);
+    }
+  }, [open, defaultDbType]);
 
   const selectedConfig = DB_IMPORT_TYPES[selectedDbType];
 

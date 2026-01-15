@@ -275,6 +275,51 @@ export const backendApi = {
     },
   },
 
+  // Database Connections
+  db: {
+    testConnection: async (dbType, connectionData) => {
+      const response = await apiCall('/api/db/test-connection', {
+        method: 'POST',
+        body: { db_type: dbType, connection_data: connectionData },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Connection test failed');
+      }
+      return response.json();
+    },
+
+    getSchema: async (connectionId, dbType) => {
+      const response = await apiCall(`/api/db/schema?connection_id=${connectionId}&db_type=${dbType}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to get schema');
+      }
+      return response.json();
+    },
+
+    query: async (connectionId, dbType, query) => {
+      const response = await apiCall('/api/db/query', {
+        method: 'POST',
+        body: { connection_id: connectionId, db_type: dbType, query },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Query execution failed');
+      }
+      return response.json();
+    },
+
+    disconnect: async (connectionId, dbType) => {
+      const response = await apiCall('/api/db/disconnect', {
+        method: 'POST',
+        body: { connection_id: connectionId, db_type: dbType },
+      });
+      // Don't throw on disconnect - it's cleanup
+      return response.ok ? response.json() : null;
+    },
+  },
+
   // Admin (requires admin role)
   admin: {
     getUsers: async () => {

@@ -1,16 +1,17 @@
 
 
 // Layout.jsx - Remove Workflow, Excel-to-PPT, add Agentic AI
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug } from 'lucide-react';
 import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
 import Logo from '@/components/branding/Logo';
 import { meldraAi } from '@/api/meldraClient';
 import { LoginHistory } from '@/api/entities';
 import { getIPAndLocation, getBrowserInfo } from '@/components/tracking/ActivityLogger';
 import ActivityLogger from '@/components/tracking/ActivityLogger';
+import LogoutWarningModal from '@/components/common/LogoutWarningModal';
 
 export default function Layout({ children }) {
   const location = useLocation();
@@ -18,6 +19,8 @@ export default function Layout({ children }) {
   const [user, setUser] = React.useState(null);
   const [loginTime, setLoginTime] = React.useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [showLogoutWarning, setShowLogoutWarning] = React.useState(false);
+  const [pendingLogout, setPendingLogout] = React.useState(false);
   
   const loadUser = useCallback(async () => {
     try {
@@ -80,7 +83,14 @@ export default function Layout({ children }) {
     }
   };
 
-  const handleLogout = async () => {
+  const handleLogoutClick = () => {
+    setShowLogoutWarning(true);
+  };
+
+  const handleLogoutConfirm = async () => {
+    setShowLogoutWarning(false);
+    setPendingLogout(true);
+    
     if (user) {
       try {
         const loginTimestamp = parseInt(sessionStorage.getItem('loginTime') || '0');
@@ -102,18 +112,35 @@ export default function Layout({ children }) {
       }
     }
 
-    // Clear all auth data
+    // Clear all auth data and session storage
     await meldraAi.auth.logout();
     setUser(null);
     setLoginTime(null);
-    sessionStorage.removeItem('sessionLogged');
-    sessionStorage.removeItem('loginTime');
+    sessionStorage.clear(); // Clear all session data including DB connections
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
     
     // Redirect to login page
     navigate('/Login');
   };
+
+  // Handle browser close/refresh warning
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // Only show warning if user has active session data
+      const hasDbConnection = sessionStorage.getItem('db_connection');
+      const hasData = sessionStorage.getItem('uploaded_data') || hasDbConnection;
+      
+      if (hasData && user) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved work. All data will be permanently deleted when you close this window. Are you sure you want to leave?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [user]);
   
   const isActive = (path) => location.pathname === path;
 
@@ -293,7 +320,7 @@ export default function Layout({ children }) {
                     <Shield className="w-4 h-4" />
                   </Link>
                   <button
-                    onClick={handleLogout}
+                    onClick={handleLogoutClick}
                     className="px-4 py-2 text-sm text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg transition-all font-semibold shadow-md hover:shadow-lg"
                   >
                     Logout
@@ -384,6 +411,18 @@ export default function Layout({ children }) {
                     <span>DB Schema</span>
                   </Link>
                   <Link
+                    to={createPageUrl('DatabaseConnection')}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('DatabaseConnection'))
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <Plug className="w-4 h-4" />
+                    <span>DB Connect</span>
+                  </Link>
+                  <Link
                     to={createPageUrl('FileToPPT')}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
@@ -431,7 +470,7 @@ export default function Layout({ children }) {
                     <button
                       onClick={() => {
                         setMobileMenuOpen(false);
-                        handleLogout();
+                        handleLogoutClick();
                       }}
                       className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 font-semibold text-sm"
                     >
@@ -522,6 +561,13 @@ export default function Layout({ children }) {
           </div>
         </div>
       </footer>
+
+      {/* Logout Warning Modal */}
+      <LogoutWarningModal
+        open={showLogoutWarning}
+        onCancel={() => setShowLogoutWarning(false)}
+        onConfirm={handleLogoutConfirm}
+      />
     </div>
   );
 }

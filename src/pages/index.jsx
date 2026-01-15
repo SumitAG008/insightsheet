@@ -41,6 +41,7 @@ import PLBuilder from "./PLBuilder";
 
 import FileAnalyzer from "./FileAnalyzer";
 import Reviews from "./Reviews";
+import DatabaseConnection from "./DatabaseConnection";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
@@ -82,6 +83,8 @@ const PAGES = {
     FileAnalyzer: FileAnalyzer,
 
     Reviews: Reviews,
+
+    DatabaseConnection: DatabaseConnection,
 
 }
 
@@ -180,6 +183,9 @@ function PagesContent() {
 
                 <Route path="/Reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
                 <Route path="/reviews" element={<ProtectedRoute><Reviews /></ProtectedRoute>} />
+
+                <Route path="/DatabaseConnection" element={<ProtectedRoute><DatabaseConnection /></ProtectedRoute>} />
+                <Route path="/databaseconnection" element={<ProtectedRoute><DatabaseConnection /></ProtectedRoute>} />
 
             </Routes>
         </Layout>

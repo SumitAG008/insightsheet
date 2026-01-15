@@ -35,6 +35,7 @@ from app.services.excel_to_ppt import ExcelToPPTService
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
 from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email
+from app.services.db_connection_service import DatabaseConnectionService
 
 load_dotenv()
 
@@ -1331,6 +1332,121 @@ async def get_login_history(
             detail=f"Failed to get login history: {str(e)}"
         )
 
+
+# ============================================================================
+# DATABASE CONNECTION ENDPOINTS
+# ============================================================================
+
+class DBConnectionRequest(BaseModel):
+    db_type: str
+    connection_data: Dict[str, Any]
+
+class DBQueryRequest(BaseModel):
+    connection_id: str
+    db_type: str
+    query: str
+
+class DBDisconnectRequest(BaseModel):
+    connection_id: str
+    db_type: str
+
+@app.post("/api/db/test-connection")
+async def test_db_connection(
+    request: DBConnectionRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Test database connection
+    ZERO STORAGE: Connection credentials are NOT stored, only kept in memory during session
+    """
+    try:
+        result = DatabaseConnectionService.test_connection(
+            request.db_type,
+            request.connection_data
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Test connection error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Connection test failed: {str(e)}"
+        )
+
+@app.get("/api/db/schema")
+async def get_db_schema(
+    connection_id: str,
+    db_type: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get database schema (tables and columns)
+    ZERO STORAGE: Schema information is fetched on-demand, not stored
+    """
+    try:
+        result = DatabaseConnectionService.get_schema(connection_id, db_type)
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.get("error", "Failed to get schema")
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get schema error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get schema: {str(e)}"
+        )
+
+@app.post("/api/db/query")
+async def execute_db_query(
+    request: DBQueryRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Execute SQL query (SELECT only for security)
+    ZERO STORAGE: Query results are returned immediately, not stored
+    """
+    try:
+        result = DatabaseConnectionService.execute_query(
+            request.connection_id,
+            request.db_type,
+            request.query
+        )
+        if not result.get("success"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=result.get("error", "Query execution failed")
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Query execution error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Query execution failed: {str(e)}"
+        )
+
+@app.post("/api/db/disconnect")
+async def disconnect_db(
+    request: DBDisconnectRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Disconnect from database
+    ZERO STORAGE: All connection data is immediately removed from memory
+    """
+    try:
+        result = DatabaseConnectionService.disconnect(request.connection_id, request.db_type)
+        return result
+    except Exception as e:
+        logger.error(f"Disconnect error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Disconnect failed: {str(e)}"
+        )
 
 # ============================================================================
 # ADMIN ENDPOINTS

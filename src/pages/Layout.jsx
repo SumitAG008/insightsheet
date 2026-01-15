@@ -513,8 +513,8 @@ export default function Layout({ children }) {
         <div className="container mx-auto px-4 py-8">
           <div className="grid md:grid-cols-3 gap-8 items-start">
             <div className="min-w-0">
-              <Logo size="medium" showText={true} />
-              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
+              <Logo size="medium" showText={true} style={{ color: 'inherit' }} />
+              <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 font-light" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}>
                 Privacy-first data & file management
               </p>
             </div>

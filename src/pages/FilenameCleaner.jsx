@@ -1,6 +1,7 @@
 
 // pages/FilenameCleaner.js - ZIP processor with 10MB file size limit enforcement
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,8 +10,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Upload, Download, Sparkles, FileArchive, Wand2, CheckCircle, AlertCircle, Plus, X, Clock, Lock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import NavigationWarningModal from '@/components/common/NavigationWarningModal';
 
 export default function FilenameCleaner() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [zipFile, setZipFile] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [preview, setPreview] = useState([]);
@@ -18,6 +22,8 @@ export default function FilenameCleaner() {
   const [history, setHistory] = useState([]);
   const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
+  const [showNavigationWarning, setShowNavigationWarning] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
   
   const [options, setOptions] = useState({
     allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-',
@@ -529,7 +535,7 @@ export default function FilenameCleaner() {
   const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-950 p-4 md:p-6">
+    <div className="min-h-screen p-4 md:p-6" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
       <div className="container mx-auto max-w-7xl">
         {/* Header */}
         <div className="text-center mb-8">
@@ -538,10 +544,10 @@ export default function FilenameCleaner() {
               <FileArchive className="w-8 h-8 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-indigo-200 mb-2">
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
             Enhanced File Processor
           </h1>
-          <p className="text-slate-400 text-sm md:text-base">
+          <p className="text-slate-300 text-base md:text-lg font-light" style={{ letterSpacing: '-0.01em' }}>
             Process ZIP files with advanced Unicode and character replacement support
           </p>
         </div>
@@ -707,7 +713,7 @@ export default function FilenameCleaner() {
 
               {/* Quick Character Sets */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-3 block">Quick Character Sets</label>
+                <label className="text-sm font-semibold text-white mb-3 block" style={{ fontFamily: "'Inter', sans-serif" }}>Quick Character Sets</label>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                   {quickPresets.map((preset, idx) => (
                     <Button
@@ -725,7 +731,7 @@ export default function FilenameCleaner() {
 
               {/* Allowed Characters */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-2 block">Allowed Characters</label>
+                <label className="text-sm font-semibold text-white mb-2 block" style={{ fontFamily: "'Inter', sans-serif" }}>Allowed Characters</label>
                 <Input
                   value={options.allowedCharacters}
                   onChange={(e) => setOptions({...options, allowedCharacters: e.target.value})}
@@ -736,7 +742,7 @@ export default function FilenameCleaner() {
 
               {/* Disallowed Characters */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-2 block">Characters to remove</label>
+                <label className="text-sm font-semibold text-white mb-2 block" style={{ fontFamily: "'Inter', sans-serif" }}>Characters to remove</label>
                 <Input
                   value={options.disallowedCharacters}
                   onChange={(e) => setOptions({...options, disallowedCharacters: e.target.value})}
@@ -748,7 +754,7 @@ export default function FilenameCleaner() {
 
               {/* Replacement Character */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-2 block">Replacement Character</label>
+                <label className="text-sm font-semibold text-white mb-2 block" style={{ fontFamily: "'Inter', sans-serif" }}>Replacement Character</label>
                 <Input
                   value={options.replacementCharacter}
                   onChange={(e) => setOptions({...options, replacementCharacter: e.target.value})}
@@ -761,7 +767,7 @@ export default function FilenameCleaner() {
 
               {/* Max Filename Length */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-2 block">Max Filename Length</label>
+                <label className="text-sm font-semibold text-white mb-2 block" style={{ fontFamily: "'Inter', sans-serif" }}>Max Filename Length</label>
                 <Input
                   type="number"
                   value={options.maxLength}
@@ -775,7 +781,7 @@ export default function FilenameCleaner() {
 
               {/* Language Support */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-indigo-300 mb-3 block">International Language Support</label>
+                <label className="text-sm font-semibold text-white mb-3 block" style={{ fontFamily: "'Inter', sans-serif" }}>International Language Support</label>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {Object.keys(selectedLanguages).map(lang => (
                     <label key={lang} className="flex items-center gap-2 p-3 bg-slate-800/50 rounded-lg cursor-pointer hover:bg-slate-700/50">
@@ -791,7 +797,7 @@ export default function FilenameCleaner() {
 
               {/* Custom Replacement Rules */}
               <div>
-                <label className="text-sm font-semibold text-indigo-300 mb-3 block">Custom Replacement Rules</label>
+                <label className="text-sm font-semibold text-white mb-3 block" style={{ fontFamily: "'Inter', sans-serif" }}>Custom Replacement Rules</label>
                 <div className="space-y-3">
                   {options.customRules.map((rule, idx) => (
                     <div key={idx} className="flex gap-2 items-center p-3 bg-slate-800/50 rounded-lg">

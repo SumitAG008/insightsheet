@@ -1,5 +1,5 @@
 // components/datamodel/SchemaImporter.jsx - Import database schemas from SQL dumps
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Upload, Database, FileText, CheckCircle, AlertCircle, 
   ChevronDown, Copy, Download, FileCode, Loader2

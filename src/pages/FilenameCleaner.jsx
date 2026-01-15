@@ -46,8 +46,6 @@ export default function FilenameCleaner() {
   });
 
   const [newRule, setNewRule] = useState({ find: '', replace: '' });
-  const [showNavigationWarning, setShowNavigationWarning] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState(null);
 
   useEffect(() => {
     loadUserAndSubscription();

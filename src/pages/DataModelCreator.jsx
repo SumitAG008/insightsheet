@@ -444,6 +444,7 @@ export default function DataModelCreator() {
         open={showSchemaImporter}
         onOpenChange={setShowSchemaImporter}
         onImport={handleImportFromSQL}
+        defaultDbType={selectedImportType}
       />
     </div>
   );

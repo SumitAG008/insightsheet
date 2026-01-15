@@ -252,26 +252,26 @@ class DatabaseConnectionService:
                 
                 db = conn[database_name]
                 collections = db.list_collection_names()
+                
+                for collection_name in collections:
+                    collection = db[collection_name]
+                    sample = collection.find_one()
+                    columns = []
+                    if sample:
+                        for key, value in sample.items():
+                            columns.append({
+                                "name": key,
+                                "type": type(value).__name__,
+                                "nullable": True,
+                                "primaryKey": key == "_id"
+                            })
                     
-                    for collection_name in collections:
-                        collection = db[collection_name]
-                        sample = collection.find_one()
-                        columns = []
-                        if sample:
-                            for key, value in sample.items():
-                                columns.append({
-                                    "name": key,
-                                    "type": type(value).__name__,
-                                    "nullable": True,
-                                    "primaryKey": key == "_id"
-                                })
-                        
-                        count = collection.count_documents({})
-                        tables.append({
-                            "name": collection_name,
-                            "columns": columns,
-                            "rowCount": count
-                        })
+                    count = collection.count_documents({})
+                    tables.append({
+                        "name": collection_name,
+                        "columns": columns,
+                        "rowCount": count
+                    })
                     
             elif db_type == "mssql":
                 cursor = conn.cursor()

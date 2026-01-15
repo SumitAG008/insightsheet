@@ -1,14 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Database, Download, Upload, Sparkles, Save, FileCode, Trash2, Plus } from 'lucide-react';
+import { Database, Download, Upload, Sparkles, Save, FileCode, Trash2, Plus, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import SchemaCanvas from '@/components/datamodel/SchemaCanvas';
 import TableDesigner from '@/components/datamodel/TableDesigner';
 import RelationshipManager from '@/components/datamodel/RelationshipManager';
 import SQLGenerator from '@/components/datamodel/SQLGenerator';
 import AISchemaAssistant from '@/components/datamodel/AISchemaAssistant';
+import SchemaImporter from '@/components/datamodel/SchemaImporter';
 import { meldraAi } from '@/api/meldraClient';
 import { jsonToSchema, xmlToSchema, autoConvertToSchema } from '@/utils/schemaConverter';
 
@@ -22,6 +29,7 @@ export default function DataModelCreator() {
   });
   const [selectedTable, setSelectedTable] = useState(null);
   const [activeTab, setActiveTab] = useState('canvas');
+  const [showSchemaImporter, setShowSchemaImporter] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -230,6 +238,26 @@ export default function DataModelCreator() {
     toast.success('AI-generated schema applied');
   };
 
+  const handleImportFromSQL = (importedSchema, appendMode) => {
+    if (appendMode) {
+      // Append to existing schema
+      setSchema(prev => ({
+        ...prev,
+        tables: [...prev.tables, ...importedSchema.tables],
+        relationships: [...prev.relationships, ...importedSchema.relationships]
+      }));
+    } else {
+      // Replace existing schema
+      setSchema(importedSchema);
+    }
+    setSelectedTable(null);
+    setActiveTab('canvas');
+    const tableCount = importedSchema.tables.length;
+    const columnCount = importedSchema.tables.reduce((sum, t) => sum + t.columns.length, 0);
+    const relCount = importedSchema.relationships.length;
+    toast.success(`Schema imported: ${tableCount} table(s), ${columnCount} columns, ${relCount} relationships`);
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 p-4 md:p-8">
       <div className="max-w-[1600px] mx-auto">
@@ -260,7 +288,27 @@ export default function DataModelCreator() {
                 Add Table
               </Button>
 
-              <label className="cursor-pointer">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" type="button">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Import
+                    <ChevronDown className="w-4 h-4 ml-2" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-white dark:bg-slate-800">
+                  <DropdownMenuItem onClick={() => setShowSchemaImporter(true)}>
+                    <Database className="w-4 h-4 mr-2" />
+                    From SQL (MySQL, PostgreSQL, etc.)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => document.getElementById('import-json-input')?.click()}>
+                    <FileCode className="w-4 h-4 mr-2" />
+                    From JSON/XML
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <label className="cursor-pointer hidden">
                 <input
                   type="file"
                   accept=".json,.xml,.js"
@@ -268,15 +316,6 @@ export default function DataModelCreator() {
                   className="hidden"
                   id="import-json-input"
                 />
-                <Button 
-                  variant="outline" 
-                  type="button"
-                  onClick={() => document.getElementById('import-json-input')?.click()}
-                  title="Import JSON/XML data or schema file"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  Import JSON/XML
-                </Button>
               </label>
 
               <Button
@@ -378,6 +417,13 @@ export default function DataModelCreator() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Schema Importer Modal */}
+      <SchemaImporter
+        open={showSchemaImporter}
+        onOpenChange={setShowSchemaImporter}
+        onImport={handleImportFromSQL}
+      />
     </div>
   );
 }

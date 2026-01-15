@@ -9,7 +9,7 @@ psycopg2-binary
 pymysql
 pymongo
 pyodbc
-cx_Oracle==2.9.10
+cx_Oracle==8.3.0
 alembic==1.14.0
 
 # Authentication & Security

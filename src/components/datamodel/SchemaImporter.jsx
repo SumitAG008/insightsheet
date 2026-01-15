@@ -380,8 +380,8 @@ export default function SchemaImporter({ onImport, open, onOpenChange, defaultDb
               <Textarea
                 value={sqlContent}
                 onChange={(e) => setSqlContent(e.target.value)}
-                placeholder="Paste your SQL dump content here..."
-                className="bg-slate-800 border-slate-700 text-slate-200 font-mono text-sm min-h-[400px]"
+                placeholder="Paste your schema dump content here..."
+                className="bg-indigo-950/40 border-indigo-700/50 text-slate-200 font-mono text-sm min-h-[400px] placeholder:text-slate-500"
               />
             </div>
 

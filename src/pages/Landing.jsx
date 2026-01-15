@@ -15,17 +15,25 @@ export default function Landing() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
       {/* Header with Logo on Left */}
-      <header className="w-full border-b border-slate-800 py-4 px-4">
-        <div className="container mx-auto flex items-center justify-between">
+      <header className="w-full border-b border-slate-800/50 py-5 px-6 md:px-8 backdrop-blur-sm bg-slate-950/30">
+        <div className="container mx-auto flex items-center justify-between max-w-7xl">
           <Logo size="medium" showText={true} style={{ color: '#FFFFFF' }} />
-          <div className="flex gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <Link to="/pricing">
-              <Button variant="ghost" className="text-white hover:text-slate-300">
+              <Button 
+                variant="ghost" 
+                className="text-white hover:text-slate-200 px-4 py-2 text-base font-medium transition-all hover:bg-slate-800/50 rounded-lg"
+                style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}
+              >
                 Pricing
               </Button>
             </Link>
             <Link to="/login">
-              <Button variant="ghost" className="text-white hover:text-slate-300">
+              <Button 
+                variant="ghost" 
+                className="text-white hover:text-slate-200 px-4 py-2 text-base font-medium transition-all hover:bg-slate-800/50 rounded-lg"
+                style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}
+              >
                 Login
               </Button>
             </Link>

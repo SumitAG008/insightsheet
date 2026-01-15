@@ -8,8 +8,27 @@ import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+
+def get_new_year_message() -> str:
+    """
+    Returns New Year message if current date is before January 31, 2026
+    Returns empty string after that date
+    """
+    cutoff_date = datetime(2026, 1, 31, 23, 59, 59)
+    current_date = datetime.now()
+    
+    if current_date <= cutoff_date:
+        return """
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; margin: 20px 0; border-radius: 8px; text-align: center;">
+            <h2 style="margin: 0 0 10px 0; font-size: 24px;">🎉 Happy New Year 2026! 🎉</h2>
+            <p style="margin: 0; font-size: 16px;">Wishing you a year filled with success, growth, and amazing data insights!</p>
+        </div>
+        """
+    return ""
 
 # Try to import Resend (optional dependency)
 try:
@@ -45,7 +64,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
             
             # Resend requires verified domain for custom emails
             # Strategy: Try to use configured email, fall back to test email if domain not verified
-            configured_from = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "noreply@meldra.ai"))
+            configured_from = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "hello@meldra.ai"))
             
             # Check if using Gmail/Outlook/Hotmail - these can't be verified, use test email
             if any(domain in configured_from.lower() for domain in ["@gmail.com", "@outlook.com", "@hotmail.com", "@yahoo.com", "@icloud.com"]):
@@ -87,6 +106,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
                         <h1>🔐 Password Reset Request</h1>
                     </div>
                     <div class="content">
+                        {get_new_year_message()}
                         <p>Hello,</p>
                         <p>We received a request to reset your password for your <strong>Meldra</strong> account (<strong>insight.meldra.ai</strong>).</p>
                         <div class="security-notice">
@@ -111,10 +131,12 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
             </html>
             """
             
+            new_year_text = "🎉 Happy New Year 2026! 🎉\nWishing you a year filled with success, growth, and amazing data insights!\n\n" if datetime.now() <= datetime(2026, 1, 31, 23, 59, 59) else ""
+            
             text_content = f"""
             Password Reset Request - Meldra
             
-            Hello,
+            {new_year_text}Hello,
             
             We received a request to reset your password for your Meldra account (insight.meldra.ai).
             
@@ -208,7 +230,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         message["Subject"] = "Reset Your Password - Meldra"
         message["From"] = f"Meldra <{smtp_from_email}>"
         message["To"] = email
-        message["Reply-To"] = "noreply@meldra.ai"
+        message["Reply-To"] = "hello@meldra.ai"
         message["List-Unsubscribe"] = "<https://insight.meldra.ai/unsubscribe>"
         # Add security headers
         message["X-Mailer"] = "Meldra Email Service"
@@ -243,6 +265,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
                     <h1>🔐 Password Reset Request</h1>
                 </div>
                 <div class="content">
+                    {new_year_html}
                     <p>Hello,</p>
                     <p>We received a request to reset your password for your <strong>Meldra</strong> account (<strong>insight.meldra.ai</strong>).</p>
                     
@@ -288,7 +311,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         text_body = f"""
         Password Reset Request - Meldra
         
-        Hello,
+        {new_year_text}Hello,
         
         We received a request to reset your password for your Meldra account (insight.meldra.ai).
         
@@ -409,7 +432,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
             
             # Resend requires verified domain for custom emails
             # Strategy: Try to use configured email, fall back to test email if domain not verified
-            configured_from = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "noreply@meldra.ai"))
+            configured_from = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "hello@meldra.ai"))
             
             # Check if using Gmail/Outlook/Hotmail - these can't be verified, use test email
             if any(domain in configured_from.lower() for domain in ["@gmail.com", "@outlook.com", "@hotmail.com", "@yahoo.com", "@icloud.com"]):
@@ -455,6 +478,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                         <h1>✅ Verify Your Email Address</h1>
                     </div>
                     <div class="content">
+                        {get_new_year_message()}
                         <p>Hello {full_name or 'there'},</p>
                         <p>Thank you for registering with <strong>Meldra</strong>! To complete your registration and activate your account, please verify your email address.</p>
                         
@@ -496,10 +520,12 @@ async def send_verification_email(email: str, full_name: str, verification_link:
             </html>
             """
             
+            new_year_text_verify = "🎉 Happy New Year 2026! 🎉\nWishing you a year filled with success, growth, and amazing data insights!\n\n" if datetime.now() <= datetime(2026, 1, 31, 23, 59, 59) else ""
+            
             text_content = f"""
             Verify Your Email Address - Meldra
             
-            Hello {full_name or 'there'},
+            {new_year_text_verify}Hello {full_name or 'there'},
             
             Thank you for registering with Meldra! To complete your registration and activate your account, please verify your email address.
             
@@ -604,7 +630,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
         message["Subject"] = "Verify Your Email - Meldra"
         message["From"] = f"Meldra <{smtp_from_email}>"
         message["To"] = email
-        message["Reply-To"] = "noreply@meldra.ai"
+        message["Reply-To"] = "hello@meldra.ai"
         message["List-Unsubscribe"] = "<https://insight.meldra.ai/unsubscribe>"
         message["X-Mailer"] = "Meldra Email Service"
         message["X-Entity-Ref-ID"] = "meldra-email-verification"
@@ -717,7 +743,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
         message["Subject"] = "Verify Your Email - Meldra"
         message["From"] = f"Meldra <{smtp_from_email}>"
         message["To"] = email
-        message["Reply-To"] = "noreply@meldra.ai"
+        message["Reply-To"] = "hello@meldra.ai"
         message["List-Unsubscribe"] = "<https://insight.meldra.ai/unsubscribe>"
         message["X-Mailer"] = "Meldra Email Service"
         message["X-Entity-Ref-ID"] = "meldra-email-verification"

@@ -1,0 +1,53 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Meldra API",
+    "description": "Document conversion (PDF, DOC, PPT) and ZIP Cleaner. Use in your apps with a paid Meldra API key. Base URL as provided with your key.",
+    "version": "1.0.0",
+    "contact": { "email": "support@meldra.ai" }
+  },
+  "servers": [{ "url": "https://api.developer.meldra.ai", "description": "Production (or as provided with your key)" }],
+  "security": [{ "ApiKeyAuth": [] }],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": { "type": "apiKey", "in": "header", "name": "X-API-Key", "description": "Your Meldra API key" }
+    }
+  },
+  "paths": {
+    "/v1/convert/pdf-to-doc": {
+      "post": {
+        "summary": "PDF to DOC",
+        "requestBody": { "content": { "multipart/form-data": { "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary", "description": "PDF file" } }, "required": ["file"] } } } },
+        "responses": { "200": { "description": ".docx binary" }, "4xx": { "description": "Client error" }, "5xx": { "description": "Server error" } }
+      }
+    },
+    "/v1/convert/doc-to-pdf": {
+      "post": {
+        "summary": "DOC to PDF",
+        "requestBody": { "content": { "multipart/form-data": { "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary", "description": ".doc or .docx" } }, "required": ["file"] } } } },
+        "responses": { "200": { "description": ".pdf binary" }, "4xx": { "description": "Client error" }, "5xx": { "description": "Server error" } }
+      }
+    },
+    "/v1/convert/ppt-to-pdf": {
+      "post": {
+        "summary": "PPT to PDF",
+        "requestBody": { "content": { "multipart/form-data": { "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary", "description": ".ppt or .pptx" } }, "required": ["file"] } } } },
+        "responses": { "200": { "description": ".pdf binary" }, "4xx": { "description": "Client error" }, "5xx": { "description": "Server error" } }
+      }
+    },
+    "/v1/convert/pdf-to-ppt": {
+      "post": {
+        "summary": "PDF to PPT",
+        "requestBody": { "content": { "multipart/form-data": { "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary", "description": "PDF file" } }, "required": ["file"] } } } },
+        "responses": { "200": { "description": ".pptx binary" }, "4xx": { "description": "Client error" }, "5xx": { "description": "Server error" } }
+      }
+    },
+    "/v1/zip/clean": {
+      "post": {
+        "summary": "ZIP Cleaner",
+        "requestBody": { "content": { "multipart/form-data": { "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary", "description": "ZIP file" }, "options": { "type": "string", "description": "Optional JSON: allowedCharacters, replacementCharacter, etc." } }, "required": ["file"] } } } },
+        "responses": { "200": { "description": "Processed ZIP binary" }, "4xx": { "description": "Client error" }, "5xx": { "description": "Server error" } }
+      }
+    }
+  }
+}

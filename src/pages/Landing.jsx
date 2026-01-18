@@ -120,15 +120,15 @@ export default function Landing() {
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {[
-              { icon: BarChart3, icon2: Brain, title: 'Ask Your Data Questions', description: 'Upload Excel or CSV, ask things like "What's our top product?" or "Show sales by region." Get answers and charts. Export to PDF, Excel, or Word for your report or deck.' },
-              { icon: Workflow, icon2: Target, title: 'AI That Does the Steps for You', description: 'Tell it what you need in plain English—e.g. "Clean this, add a chart, export to PowerPoint." It does the work so you don't have to click through every step.' },
+              { icon: BarChart3, icon2: Brain, title: 'Ask Your Data Questions', description: 'Upload Excel or CSV, ask things like "What\'s our top product?" or "Show sales by region." Get answers and charts. Export to PDF, Excel, or Word for your report or deck.' },
+              { icon: Workflow, icon2: Target, title: 'AI That Does the Steps for You', description: 'Tell it what you need in plain English—e.g. "Clean this, add a chart, export to PowerPoint." It does the work so you don\'t have to click through every step.' },
               { icon: BarChart3, icon2: TrendingUp, title: 'Charts for P&L, Forecasts & More', description: '30+ chart types: P&L views, forecasts, and standard business charts. One click to put them in Excel, Word, or an image for your presentation.' },
               { icon: Database, icon2: Layers, title: 'Design How Your Tables Connect', description: 'Draw how your database tables link together. AI helps. Export the structure for your tech team—no need to write it from scratch.' },
               { icon: FileSpreadsheet, icon2: TrendingUp, title: 'P&L From a Sentence', description: 'Describe your P&L in words (e.g. "Revenue 100k, COGS 40%"). Get the numbers, charts, and a report. Use it for month-end or board packs.' },
               { icon: FileText, icon2: FileCheck, title: 'Excel to PowerPoint', description: 'Turn your Excel sheet into slides with charts and tables. No copy-paste. One flow from data to client-ready or board-ready deck.' },
               { icon: FileCheck, icon2: Zap, title: 'Fix Messy Filenames in ZIPs', description: 'ZIP full of odd characters or broken names? Clean and rename in one go. Fewer errors when others open your files.' },
               { icon: BarChart3, icon2: Target, title: 'Clean & Filter Without Formulas', description: 'Remove duplicates, trim spaces, fix dates and numbers. Filter by several conditions at once. Undo anytime. Pre-made templates for Sales, Finance, HR.' },
-              { icon: Shield, icon2: Eye, title: 'Your Data Never Sits on Our Servers', description: 'Everything runs on your device. Files download when ready. When you're done, nothing is left on our side. You stay in control.' }
+              { icon: Shield, icon2: Eye, title: 'Your Data Never Sits on Our Servers', description: 'Everything runs on your device. Files download when ready. When you\'re done, nothing is left on our side. You stay in control.' }
             ].map((feature, idx) => (
               <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-6 transition-all group hover:border-blue-200 hover:bg-white">
                 <div className="w-16 h-16 rounded-xl flex items-center justify-center mb-4 bg-blue-100 group-hover:bg-blue-200 transition-colors">
@@ -160,7 +160,7 @@ export default function Landing() {
                   <Zap className="w-10 h-10 text-white" />
                 </div>
                 <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>No Formulas Required</h3>
-                <p className="text-slate-600 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>Describe what you need in plain English. AI helps with analysis, charts, and exports"”so you spend less time in the weeds.</p>
+                <p className="text-slate-600 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>Describe what you need in plain English. AI helps with analysis, charts, and exports—so you spend less time in the weeds.</p>
               </div>
               <div className="text-center">
                 <div className="w-20 h-20 rounded-2xl flex items-center justify-center mx-auto mb-6 bg-blue-600">
@@ -184,6 +184,71 @@ export default function Landing() {
             Turn data into reports and slides—without formulas or IT
           </p>
 
+          {/* What Meldra does for you — business-oriented, no jargon */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-10 md:p-12 mb-10">
+            <h3 className="text-3xl md:text-4xl font-bold text-slate-900 mb-8 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600">
+                <Target className="w-6 h-6 text-white" />
+              </div>
+              What Meldra Does for You
+            </h3>
+            <div className="space-y-6">
+              <div>
+                <h4 className="text-xl md:text-2xl font-bold text-slate-900 mb-4 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+                  <BarChart3 className="w-6 h-6 text-blue-600" />
+                  Ask Questions, Get Answers &amp; Charts
+                </h4>
+                <ul className="list-disc list-inside space-y-3 text-slate-600 ml-4 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+                  <li><strong className="text-slate-900 font-semibold">Ask in your own words:</strong> Upload Excel or CSV and ask things like &quot;What&apos;s our top product?&quot; or &quot;Show sales by region.&quot; Get answers and charts fast.</li>
+                  <li><strong className="text-slate-900 font-semibold">Clean data without formulas:</strong> Remove duplicates, fix dates and numbers, trim spaces. Filter by several conditions at once.</li>
+                  <li><strong className="text-slate-900 font-semibold">Charts for P&amp;L, forecasts, and more:</strong> 30+ chart types. One click to add them to Excel, Word, or an image for your deck.</li>
+                  <li><strong className="text-slate-900 font-semibold">Export what you need:</strong> PDF, Excel, Word, CSV, or image—whatever your report or presentation requires.</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-xl md:text-2xl font-bold text-slate-900 mb-4 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+                  <Brain className="w-6 h-6 text-blue-600" />
+                  AI That Does the Work for You
+                </h4>
+                <ul className="list-disc list-inside space-y-3 text-slate-600 ml-4 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+                  <li><strong className="text-slate-900 font-semibold">Tell it what you need:</strong> e.g. &quot;Clean this, add a chart, export to PowerPoint.&quot; It runs the steps so you don&apos;t have to.</li>
+                  <li><strong className="text-slate-900 font-semibold">Formula help:</strong> Not sure which formula to use? AI suggests options for your Excel-style calculations.</li>
+                  <li><strong className="text-slate-900 font-semibold">Templates:</strong> Pre-built for Sales, Finance, HR, Marketing—start from something that fits your role.</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-xl md:text-2xl font-bold text-slate-900 mb-4 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+                  <FileSpreadsheet className="w-6 h-6 text-blue-600" />
+                  Reports &amp; Slides Ready to Share
+                </h4>
+                <ul className="list-disc list-inside space-y-3 text-slate-600 ml-4 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+                  <li><strong className="text-slate-900 font-semibold">P&amp;L from a sentence:</strong> Describe it in words; get numbers and charts. Use for month-end or board packs.</li>
+                  <li><strong className="text-slate-900 font-semibold">Excel to PowerPoint:</strong> Turn your sheet into slides with charts and tables. One flow from data to deck.</li>
+                  <li><strong className="text-slate-900 font-semibold">PDF and more:</strong> Export tables and charts as PDF. Undo/redo and shortcuts (e.g. Ctrl+Z, Ctrl+S) when you&apos;re editing.</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="text-xl md:text-2xl font-bold text-slate-900 mb-4 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+                  <Database className="w-6 h-6 text-blue-600" />
+                  Files &amp; Databases
+                </h4>
+                <ul className="list-disc list-inside space-y-3 text-slate-600 ml-4 text-base md:text-lg font-light leading-relaxed" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+                  <li><strong className="text-slate-900 font-semibold">Design how tables connect:</strong> Draw the links between your database tables. AI helps. Export the structure for your tech team.</li>
+                  <li><strong className="text-slate-900 font-semibold">Fix messy ZIPs:</strong> Clean and rename files in ZIPs so they open correctly. Fewer &quot;file not found&quot; or encoding issues.</li>
+                  <li><strong className="text-slate-900 font-semibold">Formats we support:</strong> Excel (.xlsx, .xls), CSV, ZIP, and PDF.</li>
+                </ul>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 md:p-8">
+                <h4 className="text-xl md:text-2xl font-bold text-slate-900 mb-4 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
+                  <Shield className="w-6 h-6 text-blue-600" />
+                  We Don&apos;t Store Your Data
+                </h4>
+                <p className="text-slate-600 text-base md:text-lg leading-relaxed font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
+                  <strong className="text-slate-900 font-semibold">Your files never sit on our servers.</strong> Everything runs on your device. When you&apos;re done, your file downloads to you. Nothing is left on our side—so you stay in control and compliant.
+                </p>
+              </div>
+            </div>
+          </div>
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-10 md:p-12 mb-10">
             <h3 className="text-3xl md:text-4xl font-bold text-slate-900 mb-6 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
               <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600">
@@ -192,7 +257,7 @@ export default function Landing() {
               Our Mission
             </h3>
             <p className="text-slate-600 text-lg md:text-xl leading-relaxed mb-6 font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
-              We believe everyone should be able to turn data into reports and slides"”without formulas, without IT, and without handing over their files. 
+              We believe everyone should be able to turn data into reports and slides—without formulas, without IT, and without handing over their files. 
               Meldra gives you strong analysis and clear output while keeping your data on your side.
             </p>
             <p className="text-slate-600 text-lg md:text-xl leading-relaxed font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
@@ -240,7 +305,7 @@ export default function Landing() {
                 <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
                 <div>
                   <h4 className="font-semibold text-slate-900 mb-1">Strong AI Without Big Budgets</h4>
-                  <p className="text-sm text-slate-600">Get analysis and automation that works"”without enterprise pricing.</p>
+                  <p className="text-sm text-slate-600">Get analysis and automation that works—without enterprise pricing.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">

@@ -67,11 +67,11 @@ export default function Pricing() {
       icon: Sparkles,
       color: 'from-gray-600 to-gray-700',
       features: [
-        '10MB file size limit',
-        '50 transactions per month',
-        '5 AI queries per day',
-        'Basic charts (3 types)',
-        'Basic cleaning tools',
+        'Files up to 10MB',
+        '50 jobs per month',
+        '5 questions to your data per day',
+        '3 chart types',
+        'Basic clean & filter',
         'Export to CSV'
       ]
     },
@@ -87,15 +87,15 @@ export default function Pricing() {
       color: 'from-teal-600 to-sky-600',
       popular: true,
       features: [
-        'Unlimited file size',
-        'Unlimited transactions',
-        'Unlimited AI queries',
-        'All 7 chart types',
-        'Advanced transformations',
-        'Smart formula builder',
+        'No file size limit',
+        'Unlimited jobs',
+        'Unlimited questions to your data',
+        'All chart types (P&L, forecasts, and more)',
+        'Clean & reshape data without formulas',
+        'AI suggests formulas when you need them',
         'Priority support',
-        'Export to Excel & CSV',
-        'Import .XLS, .XLSX, .CSV'
+        'Export to Excel, Word, PDF, and more',
+        'Import Excel and CSV directly'
       ]
     }
   ];
@@ -115,36 +115,12 @@ export default function Pricing() {
   };
 
   const features = [
-    {
-      icon: BarChart3,
-      title: 'AI-Powered Data Analysis',
-      description: 'Upload CSV/Excel files and get instant AI-powered insights, trends, and patterns from your data.'
-    },
-    {
-      icon: Brain,
-      title: 'Agentic AI Assistant',
-      description: 'Autonomous AI agent that plans, executes, and reports on complex data operations using natural language.'
-    },
-    {
-      icon: Database,
-      title: 'Database Schema Designer',
-      description: 'Visual database schema creator with AI assistance. Design relationships and generate SQL schemas.'
-    },
-    {
-      icon: FileSpreadsheet,
-      title: 'P&L Builder',
-      description: 'Build Profit & Loss statements from natural language. Automated financial calculations and reporting.'
-    },
-    {
-      icon: FileText,
-      title: 'Excel to PowerPoint',
-      description: 'Convert Excel data into professional PowerPoint presentations with charts and visualizations.'
-    },
-    {
-      icon: Shield,
-      title: 'Privacy-First Architecture',
-      description: 'All data processing happens in your browser. Your data never leaves your device - complete privacy guaranteed.'
-    }
+    { icon: BarChart3, title: 'Ask Your Data Questions', description: 'Upload Excel or CSV and ask in plain English. Get answers and charts. Export to PDF, Excel, or Word for your report or deck.' },
+    { icon: Brain, title: 'AI That Does the Steps for You', description: 'Tell it what you need—e.g. clean, chart, export to PowerPoint. It runs the steps so you don’t have to.' },
+    { icon: Database, title: 'Design How Your Tables Connect', description: 'Draw how your database tables link. AI helps. Export the structure for your tech team.' },
+    { icon: FileSpreadsheet, title: 'P&L From a Sentence', description: 'Describe your P&L in words. Get numbers and charts. Use it for month-end or board packs.' },
+    { icon: FileText, title: 'Excel to PowerPoint', description: 'Turn your Excel sheet into slides with charts and tables. One flow from data to deck.' },
+    { icon: Shield, title: 'We Don’t Store Your Data', description: 'Everything runs on your device. Your files never sit on our servers. You stay in control.' }
   ];
 
   return (
@@ -160,7 +136,7 @@ export default function Pricing() {
             Simple, Transparent Pricing
           </h2>
           <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-8">
-            Start free, upgrade when you need more power
+            Start free. Upgrade when you need bigger files and more reports.
           </p>
 
           {user && (
@@ -317,23 +293,23 @@ export default function Pricing() {
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
               <Zap className="w-10 h-10 mb-4 text-blue-600" />
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Unlimited Everything</h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">No Limits on What You Can Do</h3>
               <p className="text-slate-600 text-sm">
-                No file size limits, unlimited transactions, unlimited AI queries
+                Bigger files, more jobs, unlimited questions to your data. No need to hold back.
               </p>
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
               <Crown className="w-10 h-10 mb-4 text-blue-600" />
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Excel Support</h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Full Excel In &amp; Out</h3>
               <p className="text-slate-600 text-sm">
-                Import .XLS, .XLSX files directly. Export to Excel format
+                Import Excel directly. Export to Excel, Word, and PDF for your reports and decks.
               </p>
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
               <Star className="w-10 h-10 mb-4 text-blue-600" />
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Save More</h3>
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Save When You Pay Ahead</h3>
               <p className="text-slate-600 text-sm">
-                Get 5% off with quarterly billing, 10% off with yearly billing
+                5% off quarterly, 10% off yearly. Fewer renewals, more value.
               </p>
             </div>
           </div>

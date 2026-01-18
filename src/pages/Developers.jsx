@@ -9,7 +9,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import CookieConsent from '@/components/CookieConsent';
 import {
-  Code, Key, FileText, FileArchive, Mail, ArrowRight, CheckCircle, Shield, Briefcase,
+  Key, FileText, FileArchive, Mail, ArrowRight, CheckCircle, Shield, Briefcase,
   ChevronDown, ChevronRight, BookOpen, Download, HelpCircle, Layers,
 } from 'lucide-react';
 
@@ -93,34 +93,16 @@ export default function Developers() {
         </div>
       </header>
 
-      {/* Hero — white bg, royal blue accents */}
-      <section className="container mx-auto px-4 py-14 md:py-20 max-w-4xl text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 mb-6">
-          <Code className="w-5 h-5 text-blue-600" /> developer.meldra.ai
-        </div>
+      {/* Hero — title and intro only; rest of content shifted up */}
+      <section className="container mx-auto px-4 py-8 md:py-10 max-w-4xl text-center">
         <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
           Build with Meldra APIs
         </h1>
-        <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-6">
+        <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-4">
           Document conversion (PDF, DOC, PPT) and ZIP Cleaner. Use in your apps with a paid Meldra API key. Self-service and enterprise options.
         </p>
-        <p className="text-slate-500 text-sm max-w-xl mx-auto mb-10">
+        <p className="text-slate-500 text-sm max-w-xl mx-auto">
           Whether you are a developer, a startup, or an established product, Meldra APIs let you add conversion and file-cleaning to your stack quickly.
-        </p>
-        <div className="flex flex-wrap justify-center gap-4">
-          <a href="#get-started">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6">
-              Get started
-            </Button>
-          </a>
-          <a href="#reference">
-            <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold px-6">
-              View API reference
-            </Button>
-          </a>
-        </div>
-        <p className="text-slate-500 text-xs mt-6">
-          Not sure which offer fits? <a href="#pricing" className="text-blue-600 hover:text-blue-700">See pricing and commercial use</a>.
         </p>
       </section>
 

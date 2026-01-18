@@ -231,13 +231,13 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
     <div>
       {/* File size limit notice - royal blue for premium, strong contrast */}
       <Alert className={`mb-6 ${subscription?.plan === 'premium' ? 'bg-[#4169E1]/10 border-[#4169E1]/40' : 'bg-amber-500/10 border-amber-500/30'}`}>
-        <Info className={`h-4 w-4 ${subscription?.plan === 'premium' ? 'text-[#4169E1]' : 'text-amber-400'}`} />
-        <AlertDescription className={subscription?.plan === 'premium' ? 'text-slate-100' : 'text-slate-300'}>
-          <strong className={`font-bold text-base ${subscription?.plan === 'premium' ? 'text-[#4169E1]' : 'text-amber-300'}`}>
+        <Info className={`h-4 w-4 ${subscription?.plan === 'premium' ? 'text-[#4169E1]' : 'text-amber-600 dark:text-amber-400'}`} />
+        <AlertDescription className={subscription?.plan === 'premium' ? 'text-slate-900 dark:text-slate-200' : 'text-slate-700 dark:text-slate-300'}>
+          <strong className={`font-bold text-base ${subscription?.plan === 'premium' ? 'text-slate-900 dark:text-slate-100' : 'text-amber-700 dark:text-amber-300'}`}>
             {subscription?.plan === 'premium' ? '✨ Premium: Unlimited file size!' : `⚠️ File Size Limit: ${maxSize}MB`}
           </strong>
           <br />
-          <span className={`text-base font-semibold ${subscription?.plan === 'premium' ? 'text-slate-200' : ''}`}>
+          <span className={`text-base font-semibold ${subscription?.plan === 'premium' ? 'text-slate-800 dark:text-slate-300' : ''}`}>
             {subscription?.plan === 'premium' 
               ? 'You can upload files up to 500MB with your Premium plan.'
               : 'Free plan limited to 10MB. Upgrade to Premium for unlimited size!'}

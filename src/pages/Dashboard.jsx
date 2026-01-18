@@ -334,7 +334,7 @@ export default function Dashboard() {
             
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#4169E1]/10 border border-[#4169E1]/40 rounded-full mb-6">
               <Shield className="w-4 h-4 text-[#4169E1]" />
-              <span className="text-sm text-slate-700 dark:text-slate-300 font-semibold">100% Private • Zero Storage • Excel & CSV Support</span>
+              <span className="text-sm text-slate-900 dark:text-slate-200 font-semibold">100% Private • Zero Storage • Excel & CSV Support</span>
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6 text-slate-900 dark:text-white leading-tight">
@@ -569,8 +569,8 @@ export default function Dashboard() {
         <div className="mb-6 bg-[#4169E1]/10 dark:bg-slate-900/50 border border-[#4169E1]/40 dark:border-slate-800 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-[#4169E1] flex-shrink-0 mt-0.5" />
-            <div className="text-base text-slate-700 dark:text-slate-300">
-              <strong className="text-[#4169E1]">Privacy Mode Active:</strong> All data is processed locally in your browser.
+            <div className="text-base text-slate-900 dark:text-slate-300">
+              <strong className="text-slate-900 dark:text-slate-100">Privacy Mode Active:</strong> All data is processed locally in your browser.
               Nothing is stored on servers. Close this tab to permanently delete all data.
             </div>
           </div>
@@ -582,7 +582,7 @@ export default function Dashboard() {
             <Sparkles className="w-6 h-6 text-[#4169E1]" />
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">New: AI-Powered Operations</h3>
-              <p className="text-base text-slate-600 dark:text-slate-400">Describe any operation in plain English - AI will execute it for you!</p>
+              <p className="text-base text-slate-800 dark:text-slate-400">Describe any operation in plain English - AI will execute it for you!</p>
             </div>
           </div>
         </div>

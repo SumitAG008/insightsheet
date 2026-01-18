@@ -250,29 +250,29 @@ export default function DatabaseConnection() {
   const currentDbConfig = DB_TYPES[dbType];
 
   return (
-    <div className="min-h-screen bg-[#0d0d0f] p-4 md:p-6">
+    <div className="min-h-screen bg-white dark:bg-slate-950 p-4 md:p-6">
       <div className="container mx-auto max-w-7xl">
-        {/* Header */}
+        {/* Header — same background as Data Model Creator (DB Schema) */}
         <div className="mb-8">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-16 h-16 bg-[#4169E1] rounded-2xl flex items-center justify-center">
               <Database className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.03em' }}>
+              <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.03em' }}>
                 Database Connection
               </h1>
-              <p className="text-lg text-[#34d399] font-light" style={{ letterSpacing: '-0.01em' }}>
+              <p className="text-lg text-slate-600 dark:text-slate-300 font-light" style={{ letterSpacing: '-0.01em' }}>
                 Connect to external databases, explore schemas, and execute queries
               </p>
             </div>
           </div>
           
-          {/* Zero Storage Notice - royal green */}
-          <Alert className="bg-[#059669]/10 border-[#059669]/40 mb-6">
-            <AlertCircle className="h-5 w-5 text-[#10b981]" />
-            <AlertDescription className="text-[#34d399]">
-              <strong className="text-[#34d399]">Zero Storage Policy:</strong> All database connections and query results are stored only in your browser session. 
+          {/* Zero Storage Notice */}
+          <Alert className="bg-emerald-50 dark:bg-[#059669]/10 border-emerald-200 dark:border-[#059669]/40 mb-6">
+            <AlertCircle className="h-5 w-5 text-emerald-600 dark:text-[#10b981]" />
+            <AlertDescription className="text-slate-900 dark:text-slate-200">
+              <strong className="text-slate-900 dark:text-slate-100">Zero Storage Policy:</strong> All database connections and query results are stored only in your browser session. 
               All data will be permanently deleted when you log out or close the application. No database credentials or data are stored on our servers.
             </AlertDescription>
           </Alert>
@@ -281,13 +281,13 @@ export default function DatabaseConnection() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Connection Panel */}
           <div className="lg:col-span-1">
-            <Card className="bg-slate-900/90 backdrop-blur-xl border-slate-700">
+            <Card className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                   <Plug className="w-5 h-5 text-[#4169E1]" />
                   Connection Settings
                 </CardTitle>
-                <CardDescription className="text-[#34d399]">
+                <CardDescription className="text-slate-600 dark:text-slate-300">
                   Configure your database connection
                 </CardDescription>
               </CardHeader>
@@ -295,13 +295,13 @@ export default function DatabaseConnection() {
                 {!isConnected ? (
                   <>
                     <div>
-                      <Label className="text-[#34d399] mb-2 block">Database Type</Label>
+                      <Label className="text-slate-700 dark:text-slate-300 mb-2 block">Database Type</Label>
                       <Select value={dbType} onValueChange={(value) => {
                         setDbType(value);
                         setConnectionData({});
                         setError('');
                       }}>
-                        <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-200">
+                        <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -319,8 +319,8 @@ export default function DatabaseConnection() {
 
                     {currentDbConfig.fields.map((field) => (
                       <div key={field.name}>
-                        <Label className="text-[#34d399] mb-2 block">
-                          {field.label} {field.required && <span className="text-red-400">*</span>}
+                        <Label className="text-slate-700 dark:text-slate-300 mb-2 block">
+                          {field.label} {field.required && <span className="text-red-500">*</span>}
                         </Label>
                         {field.type === 'textarea' ? (
                           <Textarea
@@ -328,14 +328,14 @@ export default function DatabaseConnection() {
                             onChange={(e) => handleFieldChange(field.name, e.target.value)}
                             placeholder={field.placeholder}
                             required={field.required}
-                            className="bg-slate-800/50 border-slate-700 text-slate-200 min-h-[100px]"
+                            className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200 min-h-[100px]"
                           />
                         ) : field.type === 'select' ? (
                           <Select
                             value={connectionData[field.name] || field.default || ''}
                             onValueChange={(value) => handleFieldChange(field.name, value)}
                           >
-                            <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-200">
+                            <SelectTrigger className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200">
                               <SelectValue placeholder={field.placeholder} />
                             </SelectTrigger>
                             <SelectContent>
@@ -353,16 +353,16 @@ export default function DatabaseConnection() {
                             onChange={(e) => handleFieldChange(field.name, e.target.value)}
                             placeholder={field.placeholder}
                             required={field.required}
-                            className="bg-slate-800/50 border-slate-700 text-slate-200"
+                            className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200"
                           />
                         )}
                       </div>
                     ))}
 
                     {error && (
-                      <Alert className="bg-red-500/10 border-red-500/30">
-                        <XCircle className="h-4 w-4 text-red-400" />
-                        <AlertDescription className="text-red-300 text-sm">{error}</AlertDescription>
+                      <Alert className="bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/30">
+                        <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" />
+                        <AlertDescription className="text-red-700 dark:text-red-300 text-sm">{error}</AlertDescription>
                       </Alert>
                     )}
 
@@ -386,22 +386,22 @@ export default function DatabaseConnection() {
                   </>
                 ) : (
                   <div className="space-y-4">
-                    <Alert className="bg-[#059669]/10 border-[#059669]/40">
-                      <CheckCircle className="h-4 w-4 text-[#10b981]" />
-                      <AlertDescription className="text-[#34d399] text-sm">
+                    <Alert className="bg-emerald-50 dark:bg-[#059669]/10 border-emerald-200 dark:border-[#059669]/40">
+                      <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-[#10b981]" />
+                      <AlertDescription className="text-slate-900 dark:text-slate-200 text-sm">
                         Connected to {currentDbConfig.name}
                       </AlertDescription>
                     </Alert>
                     
-                    <div className="text-sm text-[#34d399] space-y-1">
-                      <p><strong className="text-[#34d399]">Database:</strong> {connectionData.database || connectionData.serviceName || 'N/A'}</p>
-                      <p><strong className="text-[#34d399]">Host:</strong> {connectionData.host || connectionData.server || 'N/A'}</p>
+                    <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+                      <p><strong className="text-slate-900 dark:text-slate-100">Database:</strong> {connectionData.database || connectionData.serviceName || 'N/A'}</p>
+                      <p><strong className="text-slate-900 dark:text-slate-100">Host:</strong> {connectionData.host || connectionData.server || 'N/A'}</p>
                     </div>
 
                     <Button
                       onClick={disconnect}
                       variant="outline"
-                      className="w-full border-red-500/50 text-red-300 hover:bg-red-500/10"
+                      className="w-full border-red-300 dark:border-red-500/50 text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Disconnect
@@ -416,7 +416,7 @@ export default function DatabaseConnection() {
           <div className="lg:col-span-2 space-y-6">
             {isConnected ? (
               <Tabs defaultValue="schema" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 bg-slate-800/50 border-slate-700">
+                <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <TabsTrigger value="schema" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
                     <Eye className="w-4 h-4 mr-2" />
                     Schema
@@ -432,9 +432,9 @@ export default function DatabaseConnection() {
                 </TabsList>
 
                 <TabsContent value="schema" className="mt-6">
-                  <Card className="bg-slate-900/90 backdrop-blur-xl border-slate-700">
+                  <Card className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700">
                     <CardHeader>
-                      <CardTitle className="text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                      <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                         <Database className="w-5 h-5 text-[#4169E1]" />
                         Database Schema
                       </CardTitle>
@@ -443,35 +443,35 @@ export default function DatabaseConnection() {
                       {tables.length > 0 ? (
                         <div className="space-y-2">
                           {tables.map((table) => (
-                            <div key={table.name} className="border border-slate-700 rounded-lg overflow-hidden">
+                            <div key={table.name} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                               <button
                                 onClick={() => toggleTable(table.name)}
-                                className="w-full flex items-center justify-between p-4 bg-slate-800/50 hover:bg-slate-800/70 transition-colors"
+                                className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800/70 transition-colors"
                               >
                                 <div className="flex items-center gap-3">
                                   {expandedTables.has(table.name) ? (
-                                    <ChevronDown className="w-4 h-4 text-[#34d399]" />
+                                    <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                                   ) : (
-                                    <ChevronRight className="w-4 h-4 text-[#34d399]" />
+                                    <ChevronRight className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                                   )}
                                   <Table className="w-4 h-4 text-[#4169E1]" />
-                                  <span className="font-semibold text-white">{table.name}</span>
+                                  <span className="font-semibold text-slate-900 dark:text-white">{table.name}</span>
                                   {table.rowCount !== undefined && (
-                                    <span className="text-xs text-[#34d399]">({table.rowCount} rows)</span>
+                                    <span className="text-xs text-slate-600 dark:text-slate-400">({table.rowCount} rows)</span>
                                   )}
                                 </div>
                               </button>
                               {expandedTables.has(table.name) && (
-                                <div className="p-4 bg-slate-900/50 border-t border-slate-700">
+                                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700">
                                   <div className="space-y-2">
                                     {table.columns?.map((col) => (
                                       <div key={col.name} className="flex items-center gap-3 text-sm">
                                         <div className="flex items-center gap-2">
-                                          {col.primaryKey && <Key className="w-3 h-3 text-[#10b981]" />}
-                                          <span className="font-mono text-[#34d399]">{col.name}</span>
+                                          {col.primaryKey && <Key className="w-3 h-3 text-emerald-600 dark:text-[#10b981]" />}
+                                          <span className="font-mono text-slate-700 dark:text-slate-300">{col.name}</span>
                                         </div>
-                                        <span className="text-[#34d399]">{col.type}</span>
-                                        {col.nullable === false && <span className="text-xs text-red-400">NOT NULL</span>}
+                                        <span className="text-slate-600 dark:text-slate-400">{col.type}</span>
+                                        {col.nullable === false && <span className="text-xs text-red-500 dark:text-red-400">NOT NULL</span>}
                                       </div>
                                     ))}
                                   </div>
@@ -481,16 +481,16 @@ export default function DatabaseConnection() {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-[#34d399] text-center py-8">No tables found or schema not loaded</p>
+                        <p className="text-slate-600 dark:text-slate-400 text-center py-8">No tables found or schema not loaded</p>
                       )}
                     </CardContent>
                   </Card>
                 </TabsContent>
 
                 <TabsContent value="query" className="mt-6">
-                  <Card className="bg-slate-900/90 backdrop-blur-xl border-slate-700">
+                  <Card className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700">
                     <CardHeader>
-                      <CardTitle className="text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                      <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                         <FileCode className="w-5 h-5 text-[#4169E1]" />
                         SQL Query Editor
                       </CardTitle>
@@ -500,7 +500,7 @@ export default function DatabaseConnection() {
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
                         placeholder="Enter your SQL query here..."
-                        className="bg-slate-800/50 border-slate-700 text-slate-200 font-mono min-h-[200px]"
+                        className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200 font-mono min-h-[200px]"
                       />
                       <Button
                         onClick={executeQuery}
@@ -522,15 +522,15 @@ export default function DatabaseConnection() {
                       
                       {queryResult && (
                         <div className="mt-4">
-                          <div className="mb-2 text-sm text-[#34d399]">
+                          <div className="mb-2 text-sm text-slate-700 dark:text-slate-300">
                             {queryResult.rowCount} row(s) returned
                           </div>
-                          <div className="border border-slate-700 rounded-lg overflow-auto max-h-[500px]">
+                          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-auto max-h-[500px]">
                             <table className="w-full text-sm">
-                              <thead className="bg-slate-800/50 sticky top-0">
+                              <thead className="bg-slate-100 dark:bg-slate-800/50 sticky top-0">
                                 <tr>
                                   {queryResult.columns.map((col) => (
-                                    <th key={col} className="px-4 py-2 text-left text-slate-300 font-semibold border-b border-slate-700">
+                                    <th key={col} className="px-4 py-2 text-left text-slate-900 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
                                       {col}
                                     </th>
                                   ))}
@@ -538,9 +538,9 @@ export default function DatabaseConnection() {
                               </thead>
                               <tbody>
                                 {queryResult.data.map((row, idx) => (
-                                  <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30">
+                                  <tr key={idx} className="border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/30">
                                     {queryResult.columns.map((col) => (
-                                      <td key={col} className="px-4 py-2 text-slate-300">
+                                      <td key={col} className="px-4 py-2 text-slate-700 dark:text-slate-300">
                                         {row[col] !== null && row[col] !== undefined ? String(row[col]) : 'NULL'}
                                       </td>
                                     ))}
@@ -556,21 +556,21 @@ export default function DatabaseConnection() {
                 </TabsContent>
 
                 <TabsContent value="data" className="mt-6">
-                  <Card className="bg-slate-900/90 backdrop-blur-xl border-slate-700">
+                  <Card className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700">
                     <CardHeader>
-                      <CardTitle className="text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                      <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                         <Table className="w-5 h-5 text-[#4169E1]" />
                         Table Data
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
                       {selectedTable && tableData[selectedTable] ? (
-                        <div className="border border-slate-700/50 rounded-lg overflow-auto max-h-[600px]">
+                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-auto max-h-[600px]">
                           <table className="w-full text-sm">
-                            <thead className="bg-slate-800/50 sticky top-0">
+                            <thead className="bg-slate-100 dark:bg-slate-800/50 sticky top-0">
                               <tr>
                                 {Object.keys(tableData[selectedTable][0] || {}).map((col) => (
-                                  <th key={col} className="px-4 py-2 text-left text-slate-300 font-semibold border-b border-slate-700">
+                                  <th key={col} className="px-4 py-2 text-left text-slate-900 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700">
                                     {col}
                                   </th>
                                 ))}
@@ -578,9 +578,9 @@ export default function DatabaseConnection() {
                             </thead>
                             <tbody>
                               {tableData[selectedTable].map((row, idx) => (
-                                <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/30">
+                                <tr key={idx} className="border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/30">
                                   {Object.values(row).map((val, colIdx) => (
-                                    <td key={colIdx} className="px-4 py-2 text-slate-300">
+                                    <td key={colIdx} className="px-4 py-2 text-slate-700 dark:text-slate-300">
                                       {val !== null && val !== undefined ? String(val) : 'NULL'}
                                     </td>
                                   ))}
@@ -590,7 +590,7 @@ export default function DatabaseConnection() {
                           </table>
                         </div>
                       ) : (
-                        <p className="text-[#34d399] text-center py-8">
+                        <p className="text-slate-600 dark:text-slate-400 text-center py-8">
                           Select a table from the Schema tab to view its data
                         </p>
                       )}
@@ -599,10 +599,10 @@ export default function DatabaseConnection() {
                 </TabsContent>
               </Tabs>
             ) : (
-              <Card className="bg-slate-900/90 backdrop-blur-xl border-slate-700">
+              <Card className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700">
                 <CardContent className="py-16 text-center">
-                  <Database className="w-16 h-16 text-[#34d399] mx-auto mb-4" />
-                  <p className="text-[#34d399] text-lg">
+                  <Database className="w-16 h-16 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+                  <p className="text-slate-600 dark:text-slate-400 text-lg">
                     Connect to a database to explore schemas and execute queries
                   </p>
                 </CardContent>

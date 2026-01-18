@@ -37,7 +37,7 @@ This document describes the **OCR to DOC** and **OCR to PDF** feature added to I
 2. **Run OCR** — Backend extracts text with Tesseract; frontend shows it in an editable text area.
 3. **Edit / Fill** — User can correct OCR mistakes or fill in blanks.
 4. **Save** — Optional: saves current text to `sessionStorage` as a draft for the session.
-5. **Download** — User picks **Download as DOC** or **Download as PDF**; backend generates the file from the (possibly edited) text and returns it for download.
+5. **Download** — User picks **Download as DOC** or **Download as PDF**; backend generates a **form-like** file (sections, fill-in lines, tables, checkboxes) from the (possibly edited) text so the output resembles the original form and can be completed in Word or a PDF viewer.
 
 ---
 
@@ -48,8 +48,8 @@ This document describes the **OCR to DOC** and **OCR to PDF** feature added to I
 | Method | Purpose |
 |--------|---------|
 | `extract_text(image_data)` | Runs Tesseract OCR on image bytes/file-like; returns plain text. |
-| `text_to_docx(text, title)` | Builds a .docx from text using `python-docx`. |
-| `text_to_pdf(text, title)` | Builds a .pdf from text using `reportlab` (text is selectable/searchable). |
+| `text_to_docx(text, title)` | Builds a .docx from text using `python-docx`. **Form-aware:** preserves sections, label+underline fields, tables, and checkbox placeholders (☐) so the output is editable like the original form. |
+| `text_to_pdf(text, title)` | Builds a .pdf from text using `reportlab` (text is selectable/searchable). **Form-aware:** same structure as DOCX—sections, fill-in underlines, tables, and ☐ checkboxes. |
 | `is_ocr_available()` | Class method: checks if `pytesseract` and Tesseract binary are available. |
 
 **Constants**

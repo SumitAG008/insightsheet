@@ -161,7 +161,7 @@ export default function OCRConverter() {
             </strong>
             <br />
             <span className="text-sm text-slate-900 dark:text-slate-200 font-bold">
-              JPG, PNG, WebP, BMP, TIFF, GIF supported. Edit the extracted text, then export to DOC or PDF.
+              JPG, PNG, WebP, BMP, TIFF, GIF supported. Edit the extracted text, then export to DOC or PDF. Export keeps form structure: sections, fill-in lines, tables, and checkboxes so you can complete the form in Word or PDF.
             </span>
           </AlertDescription>
         </Alert>

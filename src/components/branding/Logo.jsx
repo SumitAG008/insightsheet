@@ -1,7 +1,9 @@
 // components/branding/Logo.jsx - Meldra Logo Component
 import PropTypes from 'prop-types';
 
-export default function Logo({ className = "", size = "medium", showText = true, style = {}, lowercaseM = false }) {
+const DEFAULT_TAGLINE = 'DATA MADE SIMPLE';
+
+export default function Logo({ className = "", size = "medium", showText = true, style = {}, lowercaseM = false, tagline }) {
   const sizes = {
     small: { container: "w-10 h-10", text: "text-lg", tagline: "text-[10px]" },
     medium: { container: "w-12 h-12", text: "text-2xl", tagline: "text-xs" },
@@ -10,6 +12,7 @@ export default function Logo({ className = "", size = "medium", showText = true,
 
   const currentSize = sizes[size];
   const brandName = lowercaseM ? 'meldra' : 'Meldra';
+  const taglineText = tagline != null ? tagline : DEFAULT_TAGLINE;
 
   return (
     <div className={`flex items-center gap-5 ${className}`} style={style}>
@@ -48,17 +51,17 @@ export default function Logo({ className = "", size = "medium", showText = true,
             {brandName}
           </h1>
           <p 
-            className={`${currentSize.tagline} font-medium tracking-widest uppercase`} 
+            className={`${currentSize.tagline} font-medium ${taglineText === DEFAULT_TAGLINE ? 'tracking-widest uppercase' : ''}`} 
             style={{ 
               color: 'inherit', 
               opacity: 0.9,
               fontFamily: "'Inter', sans-serif",
-              letterSpacing: '0.08em',
+              letterSpacing: taglineText === DEFAULT_TAGLINE ? '0.08em' : '0',
               lineHeight: '1.4',
               fontWeight: 500
             }}
           >
-            DATA MADE SIMPLE
+            {taglineText}
           </p>
         </div>
       )}
@@ -72,4 +75,5 @@ Logo.propTypes = {
   showText: PropTypes.bool,
   style: PropTypes.object,
   lowercaseM: PropTypes.bool,
+  tagline: PropTypes.string,
 };

@@ -8,6 +8,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import CookieConsent from '@/components/CookieConsent';
+import Logo from '@/components/branding/Logo';
 import {
   Key, FileText, FileArchive, Mail, ArrowRight, CheckCircle, Shield, Briefcase,
   ChevronDown, ChevronRight, BookOpen, Download, HelpCircle, Layers,
@@ -52,13 +53,7 @@ export default function Developers() {
       {/* Header — white bg, royal blue accents */}
       <header className="w-full border-b border-slate-200 py-4 px-4 md:px-6 lg:px-8 bg-white sticky top-0 z-40">
         <div className="container mx-auto flex items-center justify-between max-w-7xl">
-          <div className="flex items-center gap-3">
-            <img src="/meldra-enhance.png" alt="meldra" className="w-10 h-10 object-contain flex-shrink-0" />
-            <span className="text-slate-900 font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>meldra</span>
-            <span className="text-slate-500 text-sm font-medium border-l border-slate-300 pl-3 hidden sm:inline" style={{ fontFamily: "'Inter', sans-serif" }}>
-              for Developers
-            </span>
-          </div>
+          <Logo size="medium" showText={true} className="text-slate-900" lowercaseM tagline="for Developers" />
           <nav className="flex items-center gap-1 md:gap-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

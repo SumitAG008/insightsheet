@@ -1,17 +1,22 @@
-// pages/Developers.jsx — API docs (replaces developer.meldra.ai until that subdomain is set up)
-// Available at /developers on the main site (meldra.ai / insight.meldra.ai)
-import React from 'react';
+// pages/Developers.jsx — developer.meldra.ai (API docs)
+// Served at /developers on insight.meldra.ai and at developer.meldra.ai (same app)
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/branding/Logo';
 import { Code, Key, FileText, FileArchive, Mail, ArrowRight, CheckCircle, Shield } from 'lucide-react';
 
 export default function Developers() {
+  useEffect(() => { document.title = 'developer.meldra.ai – Meldra API'; return () => { document.title = 'Meldra'; }; }, []);
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
       <header className="w-full border-b border-slate-800/50 py-5 px-6 md:px-8 backdrop-blur-sm bg-slate-950/30">
         <div className="container mx-auto flex items-center justify-between max-w-7xl">
-          <Logo size="medium" showText={true} style={{ color: '#FFFFFF' }} lowercaseM />
+          <div className="flex items-center gap-4">
+            <Logo size="medium" showText={true} style={{ color: '#FFFFFF' }} lowercaseM />
+            <span className="text-cyan-400/90 font-semibold text-sm border-l border-slate-600 pl-4 hidden sm:inline">developer.meldra.ai</span>
+          </div>
           <div className="flex items-center gap-2 md:gap-4">
             <Link to="/developers">
               <Button variant="ghost" className="text-cyan-300 hover:text-cyan-200 px-4 py-2 text-base font-medium bg-slate-800/50 rounded-lg">
@@ -36,7 +41,7 @@ export default function Developers() {
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 mb-6">
             <Code className="w-5 h-5" />
-            <span className="font-semibold">Meldra API</span>
+            <span className="font-semibold">developer.meldra.ai</span>
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
             API for Developers

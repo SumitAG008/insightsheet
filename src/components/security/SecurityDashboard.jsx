@@ -204,7 +204,7 @@ export default function SecurityDashboard() {
                   {meldraKeySaved ? 'Saved' : 'Save'}
                 </Button>
                 <Link to="/developers" className="inline-flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300">
-                  <ExternalLink className="w-4 h-4" /> API docs
+                  <ExternalLink className="w-4 h-4" /> developer.meldra.ai
                 </Link>
               </div>
             </>

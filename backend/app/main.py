@@ -79,6 +79,7 @@ IS_PRODUCTION = ENVIRONMENT == "production" or os.getenv("RAILWAY_ENVIRONMENT") 
 PRODUCTION_ORIGINS = [
     "https://meldra.ai",
     "https://insight.meldra.ai",
+    "https://developer.meldra.ai",
     "https://meldra-six.vercel.app",
     "https://insightsheet-jpci.vercel.app",
     "https://meldra-q8c867yf4-sumit-ags-projects.vercel.app",

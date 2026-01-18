@@ -3,7 +3,6 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import Logo from '@/components/branding/Logo';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -54,7 +53,8 @@ export default function Developers() {
       <header className="w-full border-b border-slate-800/50 py-4 px-4 md:px-6 lg:px-8 backdrop-blur-sm bg-slate-950/50 sticky top-0 z-40">
         <div className="container mx-auto flex items-center justify-between max-w-7xl">
           <div className="flex items-center gap-3">
-            <Logo size="small" showText={true} style={{ color: '#FFFFFF' }} lowercaseM />
+            <img src="/meldra-enhance.png" alt="meldra" className="w-10 h-10 object-contain flex-shrink-0" />
+            <span className="text-white font-bold text-lg" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>meldra</span>
             <span className="text-slate-400 text-sm font-medium border-l border-slate-600 pl-3 hidden sm:inline" style={{ fontFamily: "'Inter', sans-serif" }}>
               for Developers
             </span>

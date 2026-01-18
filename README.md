@@ -10,6 +10,7 @@ A comprehensive React application built with Vite that provides data analysis, A
 - 🗄️ **Data Model Creator** - Visual database schema designer with AI generation
 - 🤖 **Agentic AI** - Natural language data operations
 - 📄 **File to PPT** - Convert files to PowerPoint presentations
+- 🔍 **OCR to DOC/PDF** - Extract text from images (scans, forms, photos), edit, and download as editable Word or PDF — see [OCR_TO_DOC_PDF_DOCUMENTATION.md](OCR_TO_DOC_PDF_DOCUMENTATION.md)
 - 🗂️ **ZIP Cleaner** - Batch filename cleaning utility
 - 🔒 **Privacy-first** - All data processing happens in your browser
 

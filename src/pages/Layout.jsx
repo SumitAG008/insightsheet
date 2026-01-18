@@ -4,7 +4,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine } from 'lucide-react';
 import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
 import Logo from '@/components/branding/Logo';
 import { meldraAi } from '@/api/meldraClient';
@@ -230,6 +230,18 @@ export default function Layout({ children }) {
                     <span>Excel to PPT</span>
                   </Link>
 
+                  <Link
+                    to={createPageUrl('OCRConverter')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                      isActive(createPageUrl('OCRConverter'))
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
+                    }`}
+                  >
+                    <ScanLine className={`w-4 h-4 ${isActive(createPageUrl('OCRConverter')) ? 'text-white' : ''}`} />
+                    <span>OCR to DOC/PDF</span>
+                  </Link>
+
                   <Link 
                     to={createPageUrl('FilenameCleaner')}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
@@ -433,6 +445,18 @@ export default function Layout({ children }) {
                   >
                     <FileText className="w-4 h-4" />
                     <span>Excel to PPT</span>
+                  </Link>
+                  <Link
+                    to={createPageUrl('OCRConverter')}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('OCRConverter'))
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <ScanLine className="w-4 h-4" />
+                    <span>OCR to DOC/PDF</span>
                   </Link>
                   <Link 
                     to={createPageUrl('FilenameCleaner')}

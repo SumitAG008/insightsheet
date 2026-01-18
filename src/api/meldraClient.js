@@ -388,6 +388,32 @@ export const backendApi = {
       return response.json();
     },
 
+    ocrExtract: async (file) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await apiCall('/api/files/ocr-extract', {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'OCR extraction failed');
+      }
+      return response.json();
+    },
+
+    ocrExport: async ({ text, format, title }) => {
+      const response = await apiCall('/api/files/ocr-export', {
+        method: 'POST',
+        body: { text: text || '', format, title: title || 'OCR Document' },
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'OCR export failed');
+      }
+      return response.blob();
+    },
+
     generatePL: async (prompt, context = {}) => {
       const response = await apiCall('/api/files/generate-pl', {
         method: 'POST',

@@ -1,0 +1,289 @@
+// pages/OCRConverter.jsx - OCR to DOC & OCR to PDF: extract text from images, edit, save, then download
+import React, { useState, useEffect } from 'react';
+import { backendApi } from '@/api/meldraClient';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Textarea } from '@/components/ui/textarea';
+import { generateDownloadFilename, downloadBlob } from '@/utils/fileNaming';
+import {
+  ScanLine, FileText, Upload, Loader2, CheckCircle, AlertCircle,
+  Save, Image as ImageIcon, FileType, Lock,
+} from 'lucide-react';
+
+const IMAGE_ACCEPT = '.jpg,.jpeg,.png,.webp,.bmp,.tiff,.tif,.gif';
+const SAVE_KEY = 'meldra_ocr_draft';
+
+export default function OCRConverter() {
+  const [file, setFile] = useState(null);
+  const [extracting, setExtracting] = useState(false);
+  const [ocrDone, setOcrDone] = useState(false);
+  const [text, setText] = useState('');
+  const [exporting, setExporting] = useState(null); // 'doc' | 'pdf' | null
+  const [error, setError] = useState('');
+  const [user, setUser] = useState(null);
+  const [subscription, setSubscription] = useState(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    loadUserAndSubscription();
+    const raw = sessionStorage.getItem(SAVE_KEY);
+    if (raw) {
+      try {
+        const { t } = JSON.parse(raw);
+        if (t && typeof t === 'string') setText(t);
+      } catch (_) {}
+    }
+  }, []);
+
+  const loadUserAndSubscription = async () => {
+    try {
+      const u = await backendApi.auth.me();
+      setUser(u);
+      const sub = await backendApi.subscriptions.getMy();
+      if (sub) setSubscription(sub);
+    } catch {
+      setUser(null);
+      setSubscription(null);
+    }
+  };
+
+  const maxSizeMB = (subscription && subscription?.plan === 'premium') ? 500 : 10;
+
+  const handleFileChange = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const ext = '.' + (f.name.split('.').pop() || '').toLowerCase();
+    const allowed = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif', '.gif']);
+    if (!allowed.has(ext)) {
+      setError('Please select an image: JPG, PNG, WebP, BMP, TIFF, or GIF');
+      e.target.value = '';
+      return;
+    }
+    const sizeMB = f.size / (1024 * 1024);
+    if (sizeMB > maxSizeMB) {
+      setError(`File size (${sizeMB.toFixed(1)}MB) exceeds your ${maxSizeMB}MB limit.`);
+      e.target.value = '';
+      return;
+    }
+    setFile(f);
+    setError('');
+    setText('');
+    setOcrDone(false);
+  };
+
+  const handleRunOCR = async () => {
+    if (!file) return;
+    setExtracting(true);
+    setError('');
+    try {
+      const { text: extracted } = await backendApi.files.ocrExtract(file);
+      setText(extracted ?? '');
+      setOcrDone(true);
+    } catch (err) {
+      setError(err.message || 'OCR extraction failed. Ensure the backend has Tesseract installed.');
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const handleSave = () => {
+    sessionStorage.setItem(SAVE_KEY, JSON.stringify({ t: text }));
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleExport = async (format) => {
+    setExporting(format);
+    setError('');
+    try {
+      const blob = await backendApi.files.ocrExport({
+        text,
+        format,
+        title: (file?.name || 'OCR').replace(/\.[^/.]+$/, '') || 'OCR Document',
+      });
+      const ext = format === 'doc' ? '.docx' : '.pdf';
+      const name = generateDownloadFilename(file?.name || 'image', ext);
+      downloadBlob(blob, name);
+    } catch (err) {
+      setError(err.message || `Export to ${format.toUpperCase()} failed.`);
+    } finally {
+      setExporting(null);
+    }
+  };
+
+  const handleReset = () => {
+    setFile(null);
+    setText('');
+    setOcrDone(false);
+    setError('');
+    sessionStorage.removeItem(SAVE_KEY);
+    const input = document.getElementById('ocrFileInput');
+    if (input) input.value = '';
+  };
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-slate-950 py-12">
+      <div className="container mx-auto px-4 max-w-4xl">
+        <div className="text-center mb-12">
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 bg-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <ScanLine className="w-10 h-10 text-white" />
+            </div>
+          </div>
+          <h1 className="text-5xl font-bold text-slate-900 dark:text-white mb-4">
+            OCR to DOC & OCR to PDF
+          </h1>
+          <p className="text-xl text-slate-600 dark:text-slate-400 mb-4">
+            Extract text from any image, edit it, save, and download as editable Word or PDF
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Badge className="bg-teal-500/20 text-teal-300 border-teal-500/30">
+              <ImageIcon className="w-4 h-4 mr-1" />
+              Any Image
+            </Badge>
+            <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+              <FileText className="w-4 h-4 mr-1" />
+              Editable DOC
+            </Badge>
+            <Badge className="bg-rose-500/20 text-rose-300 border-rose-500/30">
+              <FileType className="w-4 h-4 mr-1" />
+              Editable PDF
+            </Badge>
+          </div>
+        </div>
+
+        <Alert className={`mb-6 ${subscription?.plan === 'premium' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
+          <Lock className={`h-5 w-5 ${subscription?.plan === 'premium' ? 'text-emerald-400' : 'text-amber-400'}`} />
+          <AlertDescription className="text-slate-900 dark:text-slate-100">
+            <strong className={subscription?.plan === 'premium' ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>
+              {subscription?.plan === 'premium' ? 'Premium: Up to 500MB' : `File limit: ${maxSizeMB}MB`}
+            </strong>
+            <br />
+            <span className="text-sm text-slate-800 dark:text-slate-200">
+              JPG, PNG, WebP, BMP, TIFF, GIF supported. Edit the extracted text, then export to DOC or PDF.
+            </span>
+          </AlertDescription>
+        </Alert>
+
+        {!file && (
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-12 mb-6">
+            <label className="flex flex-col items-center justify-center cursor-pointer">
+              <input
+                type="file"
+                id="ocrFileInput"
+                accept={IMAGE_ACCEPT}
+                onChange={handleFileChange}
+                className="hidden"
+                disabled={extracting}
+              />
+              <div className="w-20 h-20 bg-gradient-to-br from-teal-600 to-cyan-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Upload className="w-10 h-10 text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Upload Image</h3>
+              <p className="text-slate-400 mb-2">Scans, photos, forms, screenshots</p>
+              <p className="text-slate-500 text-sm">Max {maxSizeMB}MB</p>
+            </label>
+          </div>
+        )}
+
+        {file && !ocrDone && (
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <ImageIcon className="w-8 h-8 text-teal-400" />
+                <div>
+                  <p className="text-white font-semibold">{file.name}</p>
+                  <p className="text-slate-400 text-sm">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                </div>
+              </div>
+              {!extracting && <Button onClick={handleReset} variant="outline" size="sm">Remove</Button>}
+            </div>
+            {error && (
+              <Alert className="mb-4 bg-red-500/10 border-red-500/30">
+                <AlertCircle className="h-4 w-4 text-red-400" />
+                <AlertDescription className="text-red-300">{error}</AlertDescription>
+              </Alert>
+            )}
+            <Button
+              onClick={handleRunOCR}
+              disabled={extracting}
+              className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white font-bold py-3"
+            >
+              {extracting ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Extracting text…</> : <><ScanLine className="w-5 h-5 mr-2" /> Run OCR</>}
+            </Button>
+          </div>
+        )}
+
+        {file && ocrDone && (
+          <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-white font-semibold">Editable text — edit, then Save or Download</p>
+              <Button onClick={handleReset} variant="outline" size="sm">New image</Button>
+            </div>
+            {error && (
+              <Alert className="mb-4 bg-red-500/10 border-red-500/30">
+                <AlertCircle className="h-4 w-4 text-red-400" />
+                <AlertDescription className="text-red-300">{error}</AlertDescription>
+              </Alert>
+            )}
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Extracted text will appear here. You can edit and fill in any corrections."
+              className="min-h-[220px] mb-4 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={handleSave}
+                variant="outline"
+                className="border-slate-500 text-slate-300 hover:bg-slate-700"
+              >
+                {saved ? <><CheckCircle className="w-4 h-4 mr-2 text-emerald-400" /> Saved</> : <><Save className="w-4 h-4 mr-2" /> Save</>}
+              </Button>
+              <Button
+                onClick={() => handleExport('doc')}
+                disabled={!!exporting}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {exporting === 'doc' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileText className="w-4 h-4 mr-2" />}
+                Download as DOC
+              </Button>
+              <Button
+                onClick={() => handleExport('pdf')}
+                disabled={!!exporting}
+                className="bg-rose-600 hover:bg-rose-700 text-white"
+              >
+                {exporting === 'pdf' ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileType className="w-4 h-4 mr-2" />}
+                Download as PDF
+              </Button>
+            </div>
+          </div>
+        )}
+
+
+        <div className="mt-12 bg-slate-900/50 rounded-xl p-6 border border-slate-700/30">
+          <h3 className="text-lg font-bold text-white mb-4">How it works</h3>
+          <div className="space-y-3 text-sm text-slate-300">
+            <div className="flex gap-3">
+              <span className="font-bold text-teal-400">1</span>
+              <div><strong className="text-white">Upload</strong> — Any image: scan, photo, form, screenshot (JPG, PNG, WebP, BMP, TIFF, GIF).</div>
+            </div>
+            <div className="flex gap-3">
+              <span className="font-bold text-teal-400">2</span>
+              <div><strong className="text-white">Run OCR</strong> — Extract text. You can edit and fill in the content.</div>
+            </div>
+            <div className="flex gap-3">
+              <span className="font-bold text-teal-400">3</span>
+              <div><strong className="text-white">Save</strong> — Saves your edits in this browser session.</div>
+            </div>
+            <div className="flex gap-3">
+              <span className="font-bold text-teal-400">4</span>
+              <div><strong className="text-white">Download</strong> — Export as editable Word (.docx) or searchable PDF.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

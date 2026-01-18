@@ -32,6 +32,7 @@ from app.services.ai_service import (
 )
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
+from app.services.ocr_service import OCRService
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
 from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email
@@ -850,6 +851,133 @@ async def suggest_chart_endpoint(
 # ============================================================================
 # FILE PROCESSING ENDPOINTS
 # ============================================================================
+
+class OCRExportRequest(BaseModel):
+    """Request body for OCR export (text -> DOC or PDF)."""
+    text: str
+    format: str  # "doc" or "pdf"
+    title: Optional[str] = "OCR Document"
+
+
+@app.post("/api/files/ocr-extract")
+async def ocr_extract(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Extract text from an image using OCR (JPG, PNG, WebP, BMP, TIFF, GIF).
+    ZERO STORAGE: File content not stored. Returns extracted text for editing, then use ocr-export to get DOC/PDF.
+    """
+    try:
+        subscription = db.query(Subscription).filter(
+            Subscription.user_email == current_user["email"]
+        ).first()
+        max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
+        max_size_bytes = max_size_mb * 1024 * 1024
+
+        file_content = await file.read()
+        file_size_mb = len(file_content) / (1024 * 1024)
+        if len(file_content) > max_size_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File size ({file_size_mb:.1f}MB) exceeds {max_size_mb}MB limit"
+            )
+
+        ext = (os.path.splitext(file.filename or "")[1] or "").lower()
+        if ext not in OCRService.ALLOWED_IMAGE_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file type. Allowed: {', '.join(OCRService.ALLOWED_IMAGE_EXTENSIONS)}"
+            )
+
+        ocr = OCRService()
+        text = ocr.extract_text(io.BytesIO(file_content))
+
+        processing_history = FileProcessingHistory(
+            user_email=current_user["email"],
+            processing_type="ocr_extract",
+            original_filename=file.filename,
+            file_size_mb=file_size_mb,
+            status="success"
+        )
+        db.add(processing_history)
+        db.commit()
+        logger.info(f"OCR extract: {file.filename} by {current_user['email']}")
+
+        return {"text": text}
+    except HTTPException:
+        raise
+    except RuntimeError as e:
+        if "Tesseract" in str(e) or "not installed" in str(e).lower():
+            raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"OCR extract error: {str(e)}")
+        processing_history = FileProcessingHistory(
+            user_email=current_user["email"],
+            processing_type="ocr_extract",
+            original_filename=file.filename,
+            file_size_mb=file_size_mb if 'file_size_mb' in locals() else 0,
+            status="failed",
+            error_message=str(e)
+        )
+        db.add(processing_history)
+        db.commit()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/files/ocr-export")
+async def ocr_export(
+    body: OCRExportRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Export edited OCR text to editable DOC or PDF. Call after ocr-extract and user edits.
+    """
+    try:
+        if body.format not in ("doc", "pdf"):
+            raise HTTPException(status_code=400, detail="format must be 'doc' or 'pdf'")
+
+        ocr = OCRService()
+        title = (body.title or "OCR Document").strip() or "OCR Document"
+
+        if body.format == "doc":
+            data = ocr.text_to_docx(body.text, title=title)
+            media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            filename = f"ocr_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.docx"
+        else:
+            data = ocr.text_to_pdf(body.text, title=title)
+            media = "application/pdf"
+            filename = f"ocr_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+        processing_history = FileProcessingHistory(
+            user_email=current_user["email"],
+            processing_type="ocr_to_doc" if body.format == "doc" else "ocr_to_pdf",
+            original_filename=filename,
+            file_size_mb=len(data) / (1024 * 1024),
+            status="success"
+        )
+        db.add(processing_history)
+        db.commit()
+        logger.info(f"OCR export {body.format}: {current_user['email']}")
+
+        return StreamingResponse(
+            io.BytesIO(data),
+            media_type=media,
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+    except HTTPException:
+        raise
+    except RuntimeError as e:
+        if "not installed" in str(e).lower():
+            raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as e:
+        logger.error(f"OCR export error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/api/files/excel-to-ppt")
 async def excel_to_ppt(

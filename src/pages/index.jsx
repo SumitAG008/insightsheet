@@ -34,6 +34,7 @@ import StripeSuccess from "./StripeSuccess";
 import AgenticAI from "./AgenticAI";
 
 import FileToPPT from "./FileToPPT";
+import OCRConverter from "./OCRConverter";
 
 import DataModelCreator from "./DataModelCreator";
 
@@ -75,6 +76,7 @@ const PAGES = {
     AgenticAI: AgenticAI,
 
     FileToPPT: FileToPPT,
+    OCRConverter: OCRConverter,
 
     DataModelCreator: DataModelCreator,
 
@@ -171,6 +173,9 @@ function PagesContent() {
 
                 <Route path="/FileToPPT" element={<ProtectedRoute><FileToPPT /></ProtectedRoute>} />
                 <Route path="/filetoppt" element={<ProtectedRoute><FileToPPT /></ProtectedRoute>} />
+
+                <Route path="/OCRConverter" element={<ProtectedRoute><OCRConverter /></ProtectedRoute>} />
+                <Route path="/ocrconverter" element={<ProtectedRoute><OCRConverter /></ProtectedRoute>} />
 
                 <Route path="/FileAnalyzer" element={<ProtectedRoute><FileAnalyzer /></ProtectedRoute>} />
                 <Route path="/fileanalyzer" element={<ProtectedRoute><FileAnalyzer /></ProtectedRoute>} />

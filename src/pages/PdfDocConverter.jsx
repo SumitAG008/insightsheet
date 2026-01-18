@@ -1,25 +1,37 @@
-// pages/PdfDocConverter.jsx - Document Converter: PDF↔DOC, DOC↔PDF, PPT↔PDF, PDF↔PPT via developer.meldra.ai (API key required)
+// pages/PdfDocConverter.jsx - Document Converter: PDF, DOC, PPT (in-app, no API key)
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { FileText, FileType, Upload, Loader2, AlertCircle, Lock, Key } from 'lucide-react';
-import {
-  convertPdfToDoc,
-  convertDocToPdf,
-  convertPptToPdf,
-  convertPdfToPpt,
-  getApiKey,
-} from '@/api/meldraDeveloperApi';
+import { FileText, FileType, Upload, Loader2, AlertCircle, Shield } from 'lucide-react';
 import { generateDownloadFilename, downloadBlob } from '@/utils/fileNaming';
-import { createPageUrl } from '@/utils';
+
+const API = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:8001' : '');
+const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null) || '';
 
 const MODES = [
-  { id: 'pdf2doc', label: 'PDF to DOC', accept: '.pdf', outExt: '.docx', fn: convertPdfToDoc, Icon: FileType },
-  { id: 'doc2pdf', label: 'DOC to PDF', accept: '.doc,.docx', outExt: '.pdf', fn: convertDocToPdf, Icon: FileText },
-  { id: 'ppt2pdf', label: 'PPT to PDF', accept: '.ppt,.pptx', outExt: '.pdf', fn: convertPptToPdf, Icon: FileText },
-  { id: 'pdf2ppt', label: 'PDF to PPT', accept: '.pdf', outExt: '.pptx', fn: convertPdfToPpt, Icon: FileType },
+  { id: 'pdf2doc', label: 'PDF to DOC', accept: '.pdf', outExt: '.docx', slug: 'pdf-to-doc', Icon: FileType },
+  { id: 'doc2pdf', label: 'DOC to PDF', accept: '.docx', outExt: '.pdf', slug: 'doc-to-pdf', Icon: FileText },
+  { id: 'ppt2pdf', label: 'PPT to PDF', accept: '.pptx', outExt: '.pdf', slug: 'ppt-to-pdf', Icon: FileText },
+  { id: 'pdf2ppt', label: 'PDF to PPT', accept: '.pdf', outExt: '.pptx', slug: 'pdf-to-ppt', Icon: FileType },
 ];
+
+async function convertViaBackend(file, slug) {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch(`${API}/api/convert/${slug}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const t = await res.text();
+    let msg = t;
+    try { const j = JSON.parse(t); msg = j.detail || t; } catch (_) {}
+    throw new Error(msg || `HTTP ${res.status}`);
+  }
+  return res.blob();
+}
 
 export default function PdfDocConverter() {
   const [searchParams] = useSearchParams();
@@ -31,16 +43,11 @@ export default function PdfDocConverter() {
   const [file, setFile] = useState(null);
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState('');
-  const [hasKey, setHasKey] = useState(!!getApiKey());
 
   useEffect(() => {
     const m = MODES.find((x) => x.id === modeParam);
     setMode(m ? m.id : 'pdf2doc');
   }, [modeParam]);
-
-  useEffect(() => {
-    setHasKey(!!getApiKey());
-  }, []);
 
   const current = MODES.find((m) => m.id === mode) || MODES[0];
   const accept = current.accept;
@@ -54,11 +61,15 @@ export default function PdfDocConverter() {
   };
 
   const handleConvert = async () => {
-    if (!file || !hasKey) return;
+    if (!file) return;
+    if (!API) {
+      setError('Backend not configured. Set VITE_API_URL.');
+      return;
+    }
     setConverting(true);
     setError('');
     try {
-      const blob = await current.fn(file);
+      const blob = await convertViaBackend(file, current.slug);
       const name = generateDownloadFilename(file.name, outExt);
       downloadBlob(blob, name);
     } catch (err) {
@@ -71,8 +82,8 @@ export default function PdfDocConverter() {
   const uploadLabel = current.id.startsWith('pdf')
     ? 'Upload PDF'
     : current.id.startsWith('doc')
-      ? 'Upload Word (.doc, .docx)'
-      : 'Upload PowerPoint (.ppt, .pptx)';
+      ? 'Upload Word (.docx)'
+      : 'Upload PowerPoint (.pptx)';
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 py-12">
@@ -85,11 +96,10 @@ export default function PdfDocConverter() {
             Document Converter
           </h1>
           <p className="text-slate-600 dark:text-slate-300 font-medium">
-            PDF, DOC, and PPT — in-app with your Meldra API key. For API use and testing: developer.meldra.ai.
+            Convert PDF, Word, and PowerPoint. Your file is not stored.
           </p>
         </div>
 
-        {/* Mode: 4 options */}
         <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 dark:border-slate-700 p-2 mb-6">
           {MODES.map((m) => {
             const Icon = m.Icon;
@@ -109,23 +119,9 @@ export default function PdfDocConverter() {
           })}
         </div>
 
-        {/* API key required */}
-        {!hasKey && (
-          <Alert className="mb-6 bg-amber-500/10 border-amber-500/40">
-            <Key className="h-5 w-5 text-amber-500" />
-            <AlertDescription>
-              <strong className="text-amber-700 dark:text-amber-300">Meldra API key required.</strong>
-              <br />
-              Add your key in <Link to={createPageUrl('Security')} className="underline font-semibold text-blue-600 dark:text-blue-400">Security → Meldra API Key</Link>.
-              Get a paid key at <a href="https://developer.meldra.ai" target="_blank" rel="noopener noreferrer" className="underline font-semibold">developer.meldra.ai</a>.
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {/* Upload */}
         <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 mb-6">
           <label className="flex flex-col items-center justify-center cursor-pointer">
-            <input type="file" accept={accept} onChange={handleFileChange} className="hidden" disabled={converting || !hasKey} />
+            <input type="file" accept={accept} onChange={handleFileChange} className="hidden" disabled={converting} />
             <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
               <Upload className="w-8 h-8 text-white" />
             </div>
@@ -134,7 +130,7 @@ export default function PdfDocConverter() {
             {file && <p className="text-blue-300 text-sm mt-2 font-medium">{file.name}</p>}
           </label>
 
-          {file && hasKey && (
+          {file && (
             <Button
               onClick={handleConvert}
               disabled={converting}
@@ -153,9 +149,9 @@ export default function PdfDocConverter() {
         </div>
 
         <Alert className="bg-blue-500/10 border-blue-500/30">
-          <Lock className="h-5 w-5 text-blue-500" />
+          <Shield className="h-5 w-5 text-blue-500" />
           <AlertDescription className="text-slate-700 dark:text-slate-300">
-            <strong className="text-blue-700 dark:text-blue-300">developer.meldra.ai</strong> — PDF↔DOC, DOC↔PDF, PPT↔PDF, PDF↔PPT, and ZIP Cleaner. In-app: use your API key. For programmatic use: get an API key, read the docs, and test on the developer portal.
+            Conversions run on our servers. Your file is not stored.
           </AlertDescription>
         </Alert>
       </div>

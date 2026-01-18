@@ -20,6 +20,7 @@ from email.mime.multipart import MIMEMultipart
 
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 # Import local modules
 from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, init_db
@@ -37,6 +38,7 @@ from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
 from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email
 from app.services.db_connection_service import DatabaseConnectionService
+from app.services.document_converter_service import pdf_to_docx, docx_to_pdf, pptx_to_pdf, pdf_to_pptx
 
 load_dotenv()
 
@@ -979,6 +981,135 @@ async def ocr_export(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============================================================================
+# DOCUMENT CONVERTER (in-app, no API key): PDF↔DOC, DOC↔PDF, PPT↔PDF, PDF↔PPT
+# ============================================================================
+_MAX_CONVERT_MB = 25  # max file size for convert endpoints (free); premium uses 100
+
+
+def _convert_endpoint(
+    file: UploadFile,
+    current_user: dict,
+    db: Session,
+    in_ext: list,
+    out_ext: str,
+    media_type: str,
+    converter_fn,
+    processing_type: str,
+):
+    """Shared logic for /api/convert/* endpoints. Returns (data_bytes, out_filename) or raises HTTPException."""
+    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    max_mb = 100 if (subscription and subscription.plan == "premium") else _MAX_CONVERT_MB
+    max_bytes = max_mb * 1024 * 1024
+
+    raw = file.read()
+    size_mb = len(raw) / (1024 * 1024)
+    if len(raw) > max_bytes:
+        raise HTTPException(status_code=413, detail=f"File size ({size_mb:.1f}MB) exceeds {max_mb}MB limit")
+
+    ext = (os.path.splitext(file.filename or "")[1] or "").lower()
+    if ext not in in_ext:
+        raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {', '.join(in_ext)}")
+
+    data, err = converter_fn(raw)
+    if err:
+        raise HTTPException(status_code=400, detail=err)
+
+    base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
+    out_name = f"{base}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}{out_ext}"
+    rec = FileProcessingHistory(
+        user_email=current_user["email"],
+        processing_type=processing_type,
+        original_filename=file.filename,
+        file_size_mb=size_mb,
+        status="success",
+    )
+    db.add(rec)
+    db.commit()
+    logger.info(f"Convert {processing_type}: {file.filename} by {current_user['email']}")
+    return data, out_name, media_type
+
+
+@app.post("/api/convert/pdf-to-doc")
+async def convert_pdf_to_doc(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Convert PDF to DOCX. In-app, no API key. File not stored."""
+    data, out_name, media = _convert_endpoint(
+        file, current_user, db,
+        in_ext=[".pdf"],
+        out_ext=".docx",
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        converter_fn=pdf_to_docx,
+        processing_type="pdf_to_doc",
+    )
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type=media,
+        headers={"Content-Disposition": f"attachment; filename={out_name}"},
+    )
+
+
+@app.post("/api/convert/doc-to-pdf")
+async def convert_doc_to_pdf(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Convert DOCX to PDF. In-app, no API key. File not stored."""
+    data, out_name, media = _convert_endpoint(
+        file, current_user, db,
+        in_ext=[".docx"],
+        out_ext=".pdf",
+        media_type="application/pdf",
+        converter_fn=docx_to_pdf,
+        processing_type="doc_to_pdf",
+    )
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type=media,
+        headers={"Content-Disposition": f"attachment; filename={out_name}"},
+    )
+
+
+@app.post("/api/convert/ppt-to-pdf")
+async def convert_ppt_to_pdf(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Convert PPTX to PDF. In-app, no API key. File not stored."""
+    data, out_name, media = _convert_endpoint(
+        file, current_user, db,
+        in_ext=[".pptx"],
+        out_ext=".pdf",
+        media_type="application/pdf",
+        converter_fn=pptx_to_pdf,
+        processing_type="ppt_to_pdf",
+    )
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type=media,
+        headers={"Content-Disposition": f"attachment; filename={out_name}"},
+    )
+
+
+@app.post("/api/convert/pdf-to-ppt")
+async def convert_pdf_to_ppt(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """PDF to PPTX: not yet supported. Returns 400 with message."""
+    await file.read()  # consume to avoid connection issues
+    raise HTTPException(
+        status_code=400,
+        detail="PDF to PPT is not yet available. Use PDF to DOC or PPT to PDF.",
+    )
+
+
 @app.post("/api/files/excel-to-ppt")
 async def excel_to_ppt(
     file: UploadFile = File(...),
@@ -1619,6 +1750,106 @@ async def get_all_subscriptions(
         }
         for s in subscriptions
     ]
+
+
+@app.get("/api/admin/ip-tracking")
+async def get_admin_ip_tracking(
+    current_user: dict = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+    limit: int = 200,
+    offset: int = 0,
+    user_email: Optional[str] = None,
+    ip_address: Optional[str] = None,
+    event_type: Optional[str] = None,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None
+):
+    """IP tracking table for security (admin only). Filters: user_email, ip_address, event_type, from_date, to_date (ISO)."""
+    try:
+        q = db.query(LoginHistory).order_by(LoginHistory.created_date.desc())
+        if user_email:
+            q = q.filter(LoginHistory.user_email.ilike(f"%{user_email}%"))
+        if ip_address:
+            q = q.filter(LoginHistory.ip_address.ilike(f"%{ip_address}%"))
+        if event_type:
+            q = q.filter(LoginHistory.event_type == event_type)
+        if from_date:
+            try:
+                q = q.filter(LoginHistory.created_date >= datetime.fromisoformat(from_date.replace("Z", "+00:00")))
+            except Exception:
+                pass
+        if to_date:
+            try:
+                q = q.filter(LoginHistory.created_date <= datetime.fromisoformat(to_date.replace("Z", "+00:00")))
+            except Exception:
+                pass
+        total = q.count()
+        rows = q.offset(offset).limit(limit).all()
+        return {
+            "items": [
+                {
+                    "id": h.id,
+                    "user_email": h.user_email,
+                    "event_type": h.event_type,
+                    "ip_address": h.ip_address or "—",
+                    "location": h.location or "—",
+                    "browser": h.browser or "—",
+                    "device": h.device or "—",
+                    "session_duration": h.session_duration,
+                    "created_date": h.created_date.isoformat() if h.created_date else None,
+                }
+                for h in rows
+            ],
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+        }
+    except Exception as e:
+        logger.error(f"Admin IP tracking error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/admin/subscription-ip-summary")
+async def get_subscription_ip_summary(
+    current_user: dict = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+    period: str = "30d"  # 7d, 30d, all
+):
+    """Per-subscription: distinct IP count (strategic — detect same login used from many IPs). Admin only."""
+    try:
+        cutoff = None
+        if period == "7d":
+            cutoff = datetime.utcnow() - timedelta(days=7)
+        elif period == "30d":
+            cutoff = datetime.utcnow() - timedelta(days=30)
+
+        stmt = db.query(
+            LoginHistory.user_email,
+            func.count(func.distinct(LoginHistory.ip_address)).label("distinct_ip_count"),
+            func.count(LoginHistory.id).label("total_logins"),
+            func.max(LoginHistory.created_date).label("last_login_at"),
+        ).filter(LoginHistory.event_type.in_(["login", "logout"]))
+
+        if cutoff is not None:
+            stmt = stmt.filter(LoginHistory.created_date >= cutoff)
+        stmt = stmt.group_by(LoginHistory.user_email)
+        rows = stmt.all()
+
+        sub_map = {s.user_email: s.plan for s in db.query(Subscription).all()}
+
+        return [
+            {
+                "user_email": r.user_email,
+                "plan": sub_map.get(r.user_email) or "—",
+                "distinct_ip_count": r.distinct_ip_count or 0,
+                "total_logins": r.total_logins or 0,
+                "last_login_at": r.last_login_at.isoformat() if r.last_login_at else None,
+            }
+            for r in rows
+        ]
+    except Exception as e:
+        logger.error(f"Subscription IP summary error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ============================================================================

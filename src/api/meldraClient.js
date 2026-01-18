@@ -527,6 +527,17 @@ export const backendApi = {
       const response = await apiCall('/api/admin/subscriptions');
       return response.json();
     },
+
+    getIpTracking: async (params = {}) => {
+      const q = new URLSearchParams(params).toString();
+      const response = await apiCall(`/api/admin/ip-tracking?${q}`);
+      return response.json();
+    },
+
+    getSubscriptionIpSummary: async (period = '30d') => {
+      const response = await apiCall(`/api/admin/subscription-ip-summary?period=${period}`);
+      return response.json();
+    },
   },
 
   // Health check
@@ -538,6 +549,7 @@ export const backendApi = {
 
 // Export meldraAi with backward compatibility layer
 meldraAi.auth = backendApi.auth;
+meldraAi.admin = backendApi.admin;
 meldraAi.integrations.Core.InvokeLLM = backendApi.llm.invoke;
 meldraAi.integrations.Core.GenerateImage = backendApi.llm.generateImage;
 meldraAi.integrations.Core.UploadFile = backendApi.files.upload;

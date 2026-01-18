@@ -26,7 +26,7 @@ import FilenameCleaner from "./FilenameCleaner";
 import AdminDashboard from "./AdminDashboard";
 
 import ActivityDashboard from "./ActivityDashboard";
-
+import IPTracking from "./IPTracking";
 import DownloadCode from "./DownloadCode";
 
 import StripeSuccess from "./StripeSuccess";
@@ -69,7 +69,8 @@ const PAGES = {
     AdminDashboard: AdminDashboard,
     
     ActivityDashboard: ActivityDashboard,
-    
+    IPTracking: IPTracking,
+
     DownloadCode: DownloadCode,
     
     StripeSuccess: StripeSuccess,
@@ -163,6 +164,9 @@ function PagesContent() {
 
                 <Route path="/ActivityDashboard" element={<ProtectedRoute><ActivityDashboard /></ProtectedRoute>} />
                 <Route path="/activitydashboard" element={<ProtectedRoute><ActivityDashboard /></ProtectedRoute>} />
+
+                <Route path="/IPTracking" element={<ProtectedRoute><IPTracking /></ProtectedRoute>} />
+                <Route path="/iptracking" element={<ProtectedRoute><IPTracking /></ProtectedRoute>} />
 
                 <Route path="/DownloadCode" element={<ProtectedRoute><DownloadCode /></ProtectedRoute>} />
                 <Route path="/downloadcode" element={<ProtectedRoute><DownloadCode /></ProtectedRoute>} />

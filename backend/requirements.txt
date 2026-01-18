@@ -40,6 +40,7 @@ reportlab==4.2.5
 # OCR & Document
 pytesseract==0.3.13
 python-docx==1.1.2
+pdf2docx==0.5.8
 
 # File Processing & Utilities
 aiofiles==23.2.1

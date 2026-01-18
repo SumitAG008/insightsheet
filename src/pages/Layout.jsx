@@ -365,6 +365,17 @@ export default function Layout({ children, currentPageName }) {
                     <Download className="w-4 h-4" />
                     <span>Backup Code</span>
                   </Link>
+                  <Link 
+                    to={createPageUrl('IPTracking')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('IPTracking'))
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                    }`}
+                  >
+                    <Shield className="w-4 h-4" />
+                    <span>IP Tracking</span>
+                  </Link>
                 </>
               )}
 

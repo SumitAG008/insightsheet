@@ -327,13 +327,13 @@ export default function Dashboard() {
           {/* Header */}
           <div className="text-center mb-16 animate-fade-in">
             <div className="flex justify-center mb-6">
-              <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <div className="w-20 h-20 bg-[#4169E1] rounded-2xl flex items-center justify-center shadow-lg">
                 <Zap className="w-10 h-10 text-white" />
               </div>
             </div>
             
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-full mb-6">
-              <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#4169E1]/10 border border-[#4169E1]/40 rounded-full mb-6">
+              <Shield className="w-4 h-4 text-[#4169E1]" />
               <span className="text-sm text-slate-700 dark:text-slate-300 font-semibold">100% Private • Zero Storage • Excel & CSV Support</span>
             </div>
             
@@ -352,7 +352,7 @@ export default function Dashboard() {
             {/* Features */}
             <div className="flex flex-wrap justify-center gap-4 mt-8">
               {[
-                { icon: Gauge, text: 'Instant Processing', bg: 'bg-blue-100 dark:bg-blue-900/30', textColor: 'text-blue-700 dark:text-blue-300' },
+                { icon: Gauge, text: 'Instant Processing', bg: 'bg-[#4169E1]/20', textColor: 'text-[#4169E1]' },
                 { icon: Brain, text: 'AI-Powered', bg: 'bg-purple-100 dark:bg-purple-900/30', textColor: 'text-purple-700 dark:text-purple-300' },
                 { icon: Lock, text: 'Privacy First', bg: 'bg-emerald-100 dark:bg-emerald-900/30', textColor: 'text-emerald-700 dark:text-emerald-300' },
                 { icon: TrendingUp, text: 'Smart Charts', bg: 'bg-orange-100 dark:bg-orange-900/30', textColor: 'text-orange-700 dark:text-orange-300' }
@@ -406,7 +406,7 @@ export default function Dashboard() {
           <div className="mt-12 max-w-4xl mx-auto">
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
-                <FileText className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+                <FileText className="w-7 h-7 text-[#4169E1]" />
                 ✨ Now Supports Excel Files!
               </h2>
               
@@ -421,7 +421,7 @@ export default function Dashboard() {
 
               <div className="space-y-6">
                 <div className="flex gap-4 items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                  <div className="flex-shrink-0 w-10 h-10 bg-[#4169E1] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
                     1
                   </div>
                   <div>
@@ -431,7 +431,7 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="flex gap-4 items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                  <div className="flex-shrink-0 w-10 h-10 bg-[#4169E1] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
                     2
                   </div>
                   <div>
@@ -441,7 +441,7 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="flex gap-4 items-start">
-                  <div className="flex-shrink-0 w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
+                  <div className="flex-shrink-0 w-10 h-10 bg-[#4169E1] rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md">
                     3
                   </div>
                   <div>
@@ -475,7 +475,7 @@ export default function Dashboard() {
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
               {filename} • {(displayData || data).rows.length} rows • {(displayData || data).headers.length} columns
               {displayData && displayData.rows.length !== data.rows.length && (
-                <span className="ml-2 px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded-full">
+                <span className="ml-2 px-2 py-1 bg-[#4169E1]/20 text-[#4169E1] text-sm rounded-full">
                   Filtered: {data.rows.length - displayData.rows.length} hidden
                 </span>
               )}
@@ -531,7 +531,7 @@ export default function Dashboard() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-[#4169E1] hover:bg-[#3659c7] text-white"
                   title="Export (Ctrl+E)"
                 >
                   <Download className="w-4 h-4 mr-2" />
@@ -566,23 +566,23 @@ export default function Dashboard() {
         </div>
 
         {/* Privacy Notice */}
-        <div className="mb-6 bg-blue-50 dark:bg-slate-900/50 border border-blue-200 dark:border-slate-800 rounded-lg p-4">
+        <div className="mb-6 bg-[#4169E1]/10 dark:bg-slate-900/50 border border-[#4169E1]/40 dark:border-slate-800 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-slate-700 dark:text-slate-300">
-              <strong className="text-blue-600 dark:text-blue-400">Privacy Mode Active:</strong> All data is processed locally in your browser.
+            <AlertCircle className="w-5 h-5 text-[#4169E1] flex-shrink-0 mt-0.5" />
+            <div className="text-base text-slate-700 dark:text-slate-300">
+              <strong className="text-[#4169E1]">Privacy Mode Active:</strong> All data is processed locally in your browser.
               Nothing is stored on servers. Close this tab to permanently delete all data.
             </div>
           </div>
         </div>
 
         {/* AI Assistant Banner */}
-        <div className="mb-6 bg-blue-50 dark:bg-slate-900/50 border border-blue-200 dark:border-slate-800 rounded-lg p-4">
+        <div className="mb-6 bg-[#4169E1]/10 dark:bg-slate-900/50 border border-[#4169E1]/40 dark:border-slate-800 rounded-lg p-4">
           <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            <Sparkles className="w-6 h-6 text-[#4169E1]" />
             <div>
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">New: AI-Powered Operations</h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Describe any operation in plain English - AI will execute it for you!</p>
+              <p className="text-base text-slate-600 dark:text-slate-400">Describe any operation in plain English - AI will execute it for you!</p>
             </div>
           </div>
         </div>
@@ -590,13 +590,13 @@ export default function Dashboard() {
         {/* Tabs for Different Sections */}
         <Tabs defaultValue="analysis" className="space-y-6">
           <TabsList className="bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-1">
-            <TabsTrigger value="analysis" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+            <TabsTrigger value="analysis" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
               Analysis & Cleaning
             </TabsTrigger>
-            <TabsTrigger value="transform" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+            <TabsTrigger value="transform" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
               Transform Data
             </TabsTrigger>
-            <TabsTrigger value="ai" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+            <TabsTrigger value="ai" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
               AI Tools
             </TabsTrigger>
           </TabsList>

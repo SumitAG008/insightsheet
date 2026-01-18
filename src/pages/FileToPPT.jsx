@@ -530,7 +530,7 @@ export default function FileToPPT() {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-20 h-20 bg-[#4169E1] rounded-2xl flex items-center justify-center shadow-lg">
               <FileText className="w-10 h-10 text-white" />
             </div>
           </div>
@@ -542,11 +542,11 @@ export default function FileToPPT() {
             Professional presentations with charts, tables & statistics
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 font-semibold">
+            <Badge className="bg-[#4169E1]/20 text-[#4169E1] border-[#4169E1]/50 font-semibold">
               <BarChart3 className="w-4 h-4 mr-1" />
               Multiple Charts
             </Badge>
-            <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 font-semibold">
+            <Badge className="bg-[#4169E1]/20 text-[#4169E1] border-[#4169E1]/50 font-semibold">
               <Table className="w-4 h-4 mr-1" />
               Data Tables
             </Badge>
@@ -582,7 +582,7 @@ export default function FileToPPT() {
           <Sparkles className="h-5 w-5 text-emerald-400" />
           <AlertDescription className="text-slate-900 dark:text-slate-100">
             <strong className="text-emerald-700 dark:text-emerald-300">✨ Advanced Conversion Features:</strong>
-            <ul className="list-disc ml-5 mt-2 space-y-1 text-sm text-slate-800 dark:text-slate-200">
+            <ul className="list-disc ml-5 mt-2 space-y-1 text-base text-slate-800 dark:text-slate-200">
               <li><strong>Section Slides:</strong> Overview for each worksheet</li>
               <li><strong>Data Tables:</strong> Full data display (up to 20 rows)</li>
               <li><strong>Multiple Charts:</strong> Bar, Line, and Pie charts for your data</li>
@@ -606,29 +606,29 @@ export default function FileToPPT() {
                 disabled={converting}
               />
               <div className="text-center">
-                <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <div className="w-20 h-20 bg-[#4169E1] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                   <Upload className="w-10 h-10 text-white" />
                 </div>
                 <h3 className="text-2xl font-bold text-white mb-2">
                   Upload Excel or PDF File
                 </h3>
-                <p className="text-slate-200 font-semibold mb-2">
+                <p className="text-slate-200 font-semibold mb-2 text-base">
                   Click to select file or drag & drop
                 </p>
-                <p className="text-slate-300 font-medium text-sm mb-4">
+                <p className="text-slate-300 font-medium text-base mb-4">
                   Max {maxSize}MB {subscription?.plan !== 'premium' && '(Free Plan)'}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Badge variant="outline" className="border-blue-400/60 text-blue-100 font-semibold">
+                  <Badge variant="outline" className="border-[#4169E1] text-[#4169E1] font-semibold">
                     .XLSX
                   </Badge>
-                  <Badge variant="outline" className="border-blue-400/60 text-blue-100 font-semibold">
+                  <Badge variant="outline" className="border-[#4169E1] text-[#4169E1] font-semibold">
                     .XLS
                   </Badge>
-                  <Badge variant="outline" className="border-blue-400/60 text-blue-100 font-semibold">
+                  <Badge variant="outline" className="border-[#4169E1] text-[#4169E1] font-semibold">
                     .CSV
                   </Badge>
-                  <Badge variant="outline" className="border-blue-400/60 text-blue-100 font-semibold">
+                  <Badge variant="outline" className="border-[#4169E1] text-[#4169E1] font-semibold">
                     .PDF
                   </Badge>
                 </div>
@@ -642,7 +642,7 @@ export default function FileToPPT() {
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <FileSpreadsheet className="w-8 h-8 text-blue-400" />
+                <FileSpreadsheet className="w-8 h-8 text-[#4169E1]" />
                 <div>
                   <p className="text-white font-semibold">{file.name}</p>
                   <p className="text-slate-400 text-sm">
@@ -668,7 +668,7 @@ export default function FileToPPT() {
                 </div>
                 <div className="w-full bg-slate-800 rounded-full h-3">
                   <div
-                    className="bg-gradient-to-r from-blue-600 to-emerald-600 h-3 rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-[#4169E1] to-emerald-600 h-3 rounded-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -687,7 +687,7 @@ export default function FileToPPT() {
             <Button
               onClick={handleConvert}
               disabled={converting || !!error}
-              className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-bold py-3"
+              className="w-full bg-gradient-to-r from-[#4169E1] to-emerald-600 hover:from-[#3659c7] hover:to-emerald-500 text-white font-bold py-3"
             >
               {converting ? (
                 <>
@@ -728,12 +728,12 @@ export default function FileToPPT() {
               {result.chartsCreated > 0 && (
                 <>
                   <div className="bg-slate-800/50 rounded-lg p-4">
-                    <p className="text-slate-400 text-sm">Charts Created</p>
-                    <p className="text-blue-400 font-semibold text-2xl">{result.chartsCreated}</p>
+                    <p className="text-slate-400 text-base">Charts Created</p>
+                    <p className="text-[#4169E1] font-semibold text-2xl">{result.chartsCreated}</p>
                   </div>
                   <div className="bg-slate-800/50 rounded-lg p-4">
-                    <p className="text-slate-400 text-sm">Chart Types</p>
-                    <p className="text-blue-400 font-semibold text-sm">Bar, Line, Pie</p>
+                    <p className="text-slate-400 text-base">Chart Types</p>
+                    <p className="text-[#4169E1] font-semibold">Bar, Line, Pie</p>
                   </div>
                 </>
               )}
@@ -741,12 +741,12 @@ export default function FileToPPT() {
             <div className="flex gap-3">
               <Button
                 onClick={handleReset}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-emerald-600 font-semibold"
+                className="flex-1 bg-gradient-to-r from-[#4169E1] to-emerald-600 font-semibold"
               >
                 Convert Another File
               </Button>
             </div>
-            <p className="text-xs text-slate-500 mt-4">
+            <p className="text-sm text-slate-500 mt-4">
               PowerPoint file downloaded to your computer
             </p>
           </div>
@@ -755,9 +755,9 @@ export default function FileToPPT() {
         {/* How it Works */}
         <div className="mt-12 bg-slate-900/80 backdrop-blur-xl rounded-xl p-6 border border-slate-700/50">
           <h3 className="text-lg font-bold text-white mb-4">📊 What Gets Created</h3>
-          <div className="space-y-3 text-sm">
+          <div className="space-y-3 text-base">
             <div className="flex gap-3">
-              <span className="font-bold text-blue-400">1️⃣</span>
+              <span className="font-bold text-[#4169E1]">1️⃣</span>
               <div>
                 <strong className="text-white">Title Slide:</strong>
                 <p className="text-slate-200 font-medium">Professional cover page with file name and timestamp</p>
@@ -765,7 +765,7 @@ export default function FileToPPT() {
             </div>
 
             <div className="flex gap-3">
-              <span className="font-bold text-blue-400">2️⃣</span>
+              <span className="font-bold text-[#4169E1]">2️⃣</span>
               <div>
                 <strong className="text-white">Section Slide (per worksheet):</strong>
                 <p className="text-slate-200 font-medium">Overview showing chart count, row count, and column count</p>
@@ -773,7 +773,7 @@ export default function FileToPPT() {
             </div>
 
             <div className="flex gap-3">
-              <span className="font-bold text-blue-400">3️⃣</span>
+              <span className="font-bold text-[#4169E1]">3️⃣</span>
               <div>
                 <strong className="text-white">Data Table Slide:</strong>
                 <p className="text-slate-200 font-medium">Full data display (up to 20 rows × 10 columns)</p>
@@ -789,7 +789,7 @@ export default function FileToPPT() {
             </div>
 
             <div className="flex gap-3">
-              <span className="font-bold text-blue-400">5️⃣</span>
+              <span className="font-bold text-[#4169E1]">5️⃣</span>
               <div>
                 <strong className="text-white">Statistics Slide:</strong>
                 <p className="text-slate-200 font-medium">Average, Min, Max, Standard Deviation for numeric columns</p>

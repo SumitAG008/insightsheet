@@ -87,28 +87,28 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
-      <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-white">
+      <Card className="w-full max-w-md bg-white border-slate-200 shadow-lg">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center text-white">Welcome to InsightSheet-lite</CardTitle>
-          <CardDescription className="text-center text-slate-400">
+          <CardTitle className="text-2xl text-center text-slate-900">Welcome to InsightSheet-lite</CardTitle>
+          <CardDescription className="text-center text-slate-600">
             Sign in to access your privacy-first data analysis platform
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
-              <Alert className="bg-red-500/10 border-red-500/30">
-                <AlertDescription className="text-red-300">{error}</AlertDescription>
+              <Alert className="bg-red-50 border-red-200">
+                <AlertDescription className="text-red-700">{error}</AlertDescription>
               </Alert>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Email</label>
+              <label className="text-sm font-medium text-slate-700">Email</label>
               <Input
                 type="email"
                 placeholder="your@email.com"
@@ -116,17 +116,13 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
                 required
-                className="bg-slate-800/50 border-slate-700 text-slate-200"
+                className="border-slate-300 text-slate-900"
               />
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-slate-300">Password</label>
-                <Link 
-                  to="/forgot-password" 
-                  className="text-sm underline hover:opacity-80"
-                  style={{ color: '#4FC3F7' }}
-                >
+                <label className="text-sm font-medium text-slate-700">Password</label>
+                <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 underline">
                   Forgot password?
                 </Link>
               </div>
@@ -138,47 +134,29 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   required
-                  className="bg-slate-800/50 border-slate-700 text-slate-200 pr-10"
+                  className="border-slate-300 text-slate-900 pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full hover:opacity-90"
-              style={{ background: '#00E5FF' }}
-            >
+            <Button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
               {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Signing in...
-                </>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Signing in...</>
               ) : (
-                <>
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Sign In
-                </>
+                <><LogIn className="w-4 h-4 mr-2" /> Sign In</>
               )}
             </Button>
-            <p className="text-sm text-center text-slate-400">
-              Don't have an account?{' '}
-              <Link to="/register" className="underline hover:opacity-80" style={{ color: '#4FC3F7' }}>
-                Sign up
-              </Link>
+            <p className="text-sm text-center text-slate-600">
+              Don't have an account? <Link to="/register" className="text-blue-600 hover:text-blue-700 underline">Sign up</Link>
             </p>
           </CardFooter>
         </form>

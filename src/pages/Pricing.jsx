@@ -148,43 +148,41 @@ export default function Pricing() {
   ];
 
   return (
-    <div className="min-h-screen" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
-      {/* Pricing Section */}
+    <div className="min-h-screen bg-white">
+      {/* Pricing Section — same theme as Landing, Developers */}
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-12">
-          <Badge className="mb-4 border" style={{ background: 'rgba(0, 191, 166, 0.2)', color: '#4FC3F7', borderColor: 'rgba(0, 191, 166, 0.3)' }}>
+          <Badge className="mb-4 border border-blue-200 bg-blue-50 text-blue-700">
             <Star className="w-4 h-4 mr-1" />
             Choose Your Plan
           </Badge>
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
             Simple, Transparent Pricing
           </h2>
-          <p className="text-xl text-slate-300 max-w-2xl mx-auto mb-8">
+          <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-8">
             Start free, upgrade when you need more power
           </p>
 
-          {/* Billing Cycle Toggle - Show when logged in */}
           {user && (
             <Tabs value={billingCycle} onValueChange={setBillingCycle} className="max-w-md mx-auto mb-8">
-              <TabsList className="grid w-full grid-cols-3 bg-slate-900/80">
+              <TabsList className="grid w-full grid-cols-3 bg-slate-100 border border-slate-200">
                 <TabsTrigger value="monthly">Monthly</TabsTrigger>
                 <TabsTrigger value="quarterly">
                   Quarterly
-                  <Badge className="ml-2 bg-emerald-500/20 text-emerald-300 text-xs">Save 5%</Badge>
+                  <Badge className="ml-2 bg-blue-100 text-blue-600 text-xs">Save 5%</Badge>
                 </TabsTrigger>
                 <TabsTrigger value="yearly">
                   Yearly
-                  <Badge className="ml-2 bg-emerald-500/20 text-emerald-300 text-xs">Save 10%</Badge>
+                  <Badge className="ml-2 bg-blue-100 text-blue-600 text-xs">Save 10%</Badge>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
           )}
         </div>
 
-        {/* Stripe Integration Notice */}
-        <Alert className="mb-8 max-w-4xl mx-auto bg-blue-500/10 border-blue-500/30">
-          <AlertCircle className="h-5 w-5 text-blue-400" />
-          <AlertDescription className="text-blue-200">
+        <Alert className="mb-8 max-w-4xl mx-auto bg-blue-50 border-blue-200">
+          <AlertCircle className="h-5 w-5 text-blue-600" />
+          <AlertDescription className="text-blue-800">
             <strong>Coming Soon:</strong> Stripe payment integration is being set up. Premium subscriptions will be available soon. 
             For now, you can enjoy all features with the free tier.
           </AlertDescription>
@@ -199,59 +197,51 @@ export default function Pricing() {
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="text-white px-4 py-1" style={{ background: 'linear-gradient(to right, #00BFA6, #4FC3F7)' }}>
+                  <Badge className="text-white px-4 py-1 bg-blue-600">
                     Most Popular
                   </Badge>
                 </div>
               )}
 
               <div className="relative group h-full">
-                <div className={`absolute inset-0 bg-gradient-to-r ${plan.color} rounded-2xl blur-xl opacity-30`} />
-                
-                <div className="relative bg-slate-900/90 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 h-full flex flex-col">
-                  {/* Plan Header */}
+                <div className="relative bg-slate-50 border border-slate-200 rounded-2xl p-8 h-full flex flex-col">
                   <div className="text-center mb-6">
-                    <plan.icon className="w-12 h-12 mx-auto mb-4" style={{ color: '#4FC3F7' }} />
-                    <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
+                    <plan.icon className="w-12 h-12 mx-auto mb-4 text-blue-600" />
+                    <h3 className="text-2xl font-bold text-slate-900 mb-2">{plan.name}</h3>
                     <div className="flex items-baseline justify-center gap-2">
-                      <span className="text-4xl font-bold text-white">{plan.priceDisplay}</span>
-                      <span className="text-slate-400">{plan.period}</span>
+                      <span className="text-4xl font-bold text-slate-900">{plan.priceDisplay}</span>
+                      <span className="text-slate-600">{plan.period}</span>
                     </div>
                     {plan.totalDisplay && (
-                      <p className="text-sm text-slate-400 mt-2">{plan.totalDisplay}</p>
+                      <p className="text-sm text-slate-600 mt-2">{plan.totalDisplay}</p>
                     )}
                     {plan.savings && (
-                      <Badge className="mt-2 bg-emerald-500/20 text-emerald-300">
+                      <Badge className="mt-2 bg-blue-100 text-blue-600">
                         {plan.savings}
                       </Badge>
                     )}
                   </div>
 
-                  {/* Features */}
                   <ul className="space-y-3 mb-8 flex-grow">
                     {plan.features.map((feature, idx) => (
                       <li key={idx} className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
-                        <span className="text-slate-300 text-sm">{feature}</span>
+                        <Check className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <span className="text-slate-600 text-sm">{feature}</span>
                       </li>
                     ))}
                   </ul>
 
-                  {/* CTA Button */}
                   {plan.id === 'free' ? (
                     !user ? (
                       <a
                         href="/register"
-                        className="w-full text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2 hover:opacity-90"
-                        style={{ background: '#00E5FF' }}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2"
                       >
                         <Sparkles className="w-4 h-4" />
                         Get Started Free
                       </a>
                     ) : (
-                      <Button
-                        className="w-full bg-slate-700 hover:bg-slate-600 text-white"
-                      >
+                      <Button className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700">
                         Current Plan
                       </Button>
                     )
@@ -260,19 +250,19 @@ export default function Pricing() {
                       <div className="space-y-2">
                         <a
                           href="/register"
-                          className={`w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2 block`}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2 block"
                         >
                           <CreditCard className="w-4 h-4" />
                           Sign Up for Premium
                         </a>
-                        <p className="text-xs text-slate-400 text-center">
+                        <p className="text-xs text-slate-500 text-center">
                           Stripe integration coming soon
                         </p>
                       </div>
                     ) : (
                       <Button
                         onClick={() => handleSubscribe(plan)}
-                        className={`w-full bg-gradient-to-r ${plan.color} hover:opacity-90 text-white font-bold`}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold"
                       >
                         <CreditCard className="w-4 h-4 mr-2" />
                         Subscribe Now
@@ -285,37 +275,34 @@ export default function Pricing() {
           ))}
         </div>
 
-        {/* Payment Modal */}
         {selectedPlan && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-900 rounded-2xl p-8 max-w-md w-full border border-slate-700">
-              <h2 className="text-2xl font-bold text-white mb-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-slate-200 shadow-xl">
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">
                 Subscribe to {selectedPlan.name}
               </h2>
-              <p className="text-slate-300 mb-2">
+              <p className="text-slate-600 mb-2">
                 {selectedPlan.priceDisplay}{selectedPlan.period}
               </p>
-              <p className="text-slate-400 text-sm mb-6">
+              <p className="text-slate-500 text-sm mb-6">
                 {selectedPlan.totalDisplay}
                 {billingCycle === 'yearly' && (
-                  <span className="block text-emerald-400 mt-1">
+                  <span className="block text-blue-600 mt-1">
                     ✓ Auto-renews annually after first year
                   </span>
                 )}
               </p>
-              
-              <Alert className="mb-6 bg-blue-500/10 border-blue-500/30">
-                <AlertCircle className="h-5 w-5 text-blue-400" />
-                <AlertDescription className="text-blue-200 text-sm">
+              <Alert className="mb-6 bg-blue-50 border-blue-200">
+                <AlertCircle className="h-5 w-5 text-blue-600" />
+                <AlertDescription className="text-blue-800 text-sm">
                   Stripe payment integration is currently being set up. Premium subscriptions will be available soon. 
                   In the meantime, enjoy all features with the free tier!
                 </AlertDescription>
               </Alert>
-
               <Button
                 onClick={() => setSelectedPlan(null)}
                 variant="outline"
-                className="w-full mt-4 border-slate-700 text-slate-300"
+                className="w-full mt-4 border-slate-300 text-slate-700 hover:bg-slate-50"
               >
                 Cancel
               </Button>
@@ -323,30 +310,29 @@ export default function Pricing() {
           </div>
         )}
 
-        {/* Feature Comparison */}
         <div className="mt-16 max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-white text-center mb-8">
+          <h2 className="text-2xl font-bold text-slate-900 text-center mb-8">
             Why upgrade to Premium?
           </h2>
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6">
-              <Zap className="w-10 h-10 mb-4" style={{ color: '#4FC3F7' }} />
-              <h3 className="text-lg font-bold text-white mb-2">Unlimited Everything</h3>
-              <p className="text-slate-400 text-sm">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
+              <Zap className="w-10 h-10 mb-4 text-blue-600" />
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Unlimited Everything</h3>
+              <p className="text-slate-600 text-sm">
                 No file size limits, unlimited transactions, unlimited AI queries
               </p>
             </div>
-            <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6">
-              <Crown className="w-10 h-10 mb-4" style={{ color: '#4FC3F7' }} />
-              <h3 className="text-lg font-bold text-white mb-2">Excel Support</h3>
-              <p className="text-slate-400 text-sm">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
+              <Crown className="w-10 h-10 mb-4 text-blue-600" />
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Excel Support</h3>
+              <p className="text-slate-600 text-sm">
                 Import .XLS, .XLSX files directly. Export to Excel format
               </p>
             </div>
-            <div className="bg-slate-900/80 border border-slate-700/50 rounded-xl p-6">
-              <Star className="w-10 h-10 mb-4" style={{ color: '#4FC3F7' }} />
-              <h3 className="text-lg font-bold text-white mb-2">Save More</h3>
-              <p className="text-slate-400 text-sm">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
+              <Star className="w-10 h-10 mb-4 text-blue-600" />
+              <h3 className="text-lg font-bold text-slate-900 mb-2">Save More</h3>
+              <p className="text-slate-600 text-sm">
                 Get 5% off with quarterly billing, 10% off with yearly billing
               </p>
             </div>

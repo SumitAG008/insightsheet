@@ -105,19 +105,16 @@ export default function ResetPassword() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <Card className="w-full max-w-md bg-white border-slate-200 shadow-lg">
           <CardContent className="pt-6">
-            <Alert className="bg-red-500/10 border-red-500/30">
-              <AlertDescription className="text-red-300">
+            <Alert className="bg-red-50 border-red-200">
+              <AlertDescription className="text-red-700">
                 Invalid reset link. Please request a new password reset.
               </AlertDescription>
             </Alert>
             <div className="mt-4">
-              <Link 
-                to="/forgot-password" 
-                className="text-purple-400 hover:text-purple-300 flex items-center gap-1"
-              >
+              <Link to="/forgot-password" className="text-blue-600 hover:text-blue-700 flex items-center gap-1">
                 <ArrowLeft className="w-4 h-4" />
                 Request New Reset Link
               </Link>
@@ -129,36 +126,36 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
-      <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-white">
+      <Card className="w-full max-w-md bg-white border-slate-200 shadow-lg">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center text-white">Reset Password</CardTitle>
-          <CardDescription className="text-center text-slate-400">
+          <CardTitle className="text-2xl text-center text-slate-900">Reset Password</CardTitle>
+          <CardDescription className="text-center text-slate-600">
             Enter your new password below
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
-              <Alert className="bg-red-500/10 border-red-500/30">
-                <AlertDescription className="text-red-300">{error}</AlertDescription>
+              <Alert className="bg-red-50 border-red-200">
+                <AlertDescription className="text-red-700">{error}</AlertDescription>
               </Alert>
             )}
             {success && (
-              <Alert className="bg-green-500/10 border-green-500/30">
-                <AlertDescription className="text-green-300 flex items-center gap-2">
+              <Alert className="bg-green-50 border-green-200">
+                <AlertDescription className="text-green-800 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4" />
                   Password reset successfully! Redirecting to login...
                 </AlertDescription>
               </Alert>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">New Password</label>
+              <label className="text-sm font-medium text-slate-700">New Password</label>
               <div className="relative">
                 <Input
                   name="password"
@@ -169,12 +166,12 @@ export default function ResetPassword() {
                   autoComplete="new-password"
                   required
                   minLength={10}
-                  className="bg-slate-800/50 border-slate-700 text-slate-200 pr-10"
+                  className="border-slate-300 text-slate-900 pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -184,12 +181,12 @@ export default function ResetPassword() {
                   )}
                 </button>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Minimum 10 characters. Maximum 72 bytes (some special characters count as multiple bytes).
               </p>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Confirm Password</label>
+              <label className="text-sm font-medium text-slate-700">Confirm Password</label>
               <div className="relative">
                 <Input
                   name="confirmPassword"
@@ -200,19 +197,15 @@ export default function ResetPassword() {
                   autoComplete="new-password"
                   required
                   minLength={10}
-                  className="bg-slate-800/50 border-slate-700 text-slate-200 pr-10"
+                  className="border-slate-300 text-slate-900 pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
                   aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -221,31 +214,17 @@ export default function ResetPassword() {
             <Button
               type="submit"
               disabled={loading || success}
-              className="w-full hover:opacity-90"
-              style={{ background: '#00E5FF' }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
               {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Resetting password...
-                </>
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Resetting password...</>
               ) : success ? (
-                <>
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Password Reset!
-                </>
+                <><CheckCircle2 className="w-4 h-4 mr-2" /> Password Reset!</>
               ) : (
-                <>
-                  <Lock className="w-4 h-4 mr-2" />
-                  Reset Password
-                </>
+                <><Lock className="w-4 h-4 mr-2" /> Reset Password</>
               )}
             </Button>
-            <Link 
-              to="/login" 
-              className="flex items-center gap-1 text-sm hover:opacity-80"
-              style={{ color: '#4FC3F7' }}
-            >
+            <Link to="/login" className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700">
               <ArrowLeft className="w-4 h-4" />
               Back to Login
             </Link>

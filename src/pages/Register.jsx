@@ -85,29 +85,29 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
-      <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-white">
+      <Card className="w-full max-w-md bg-white border-slate-200 shadow-lg">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center text-white">Create your account</CardTitle>
-          <CardDescription className="text-center text-slate-400">
+          <CardTitle className="text-2xl text-center text-slate-900">Create your account</CardTitle>
+          <CardDescription className="text-center text-slate-600">
             Join InsightSheet-lite for privacy-first data analysis
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
-              <Alert className="bg-red-500/10 border-red-500/30">
-                <AlertDescription className="text-red-300">{error}</AlertDescription>
+              <Alert className="bg-red-50 border-red-200">
+                <AlertDescription className="text-red-700">{error}</AlertDescription>
               </Alert>
             )}
             {success && (
-              <Alert className="bg-blue-500/10 border-blue-500/30">
-                <AlertDescription className="text-blue-300">
+              <Alert className="bg-blue-50 border-blue-200">
+                <AlertDescription className="text-blue-800">
                   <strong>Registration successful!</strong> A verification email has been sent to <strong>{formData.email}</strong>. 
                   Please check your inbox (and spam folder) and click the verification link to activate your account. 
                   You'll need to verify your email before you can login. Redirecting to login page...
@@ -115,7 +115,7 @@ export default function Register() {
               </Alert>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Full Name</label>
+              <label className="text-sm font-medium text-slate-700">Full Name</label>
               <Input
                 name="fullName"
                 type="text"
@@ -123,11 +123,11 @@ export default function Register() {
                 value={formData.fullName}
                 onChange={handleChange}
                 autoComplete="name"
-                className="bg-slate-800/50 border-slate-700 text-slate-200"
+                className="border-slate-300 text-slate-900"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Email</label>
+              <label className="text-sm font-medium text-slate-700">Email</label>
               <Input
                 name="email"
                 type="email"
@@ -136,14 +136,14 @@ export default function Register() {
                 onChange={handleChange}
                 autoComplete="email"
                 required
-                className="bg-slate-800/50 border-slate-700 text-slate-200"
+                className="border-slate-300 text-slate-900"
               />
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 ✓ All email providers accepted (Gmail, Outlook, Yahoo, custom domains, etc.)
               </p>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Password</label>
+              <label className="text-sm font-medium text-slate-700">Password</label>
               <div className="relative">
                 <Input
                   name="password"
@@ -154,27 +154,23 @@ export default function Register() {
                   autoComplete="new-password"
                   required
                   minLength={10}
-                  className="bg-slate-800/50 border-slate-700 text-slate-200 pr-10"
+                  className="border-slate-300 text-slate-900 pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500">
                 Minimum 10 characters. Maximum 72 bytes (some special characters count as multiple bytes).
               </p>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Confirm Password</label>
+              <label className="text-sm font-medium text-slate-700">Confirm Password</label>
               <div className="relative">
                 <Input
                   name="confirmPassword"
@@ -184,19 +180,15 @@ export default function Register() {
                   onChange={handleChange}
                   autoComplete="new-password"
                   required
-                  className="bg-slate-800/50 border-slate-700 text-slate-200 pr-10"
+                  className="border-slate-300 text-slate-900 pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
                   aria-label={showConfirmPassword ? "Hide password" : "Show password"}
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="w-4 h-4" />
-                  ) : (
-                    <Eye className="w-4 h-4" />
-                  )}
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -205,8 +197,7 @@ export default function Register() {
             <Button
               type="submit"
               disabled={loading || success}
-              className="w-full hover:opacity-90"
-              style={{ background: '#00E5FF' }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
               {loading ? (
                 <>
@@ -225,11 +216,8 @@ export default function Register() {
                 </>
               )}
             </Button>
-            <p className="text-sm text-center text-slate-400">
-              Already have an account?{' '}
-              <Link to="/login" className="underline hover:opacity-80" style={{ color: '#4FC3F7' }}>
-                Sign in
-              </Link>
+            <p className="text-sm text-center text-slate-600">
+              Already have an account? <Link to="/login" className="text-blue-600 hover:text-blue-700 underline">Sign in</Link>
             </p>
           </CardFooter>
         </form>

@@ -39,44 +39,35 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
-      <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-white">
+      <Card className="w-full max-w-md bg-white border-slate-200 shadow-lg">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(to bottom right, #00BFA6, #4FC3F7)' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-center text-white">Forgot Password?</CardTitle>
-          <CardDescription className="text-center text-slate-400">
+          <CardTitle className="text-2xl text-center text-slate-900">Forgot Password?</CardTitle>
+          <CardDescription className="text-center text-slate-600">
             Enter your email address and we'll send you a link to reset your password
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
-              <Alert className="bg-red-500/10 border-red-500/30">
-                <AlertDescription className="text-red-300">{error}</AlertDescription>
+              <Alert className="bg-red-50 border-red-200">
+                <AlertDescription className="text-red-700">{error}</AlertDescription>
               </Alert>
             )}
             {success && (
-              <Alert className="bg-green-500/10 border-green-500/30">
-                <AlertDescription className="text-green-300">
+              <Alert className="bg-green-50 border-green-200">
+                <AlertDescription className="text-green-800">
                   {resetLink && import.meta.env.MODE === 'development' ? (
                     <div>
                       <p className="mb-2">Password reset link generated!</p>
                       <p className="text-xs mb-2">Development mode - Reset link:</p>
-                      <a 
-                        href={resetLink} 
-                        className="text-blue-400 underline break-all text-xs"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {resetLink}
-                      </a>
-                      <p className="text-xs mt-2 text-slate-400">
-                        In production, this link would be sent to your email.
-                      </p>
+                      <a href={resetLink} className="text-blue-600 underline break-all text-xs" target="_blank" rel="noopener noreferrer">{resetLink}</a>
+                      <p className="text-xs mt-2 text-slate-500">In production, this link would be sent to your email.</p>
                     </div>
                   ) : (
                     "If an account with that email exists, a password reset link has been sent to your email. Please check your inbox (and spam folder)."
@@ -85,7 +76,7 @@ export default function ForgotPassword() {
               </Alert>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-300">Email</label>
+              <label className="text-sm font-medium text-slate-700">Email</label>
               <Input
                 type="email"
                 placeholder="your@email.com"
@@ -93,7 +84,7 @@ export default function ForgotPassword() {
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="email"
                 required
-                className="bg-slate-800/50 border-slate-700 text-slate-200"
+                className="border-slate-300 text-slate-900"
               />
             </div>
           </CardContent>
@@ -101,8 +92,7 @@ export default function ForgotPassword() {
             <Button
               type="submit"
               disabled={loading || success}
-              className="w-full hover:opacity-90"
-              style={{ background: '#00E5FF' }}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
               {loading ? (
                 <>
@@ -122,18 +112,11 @@ export default function ForgotPassword() {
               )}
             </Button>
             <div className="flex items-center justify-between w-full text-sm">
-              <Link 
-                to="/login" 
-                className="flex items-center gap-1 hover:opacity-80"
-                style={{ color: '#4FC3F7' }}
-              >
+              <Link to="/login" className="flex items-center gap-1 text-blue-600 hover:text-blue-700">
                 <ArrowLeft className="w-4 h-4" />
                 Back to Login
               </Link>
-              <Link 
-                to="/register" 
-                className="text-slate-400 hover:text-slate-300"
-              >
+              <Link to="/register" className="text-slate-600 hover:text-slate-800">
                 Create Account
               </Link>
             </div>

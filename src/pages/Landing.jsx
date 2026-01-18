@@ -19,6 +19,15 @@ export default function Landing() {
         <div className="container mx-auto flex items-center justify-between max-w-7xl">
           <Logo size="medium" showText={true} style={{ color: '#FFFFFF' }} lowercaseM />
           <div className="flex items-center gap-2 md:gap-4">
+            <Link to="/developers">
+              <Button 
+                variant="ghost" 
+                className="text-white hover:text-slate-200 px-4 py-2 text-base font-medium transition-all hover:bg-slate-800/50 rounded-lg"
+                style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}
+              >
+                Developers
+              </Button>
+            </Link>
             <Link to="/pricing">
               <Button 
                 variant="ghost" 
@@ -481,6 +490,9 @@ export default function Landing() {
       <footer className="w-full border-t border-slate-800 py-6 px-4 mt-auto">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-center gap-4">
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
+            <Link to="/developers" className="hover:text-slate-300 transition-colors">
+              Developers
+            </Link>
             <a href="mailto:support@meldra.ai" className="hover:text-slate-300 transition-colors">
               Support
             </a>

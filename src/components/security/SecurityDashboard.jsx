@@ -1,5 +1,6 @@
 // components/security/SecurityDashboard.jsx - Enhanced security dashboard component
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Shield, Lock, Eye, AlertTriangle, CheckCircle, Clock, Globe, Smartphone, Key, Activity, LogOut, XCircle, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -202,9 +203,9 @@ export default function SecurityDashboard() {
                 <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={saveMeldraKey} disabled={!meldraKeyInput.trim()}>
                   {meldraKeySaved ? 'Saved' : 'Save'}
                 </Button>
-                <span title="developer.meldra.ai is not yet deployed. Use in-app Document Converter and ZIP Cleaner. Contact support@meldra.ai for API portal updates." className="inline-flex items-center gap-1 text-sm text-slate-400">
-                  <ExternalLink className="w-4 h-4" /> developer.meldra.ai (coming soon)
-                </span>
+                <Link to="/developers" className="inline-flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300">
+                  <ExternalLink className="w-4 h-4" /> API docs
+                </Link>
               </div>
             </>
           )}

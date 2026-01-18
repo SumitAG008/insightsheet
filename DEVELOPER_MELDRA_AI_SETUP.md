@@ -37,6 +37,7 @@ Until these exist, `developer.meldra.ai` will not resolve (e.g. `DNS_PROBE_FINIS
 
 ## What to do in the meantime
 
-1. Use **Document Converter** and **ZIP Cleaner** in the app; no developer.meldra.ai or API key required.
-2. For API access or when the portal is ready: contact **support@meldra.ai**.
-3. When you’re ready to launch developer.meldra.ai: add the DNS records above and deploy the portal (and optional API) as in `MELDRA_DEVELOPER_API.md`.
+1. **API docs on the main site:** Use **/developers** on meldra.ai or insight.meldra.ai (e.g. `https://insight.meldra.ai/developers`). This is the developer/API portal; no separate developer.meldra.ai subdomain needed for docs.
+2. Use **Document Converter** and **ZIP Cleaner** in the app; no API key required.
+3. For API access: contact **support@meldra.ai** for a paid Meldra API key.
+4. When you’re want a separate **developer.meldra.ai** subdomain: add the DNS records above and point it to the same /developers content or a dedicated portal as in `MELDRA_DEVELOPER_API.md`.

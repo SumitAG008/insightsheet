@@ -12,6 +12,7 @@ import Dashboard from "./Dashboard";
 
 import Landing from "./Landing";
 import Pricing from "./Pricing";
+import Developers from "./Developers";
 
 import PDFEditor from "./PDFEditor";
 
@@ -112,7 +113,7 @@ function PagesContent() {
     const currentPage = _getCurrentPage(location.pathname);
 
     // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword/VerifyEmail)
-    const noLayoutRoutes = ['/', '/pricing', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
+    const noLayoutRoutes = ['/', '/pricing', '/developers', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
     const isNoLayoutRoute = noLayoutRoutes.some(route => {
         const path = location.pathname.toLowerCase();
         const routeLower = route.toLowerCase();
@@ -126,6 +127,8 @@ function PagesContent() {
                 <Route path="/" element={<Landing />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/Pricing" element={<Pricing />} />
+                <Route path="/developers" element={<Developers />} />
+                <Route path="/Developers" element={<Developers />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />

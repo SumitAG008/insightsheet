@@ -580,7 +580,7 @@ export default function FilenameCleaner() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-emerald-600 rounded-2xl flex items-center justify-center">
+            <div className="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
               <FileArchive className="w-8 h-8 text-white" />
             </div>
           </div>
@@ -653,8 +653,8 @@ export default function FilenameCleaner() {
                   className="hidden"
                   disabled={processing}
                 />
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-600/20 to-emerald-600/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <FileArchive className="w-10 h-10 text-blue-400" />
+                <div className="w-20 h-20 bg-blue-600/40 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform border-2 border-blue-500/50">
+                  <FileArchive className="w-10 h-10 text-blue-300" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">
                   {zipFile ? zipFile.name : 'Drop ZIP file here'}

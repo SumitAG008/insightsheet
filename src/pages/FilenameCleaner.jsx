@@ -624,6 +624,14 @@ export default function FilenameCleaner() {
           </AlertDescription>
         </Alert>
 
+        {/* developer.meldra.ai — ZIP Cleaner API (paid) */}
+        <Alert className="mb-6 bg-slate-800/80 border-slate-600/50">
+          <Lock className="h-5 w-5 text-slate-400" />
+          <AlertDescription className="text-slate-300">
+            <strong className="text-slate-200">developer.meldra.ai:</strong> ZIP Cleaner (and PDF↔DOC) can also run via the Meldra API. Requires a paid API key—add it in <a href="/Security" className="underline text-blue-400 hover:text-blue-300">Security → Meldra API Key</a>. Get your key at <a href="https://developer.meldra.ai" target="_blank" rel="noopener noreferrer" className="underline text-blue-400 hover:text-blue-300">developer.meldra.ai</a>.
+          </AlertDescription>
+        </Alert>
+
         {/* Tabs */}
         <Tabs defaultValue="upload" className="space-y-6">
           <TabsList className="bg-slate-900/80 border border-slate-700/50 p-1 grid w-full grid-cols-3">

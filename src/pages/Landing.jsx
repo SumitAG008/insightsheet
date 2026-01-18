@@ -17,7 +17,7 @@ export default function Landing() {
       {/* Header with Logo on Left */}
       <header className="w-full border-b border-slate-800/50 py-5 px-6 md:px-8 backdrop-blur-sm bg-slate-950/30">
         <div className="container mx-auto flex items-center justify-between max-w-7xl">
-          <Logo size="medium" showText={true} style={{ color: '#FFFFFF' }} />
+          <Logo size="medium" showText={true} style={{ color: '#FFFFFF' }} lowercaseM />
           <div className="flex items-center gap-2 md:gap-4">
             <Link to="/pricing">
               <Button 

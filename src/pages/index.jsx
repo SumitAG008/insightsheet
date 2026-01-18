@@ -35,6 +35,7 @@ import AgenticAI from "./AgenticAI";
 
 import FileToPPT from "./FileToPPT";
 import OCRConverter from "./OCRConverter";
+import PdfDocConverter from "./PdfDocConverter";
 
 import DataModelCreator from "./DataModelCreator";
 
@@ -77,6 +78,7 @@ const PAGES = {
 
     FileToPPT: FileToPPT,
     OCRConverter: OCRConverter,
+    PdfDocConverter: PdfDocConverter,
 
     DataModelCreator: DataModelCreator,
 
@@ -176,6 +178,9 @@ function PagesContent() {
 
                 <Route path="/OCRConverter" element={<ProtectedRoute><OCRConverter /></ProtectedRoute>} />
                 <Route path="/ocrconverter" element={<ProtectedRoute><OCRConverter /></ProtectedRoute>} />
+
+                <Route path="/PdfDocConverter" element={<ProtectedRoute><PdfDocConverter /></ProtectedRoute>} />
+                <Route path="/pdfdocconverter" element={<ProtectedRoute><PdfDocConverter /></ProtectedRoute>} />
 
                 <Route path="/FileAnalyzer" element={<ProtectedRoute><FileAnalyzer /></ProtectedRoute>} />
                 <Route path="/fileanalyzer" element={<ProtectedRoute><FileAnalyzer /></ProtectedRoute>} />

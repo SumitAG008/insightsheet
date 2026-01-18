@@ -1,17 +1,22 @@
 // components/security/SecurityDashboard.jsx - Enhanced security dashboard component
 import React, { useState, useEffect } from 'react';
-import { Shield, Lock, Eye, AlertTriangle, CheckCircle, Clock, Globe, Smartphone, Key, Activity, LogOut, XCircle } from 'lucide-react';
+import { Shield, Lock, Eye, AlertTriangle, CheckCircle, Clock, Globe, Smartphone, Key, Activity, LogOut, XCircle, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { meldraAi } from '@/api/meldraClient';
+import { getApiKey } from '@/api/meldraDeveloperApi';
 
 export default function SecurityDashboard() {
   const [user, setUser] = useState(null);
   const [loginHistory, setLoginHistory] = useState([]);
   const [sessionInfo, setSessionInfo] = useState(null);
   const [securityScore, setSecurityScore] = useState(0);
+  const [meldraKeyInput, setMeldraKeyInput] = useState('');
+  const [meldraKeySet, setMeldraKeySet] = useState(!!getApiKey());
+  const [meldraKeySaved, setMeldraKeySaved] = useState(false);
 
   useEffect(() => {
     loadSecurityData();
@@ -60,6 +65,23 @@ export default function SecurityDashboard() {
     if (score >= 80) return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
     if (score >= 60) return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
     return 'bg-red-500/20 text-red-300 border-red-500/30';
+  };
+
+  const saveMeldraKey = () => {
+    const v = meldraKeyInput.trim();
+    if (v) {
+      localStorage.setItem('meldra_api_key', v);
+      setMeldraKeySet(true);
+      setMeldraKeyInput('');
+      setMeldraKeySaved(true);
+      setTimeout(() => setMeldraKeySaved(false), 2500);
+    }
+  };
+
+  const clearMeldraKey = () => {
+    localStorage.removeItem('meldra_api_key');
+    setMeldraKeySet(false);
+    setMeldraKeyInput('');
   };
 
   return (
@@ -151,6 +173,43 @@ export default function SecurityDashboard() {
           </CardContent>
         </Card>
       )}
+
+      {/* Meldra API Key (developer.meldra.ai) — paid, for PDF↔DOC, ZIP Cleaner */}
+      <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Key className="w-5 h-5 text-blue-400" />
+            Meldra API Key (developer.meldra.ai)
+          </CardTitle>
+          <p className="text-sm text-slate-400">Required for PDF↔DOC and ZIP Cleaner via API. Paid; get your key at developer.meldra.ai</p>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {meldraKeySet && !meldraKeyInput ? (
+            <div className="flex items-center justify-between gap-2">
+              <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">Key is set</Badge>
+              <Button variant="outline" size="sm" className="border-slate-600 text-slate-300" onClick={clearMeldraKey}>Remove</Button>
+            </div>
+          ) : (
+            <>
+              <Input
+                type="password"
+                placeholder="Meldra API key"
+                value={meldraKeyInput}
+                onChange={(e) => setMeldraKeyInput(e.target.value)}
+                className="bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={saveMeldraKey} disabled={!meldraKeyInput.trim()}>
+                  {meldraKeySaved ? 'Saved' : 'Save'}
+                </Button>
+                <a href="https://developer.meldra.ai" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300">
+                  <ExternalLink className="w-4 h-4" /> developer.meldra.ai
+                </a>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Security Features */}
       <div className="grid md:grid-cols-2 gap-4">

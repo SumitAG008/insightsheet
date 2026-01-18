@@ -346,7 +346,7 @@ export default function Dashboard() {
             </p>
             
             <p className="text-lg text-slate-600 dark:text-slate-400 font-semibold">
-              Meldra
+              meldra
             </p>
 
             {/* Features */}

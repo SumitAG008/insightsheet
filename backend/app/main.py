@@ -200,6 +200,17 @@ class ActivityLog(BaseModel):
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """Register new user"""
     try:
+        # Private beta: only allowed emails can register (stops non-invited users during testing)
+        beta_mode = os.getenv("BETA_MODE", "").strip().lower() in ("1", "true", "yes")
+        if beta_mode:
+            allowed_raw = os.getenv("BETA_ALLOWED_EMAILS", "").strip()
+            allowed = [e.strip().lower() for e in allowed_raw.split(",") if e.strip()]
+            if user_data.email.strip().lower() not in allowed:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Meldra is in private beta. To request access, email support@meldra.ai."
+                )
+
         # Check if user exists
         existing_user = db.query(User).filter(User.email == user_data.email).first()
         if existing_user:

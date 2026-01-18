@@ -318,7 +318,7 @@ Create a clear, business-ready summary.`;
   };
 
   return (
-    <div className="min-h-screen bg-[#0d0d0f] p-6">
+    <div className="min-h-screen bg-white dark:bg-slate-950 p-6">
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="text-center mb-8">
@@ -328,10 +328,10 @@ Create a clear, business-ready summary.`;
             </div>
           </div>
           
-          <h1 className="text-5xl font-bold text-white mb-2">
+          <h1 className="text-5xl font-bold text-slate-900 dark:text-white mb-2">
             Agentic AI
           </h1>
-          <p className="text-xl text-slate-300 mb-4">
+          <p className="text-xl text-slate-600 dark:text-slate-400 mb-4">
             Autonomous AI Agent • Plans → Executes → Reports
           </p>
           <Badge className="bg-[#4169E1]/20 text-[#4169E1] border-[#4169E1]/50">
@@ -343,7 +343,7 @@ Create a clear, business-ready summary.`;
         {/* Info Banner */}
         <Alert className="mb-8 bg-[#4169E1]/10 border-[#4169E1]/40">
           <Brain className="h-5 w-5 text-[#4169E1]" />
-          <AlertDescription className="text-slate-200">
+          <AlertDescription className="text-slate-700 dark:text-slate-300">
             <strong className="text-[#4169E1]">What is Agentic AI?</strong><br />
             Unlike regular AI that just answers questions, Agentic AI:
             <ul className="list-disc ml-5 mt-2 space-y-1">
@@ -357,12 +357,12 @@ Create a clear, business-ready summary.`;
 
         {/* File Upload Section */}
         {!data ? (
-          <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-700 rounded-2xl p-6 mb-6 shadow-sm">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
               <Upload className="w-5 h-5 text-[#4169E1]" />
               Upload Your Data File
             </h2>
-            <p className="text-slate-300 mb-4">
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
               Upload a CSV or Excel file to get started with the AI Assistant. Your data stays private and is processed in your browser.
             </p>
             <FileUploadZone
@@ -373,7 +373,7 @@ Create a clear, business-ready summary.`;
               }}
               acceptedFormats={['.csv', '.xlsx', '.xls']}
             />
-            <div className="mt-4 text-base text-slate-300">
+            <div className="mt-4 text-base text-slate-600 dark:text-slate-400">
               <p className="flex items-center gap-2">
                 <Shield className="w-4 h-4" />
                 <span>Your file is processed locally and never stored on our servers</span>
@@ -381,13 +381,13 @@ Create a clear, business-ready summary.`;
             </div>
           </div>
         ) : (
-          <Alert className="mb-8 bg-emerald-500/10 border-emerald-500/40">
-            <CheckCircle className="h-5 w-5 text-emerald-400" />
-            <AlertDescription className="text-slate-200">
+          <Alert className="mb-8 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800">
+            <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <AlertDescription className="text-slate-700 dark:text-slate-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <strong className="text-emerald-400">Data Loaded:</strong> {sessionStorage.getItem('insightsheet_filename') || 'File'} 
-                  <span className="text-sm text-slate-400 ml-2">
+                  <strong className="text-emerald-600 dark:text-emerald-400">Data Loaded:</strong> {sessionStorage.getItem('insightsheet_filename') || 'File'} 
+                  <span className="text-sm text-slate-500 dark:text-slate-400 ml-2">
                     ({data.rows.length} rows, {data.headers.length} columns)
                   </span>
                 </div>
@@ -399,7 +399,7 @@ Create a clear, business-ready summary.`;
                     sessionStorage.removeItem('insightsheet_data');
                     sessionStorage.removeItem('insightsheet_filename');
                   }}
-                  className="border-slate-600 text-slate-200"
+                  className="border-slate-300 dark:border-slate-600"
                 >
                   <X className="w-4 h-4 mr-1" />
                   Remove File
@@ -410,8 +410,8 @@ Create a clear, business-ready summary.`;
         )}
 
         {/* Task Input */}
-        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-700 rounded-2xl p-6 mb-6 shadow-sm">
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+        <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-sm">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
             <Target className="w-5 h-5 text-[#4169E1]" />
             What would you like the AI agent to do?
           </h2>
@@ -420,13 +420,13 @@ Create a clear, business-ready summary.`;
             placeholder="Example: Analyze my sales data, find top performing products, and create a report with recommendations..."
             value={task}
             onChange={(e) => setTask(e.target.value)}
-            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400 min-h-[120px] mb-4"
+            className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 min-h-[120px] mb-4"
             disabled={thinking}
           />
 
           <div className="flex flex-wrap gap-2 mb-4">
-            <Lightbulb className="w-4 h-4 text-amber-400 mt-1" />
-            <span className="text-sm text-slate-300 font-semibold">Quick Examples:</span>
+            <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-1" />
+            <span className="text-sm text-slate-600 dark:text-slate-400 font-semibold">Quick Examples:</span>
           </div>
 
           <div className="grid md:grid-cols-2 gap-2 mb-6">
@@ -434,7 +434,7 @@ Create a clear, business-ready summary.`;
               <button
                 key={idx}
                 onClick={() => setTask(example)}
-                className="text-left text-base p-3 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-600 rounded-lg text-slate-200 transition-colors"
+                className="text-left text-base p-3 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-700/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 transition-colors"
                 disabled={thinking}
               >
                 {example}
@@ -461,7 +461,7 @@ Create a clear, business-ready summary.`;
           </Button>
 
           {!data && (
-            <p className="text-amber-400 text-base mt-3 text-center">
+            <p className="text-amber-600 dark:text-amber-400 text-base mt-3 text-center">
               ⚠️ Please upload a CSV file first to use the AI agent
             </p>
           )}
@@ -469,8 +469,8 @@ Create a clear, business-ready summary.`;
 
         {/* Agent Execution Visualization */}
         {agent && (
-          <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-700 rounded-2xl p-6 mb-6 shadow-sm">
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+          <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
               <Eye className="w-5 h-5 text-[#4169E1]" />
               Agent Execution
             </h2>
@@ -484,10 +484,10 @@ Create a clear, business-ready summary.`;
                 </div>
 
                 <div className="bg-[#4169E1]/10 border border-[#4169E1]/40 rounded-lg p-4">
-                  <p className="text-white mb-3">
+                  <p className="text-slate-900 dark:text-white mb-3">
                     <strong>Understanding:</strong> {agent.plan?.task_understood || 'Analyzing task...'}
                   </p>
-                  <p className="text-slate-300 text-base mb-2">
+                  <p className="text-slate-600 dark:text-slate-400 text-base mb-2">
                     <strong>Estimated Time:</strong> {agent.plan?.estimated_time || 'Calculating...'} • 
                     <strong className="ml-2">Confidence:</strong> {agent.plan?.confidence ? `${(agent.plan.confidence * 100).toFixed(0)}%` : 'N/A'}
                   </p>
@@ -496,9 +496,9 @@ Create a clear, business-ready summary.`;
                     <p className="text-base font-semibold text-[#4169E1] mb-2">Execution Plan:</p>
                     <ol className="space-y-2">
                       {agent.plan?.steps?.map((step, idx) => (
-                        <li key={idx} className="text-base text-slate-200">
+                        <li key={idx} className="text-base text-slate-700 dark:text-slate-300">
                           <span className="font-bold text-[#4169E1]">Step {step.step}:</span> {step.description}
-                          <p className="text-sm text-slate-400 ml-4 mt-1">💭 {step.reasoning}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-500 ml-4 mt-1">💭 {step.reasoning}</p>
                         </li>
                       ))}
                     </ol>
@@ -522,7 +522,7 @@ Create a clear, business-ready summary.`;
                   </Badge>
                 </div>
 
-                <div className="w-full bg-slate-700 rounded-full h-3">
+                <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-3">
                   <div
                     className="bg-[#4169E1] h-3 rounded-full transition-all duration-500"
                     style={{ width: `${(agent.currentStep / agent.totalSteps) * 100}%` }}
@@ -535,21 +535,21 @@ Create a clear, business-ready summary.`;
                       key={idx}
                       className={`p-3 rounded-lg border ${
                         idx < agent.currentStep - 1
-                          ? 'bg-emerald-500/10 border-emerald-500/40'
+                          ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/40'
                           : idx === agent.currentStep - 1
-                          ? 'bg-amber-500/10 border-amber-500/40'
-                          : 'bg-slate-800/50 border-slate-600'
+                          ? 'bg-amber-50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/40'
+                          : 'bg-slate-50 dark:bg-slate-800/30 border-slate-200 dark:border-slate-700'
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         {idx < agent.currentStep - 1 ? (
-                          <CheckCircle className="w-4 h-4 text-emerald-400" />
+                          <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         ) : idx === agent.currentStep - 1 ? (
-                          <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+                          <Loader2 className="w-4 h-4 text-amber-600 dark:text-amber-400 animate-spin" />
                         ) : (
-                          <div className="w-4 h-4 border-2 border-slate-500 rounded-full" />
+                          <div className="w-4 h-4 border-2 border-slate-400 dark:border-slate-600 rounded-full" />
                         )}
-                        <span className="text-base text-white">{step.description}</span>
+                        <span className="text-base text-slate-900 dark:text-white">{step.description}</span>
                       </div>
                     </div>
                   ))}
@@ -561,44 +561,44 @@ Create a clear, business-ready summary.`;
             {agent.phase === 'completed' && (
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <CheckCircle className="w-8 h-8 text-emerald-400" />
-                  <span className="text-2xl font-bold text-emerald-400">Task Completed Successfully!</span>
+                  <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">Task Completed Successfully!</span>
                 </div>
 
                 {/* Execution Summary */}
-                <div className="bg-emerald-500/10 border border-emerald-500/40 rounded-lg p-6">
-                  <h3 className="text-lg font-bold text-emerald-400 mb-4">📊 Execution Summary</h3>
+                <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-lg p-6">
+                  <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-400 mb-4">📊 Execution Summary</h3>
                   
                   <div className="grid md:grid-cols-3 gap-4 mb-4">
-                    <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-600">
-                      <p className="text-sm text-slate-400 mb-1">Total Steps</p>
-                      <p className="text-2xl font-bold text-white">{agent.results.length}</p>
+                    <div className="bg-white dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Steps</p>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{agent.results.length}</p>
                     </div>
-                    <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-600">
-                      <p className="text-sm text-slate-400 mb-1">Success Rate</p>
-                      <p className="text-2xl font-bold text-emerald-400">100%</p>
+                    <div className="bg-white dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Success Rate</p>
+                      <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">100%</p>
                     </div>
-                    <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-600">
-                      <p className="text-sm text-slate-400 mb-1">Actions Taken</p>
+                    <div className="bg-white dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Actions Taken</p>
                       <p className="text-2xl font-bold text-[#4169E1]">{agent.results.filter(r => r.success).length}</p>
                     </div>
                   </div>
 
                   {/* Detailed Results */}
                   <div className="space-y-3 mb-6">
-                    <h4 className="text-base font-bold text-white mb-2">Detailed Results:</h4>
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">Detailed Results:</h4>
                     {agent.results.map((result, idx) => (
-                      <div key={idx} className="bg-slate-800/50 rounded-lg p-4 border border-slate-600">
+                      <div key={idx} className="bg-white dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <Badge className="bg-[#4169E1]/20 text-[#4169E1]">
                               Step {result.step}
                             </Badge>
-                            <span className="text-white font-semibold">{result.description}</span>
+                            <span className="text-slate-900 dark:text-white font-semibold">{result.description}</span>
                           </div>
-                          {result.success && <CheckCircle className="w-5 h-5 text-emerald-400" />}
+                          {result.success && <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />}
                         </div>
-                        <p className="text-base text-slate-200 whitespace-pre-wrap">{result.output}</p>
+                        <p className="text-base text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{result.output}</p>
                       </div>
                     ))}
                   </div>
@@ -610,7 +610,7 @@ Create a clear, business-ready summary.`;
                       Final Report
                     </h4>
                     <div className="prose prose-sm max-w-none">
-                      <pre className="whitespace-pre-wrap text-slate-200 leading-relaxed">
+                      <pre className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed">
                         {agent.finalReport}
                       </pre>
                     </div>
@@ -634,7 +634,7 @@ Create a clear, business-ready summary.`;
                     </Button>
                     <Button
                       variant="outline"
-                      className="border-slate-600 text-slate-200"
+                      className="border-slate-200 dark:border-slate-700"
                       onClick={() => setAgent(null)}
                     >
                       Run Another Task
@@ -646,16 +646,16 @@ Create a clear, business-ready summary.`;
 
             {/* Error Phase */}
             {agent.phase === 'error' && (
-              <div className="bg-red-500/10 border border-red-500/40 rounded-lg p-6">
+              <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <AlertCircle className="w-8 h-8 text-red-400" />
-                  <span className="text-2xl font-bold text-red-400">Execution Error</span>
+                  <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
+                  <span className="text-2xl font-bold text-red-600 dark:text-red-400">Execution Error</span>
                 </div>
-                <p className="text-slate-200 mb-4">{agent.error}</p>
+                <p className="text-slate-700 dark:text-slate-300 mb-4">{agent.error}</p>
                 <Button
                   onClick={() => setAgent(null)}
                   variant="outline"
-                  className="border-red-500/50 text-red-400"
+                  className="border-red-300 dark:border-red-500/50 text-red-600 dark:text-red-400"
                 >
                   Try Again
                 </Button>
@@ -666,24 +666,24 @@ Create a clear, business-ready summary.`;
 
         {/* Execution History */}
         {history.length > 0 && (
-          <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-700 rounded-2xl p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-white mb-4">📜 Recent Agent Executions</h2>
+          <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">📜 Recent Agent Executions</h2>
             <div className="space-y-3">
               {history.slice(0, 5).map((execution, idx) => (
                 <div
                   key={execution.id}
-                  className="bg-slate-800/50 border border-slate-600 rounded-lg p-4 hover:border-[#4169E1]/50 transition-colors cursor-pointer"
+                  className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg p-4 hover:border-[#4169E1]/50 transition-colors cursor-pointer"
                   onClick={() => setAgent({ phase: 'completed', ...execution })}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="text-white font-semibold mb-1">{execution.task}</p>
-                      <p className="text-sm text-slate-400">
+                      <p className="text-slate-900 dark:text-white font-semibold mb-1">{execution.task}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
                         {new Date(execution.timestamp).toLocaleString()} • 
                         {execution.results.length} steps completed
                       </p>
                     </div>
-                    <Badge className="bg-emerald-500/20 text-emerald-300">
+                    <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
                       <CheckCircle className="w-3 h-3 mr-1" />
                       Success
                     </Badge>

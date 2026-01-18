@@ -16,6 +16,14 @@ https://insight.meldra.ai
 http://localhost:5173,http://localhost:3000,https://meldra.ai,https://insight.meldra.ai,https://meldra-six.vercel.app,https://insightsheet-jpci.vercel.app,https://meldra-git-main-sumit-ags-projects.vercel.app,https://meldra-ln9n3ezi7-sumit-ags-projects.vercel.app
 ```
 
+### **Variable 3 & 4: Private beta (testing only – optional)**
+Only set these when you want to restrict registration to invited users. Remove or set `BETA_MODE=false` to open registration.
+
+- **BETA_MODE** = `true`
+- **BETA_ALLOWED_EMAILS** = `sumitagaria@gmail.com,tester@example.com` (comma-separated emails)
+
+See **TESTING_AND_UK_REGISTRATION.md** for details.
+
 ---
 
 ## 🌐 **VERCEL (Frontend) - Environment Variables**

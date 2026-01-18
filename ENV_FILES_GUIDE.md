@@ -83,6 +83,12 @@ ENVIRONMENT=development
 - Already set correctly
 - Add more domains if needed (comma-separated)
 
+### **5. Private beta (testing) – optional**
+- To restrict registration to invited users only, add:
+  - `BETA_MODE=true`
+  - `BETA_ALLOWED_EMAILS=your@email.com,tester@example.com` (comma-separated)
+- See **TESTING_AND_UK_REGISTRATION.md** for details and Railway setup.
+
 ---
 
 ## 📋 For Vercel Deployment

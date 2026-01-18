@@ -128,7 +128,7 @@ export default function Disclaimer() {
           <section>
             <h2 className="text-2xl font-bold text-slate-800 mb-3">Your Responsibilities</h2>
             <div className="space-y-3 text-slate-700">
-              <p className="font-semibold text-slate-900">By using InsightSheet, you agree to:</p>
+              <p className="font-semibold text-slate-900">By using Meldra, you agree to:</p>
               <ol className="list-decimal list-inside space-y-2 ml-4">
                 <li>Use the Service for lawful purposes only</li>
                 <li>Not upload files containing illegal content</li>
@@ -177,6 +177,41 @@ export default function Disclaimer() {
             </div>
           </section>
 
+          {/* API and Commercial Use */}
+          <section>
+            <h2 className="text-2xl font-bold text-slate-800 mb-3">API and Commercial Use</h2>
+            <div className="text-slate-700 space-y-2">
+              <p>
+                Use of the <strong>Meldra API</strong> (developer.meldra.ai / insight.meldra.ai/developers) is governed by these terms. 
+                By using an API key or integrating Meldra into your product, you agree to:
+              </p>
+              <ul className="list-disc list-inside space-y-1 ml-4">
+                <li><strong>Confidentiality:</strong> Your API key is confidential. You are responsible for any use or misuse.</li>
+                <li><strong>No warranty on uptime:</strong> We do not guarantee availability or SLAs unless agreed in a separate enterprise agreement.</li>
+                <li><strong>Acceptable use:</strong> No resale as a competing service, no abuse, no circumventing rate limits or security.</li>
+                <li><strong>Suspension and revocation:</strong> We may suspend or revoke API access for abuse, non-payment, or breach of these terms.</li>
+              </ul>
+              <p className="text-sm text-slate-600 mt-2">
+                For pricing and key issuance, contact <strong>support@meldra.ai</strong>. 
+                The &quot;Commercial terms&quot; referred to on the Developers page are these Disclaimer &amp; Terms.
+              </p>
+            </div>
+          </section>
+
+          {/* Term and Termination */}
+          <section>
+            <h2 className="text-2xl font-bold text-slate-800 mb-3">Term and Termination</h2>
+            <div className="text-slate-700 space-y-2">
+              <p>
+                We may suspend or terminate your account or API access at any time, with or without cause or notice, 
+                including for breach of these terms, abuse, non-payment, or for any other reason we deem appropriate.
+              </p>
+              <p>
+                You may stop using the Service at any time. On termination, your right to use the Service and any API key ceases immediately.
+              </p>
+            </div>
+          </section>
+
           {/* Indemnification */}
           <section>
             <h2 className="text-2xl font-bold text-slate-800 mb-3">Indemnification</h2>
@@ -198,11 +233,11 @@ export default function Disclaimer() {
             <h2 className="text-2xl font-bold text-slate-800 mb-3">Governing Law</h2>
             <div className="text-slate-700 space-y-2">
               <p>
-                These terms shall be governed by and construed in accordance with the laws of [Your Jurisdiction], 
+                These terms shall be governed by and construed in accordance with the laws of <strong>England and Wales</strong>, 
                 without regard to conflict of law principles.
               </p>
               <p>
-                Any disputes shall be resolved in the courts of [Your City/State/Country].
+                Any disputes shall be resolved exclusively in <strong>the courts of England and Wales</strong>.
               </p>
             </div>
           </section>
@@ -217,6 +252,65 @@ export default function Disclaimer() {
               </p>
               <p className="mt-2">
                 <strong>Last modified:</strong> {new Date().toLocaleDateString()}
+              </p>
+            </div>
+          </section>
+
+          {/* Force Majeure */}
+          <section>
+            <h2 className="text-2xl font-bold text-slate-800 mb-3">Force Majeure</h2>
+            <div className="text-slate-700">
+              <p>
+                We are not liable for any failure or delay in performing our obligations where such failure or delay 
+                results from circumstances beyond our reasonable control, including but not limited to: acts of God, 
+                natural disasters, war, terrorism, riots, embargoes, acts of civil or military authorities, fire, 
+                floods, accidents, strikes, or shortages of transportation, facilities, fuel, energy, labour, or materials.
+              </p>
+            </div>
+          </section>
+
+          {/* Entire Agreement */}
+          <section>
+            <h2 className="text-2xl font-bold text-slate-800 mb-3">Entire Agreement</h2>
+            <div className="text-slate-700">
+              <p>
+                These terms, together with our Privacy Policy and any other policies or guidelines we publish, 
+                constitute the entire agreement between you and Meldra regarding the Service and supersede any 
+                prior agreements, communications, or understandings.
+              </p>
+            </div>
+          </section>
+
+          {/* Severability */}
+          <section>
+            <h2 className="text-2xl font-bold text-slate-800 mb-3">Severability</h2>
+            <div className="text-slate-700">
+              <p>
+                If any provision of these terms is held to be invalid, illegal, or unenforceable, the remaining 
+                provisions will continue in full force and effect.
+              </p>
+            </div>
+          </section>
+
+          {/* No Waiver */}
+          <section>
+            <h2 className="text-2xl font-bold text-slate-800 mb-3">No Waiver</h2>
+            <div className="text-slate-700">
+              <p>
+                Our failure to enforce any right or provision of these terms will not be deemed a waiver of such 
+                right or provision. Any waiver must be in writing and signed by us.
+              </p>
+            </div>
+          </section>
+
+          {/* Assignment */}
+          <section>
+            <h2 className="text-2xl font-bold text-slate-800 mb-3">Assignment</h2>
+            <div className="text-slate-700">
+              <p>
+                You may not assign or transfer these terms or your rights under them without our prior written consent. 
+                We may assign our rights and obligations under these terms without restriction, including in connection 
+                with a merger, acquisition, or sale of assets.
               </p>
             </div>
           </section>

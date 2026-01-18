@@ -77,7 +77,12 @@ def _parse_form_like_text(text: str) -> List[Dict[str, Any]]:
                 i += 1
                 continue
 
-        # --- Checkbox: "O O O", "o o o", "☐ ☐ ☐"; or "Full-time Part-time Contractor" followed by "O O O"
+        # --- Checkbox: "[ ] A [ ] B [ ] C" (form-style) or "O O O", "☐ ☐ ☐"; or "Full-time Part-time Contractor" followed by "O O O"
+        parts = [x.strip() for x in re.split(r'\[\s*\]', ln) if x.strip()]
+        if 2 <= len(parts) <= 6 and all(len(p) < 30 for p in parts):
+            blocks.append({"type": "checkbox", "options": parts})
+            i += 1
+            continue
         checkbox_match = re.search(r'[Oo]\s+[Oo]\s+[Oo]|[\u2610\u25A1]\s+[\u2610\u25A1]\s+[\u2610\u25A1]', ln)
         if checkbox_match or (re.match(r'^[\sOo\u2610\u25A1]+$', ln) and len(ln.strip()) >= 3):
             # Try to get option labels from previous line
@@ -222,7 +227,7 @@ class OCRService:
                 r.underline = True
             elif t == "checkbox":
                 opts = b.get("options", ["Option 1", "Option 2", "Option 3"])
-                doc.add_paragraph("  ".join("☐ " + o for o in opts))
+                doc.add_paragraph("  ".join("[ ] " + o for o in opts))
             elif t == "table":
                 rows = b.get("rows", [])
                 if not rows:
@@ -283,7 +288,7 @@ class OCRService:
                 story.append(Spacer(1, 4))
             elif t == "checkbox":
                 opts = b.get("options", ["Option 1", "Option 2", "Option 3"])
-                s = "  ".join("&#9744; " + self._escape(o) for o in opts)  # ☐
+                s = "  ".join("[ ] " + self._escape(o) for o in opts)
                 story.append(Paragraph(s, styles['Normal']))
                 story.append(Spacer(1, 4))
             elif t == "table":

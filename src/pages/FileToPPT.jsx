@@ -538,23 +538,23 @@ export default function FileToPPT() {
           <h1 className="text-5xl font-bold text-slate-900 dark:text-white mb-4">
             Advanced Excel to PowerPoint
           </h1>
-          <p className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">
+          <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-4">
             Professional presentations with charts, tables & statistics
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Badge className="bg-[#4169E1]/20 text-[#4169E1] border-[#4169E1]/50 font-semibold">
+            <Badge className="bg-[#065f46] text-white border border-[#065f46] font-bold">
               <BarChart3 className="w-4 h-4 mr-1" />
               Multiple Charts
             </Badge>
-            <Badge className="bg-[#4169E1]/20 text-[#4169E1] border-[#4169E1]/50 font-semibold">
+            <Badge className="bg-[#9d174d] text-white border border-[#9d174d] font-bold">
               <Table className="w-4 h-4 mr-1" />
               Data Tables
             </Badge>
-            <Badge className="bg-emerald-500/20 text-emerald-200 border-emerald-500/30 font-semibold">
+            <Badge className="bg-emerald-100 dark:bg-emerald-900/40 border-2 border-[#065f46] text-[#0d0d0f] dark:text-white font-bold">
               <TrendingUp className="w-4 h-4 mr-1" />
               Statistics
             </Badge>
-            <Badge className="bg-emerald-500/20 text-emerald-200 border-emerald-500/30 font-semibold">
+            <Badge className="bg-pink-100 dark:bg-pink-900/30 border-2 border-[#9d174d] text-[#0d0d0f] dark:text-white font-bold">
               <PieChart className="w-4 h-4 mr-1" />
               Bar/Line/Pie
             </Badge>
@@ -565,11 +565,11 @@ export default function FileToPPT() {
         <Alert className={`mb-6 ${subscription?.plan === 'premium' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
           <Lock className={`h-5 w-5 ${subscription?.plan === 'premium' ? 'text-emerald-400' : 'text-amber-400'}`} />
           <AlertDescription className="text-slate-900 dark:text-slate-100">
-            <strong className={subscription?.plan === 'premium' ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>
+            <strong className="text-slate-900 dark:text-white font-bold">
               {subscription?.plan === 'premium' ? '✨ Premium: Up to 500MB files' : `⚠️ File Size Limit: ${maxSize}MB (Free Plan)`}
             </strong>
             <br />
-            <span className="text-sm text-slate-800 dark:text-slate-200">
+            <span className="text-sm text-slate-900 dark:text-slate-200 font-bold">
               {subscription?.plan === 'premium'
                 ? 'You can convert files up to 500MB with your Premium plan.'
                 : 'Free plan limited to 10MB files. Upgrade to Premium for larger file conversions!'}
@@ -581,8 +581,8 @@ export default function FileToPPT() {
         <Alert className="mb-6 bg-emerald-500/10 border-emerald-500/30">
           <Sparkles className="h-5 w-5 text-emerald-400" />
           <AlertDescription className="text-slate-900 dark:text-slate-100">
-            <strong className="text-emerald-700 dark:text-emerald-300">✨ Advanced Conversion Features:</strong>
-            <ul className="list-disc ml-5 mt-2 space-y-1 text-base text-slate-800 dark:text-slate-200">
+            <strong className="text-slate-900 dark:text-white font-bold">✨ Advanced Conversion Features:</strong>
+            <ul className="list-disc ml-5 mt-2 space-y-1 text-base text-slate-900 dark:text-slate-200 font-bold">
               <li><strong>Section Slides:</strong> Overview for each worksheet</li>
               <li><strong>Data Tables:</strong> Full data display (up to 20 rows)</li>
               <li><strong>Multiple Charts:</strong> Bar, Line, and Pie charts for your data</li>

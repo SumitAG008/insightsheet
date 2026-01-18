@@ -127,26 +127,26 @@ export default function OCRConverter() {
       <div className="container mx-auto px-4 max-w-4xl">
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+            <div className="w-20 h-20 bg-[#065f46] rounded-2xl flex items-center justify-center shadow-lg">
               <ScanLine className="w-10 h-10 text-white" />
             </div>
           </div>
           <h1 className="text-5xl font-bold text-slate-900 dark:text-white mb-4">
             OCR to DOC & OCR to PDF
           </h1>
-          <p className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">
+          <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-4">
             Extract text from any image, edit it, save, and download as editable Word or PDF
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 font-semibold">
+            <Badge className="bg-[#065f46] text-white border border-[#065f46] font-bold">
               <ImageIcon className="w-4 h-4 mr-1" />
               Any Image
             </Badge>
-            <Badge className="bg-blue-500/20 text-blue-200 border-blue-500/30 font-semibold">
+            <Badge className="bg-[#9d174d] text-white border border-[#9d174d] font-bold">
               <FileText className="w-4 h-4 mr-1" />
               Editable DOC
             </Badge>
-            <Badge className="bg-emerald-500/20 text-emerald-200 border-emerald-500/30 font-semibold">
+            <Badge className="bg-[#065f46] text-white border border-[#065f46] font-bold">
               <FileType className="w-4 h-4 mr-1" />
               Editable PDF
             </Badge>
@@ -156,11 +156,11 @@ export default function OCRConverter() {
         <Alert className={`mb-6 ${subscription?.plan === 'premium' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-amber-500/10 border-amber-500/30'}`}>
           <Lock className={`h-5 w-5 ${subscription?.plan === 'premium' ? 'text-emerald-400' : 'text-amber-400'}`} />
           <AlertDescription className="text-slate-900 dark:text-slate-100">
-            <strong className={subscription?.plan === 'premium' ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>
+            <strong className="text-slate-900 dark:text-white font-bold">
               {subscription?.plan === 'premium' ? 'Premium: Up to 500MB' : `File limit: ${maxSizeMB}MB`}
             </strong>
             <br />
-            <span className="text-sm text-slate-800 dark:text-slate-200">
+            <span className="text-sm text-slate-900 dark:text-slate-200 font-bold">
               JPG, PNG, WebP, BMP, TIFF, GIF supported. Edit the extracted text, then export to DOC or PDF.
             </span>
           </AlertDescription>
@@ -177,7 +177,7 @@ export default function OCRConverter() {
                 className="hidden"
                 disabled={extracting}
               />
-              <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <div className="w-20 h-20 bg-[#065f46] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <Upload className="w-10 h-10 text-white" />
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">Upload Image</h3>
@@ -267,19 +267,19 @@ export default function OCRConverter() {
           <div className="space-y-3 text-sm">
             <div className="flex gap-3">
               <span className="font-bold text-blue-400">1</span>
-              <div className="text-slate-200 font-medium"><strong className="text-white">Upload</strong> — Any image: scan, photo, form, screenshot (JPG, PNG, WebP, BMP, TIFF, GIF).</div>
+              <div className="text-slate-200 font-bold"><strong className="text-white">Upload</strong> — Any image: scan, photo, form, screenshot (JPG, PNG, WebP, BMP, TIFF, GIF).</div>
             </div>
             <div className="flex gap-3">
               <span className="font-bold text-blue-400">2</span>
-              <div className="text-slate-200 font-medium"><strong className="text-white">Run OCR</strong> — Extract text. You can edit and fill in the content.</div>
+              <div className="text-slate-200 font-bold"><strong className="text-white">Run OCR</strong> — Extract text. You can edit and fill in the content.</div>
             </div>
             <div className="flex gap-3">
               <span className="font-bold text-blue-400">3</span>
-              <div className="text-slate-200 font-medium"><strong className="text-white">Save</strong> — Saves your edits in this browser session.</div>
+              <div className="text-slate-200 font-bold"><strong className="text-white">Save</strong> — Saves your edits in this browser session.</div>
             </div>
             <div className="flex gap-3">
               <span className="font-bold text-blue-400">4</span>
-              <div className="text-slate-200 font-medium"><strong className="text-white">Download</strong> — Export as editable Word (.docx) or searchable PDF.</div>
+              <div className="text-slate-200 font-bold"><strong className="text-white">Download</strong> — Export as editable Word (.docx) or searchable PDF.</div>
             </div>
           </div>
         </div>

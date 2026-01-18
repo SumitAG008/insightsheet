@@ -107,9 +107,23 @@ function _getCurrentPage(url) {
     return pageName || Object.keys(PAGES)[0];
 }
 
+// developer.meldra.ai: only API/docs; everything else redirects to insight.meldra.ai (main app)
+const INSIGHT_BASE = 'https://insight.meldra.ai';
+
 // Create a wrapper component that uses useLocation inside the Router context
 function PagesContent() {
     const location = useLocation();
+    const isDeveloperDomain = typeof window !== 'undefined' && window.location.hostname === 'developer.meldra.ai';
+
+    if (isDeveloperDomain) {
+        const p = (location.pathname || '/').toLowerCase().replace(/\/$/, '') || '/';
+        if (p !== '/' && p !== 'developers') {
+            window.location.replace(INSIGHT_BASE + location.pathname + location.search);
+            return null;
+        }
+        return <Developers />;
+    }
+
     const currentPage = _getCurrentPage(location.pathname);
 
     // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword/VerifyEmail)

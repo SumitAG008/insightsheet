@@ -4,7 +4,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -312,6 +312,20 @@ export default function Layout({ children, currentPageName }) {
                     <MessageSquare className={`w-4 h-4 ${isActive(createPageUrl('Reviews')) ? 'text-white' : ''}`} />
                     <span>Reviews</span>
                   </Link>
+
+                  {/* Developers (developer.meldra.ai / API docs) — opens /developers on same host */}
+                  <Link
+                    to="/developers"
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                      location.pathname.toLowerCase() === '/developers'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
+                    }`}
+                    title="developer.meldra.ai – API docs"
+                  >
+                    <Code className={`w-4 h-4 ${location.pathname.toLowerCase() === '/developers' ? 'text-white' : ''}`} />
+                    <span>Developers</span>
+                  </Link>
                 </>
               ) : (
                 /* Show only Pricing link when not logged in */
@@ -469,6 +483,9 @@ export default function Layout({ children, currentPageName }) {
 
                   <Link to={createPageUrl('Reviews')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('Reviews')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <MessageSquare className="w-4 h-4" /> <span>Reviews</span>
+                  </Link>
+                  <Link to="/developers" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <Code className="w-4 h-4" /> <span>Developers</span>
                   </Link>
                   <div className="pt-2 border-t border-slate-200 dark:border-slate-800 mt-2 space-y-2">
                     <Link

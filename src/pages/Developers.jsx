@@ -1,12 +1,16 @@
-// pages/Developers.jsx — developer.meldra.ai (API docs)
-// Served at /developers on insight.meldra.ai and at developer.meldra.ai (same app)
+// pages/Developers.jsx — developer.meldra.ai: API usage and commercial use only
+// On insight.meldra.ai: /developers shows this; Pricing/Login stay on insight.
+// On developer.meldra.ai: only this page; Pricing/Login link to insight.meldra.ai.
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import Logo from '@/components/branding/Logo';
-import { Code, Key, FileText, FileArchive, Mail, ArrowRight, CheckCircle, Shield } from 'lucide-react';
+import { Code, Key, FileText, FileArchive, Mail, ArrowRight, CheckCircle, Shield, Briefcase } from 'lucide-react';
+
+const INSIGHT = 'https://insight.meldra.ai';
 
 export default function Developers() {
+  const isDev = typeof window !== 'undefined' && window.location.hostname === 'developer.meldra.ai';
   useEffect(() => { document.title = 'developer.meldra.ai – Meldra API'; return () => { document.title = 'Meldra'; }; }, []);
 
   return (
@@ -18,21 +22,17 @@ export default function Developers() {
             <span className="text-cyan-400/90 font-semibold text-sm border-l border-slate-600 pl-4 hidden sm:inline">developer.meldra.ai</span>
           </div>
           <div className="flex items-center gap-2 md:gap-4">
-            <Link to="/developers">
-              <Button variant="ghost" className="text-cyan-300 hover:text-cyan-200 px-4 py-2 text-base font-medium bg-slate-800/50 rounded-lg">
-                Developers
-              </Button>
-            </Link>
-            <Link to="/pricing">
-              <Button variant="ghost" className="text-white hover:text-slate-200 px-4 py-2 text-base font-medium transition-all hover:bg-slate-800/50 rounded-lg">
-                Pricing
-              </Button>
-            </Link>
-            <Link to="/login">
-              <Button variant="ghost" className="text-white hover:text-slate-200 px-4 py-2 text-base font-medium transition-all hover:bg-slate-800/50 rounded-lg">
-                Login
-              </Button>
-            </Link>
+            <span className="text-cyan-300 px-4 py-2 text-base font-medium bg-slate-800/50 rounded-lg">Developers</span>
+            {isDev ? (
+              <>
+                <a href={`${INSIGHT}/pricing`} className="text-white hover:text-slate-200 px-4 py-2 text-base font-medium transition-all hover:bg-slate-800/50 rounded-lg">Pricing</a>
+                <a href={`${INSIGHT}/login`} className="text-white hover:text-slate-200 px-4 py-2 text-base font-medium transition-all hover:bg-slate-800/50 rounded-lg">Login</a>
+              ) : (
+                <>
+                  <Link to="/pricing" className="text-white hover:text-slate-200 px-4 py-2 text-base font-medium transition-all hover:bg-slate-800/50 rounded-lg">Pricing</Link>
+                  <Link to="/login" className="text-white hover:text-slate-200 px-4 py-2 text-base font-medium transition-all hover:bg-slate-800/50 rounded-lg">Login</Link>
+                </>
+              )}
           </div>
         </div>
       </header>
@@ -89,6 +89,21 @@ export default function Developers() {
           </a>
         </div>
 
+        {/* Using the Meldra API commercially */}
+        <div className="bg-slate-900/80 border border-slate-700/50 rounded-2xl p-8 mb-10">
+          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+            <Briefcase className="w-5 h-5 text-cyan-400" />
+            Using the Meldra API commercially
+          </h2>
+          <p className="text-slate-300 mb-4">To use the Meldra API in your own products or services:</p>
+          <ul className="list-disc list-inside space-y-2 text-slate-300 mb-4">
+            <li><strong>Paid API key</strong> — Contact <a href="mailto:support@meldra.ai" className="text-cyan-400 hover:text-cyan-300">support@meldra.ai</a> for pricing and a key.</li>
+            <li><strong>Commercial terms</strong> — Review the <a href={`${INSIGHT}/disclaimer`} className="text-cyan-400 hover:text-cyan-300" target="_blank" rel="noopener noreferrer">Disclaimer & Terms</a> on insight.meldra.ai.</li>
+            <li><strong>Base URL and X-API-Key</strong> — Use the values we provide with your key for all requests.</li>
+          </ul>
+          <p className="text-slate-400 text-sm">For the full Meldra app (data analysis, file tools, dashboard), go to <a href={INSIGHT} className="text-cyan-400 hover:text-cyan-300">insight.meldra.ai</a>.</p>
+        </div>
+
         {/* Endpoints */}
         <div className="bg-slate-900/80 border border-slate-700/50 rounded-2xl p-8 mb-10">
           <h2 className="text-xl font-bold text-white mb-6">Endpoints</h2>
@@ -125,21 +140,30 @@ export default function Developers() {
 
         {/* CTA */}
         <div className="text-center">
-          <Link to="/">
-            <Button className="px-6 py-3 rounded-xl font-semibold inline-flex items-center gap-2" style={{ background: '#000', color: '#FFF', border: '2px solid #00E5FF' }}>
-              Back to Home
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </Link>
+          {isDev ? (
+            <a href={INSIGHT}>
+              <Button className="px-6 py-3 rounded-xl font-semibold inline-flex items-center gap-2" style={{ background: '#000', color: '#FFF', border: '2px solid #00E5FF' }}>
+                Go to insight.meldra.ai (full app)
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </a>
+          ) : (
+            <Link to="/">
+              <Button className="px-6 py-3 rounded-xl font-semibold inline-flex items-center gap-2" style={{ background: '#000', color: '#FFF', border: '2px solid #00E5FF' }}>
+                Back to Home
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
       <footer className="w-full border-t border-slate-800 py-6 px-4 mt-auto">
         <div className="container mx-auto flex flex-col md:flex-row items-center justify-center gap-4">
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400">
-            <Link to="/developers" className="text-cyan-400 hover:text-cyan-300">Developers</Link>
+            {isDev ? <a href={INSIGHT} className="text-cyan-400 hover:text-cyan-300">insight.meldra.ai</a> : <Link to="/developers" className="text-cyan-400 hover:text-cyan-300">Developers</Link>}
             <a href="mailto:support@meldra.ai" className="hover:text-slate-300">Support</a>
-            <Link to="/pricing" className="hover:text-slate-300">Pricing</Link>
+            {isDev ? <a href={`${INSIGHT}/pricing`} className="hover:text-slate-300">Pricing</a> : <Link to="/pricing" className="hover:text-slate-300">Pricing</Link>}
             <span className="text-slate-600">© {new Date().getFullYear()} Meldra. All rights reserved.</span>
           </div>
         </div>

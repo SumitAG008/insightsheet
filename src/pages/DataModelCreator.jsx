@@ -354,7 +354,7 @@ export default function DataModelCreator() {
               <Button
                 onClick={handleClearSchema}
                 variant="outline"
-                className="text-red-400 hover:text-red-300"
+                className="text-[#059669] hover:text-[#047857] border-[#059669]/50 hover:bg-[#059669]/5"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Clear

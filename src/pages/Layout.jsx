@@ -156,7 +156,7 @@ export default function Layout({ children, currentPageName }) {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link to={user && user.email ? createPageUrl('Dashboard') : '/pricing'} className="group">
-              <Logo size="medium" className="group-hover:opacity-80 transition-opacity" lowercaseM={isHome} />
+              <Logo size="medium" className="group-hover:opacity-80 transition-opacity" lowercaseM />
             </Link>
 
             <div className="hidden md:flex items-center gap-2">
@@ -405,7 +405,7 @@ export default function Layout({ children, currentPageName }) {
                   </Link>
                   <button
                     onClick={handleLogoutClick}
-                    className="px-4 py-2 text-sm text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-lg transition-all font-semibold shadow-md hover:shadow-lg"
+                    className="px-4 py-2 text-sm text-white bg-[#059669] hover:bg-[#047857] rounded-lg transition-all font-semibold shadow-md hover:shadow-lg"
                   >
                     Logout
                   </button>
@@ -501,7 +501,7 @@ export default function Layout({ children, currentPageName }) {
                         setMobileMenuOpen(false);
                         handleLogoutClick();
                       }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 font-semibold text-sm"
+                      className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-white bg-[#059669] hover:bg-[#047857] font-semibold text-sm"
                     >
                       Logout
                     </button>
@@ -542,7 +542,7 @@ export default function Layout({ children, currentPageName }) {
         <div className="container mx-auto px-4 py-8">
           <div className="grid md:grid-cols-3 gap-8 items-start">
             <div className="min-w-0">
-              <Logo size="medium" showText={true} style={{ color: 'inherit' }} lowercaseM={isHome} />
+              <Logo size="medium" showText={true} style={{ color: 'inherit' }} lowercaseM />
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 font-light" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}>
                 Privacy-first data & file management
               </p>

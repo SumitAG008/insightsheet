@@ -858,7 +858,7 @@ export default function FilenameCleaner() {
                         onClick={() => removeCustomRule(idx)}
                         variant="ghost"
                         size="sm"
-                        className="ml-auto text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        className="ml-auto text-[#059669] hover:text-[#047857] hover:bg-[#059669]/10"
                       >
                         <X className="w-4 h-4" />
                       </Button>

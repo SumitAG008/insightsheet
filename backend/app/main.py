@@ -1853,6 +1853,23 @@ async def get_subscription_ip_summary(
 
 
 # ============================================================================
+# IP LOOKUP (proxy for ipapi.co to avoid CORS in browser)
+# ============================================================================
+
+@app.get("/api/ip-lookup")
+async def ip_lookup():
+    """Proxy to ipapi.co for IP/location. Avoids CORS when frontend runs on insight.meldra.ai."""
+    try:
+        import requests
+        r = requests.get("https://ipapi.co/json/", timeout=5)
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        logger.warning(f"ip-lookup proxy failed: {e}")
+        return {"ip": None, "city": None, "country_name": None, "country_code": "XX"}
+
+
+# ============================================================================
 # HEALTH CHECK
 # ============================================================================
 

@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileText, FileType, Upload, Loader2, AlertCircle, Shield } from 'lucide-react';
 import { generateDownloadFilename, downloadBlob } from '@/utils/fileNaming';
+import { getApiBase } from '@/utils/apiConfig';
 
-const API = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' && window.location.hostname === 'localhost' ? 'http://localhost:8001' : '');
 const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null) || '';
 
 const MODES = [
@@ -17,9 +17,11 @@ const MODES = [
 ];
 
 async function convertViaBackend(file, slug) {
+  const api = getApiBase();
+  if (!api) throw new Error('Backend not configured. Set VITE_API_URL.');
   const form = new FormData();
   form.append('file', file);
-  const res = await fetch(`${API}/api/convert/${slug}`, {
+  const res = await fetch(`${api}/api/convert/${slug}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${getToken()}` },
     body: form,
@@ -62,7 +64,7 @@ export default function PdfDocConverter() {
 
   const handleConvert = async () => {
     if (!file) return;
-    if (!API) {
+    if (!getApiBase()) {
       setError('Backend not configured. Set VITE_API_URL.');
       return;
     }

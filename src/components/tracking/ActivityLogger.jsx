@@ -3,23 +3,23 @@ import { useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { User } from '@/api/entities';
 import { UserActivity } from '@/api/entities';
+import { getApiBase } from '@/utils/apiConfig';
 
-// Get IP address and location
+// Get IP address and location. Uses backend /api/ip-lookup (proxy to ipapi.co) to avoid CORS.
 const getIPAndLocation = async () => {
+  const fallback = { ip: 'Unknown', location: 'Unknown', country_code: 'XX' };
+  const base = getApiBase();
+  if (!base) return fallback;
   try {
-    const response = await fetch('https://ipapi.co/json/');
+    const response = await fetch(`${base}/api/ip-lookup`);
     const data = await response.json();
     return {
       ip: data.ip || 'Unknown',
       location: `${data.city || 'Unknown'}, ${data.country_name || 'Unknown'}`,
-      country_code: data.country_code
+      country_code: data.country_code || 'XX'
     };
   } catch (error) {
-    return {
-      ip: 'Unknown',
-      location: 'Unknown',
-      country_code: 'XX'
-    };
+    return fallback;
   }
 };
 

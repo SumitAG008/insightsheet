@@ -14,6 +14,8 @@ import logging
 from logging.handlers import RotatingFileHandler
 import io
 import secrets
+import time
+import threading
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -312,8 +314,11 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
                 detail="Please verify your email address before logging in. Check your inbox for the verification link."
             )
 
-        # Create access token
-        access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        # Create access token (extended for dev/test email when configured)
+        dev_email = (os.getenv("DEV_EXTENDED_SESSION_EMAIL") or "").strip()
+        dev_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES_DEV", "10080"))  # 7 days default
+        minutes = dev_minutes if (dev_email and user.email == dev_email) else ACCESS_TOKEN_EXPIRE_MINUTES
+        access_token_expires = timedelta(minutes=minutes)
         access_token = create_access_token(
             data={"sub": user.email, "role": user.role},
             expires_delta=access_token_expires
@@ -355,7 +360,7 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
                 httponly=True,  # Prevent XSS attacks
                 secure=True,    # Only send over HTTPS
                 samesite="none",  # Required for cross-origin requests
-                max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # Match token expiry
+                max_age=minutes * 60,  # Match token expiry (uses extended minutes for dev email)
                 path="/",
             )
             return response
@@ -987,7 +992,7 @@ async def ocr_export(
 _MAX_CONVERT_MB = 25  # max file size for convert endpoints (free); premium uses 100
 
 
-def _convert_endpoint(
+async def _convert_endpoint(
     file: UploadFile,
     current_user: dict,
     db: Session,
@@ -1002,7 +1007,7 @@ def _convert_endpoint(
     max_mb = 100 if (subscription and subscription.plan == "premium") else _MAX_CONVERT_MB
     max_bytes = max_mb * 1024 * 1024
 
-    raw = file.read()
+    raw = await file.read()
     size_mb = len(raw) / (1024 * 1024)
     if len(raw) > max_bytes:
         raise HTTPException(status_code=413, detail=f"File size ({size_mb:.1f}MB) exceeds {max_mb}MB limit")
@@ -1037,7 +1042,7 @@ async def convert_pdf_to_doc(
     db: Session = Depends(get_db),
 ):
     """Convert PDF to DOCX. In-app, no API key. File not stored."""
-    data, out_name, media = _convert_endpoint(
+    data, out_name, media = await _convert_endpoint(
         file, current_user, db,
         in_ext=[".pdf"],
         out_ext=".docx",
@@ -1059,7 +1064,7 @@ async def convert_doc_to_pdf(
     db: Session = Depends(get_db),
 ):
     """Convert DOCX to PDF. In-app, no API key. File not stored."""
-    data, out_name, media = _convert_endpoint(
+    data, out_name, media = await _convert_endpoint(
         file, current_user, db,
         in_ext=[".docx"],
         out_ext=".pdf",
@@ -1081,7 +1086,7 @@ async def convert_ppt_to_pdf(
     db: Session = Depends(get_db),
 ):
     """Convert PPTX to PDF. In-app, no API key. File not stored."""
-    data, out_name, media = _convert_endpoint(
+    data, out_name, media = await _convert_endpoint(
         file, current_user, db,
         in_ext=[".pptx"],
         out_ext=".pdf",
@@ -1853,20 +1858,107 @@ async def get_subscription_ip_summary(
 
 
 # ============================================================================
-# IP LOOKUP (proxy for ipapi.co to avoid CORS in browser)
+# IP LOOKUP (proxy for ipapi.co / ip-api.com to avoid CORS; 429 fallback + cache)
 # ============================================================================
 
+_IP_LOOKUP_CACHE: dict = {}
+_IP_LOOKUP_CACHE_LOCK = threading.Lock()
+_IP_LOOKUP_TTL = 3600  # 1 hour
+_IP_LOOKUP_CACHE_MAX = 5000
+
+
+def _get_client_ip(request: Request) -> str:
+    """Resolve client IP from X-Forwarded-For, X-Real-IP, or request.client."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real = request.headers.get("x-real-ip")
+    if real:
+        return real.strip()
+    if request.client:
+        return request.client.host or ""
+    return ""
+
+
+def _is_private_ip(ip: str) -> bool:
+    if not ip or ip in ("127.0.0.1", "::1"):
+        return True
+    parts = ip.split(".")
+    if len(parts) == 4:
+        try:
+            a, b, c, d = (int(x) & 0xFF for x in parts)
+            if a == 10:
+                return True
+            if a == 172 and 16 <= b <= 31:
+                return True
+            if a == 192 and b == 168:
+                return True
+        except ValueError:
+            pass
+    return False
+
+
+def _ip_cache_get(key: str):
+    with _IP_LOOKUP_CACHE_LOCK:
+        ent = _IP_LOOKUP_CACHE.get(key)
+        if ent is None:
+            return None
+        if time.time() - ent[1] > _IP_LOOKUP_TTL:
+            del _IP_LOOKUP_CACHE[key]
+            return None
+        return ent[0]
+
+
+def _ip_cache_set(key: str, obj: dict):
+    with _IP_LOOKUP_CACHE_LOCK:
+        _IP_LOOKUP_CACHE[key] = (obj, time.time())
+        if len(_IP_LOOKUP_CACHE) > _IP_LOOKUP_CACHE_MAX:
+            now = time.time()
+            expired = [k for k, v in _IP_LOOKUP_CACHE.items() if now - v[1] > _IP_LOOKUP_TTL]
+            for k in expired[:500]:
+                del _IP_LOOKUP_CACHE[k]
+
+
 @app.get("/api/ip-lookup")
-async def ip_lookup():
-    """Proxy to ipapi.co for IP/location. Avoids CORS when frontend runs on insight.meldra.ai."""
+async def ip_lookup(request: Request):
+    """Proxy to ipapi.co (or ip-api.com on 429) for IP/location. Uses client IP; 1h cache to reduce 429."""
+    import requests
+    fallback = {"ip": None, "city": None, "country_name": None, "country_code": "XX"}
+    client_ip = _get_client_ip(request)
+    cache_key = client_ip or "no_ip"
+
+    cached = _ip_cache_get(cache_key)
+    if cached is not None:
+        return cached
+
+    # Prefer ipapi.co with client IP so we get user's location; avoid lookup for private IPs
+    url = f"https://ipapi.co/{client_ip}/json/" if (client_ip and not _is_private_ip(client_ip)) else "https://ipapi.co/json/"
     try:
-        import requests
-        r = requests.get("https://ipapi.co/json/", timeout=5)
+        r = requests.get(url, timeout=5)
+        if r.status_code == 429:
+            # Rate limited: try ip-api.com (only for a valid public client IP)
+            if client_ip and not _is_private_ip(client_ip):
+                try:
+                    r2 = requests.get(f"http://ip-api.com/json/{client_ip}", timeout=5)
+                    if r2.ok:
+                        j = r2.json()
+                        if j.get("status") == "success":
+                            out = {"ip": j.get("query"), "city": j.get("city"), "country_name": j.get("country"), "country_code": (j.get("countryCode") or "XX")}
+                            _ip_cache_set(cache_key, out)
+                            return out
+                except Exception:
+                    pass
+            logger.info("ip-lookup: ipapi.co 429 (rate limit); returning fallback")
+            _ip_cache_set(cache_key, fallback)
+            return fallback
         r.raise_for_status()
-        return r.json()
+        j = r.json()
+        _ip_cache_set(cache_key, j)
+        return j
     except Exception as e:
         logger.warning(f"ip-lookup proxy failed: {e}")
-        return {"ip": None, "city": None, "country_name": None, "country_code": "XX"}
+        _ip_cache_set(cache_key, fallback)
+        return fallback
 
 
 # ============================================================================

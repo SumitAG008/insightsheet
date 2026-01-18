@@ -26,3 +26,20 @@ The backend allows `https://insight.meldra.ai`. If the frontend origin changes, 
 ## IP lookup and ipapi.co CORS
 
 The frontend no longer calls `https://ipapi.co/json/` from the browser (to avoid CORS). It uses `GET /api/ip-lookup`, which proxies to ipapi.co on the server. After redeploying, IP/location for login and activity should work without CORS errors.
+
+### 429 Too Many Requests from ipapi.co
+
+If logs show `ip-lookup proxy failed: 429 Client Error: Too Many Requests`, the backend now:
+
+- **Uses the client’s IP** (`X-Forwarded-For` / `X-Real-IP`) when calling ipapi.co so lookups are per user.
+- **Caches results for 1 hour** (in memory) to cut down on calls.
+- **On 429:** tries **ip-api.com** as a fallback for that request; if that also fails, returns a neutral `{ "ip": null, "city": null, "country_name": null, "country_code": "XX" }` and logs at INFO instead of WARNING.
+
+## Extended session for testing (fewer logins)
+
+To stay logged in longer when testing, set these in the backend (e.g. Railway) environment:
+
+- `DEV_EXTENDED_SESSION_EMAIL` = your email (e.g. `sumit@meldra.ai`)
+- `ACCESS_TOKEN_EXPIRE_MINUTES_DEV` = `10080` (7 days) or e.g. `1440` (24 hours)
+
+When that email logs in, the token and cookie use the extended lifetime. All other users keep the default 30 minutes.

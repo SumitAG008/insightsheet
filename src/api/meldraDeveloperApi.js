@@ -1,8 +1,9 @@
 /**
- * developer.meldra.ai API client
+ * developer.meldra.ai API client — for external/API use only.
  *
- * File conversion: PDF↔DOC, DOC↔PDF, PPT↔PDF, PDF↔PPT; ZIP Cleaner. Requires a paid Meldra API key.
- * In-app: use with your API key. For programmatic use and testing: developer.meldra.ai.
+ * Used when calling Meldra from your own apps (requires Meldra API key via developer.meldra.ai).
+ * The in-app Document Converter and ZIP Cleaner do NOT use this module; they use the main
+ * backend with your Meldra login (JWT) and require no API key.
  * Base URL: VITE_MELDRA_DEVELOPER_API_URL or https://api.developer.meldra.ai
  */
 

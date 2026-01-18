@@ -174,14 +174,14 @@ export default function SecurityDashboard() {
         </Card>
       )}
 
-      {/* Meldra API Key (developer.meldra.ai) — paid, for PDF↔DOC, ZIP Cleaner */}
+      {/* Meldra API Key — only for external/API use (developer.meldra.ai). In-app never needs this. */}
       <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Key className="w-5 h-5 text-blue-400" />
-            Meldra API Key (developer.meldra.ai)
+            Meldra API Key (for external API only)
           </CardTitle>
-          <p className="text-sm text-slate-400">Required for PDF↔DOC and ZIP Cleaner via API. Paid; get your key at developer.meldra.ai</p>
+          <p className="text-sm text-slate-400">Only for calling Meldra from your own apps or developer.meldra.ai. In-app Document Converter and ZIP Cleaner use your Meldra login only; they do <strong>not</strong> use or require this key.</p>
         </CardHeader>
         <CardContent className="space-y-3">
           {meldraKeySet && !meldraKeyInput ? (
@@ -202,9 +202,9 @@ export default function SecurityDashboard() {
                 <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={saveMeldraKey} disabled={!meldraKeyInput.trim()}>
                   {meldraKeySaved ? 'Saved' : 'Save'}
                 </Button>
-                <a href="https://developer.meldra.ai" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300">
-                  <ExternalLink className="w-4 h-4" /> developer.meldra.ai
-                </a>
+                <span title="developer.meldra.ai is not yet deployed. Use in-app Document Converter and ZIP Cleaner. Contact support@meldra.ai for API portal updates." className="inline-flex items-center gap-1 text-sm text-slate-400">
+                  <ExternalLink className="w-4 h-4" /> developer.meldra.ai (coming soon)
+                </span>
               </div>
             </>
           )}

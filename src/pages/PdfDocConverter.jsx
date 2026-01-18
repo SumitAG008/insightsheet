@@ -1,6 +1,7 @@
 // pages/PdfDocConverter.jsx - Document Converter: PDF, DOC, PPT (in-app, no API key)
+// In-app: uses your Meldra login (JWT) only. API key is only for external/developer.meldra.ai.
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileText, FileType, Upload, Loader2, AlertCircle, Shield } from 'lucide-react';
@@ -19,17 +20,21 @@ const MODES = [
 async function convertViaBackend(file, slug) {
   const api = getApiBase();
   if (!api) throw new Error('Backend not configured. Set VITE_API_URL.');
+  const token = getToken();
+  if (!token) throw new Error('NOT_LOGGED_IN');
   const form = new FormData();
   form.append('file', file);
   const res = await fetch(`${api}/api/convert/${slug}`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${getToken()}` },
+    headers: { Authorization: `Bearer ${token}` },
     body: form,
   });
   if (!res.ok) {
     const t = await res.text();
     let msg = t;
     try { const j = JSON.parse(t); msg = j.detail || t; } catch (_) {}
+    // 401 = session expired or invalid: no API key is involved; user must log in again.
+    if (res.status === 401) msg = 'SESSION_EXPIRED';
     throw new Error(msg || `HTTP ${res.status}`);
   }
   return res.blob();
@@ -75,7 +80,10 @@ export default function PdfDocConverter() {
       const name = generateDownloadFilename(file.name, outExt);
       downloadBlob(blob, name);
     } catch (err) {
-      setError(err.message || 'Conversion failed.');
+      const m = err.message || '';
+      if (m === 'NOT_LOGGED_IN') setError('You are not logged in. Please log in to use Document Converter.');
+      else if (m === 'SESSION_EXPIRED') setError('Your session may have expired. Please log in again.');
+      else setError(m || 'Conversion failed.');
     } finally {
       setConverting(false);
     }
@@ -145,7 +153,12 @@ export default function PdfDocConverter() {
           {error && (
             <Alert className="mt-4 bg-red-500/10 border-red-500/30">
               <AlertCircle className="h-4 w-4 text-red-400" />
-              <AlertDescription className="text-red-300">{error}</AlertDescription>
+              <AlertDescription className="text-red-300 flex flex-wrap items-center gap-x-2">
+                <span>{error}</span>
+                {(error.includes('log in') || error.includes('logged in')) && (
+                  <Link to="/login" className="underline font-semibold text-red-200 hover:text-red-100">Log in</Link>
+                )}
+              </AlertDescription>
             </Alert>
           )}
         </div>
@@ -153,7 +166,7 @@ export default function PdfDocConverter() {
         <Alert className="bg-blue-500/10 border-blue-500/30">
           <Shield className="h-5 w-5 text-blue-500" />
           <AlertDescription className="text-slate-700 dark:text-slate-300">
-            Conversions run on our servers. Your file is not stored.
+            Conversions run on our servers. Your file is not stored. Uses your Meldra login only; <strong>no API key required</strong>.
           </AlertDescription>
         </Alert>
       </div>

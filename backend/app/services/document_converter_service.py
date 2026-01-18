@@ -58,6 +58,14 @@ def pdf_to_docx(pdf_bytes: bytes) -> Tuple[bytes, str]:
         return b'', str(e)
 
 
+def _sanitize_for_reportlab(s: str) -> str:
+    """Escape and clean text for ReportLab Paragraph to avoid XML/parse errors."""
+    if s is None:
+        return ''
+    t = str(s).replace('\x00', '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+    return t
+
+
 def docx_to_pdf(docx_bytes: bytes) -> Tuple[bytes, str]:
     """Convert .docx to PDF. Returns (pdf_bytes, error)."""
     if not DOCX_AVAILABLE or not REPORTLAB_AVAILABLE:
@@ -69,15 +77,25 @@ def docx_to_pdf(docx_bytes: bytes) -> Tuple[bytes, str]:
         styles = getSampleStyleSheet()
         story = []
         for p in doc.paragraphs:
-            if p.text.strip():
-                story.append(Paragraph(p.text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'), styles['Normal']))
-                story.append(Spacer(1, 6))
+            raw = (p.text if p.text is not None else '').strip()
+            if raw:
+                try:
+                    story.append(Paragraph(_sanitize_for_reportlab(raw), styles['Normal']))
+                    story.append(Spacer(1, 6))
+                except Exception:
+                    story.append(Paragraph("(paragraph)", styles['Normal']))
+                    story.append(Spacer(1, 6))
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
-                    if cell.text.strip():
-                        story.append(Paragraph(cell.text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'), styles['Normal']))
-                        story.append(Spacer(1, 4))
+                    raw = (cell.text if cell.text is not None else '').strip()
+                    if raw:
+                        try:
+                            story.append(Paragraph(_sanitize_for_reportlab(raw), styles['Normal']))
+                            story.append(Spacer(1, 4))
+                        except Exception:
+                            story.append(Paragraph("(cell)", styles['Normal']))
+                            story.append(Spacer(1, 4))
             story.append(Spacer(1, 12))
         if not story:
             story.append(Paragraph("(No content)", styles['Normal']))
@@ -103,10 +121,15 @@ def pptx_to_pdf(pptx_bytes: bytes) -> Tuple[bytes, str]:
             if i > 0:
                 story.append(PageBreak())
             for shape in slide.shapes:
-                if hasattr(shape, 'text') and shape.text and shape.text.strip():
-                    story.append(Paragraph(shape.text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'), styles['Normal']))
-                    story.append(Spacer(1, 6))
-            if not any(hasattr(s, 'text') and s.text for s in slide.shapes):
+                raw = (getattr(shape, 'text', None) or '').strip()
+                if raw:
+                    try:
+                        story.append(Paragraph(_sanitize_for_reportlab(raw), styles['Normal']))
+                        story.append(Spacer(1, 6))
+                    except Exception:
+                        story.append(Paragraph("(text)", styles['Normal']))
+                        story.append(Spacer(1, 6))
+            if not any(getattr(s, 'text', None) for s in slide.shapes):
                 story.append(Paragraph(f"(Slide {i+1})", styles['Normal']))
         if not story:
             story.append(Paragraph("(No content)", styles['Normal']))

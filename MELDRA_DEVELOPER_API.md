@@ -2,10 +2,12 @@
 
 The app calls **developer.meldra.ai** (or `VITE_MELDRA_DEVELOPER_API_URL`) for:
 
-- **PDF → DOC** and **DOC → PDF**
+- **PDF → DOC**, **DOC → PDF**, **PPT → PDF**, **PDF → PPT**
 - **ZIP Cleaner** (optional; app also supports in-browser ZIP processing)
 
 These endpoints require a **Meldra API key** (paid). Users set the key in **Security → Meldra API Key**.
+
+**Developer portal:** Documentation, API key management, and a short **test** flow are available at [developer.meldra.ai](https://developer.meldra.ai). Customers who want to consume the logic programmatically use the Meldra API with an API key; everything is documented and testable on the portal.
 
 ---
 
@@ -46,7 +48,27 @@ X-API-Key: <meldra_api_key>
 
 ---
 
-## 3. ZIP Cleaner (optional)
+## 3. PPT to PDF
+
+- **URL:** `POST /v1/convert/ppt-to-pdf`
+- **Body:** `multipart/form-data` with:
+  - `file`: `.ppt` or `.pptx` file (binary)
+- **Response:** `200` with body = `.pdf` binary.
+- **Errors:** same as above.
+
+---
+
+## 4. PDF to PPT
+
+- **URL:** `POST /v1/convert/pdf-to-ppt`
+- **Body:** `multipart/form-data` with:
+  - `file`: `.pdf` file (binary)
+- **Response:** `200` with body = `.pptx` binary.
+- **Errors:** same as above.
+
+---
+
+## 5. ZIP Cleaner (optional)
 
 - **URL:** `POST /v1/zip/clean`
 - **Body:** `multipart/form-data` with:
@@ -62,7 +84,7 @@ The Meldra app’s **ZIP Cleaner** page can use this when “Meldra API” is en
 
 ## Client usage
 
-- **PDF↔DOC:** `src/api/meldraDeveloperApi.js` → `convertPdfToDoc`, `convertDocToPdf`.
+- **PDF↔DOC, DOC↔PDF, PPT↔PDF, PDF↔PPT:** `src/api/meldraDeveloperApi.js` → `convertPdfToDoc`, `convertDocToPdf`, `convertPptToPdf`, `convertPdfToPpt`.
 - **ZIP:** `zipClean(file, options, apiKey)` — used when/if the FilenameCleaner “Meldra API” mode is implemented.
 
 ---
@@ -74,4 +96,4 @@ You can:
 1. **Run a separate service** at `api.developer.meldra.ai` that implements these routes and validates `X-API-Key` (e.g. against your DB or a key store), or  
 2. **Add these routes to your existing backend** (e.g. FastAPI on Railway) and set `VITE_MELDRA_DEVELOPER_API_URL` to that base URL.
 
-For PDF↔DOC you’ll need a library such as `pdf2docx` / `python-docx` / `reportlab` or a similar stack, depending on the runtime. For ZIP, use your existing ZIP logic and apply the `options` (allowed chars, replacement, etc.) to filenames inside the archive.
+For PDF↔DOC, DOC↔PDF you’ll need `pdf2docx` / `python-docx` / `reportlab` or similar. For PPT↔PDF and PDF↔PPT use `python-pptx`, `reportlab`, or a PDF/PPT library. For ZIP, use your existing ZIP logic and apply the `options` (allowed chars, replacement, etc.) to filenames inside the archive.

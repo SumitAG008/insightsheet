@@ -286,15 +286,9 @@ export default function Layout({ children, currentPageName }) {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to={`${createPageUrl('PdfDocConverter')}?mode=pdf2doc`} className="flex items-center gap-2 cursor-pointer">
+                        <Link to={createPageUrl('PdfDocConverter')} className="flex items-center gap-2 cursor-pointer">
                           <FileType className="w-4 h-4" />
-                          PDF to DOC
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={`${createPageUrl('PdfDocConverter')}?mode=doc2pdf`} className="flex items-center gap-2 cursor-pointer">
-                          <FileType className="w-4 h-4" />
-                          DOC to PDF
+                          Document Converter (PDF / DOC / PPT)
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
@@ -455,11 +449,8 @@ export default function Layout({ children, currentPageName }) {
                   <Link to={createPageUrl('OCRConverter')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('OCRConverter')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <ScanLine className="w-4 h-4" /> <span>OCR to DOC/PDF</span>
                   </Link>
-                  <Link to={`${createPageUrl('PdfDocConverter')}?mode=pdf2doc`} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('PdfDocConverter')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <FileType className="w-4 h-4" /> <span>PDF to DOC</span>
-                  </Link>
-                  <Link to={`${createPageUrl('PdfDocConverter')}?mode=doc2pdf`} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('PdfDocConverter')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <FileType className="w-4 h-4" /> <span>DOC to PDF</span>
+                  <Link to={createPageUrl('PdfDocConverter')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('PdfDocConverter')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    <FileType className="w-4 h-4" /> <span>Document Converter (PDF / DOC / PPT)</span>
                   </Link>
                   <Link to={createPageUrl('FilenameCleaner')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FilenameCleaner')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <FileArchive className="w-4 h-4" /> <span>ZIP Cleaner</span>

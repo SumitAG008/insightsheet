@@ -1,9 +1,8 @@
 /**
  * developer.meldra.ai API client
  *
- * File conversion (PDF↔DOC) and ZIP Cleaner. Requires a paid Meldra API key.
- * Get your key at https://developer.meldra.ai
- *
+ * File conversion: PDF↔DOC, DOC↔PDF, PPT↔PDF, PDF↔PPT; ZIP Cleaner. Requires a paid Meldra API key.
+ * In-app: use with your API key. For programmatic use and testing: developer.meldra.ai.
  * Base URL: VITE_MELDRA_DEVELOPER_API_URL or https://api.developer.meldra.ai
  */
 
@@ -58,6 +57,32 @@ export async function convertDocToPdf(file, apiKey = getApiKey()) {
   const form = new FormData();
   form.append('file', file);
   return _postFile('/v1/convert/doc-to-pdf', form, apiKey);
+}
+
+/**
+ * PPT/PPTX → PDF. Requires developer.meldra.ai and Meldra API key (paid).
+ * @param {File} file - .ppt or .pptx
+ * @param {string} [apiKey] - defaults to localStorage meldra_api_key
+ * @returns {Promise<Blob>} - .pdf
+ */
+export async function convertPptToPdf(file, apiKey = getApiKey()) {
+  if (!apiKey) throw new Error('Meldra API key required. Add it in Security → Meldra API Key. Get your key at developer.meldra.ai (paid).');
+  const form = new FormData();
+  form.append('file', file);
+  return _postFile('/v1/convert/ppt-to-pdf', form, apiKey);
+}
+
+/**
+ * PDF → PPT/PPTX. Requires developer.meldra.ai and Meldra API key (paid).
+ * @param {File} file - .pdf
+ * @param {string} [apiKey] - defaults to localStorage meldra_api_key
+ * @returns {Promise<Blob>} - .pptx
+ */
+export async function convertPdfToPpt(file, apiKey = getApiKey()) {
+  if (!apiKey) throw new Error('Meldra API key required. Add it in Security → Meldra API Key. Get your key at developer.meldra.ai (paid).');
+  const form = new FormData();
+  form.append('file', file);
+  return _postFile('/v1/convert/pdf-to-ppt', form, apiKey);
 }
 
 /**

@@ -1,33 +1,50 @@
-// pages/PdfDocConverter.jsx - PDF to DOC & DOC to PDF via developer.meldra.ai (Meldra API key required, paid)
+// pages/PdfDocConverter.jsx - Document Converter: PDF↔DOC, DOC↔PDF, PPT↔PDF, PDF↔PPT via developer.meldra.ai (API key required)
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileText, FileType, Upload, Loader2, AlertCircle, Lock, Key } from 'lucide-react';
-import { convertPdfToDoc, convertDocToPdf, getApiKey } from '@/api/meldraDeveloperApi';
+import {
+  convertPdfToDoc,
+  convertDocToPdf,
+  convertPptToPdf,
+  convertPdfToPpt,
+  getApiKey,
+} from '@/api/meldraDeveloperApi';
 import { generateDownloadFilename, downloadBlob } from '@/utils/fileNaming';
 import { createPageUrl } from '@/utils';
 
+const MODES = [
+  { id: 'pdf2doc', label: 'PDF to DOC', accept: '.pdf', outExt: '.docx', fn: convertPdfToDoc, Icon: FileType },
+  { id: 'doc2pdf', label: 'DOC to PDF', accept: '.doc,.docx', outExt: '.pdf', fn: convertDocToPdf, Icon: FileText },
+  { id: 'ppt2pdf', label: 'PPT to PDF', accept: '.ppt,.pptx', outExt: '.pdf', fn: convertPptToPdf, Icon: FileText },
+  { id: 'pdf2ppt', label: 'PDF to PPT', accept: '.pdf', outExt: '.pptx', fn: convertPdfToPpt, Icon: FileType },
+];
+
 export default function PdfDocConverter() {
   const [searchParams] = useSearchParams();
-  const modeParam = searchParams.get('mode'); // pdf2doc | doc2pdf
-  const [mode, setMode] = useState(modeParam === 'doc2pdf' ? 'doc2pdf' : 'pdf2doc');
+  const modeParam = searchParams.get('mode');
+  const [mode, setMode] = useState(() => {
+    const m = MODES.find((x) => x.id === modeParam);
+    return m ? m.id : 'pdf2doc';
+  });
   const [file, setFile] = useState(null);
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState('');
   const [hasKey, setHasKey] = useState(!!getApiKey());
 
   useEffect(() => {
-    setMode(modeParam === 'doc2pdf' ? 'doc2pdf' : 'pdf2doc');
+    const m = MODES.find((x) => x.id === modeParam);
+    setMode(m ? m.id : 'pdf2doc');
   }, [modeParam]);
 
   useEffect(() => {
     setHasKey(!!getApiKey());
   }, []);
 
-  const isPdfToDoc = mode === 'pdf2doc';
-  const accept = isPdfToDoc ? '.pdf' : '.doc,.docx';
-  const outExt = isPdfToDoc ? '.docx' : '.pdf';
+  const current = MODES.find((m) => m.id === mode) || MODES[0];
+  const accept = current.accept;
+  const outExt = current.outExt;
 
   const handleFileChange = (e) => {
     const f = e.target.files?.[0];
@@ -41,9 +58,7 @@ export default function PdfDocConverter() {
     setConverting(true);
     setError('');
     try {
-      const blob = isPdfToDoc
-        ? await convertPdfToDoc(file)
-        : await convertDocToPdf(file);
+      const blob = await current.fn(file);
       const name = generateDownloadFilename(file.name, outExt);
       downloadBlob(blob, name);
     } catch (err) {
@@ -53,6 +68,12 @@ export default function PdfDocConverter() {
     }
   };
 
+  const uploadLabel = current.id.startsWith('pdf')
+    ? 'Upload PDF'
+    : current.id.startsWith('doc')
+      ? 'Upload Word (.doc, .docx)'
+      : 'Upload PowerPoint (.ppt, .pptx)';
+
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 py-12">
       <div className="container mx-auto px-4 max-w-2xl">
@@ -61,29 +82,31 @@ export default function PdfDocConverter() {
             <FileType className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">
-            PDF ↔ DOC
+            Document Converter
           </h1>
           <p className="text-slate-600 dark:text-slate-300 font-medium">
-            Convert between PDF and Word via developer.meldra.ai. Requires a paid Meldra API key.
+            PDF, DOC, and PPT — in-app with your Meldra API key. For API use and testing: developer.meldra.ai.
           </p>
         </div>
 
-        {/* Mode toggle */}
-        <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 p-1 mb-6">
-          <button
-            type="button"
-            onClick={() => setMode('pdf2doc')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-semibold transition-all ${isPdfToDoc ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-          >
-            <FileText className="w-4 h-4" /> PDF to DOC
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('doc2pdf')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-semibold transition-all ${!isPdfToDoc ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-          >
-            <FileType className="w-4 h-4" /> DOC to PDF
-          </button>
+        {/* Mode: 4 options */}
+        <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-200 dark:border-slate-700 p-2 mb-6">
+          {MODES.map((m) => {
+            const Icon = m.Icon;
+            const active = mode === m.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => setMode(m.id)}
+                className={`flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-semibold transition-all ${
+                  active ? 'bg-blue-600 text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Icon className="w-4 h-4" /> {m.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* API key required */}
@@ -106,10 +129,8 @@ export default function PdfDocConverter() {
             <div className="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
               <Upload className="w-8 h-8 text-white" />
             </div>
-            <h3 className="text-lg font-bold text-white mb-1">
-              {isPdfToDoc ? 'Upload PDF' : 'Upload Word (.doc, .docx)'}
-            </h3>
-            <p className="text-slate-300 text-sm">{isPdfToDoc ? 'Output: .docx' : 'Output: .pdf'}</p>
+            <h3 className="text-lg font-bold text-white mb-1">{uploadLabel}</h3>
+            <p className="text-slate-300 text-sm">Output: {outExt}</p>
             {file && <p className="text-blue-300 text-sm mt-2 font-medium">{file.name}</p>}
           </label>
 
@@ -134,7 +155,7 @@ export default function PdfDocConverter() {
         <Alert className="bg-blue-500/10 border-blue-500/30">
           <Lock className="h-5 w-5 text-blue-500" />
           <AlertDescription className="text-slate-700 dark:text-slate-300">
-            <strong className="text-blue-700 dark:text-blue-300">developer.meldra.ai</strong> — File conversion and ZIP Cleaner APIs require a paid Meldra API key. Keys and usage at <a href="https://developer.meldra.ai" target="_blank" rel="noopener noreferrer" className="underline">developer.meldra.ai</a>.
+            <strong className="text-blue-700 dark:text-blue-300">developer.meldra.ai</strong> — PDF↔DOC, DOC↔PDF, PPT↔PDF, PDF↔PPT, and ZIP Cleaner. In-app: use your API key. For programmatic use: get an API key, read the docs, and test on the developer portal.
           </AlertDescription>
         </Alert>
       </div>

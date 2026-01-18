@@ -80,16 +80,16 @@ export default function SchemaCanvas({
         <g key={rel.id}>
           <path
             d={`M ${fromX} ${fromY} C ${midX} ${fromY}, ${midX} ${toY}, ${toX} ${toY}`}
-            stroke="#a855f7"
+            stroke="#3b82f6"
             strokeWidth="2"
             fill="none"
-            opacity="0.6"
+            opacity="0.7"
           />
           {/* Arrow head */}
           <polygon
             points={`${toX},${toY} ${toX - 8},${toY - 4} ${toX - 8},${toY + 4}`}
-            fill="#a855f7"
-            opacity="0.6"
+            fill="#3b82f6"
+            opacity="0.7"
           />
         </g>
       );
@@ -108,12 +108,12 @@ export default function SchemaCanvas({
   }, [draggingTable, handleMouseMove, handleMouseUp]);
 
   return (
-    <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-4">
+    <Card className="bg-white dark:bg-slate-900/80 dark:backdrop-blur-xl border border-slate-200 dark:border-slate-700/50 p-4">
       <div className="flex items-center justify-between mb-4">
-        <div className="text-sm text-slate-600 dark:text-slate-400">
+        <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
           {connectingFrom ? (
             <div className="flex items-center gap-2">
-              <span className="text-purple-600 dark:text-purple-400 font-semibold">Creating Relationship:</span>
+              <span className="text-blue-600 dark:text-blue-400 font-bold">Creating Relationship:</span>
               <span>Click on a column in another table to connect</span>
             </div>
           ) : (
@@ -189,8 +189,8 @@ export default function SchemaCanvas({
               key={table.id}
               className={`absolute bg-white dark:bg-slate-800 border-2 rounded-lg shadow-lg cursor-move transition-all ${
                 selectedTable === table.id
-                  ? 'border-purple-500 shadow-purple-500/50 ring-2 ring-purple-500/20'
-                  : 'border-slate-300 dark:border-slate-700 hover:border-purple-400 dark:hover:border-slate-600'
+                  ? 'border-blue-500 shadow-blue-500/50 ring-2 ring-blue-500/20'
+                  : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-slate-600'
               }`}
               style={{
                 left: `${table.x}px`,
@@ -201,7 +201,7 @@ export default function SchemaCanvas({
               onMouseDown={(e) => handleTableMouseDown(e, table)}
             >
               {/* Table Header */}
-              <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-3 py-2 rounded-t-md flex items-center justify-between">
+              <div className="bg-gradient-to-r from-blue-600 to-emerald-600 px-3 py-2 rounded-t-md flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="text-white font-semibold">{table.name}</div>
                 </div>
@@ -223,10 +223,10 @@ export default function SchemaCanvas({
                 {table.columns.map(column => (
                   <div
                     key={column.id}
-                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-purple-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors group ${
+                    className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm hover:bg-blue-100 dark:hover:bg-slate-700/50 cursor-pointer transition-colors group ${
                       connectingFrom?.column === column.id
-                        ? 'bg-purple-200 dark:bg-purple-600/30 border-2 border-purple-500'
-                        : 'border border-transparent hover:border-purple-300 dark:hover:border-purple-600'
+                        ? 'bg-blue-200 dark:bg-blue-600/30 border-2 border-blue-500'
+                        : 'border border-transparent hover:border-blue-300 dark:hover:border-blue-600'
                     }`}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -247,7 +247,7 @@ export default function SchemaCanvas({
                       <span className="text-red-500 dark:text-red-400 text-xs font-bold" title="NOT NULL">*</span>
                     )}
                     {connectingFrom && connectingFrom.table !== table.id && (
-                      <span className="text-xs text-purple-600 dark:text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-xs text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity font-medium">
                         Click to connect
                       </span>
                     )}
@@ -279,7 +279,7 @@ export default function SchemaCanvas({
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold text-sm flex-shrink-0 mt-0.5">2</div>
+                    <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm flex-shrink-0 mt-0.5">2</div>
                     <div>
                       <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">Design Your Tables</div>
                       <div className="text-sm text-slate-600 dark:text-slate-400">Add columns, set data types, and define primary keys in the "Table Designer" tab</div>
@@ -307,10 +307,10 @@ export default function SchemaCanvas({
       </div>
 
       {connectingFrom && (
-        <div className="mt-4 p-3 bg-purple-900/30 border border-purple-700 rounded-lg">
+        <div className="mt-4 p-3 bg-blue-900/30 border border-blue-700 rounded-lg">
           <div className="flex items-center justify-between">
-            <div className="text-sm text-slate-300">
-              Creating relationship from: <span className="text-purple-400 font-semibold">
+            <div className="text-sm font-medium text-slate-300">
+              Creating relationship from: <span className="text-blue-400 font-bold">
                 {schema.tables.find(t => t.id === connectingFrom.table)?.name}.
                 {schema.tables
                   .find(t => t.id === connectingFrom.table)

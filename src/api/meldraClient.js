@@ -5,6 +5,8 @@
  * This provides a compatible interface while using our own backend.
  */
 
+import { clearAllAppSessionData } from '@/utils/clearAppData';
+
 // Meldra AI client - placeholder for SDK features
 // TODO: Implement full SDK when @meldra-ai/sdk is published
 export const meldraAi = {
@@ -88,8 +90,9 @@ const apiCall = async (endpoint, options = {}) => {
       headers,
     });
 
-    // Handle unauthorized
+    // Handle unauthorized — clear all app data and redirect to login
     if (response.status === 401) {
+      clearAllAppSessionData();
       setToken(null);
       window.location.href = '/Login';
       throw new Error('Unauthorized');
@@ -160,8 +163,8 @@ export const backendApi = {
     },
 
     logout: () => {
+      clearAllAppSessionData();
       setToken(null);
-      localStorage.removeItem('user');
     },
 
     me: async () => {

@@ -219,7 +219,7 @@ export default function SQLGenerator({ schema }) {
 
   return (
     <div className="space-y-4">
-      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
+      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/50 p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-200 mb-1">
@@ -266,7 +266,7 @@ export default function SQLGenerator({ schema }) {
 
             <Button
               onClick={handleDownload}
-              className="bg-gradient-to-r from-purple-600 to-pink-600"
+              className="bg-gradient-to-r from-blue-600 to-emerald-600"
             >
               <Download className="w-4 h-4 mr-2" />
               Download SQL
@@ -283,7 +283,7 @@ export default function SQLGenerator({ schema }) {
 
           <TabsContent value="create" className="mt-4">
             <div className="relative">
-              <pre className="bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-lg p-6 overflow-x-auto text-sm text-slate-900 dark:text-slate-100 font-mono max-h-[600px] overflow-y-auto leading-relaxed shadow-inner">
+              <pre className="bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-700/50 rounded-lg p-6 overflow-x-auto text-sm text-slate-900 dark:text-slate-100 font-mono max-h-[600px] overflow-y-auto leading-relaxed shadow-inner">
                 <code className="text-slate-900 dark:text-slate-100">{generateSQL}</code>
               </pre>
             </div>
@@ -291,7 +291,7 @@ export default function SQLGenerator({ schema }) {
 
           <TabsContent value="insert" className="mt-4">
             <div className="relative">
-              <pre className="bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-lg p-6 overflow-x-auto text-sm text-slate-900 dark:text-slate-100 font-mono max-h-[600px] overflow-y-auto leading-relaxed shadow-inner">
+              <pre className="bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-700/50 rounded-lg p-6 overflow-x-auto text-sm text-slate-900 dark:text-slate-100 font-mono max-h-[600px] overflow-y-auto leading-relaxed shadow-inner">
                 <code className="text-slate-900 dark:text-slate-100">{generateInsertStatements()}</code>
               </pre>
             </div>
@@ -304,7 +304,7 @@ export default function SQLGenerator({ schema }) {
               </div>
             </div>
             <div className="relative">
-              <pre className="bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-lg p-6 overflow-x-auto text-sm text-slate-900 dark:text-slate-100 font-mono max-h-[600px] overflow-y-auto leading-relaxed shadow-inner">
+              <pre className="bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-700/50 rounded-lg p-6 overflow-x-auto text-sm text-slate-900 dark:text-slate-100 font-mono max-h-[600px] overflow-y-auto leading-relaxed shadow-inner">
                 <code className="text-slate-900 dark:text-slate-100">{generateDropStatements()}</code>
               </pre>
             </div>
@@ -313,16 +313,16 @@ export default function SQLGenerator({ schema }) {
       </Card>
 
       {/* Stats Card */}
-      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-4">
+      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/50 p-4">
         <div className="grid grid-cols-4 gap-4 text-center">
           <div>
-            <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
               {schema.tables?.length || 0}
             </div>
             <div className="text-xs font-medium text-slate-700 dark:text-slate-400">Tables</div>
           </div>
           <div>
-            <div className="text-2xl font-bold text-pink-600 dark:text-pink-400">
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
               {schema.tables?.reduce((sum, t) => sum + t.columns.length, 0) || 0}
             </div>
             <div className="text-xs font-medium text-slate-700 dark:text-slate-400">Columns</div>

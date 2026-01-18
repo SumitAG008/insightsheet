@@ -121,13 +121,13 @@ export default function TableDesigner({
     <div className="grid grid-cols-12 gap-4">
       {/* Tables List */}
       <div className="col-span-3">
-        <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-4">
+        <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/50 p-4">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-200">Tables</h3>
             <Button
               size="sm"
               onClick={onAddTable}
-              className="bg-gradient-to-r from-purple-600 to-pink-600"
+              className="bg-gradient-to-r from-blue-600 to-emerald-600"
               title="Add a new table"
             >
               <Plus className="w-4 h-4" />
@@ -180,7 +180,7 @@ export default function TableDesigner({
       {/* Column Editor */}
       <div className="col-span-9">
         {currentTable ? (
-          <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
+          <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/50 p-6">
             {/* Table Name Editor */}
             <div className="mb-6">
               <Label className="text-slate-700 dark:text-slate-300 mb-2">
@@ -245,7 +245,7 @@ export default function TableDesigner({
               </div>
               <Button
                 onClick={handleAddColumn}
-                className="bg-gradient-to-r from-purple-600 to-pink-600"
+                className="bg-gradient-to-r from-blue-600 to-emerald-600"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Column
@@ -415,7 +415,7 @@ export default function TableDesigner({
                   <Button
                     onClick={handleAddColumn}
                     size="sm"
-                    className="bg-gradient-to-r from-purple-600 to-pink-600"
+                    className="bg-gradient-to-r from-blue-600 to-emerald-600"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Add Your First Column
@@ -425,7 +425,7 @@ export default function TableDesigner({
             </div>
           </Card>
         ) : (
-          <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-12">
+          <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/50 p-12">
             <div className="text-center">
               <Database className="w-16 h-16 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
               <div className="text-slate-700 dark:text-slate-400 text-lg font-semibold mb-2">No table selected</div>
@@ -434,7 +434,7 @@ export default function TableDesigner({
               </div>
               <Button
                 onClick={onAddTable}
-                className="bg-gradient-to-r from-purple-600 to-pink-600"
+                className="bg-gradient-to-r from-blue-600 to-emerald-600"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Table

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Database, Download, Upload, Sparkles, Save, FileCode, Trash2, Plus, ChevronDown, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,7 @@ export default function DataModelCreator() {
   const [activeTab, setActiveTab] = useState('canvas');
   const [showSchemaImporter, setShowSchemaImporter] = useState(false);
   const [selectedImportType, setSelectedImportType] = useState('mysql');
+  const importJsonInputRef = useRef(null);
 
   useEffect(() => {
     checkAuth();
@@ -326,18 +327,21 @@ export default function DataModelCreator() {
                     <FileText className="w-4 h-4 mr-2" />
                     From CSV
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => importJsonInputRef.current?.click()}>
+                    <FileText className="w-4 h-4 mr-2" />
+                    From JSON
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              <label className="cursor-pointer hidden">
-                <input
-                  type="file"
-                  accept=".json,.xml,.js"
-                  onChange={handleImportJSON}
-                  className="hidden"
-                  id="import-json-input"
-                />
-              </label>
+              <input
+                ref={importJsonInputRef}
+                type="file"
+                accept=".json,.xml,.js"
+                onChange={handleImportJSON}
+                className="hidden"
+                id="import-json-input"
+              />
 
               <Button
                 onClick={handleExportJSON}
@@ -359,7 +363,7 @@ export default function DataModelCreator() {
           </div>
 
           {/* Schema Info */}
-          <div className="flex items-center gap-6 text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-6 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
             <span className="font-semibold">{schema.tables.length} Tables</span>
             <span className="font-semibold">{schema.relationships.length} Relationships</span>
             <span className="font-semibold">
@@ -370,7 +374,7 @@ export default function DataModelCreator() {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800">
+          <TabsList className="bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700">
             <TabsTrigger value="canvas">
               <Database className="w-4 h-4 mr-2" />
               Visual Canvas
@@ -386,8 +390,8 @@ export default function DataModelCreator() {
               <FileCode className="w-4 h-4 mr-2" />
               SQL Generator
             </TabsTrigger>
-            <TabsTrigger value="ai">
-              <Sparkles className="w-4 h-4 mr-2" />
+            <TabsTrigger value="ai" className="font-semibold">
+              <Sparkles className="w-4 h-4 mr-2 text-blue-500" />
               AI Assistant
             </TabsTrigger>
           </TabsList>

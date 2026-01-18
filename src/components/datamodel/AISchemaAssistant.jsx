@@ -192,17 +192,17 @@ Guidelines:
   return (
     <div className="space-y-4">
       {/* Input Card */}
-      <Card className="bg-slate-900/50 border-slate-800 p-6">
+      <Card className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 p-6">
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
+            <div className="p-2 bg-gradient-to-br from-blue-600 to-emerald-600 rounded-lg">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-slate-200">
+              <h3 className="text-xl font-bold text-white">
                 AI Schema Generator
               </h3>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm font-medium text-slate-300">
                 Describe your database needs and let AI create the schema
               </p>
             </div>
@@ -211,14 +211,14 @@ Guidelines:
 
         <div className="space-y-4">
           <div>
-            <Label className="text-slate-300 mb-2">
+            <Label className="text-slate-200 font-semibold mb-2 block">
               Describe your database schema
             </Label>
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Example: Create a database for a social media app with users, posts, comments, and likes. Users can follow each other and posts can have multiple tags..."
-              className="bg-slate-800 border-slate-700 min-h-[120px] text-slate-200"
+              className="bg-slate-800 border-slate-600 min-h-[120px] text-slate-100 font-medium"
               disabled={loading}
             />
           </div>
@@ -226,7 +226,7 @@ Guidelines:
           <Button
             onClick={handleGenerateSchema}
             disabled={loading || !prompt.trim()}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-bold"
             size="lg"
           >
             {loading ? (
@@ -252,13 +252,13 @@ Guidelines:
 
       {/* Generated Schema Preview */}
       {generatedSchema && (
-        <Card className="bg-slate-900/50 border-slate-800 p-6">
+        <Card className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 p-6">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h4 className="text-lg font-semibold text-slate-200 mb-1">
+              <h4 className="text-lg font-bold text-white mb-1">
                 Generated Schema
               </h4>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm font-medium text-slate-300">
                 {generatedSchema.tables.length} tables •{' '}
                 {generatedSchema.tables.reduce((sum, t) => sum + t.columns.length, 0)} columns •{' '}
                 {generatedSchema.relationships?.length || 0} relationships
@@ -266,7 +266,7 @@ Guidelines:
             </div>
             <Button
               onClick={handleApplySchema}
-              className="bg-gradient-to-r from-green-600 to-emerald-600"
+              className="bg-gradient-to-r from-blue-600 to-emerald-600 font-semibold"
             >
               <Check className="w-4 h-4 mr-2" />
               Apply to Canvas
@@ -277,9 +277,9 @@ Guidelines:
             {generatedSchema.tables.map(table => (
               <div
                 key={table.id}
-                className="bg-slate-800/50 border border-slate-700 rounded-lg p-4"
+                className="bg-slate-800/50 border border-slate-600 rounded-lg p-4"
               >
-                <div className="font-semibold text-purple-400 mb-2">
+                <div className="font-bold text-blue-400 mb-2">
                   {table.name}
                 </div>
                 <div className="space-y-1">
@@ -308,10 +308,10 @@ Guidelines:
       )}
 
       {/* Example Prompts */}
-      <Card className="bg-slate-900/50 border-slate-800 p-6">
+      <Card className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 p-6">
         <div className="flex items-center gap-2 mb-4">
-          <BookOpen className="w-5 h-5 text-purple-400" />
-          <h4 className="text-lg font-semibold text-slate-200">
+          <BookOpen className="w-5 h-5 text-blue-400" />
+          <h4 className="text-lg font-bold text-white">
             Example Prompts
           </h4>
         </div>
@@ -322,12 +322,12 @@ Guidelines:
               key={index}
               onClick={() => handleUseExample(example)}
               disabled={loading}
-              className="text-left p-3 bg-slate-800/50 border border-slate-700 rounded-lg hover:border-purple-600 hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="text-left p-3 bg-slate-800/50 border border-slate-600 rounded-lg hover:border-blue-500 hover:bg-slate-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <div className="text-sm font-medium text-purple-400 mb-1">
+              <div className="text-sm font-bold text-blue-400 mb-1">
                 {example.title}
               </div>
-              <div className="text-xs text-slate-400">
+              <div className="text-xs font-medium text-slate-300">
                 {example.description}
               </div>
             </button>
@@ -336,11 +336,11 @@ Guidelines:
       </Card>
 
       {/* Tips Card */}
-      <Card className="bg-slate-900/50 border-slate-800 p-4">
-        <h4 className="text-sm font-semibold text-slate-300 mb-2">
+      <Card className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 p-4">
+        <h4 className="text-sm font-bold text-slate-200 mb-2">
           Tips for Better Results
         </h4>
-        <ul className="space-y-1 text-xs text-slate-400">
+        <ul className="space-y-1 text-xs font-medium text-slate-300">
           <li>• Be specific about the entities (users, products, orders, etc.)</li>
           <li>• Mention the relationships between entities</li>
           <li>• Include any special requirements (timestamps, soft deletes, etc.)</li>

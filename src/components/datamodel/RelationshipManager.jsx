@@ -108,7 +108,7 @@ export default function RelationshipManager({
         </div>
       </Card>
 
-      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
+      <Card className="bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/50 p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-200 mb-1">
@@ -121,12 +121,12 @@ export default function RelationshipManager({
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-purple-600 to-pink-600">
+              <Button className="bg-gradient-to-r from-blue-600 to-emerald-600">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Relationship
               </Button>
             </DialogTrigger>
-            <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 max-w-2xl">
+            <DialogContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700/50 max-w-2xl">
               <DialogHeader>
                 <DialogTitle className="text-slate-900 dark:text-slate-200">
                   Create Relationship
@@ -293,7 +293,7 @@ export default function RelationshipManager({
                 </Button>
                 <Button
                   onClick={handleCreateRelationship}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600"
+                  className="bg-gradient-to-r from-blue-600 to-emerald-600"
                 >
                   Create Relationship
                 </Button>
@@ -389,7 +389,7 @@ export default function RelationshipManager({
       </Card>
 
       {/* Information Card */}
-      <Card className="bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 p-6">
+      <Card className="bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/50 p-6">
         <h4 className="text-base font-semibold text-slate-900 dark:text-slate-200 mb-4 flex items-center gap-2">
           <Link2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
           Understanding Relationship Types

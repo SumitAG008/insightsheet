@@ -3,6 +3,8 @@
  * Connects to Python FastAPI backend
  */
 
+import { clearAllAppSessionData } from '@/utils/clearAppData';
+
 // SECURITY: Require HTTPS API URL - no localhost fallback in production
 const API_URL = import.meta.env.VITE_API_URL || (() => {
   // Only allow localhost in development (when running on localhost)
@@ -56,8 +58,9 @@ const apiCall = async (endpoint, options = {}) => {
     headers,
   });
 
-  // Handle unauthorized
+  // Handle unauthorized — clear all app data and redirect to login
   if (response.status === 401) {
+    clearAllAppSessionData();
     setToken(null);
     window.location.href = '/login';
     throw new Error('Unauthorized');
@@ -100,8 +103,8 @@ export const backendApi = {
     },
 
     logout: () => {
+      clearAllAppSessionData();
       setToken(null);
-      localStorage.removeItem('user');
     },
 
     me: async () => {

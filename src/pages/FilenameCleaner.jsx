@@ -580,14 +580,14 @@ export default function FilenameCleaner() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center">
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-emerald-600 rounded-2xl flex items-center justify-center">
               <FileArchive className="w-8 h-8 text-white" />
             </div>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
             Enhanced File Processor
           </h1>
-          <p className="text-slate-300 text-base md:text-lg font-light" style={{ letterSpacing: '-0.01em' }}>
+          <p className="text-slate-200 text-base md:text-lg font-medium" style={{ letterSpacing: '-0.01em' }}>
             Process ZIP files with advanced Unicode and character replacement support
           </p>
         </div>
@@ -627,15 +627,15 @@ export default function FilenameCleaner() {
         {/* Tabs */}
         <Tabs defaultValue="upload" className="space-y-6">
           <TabsList className="bg-slate-900/80 border border-slate-700/50 p-1 grid w-full grid-cols-3">
-            <TabsTrigger value="upload" className="data-[state=active]:bg-indigo-600">
+            <TabsTrigger value="upload" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-semibold">
               <Upload className="w-4 h-4 mr-2" />
               File Upload
             </TabsTrigger>
-            <TabsTrigger value="settings" className="data-[state=active]:bg-indigo-600">
+            <TabsTrigger value="settings" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-semibold">
               <Wand2 className="w-4 h-4 mr-2" />
               Settings
             </TabsTrigger>
-            <TabsTrigger value="history" className="data-[state=active]:bg-indigo-600">
+            <TabsTrigger value="history" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-semibold">
               <Clock className="w-4 h-4 mr-2" />
               History
             </TabsTrigger>
@@ -653,14 +653,14 @@ export default function FilenameCleaner() {
                   className="hidden"
                   disabled={processing}
                 />
-                <div className="w-20 h-20 bg-gradient-to-br from-indigo-600/20 to-purple-600/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <FileArchive className="w-10 h-10 text-indigo-400" />
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-600/20 to-emerald-600/20 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <FileArchive className="w-10 h-10 text-blue-400" />
                 </div>
-                <h3 className="text-xl font-bold text-indigo-200 mb-2">
+                <h3 className="text-xl font-bold text-white mb-2">
                   {zipFile ? zipFile.name : 'Drop ZIP file here'}
                 </h3>
-                <p className="text-slate-400">
-                  or <span className="text-indigo-400 underline">browse files</span>
+                <p className="text-slate-300 font-medium">
+                  or <span className="text-blue-400 underline font-semibold">browse files</span>
                 </p>
                 {zipFile && (
                   <p className="text-sm text-slate-500 mt-2">
@@ -674,7 +674,7 @@ export default function FilenameCleaner() {
                   <Button
                     onClick={handlePreview}
                     disabled={processing}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                    className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 font-semibold"
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
                     {processing ? 'Reading ZIP...' : 'Preview Changes'}
@@ -687,15 +687,15 @@ export default function FilenameCleaner() {
             {preview.length > 0 && (
               <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-indigo-200">
+                  <h3 className="text-lg font-bold text-white">
                     Preview Changes ({preview.length} files)
                   </h3>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-400">
+                    <span className="text-sm font-medium text-slate-300">
                       {preview.filter(p => p.changed).length} files will be renamed
                     </span>
                     {processing && processedCount < preview.length && (
-                      <span className="text-sm text-indigo-400">
+                      <span className="text-sm font-semibold text-blue-400">
                         Processing: {processedCount}/{preview.length}
                       </span>
                     )}
@@ -713,10 +713,10 @@ export default function FilenameCleaner() {
 
                 <div className="max-h-96 overflow-y-auto space-y-2 mb-4">
                   {preview.slice(0, 100).map((item, idx) => (
-                    <div key={idx} className={`p-3 rounded-lg ${item.changed ? 'bg-indigo-500/10 border border-indigo-500/30' : 'bg-slate-800/50'}`}>
+                    <div key={idx} className={`p-3 rounded-lg ${item.changed ? 'bg-blue-500/10 border border-blue-500/30' : 'bg-slate-800/50'}`}>
                       <div className="flex items-start gap-2">
                         {item.changed ? (
-                          <AlertCircle className="w-4 h-4 text-indigo-400 mt-1 flex-shrink-0" />
+                          <AlertCircle className="w-4 h-4 text-blue-400 mt-1 flex-shrink-0" />
                         ) : (
                           <CheckCircle className="w-4 h-4 text-slate-500 mt-1 flex-shrink-0" />
                         )}
@@ -724,7 +724,7 @@ export default function FilenameCleaner() {
                           <p className="text-sm text-slate-400 line-through truncate">
                             {item.original}
                           </p>
-                          <p className="text-sm text-indigo-300 font-medium truncate">
+                          <p className="text-sm text-blue-300 font-semibold truncate">
                             {item.processed}
                           </p>
                         </div>
@@ -748,12 +748,13 @@ export default function FilenameCleaner() {
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
             <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-indigo-200 mb-4">Processing Settings</h3>
-              <p className="text-sm text-slate-400 mb-6">Configure how your files will be processed</p>
+              <h3 className="text-xl font-bold text-white mb-4">Processing Settings</h3>
+              <p className="text-sm font-medium text-slate-300 mb-6">Configure how your files will be processed</p>
 
               {/* Quick Character Sets */}
               <div className="mb-6">
-                <label className="text-sm font-semibold text-white mb-3 block" style={{ fontFamily: "'Inter', sans-serif" }}>Quick Character Sets</label>
+                <label className="text-base font-bold text-white mb-2 block">Quick Character Sets</label>
+                <p className="text-sm font-medium text-slate-300 mb-3">Choose a preset to set allowed characters and replacement rules. E.g. Basic keeps letters, numbers, dots, underscores, and dashes.</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                   {quickPresets.map((preset, idx) => (
                     <Button
@@ -761,7 +762,7 @@ export default function FilenameCleaner() {
                       onClick={() => applyPreset(preset)}
                       variant="outline"
                       size="sm"
-                      className="border-slate-700 text-slate-300 hover:bg-indigo-600/20 hover:border-indigo-500/50"
+                      className="bg-slate-800 border-slate-600 text-slate-100 font-semibold hover:bg-slate-700 hover:border-blue-500 hover:text-white"
                     >
                       {preset.name}
                     </Button>
@@ -842,7 +843,7 @@ export default function FilenameCleaner() {
                   {options.customRules.map((rule, idx) => (
                     <div key={idx} className="flex gap-2 items-center p-3 bg-slate-800/50 rounded-lg">
                       <span className="text-slate-400 text-sm">Replace</span>
-                      <span className="text-indigo-300 font-mono">{rule.find}</span>
+                      <span className="text-blue-300 font-mono font-semibold">{rule.find}</span>
                       <span className="text-slate-400 text-sm">with</span>
                       <span className="text-emerald-300 font-mono">{rule.replace}</span>
                       <Button
@@ -871,7 +872,7 @@ export default function FilenameCleaner() {
                     />
                     <Button
                       onClick={addCustomRule}
-                      className="bg-indigo-600 hover:bg-indigo-700"
+                      className="bg-blue-600 hover:bg-blue-700 font-semibold"
                     >
                       <Plus className="w-4 h-4" />
                     </Button>
@@ -884,16 +885,16 @@ export default function FilenameCleaner() {
           {/* History Tab */}
           <TabsContent value="history" className="space-y-6">
             <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-indigo-200 mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5" />
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5 text-blue-400" />
                 Processing History
               </h3>
 
               {history.length === 0 ? (
-                <div className="text-center py-12 text-slate-400">
-                  <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No processing history yet</p>
-                  <p className="text-sm text-slate-500 mt-1">Upload and process files to see history</p>
+                <div className="text-center py-12">
+                  <Clock className="w-12 h-12 mx-auto mb-3 text-slate-600" />
+                  <p className="font-bold text-white">No processing history yet</p>
+                  <p className="text-sm font-medium text-slate-400 mt-1">Upload and process files to see history</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -903,7 +904,7 @@ export default function FilenameCleaner() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             <CheckCircle className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                            <p className="text-sm font-semibold text-indigo-300">
+                            <p className="text-sm font-bold text-blue-300">
                               processed_{item.originalFile}
                             </p>
                           </div>

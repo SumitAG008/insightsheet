@@ -112,14 +112,11 @@ export default function Layout({ children }) {
       }
     }
 
-    // Clear all auth data and session storage
-    await meldraAi.auth.logout();
+    // Clear all app data (session + local: auth, user, agent_history, OCR draft, etc.)
+    meldraAi.auth.logout();
     setUser(null);
     setLoginTime(null);
-    sessionStorage.clear(); // Clear all session data including DB connections
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('user');
-    
+
     // Redirect to login page
     navigate('/Login');
   };
@@ -127,9 +124,9 @@ export default function Layout({ children }) {
   // Handle browser close/refresh warning
   useEffect(() => {
     const handleBeforeUnload = (e) => {
-      // Only show warning if user has active session data
+      // Only show warning if user has active session data (sheet data, DB connection, etc.)
       const hasDbConnection = sessionStorage.getItem('db_connection');
-      const hasData = sessionStorage.getItem('uploaded_data') || hasDbConnection;
+      const hasData = sessionStorage.getItem('insightsheet_data') || hasDbConnection;
       
       if (hasData && user) {
         e.preventDefault();
@@ -196,13 +193,13 @@ export default function Layout({ children }) {
 
                   <Link
                     to={createPageUrl('AgenticAI')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-semibold ${
                       isActive(createPageUrl('AgenticAI'))
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105'
+                        : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
                     }`}
                   >
-                    <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : ''}`} />
+                    <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : 'text-blue-500'}`} />
                     <span>AI Assistant</span>
                   </Link>
 
@@ -401,13 +398,13 @@ export default function Layout({ children }) {
                   <Link
                     to={createPageUrl('AgenticAI')}
                     onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-semibold text-sm ${
                       isActive(createPageUrl('AgenticAI'))
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
+                        : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
-                    <Brain className="w-4 h-4" />
+                    <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : 'text-blue-500'}`} />
                     <span>AI Assistant</span>
                   </Link>
                   <Link

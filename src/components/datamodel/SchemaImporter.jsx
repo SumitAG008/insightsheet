@@ -418,7 +418,7 @@ export default function SchemaImporter({ onImport, open, onOpenChange, defaultDb
             <Button
               onClick={handleImport}
               disabled={!sqlContent.trim() || isProcessing}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              className="bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700"
             >
               {isProcessing ? (
                 <>

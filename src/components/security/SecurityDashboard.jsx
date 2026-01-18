@@ -140,7 +140,7 @@ export default function SecurityDashboard() {
                 variant="outline"
                 className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10"
                 onClick={() => {
-                  localStorage.removeItem('auth_token');
+                  meldraAi.auth.logout();
                   window.location.href = '/Login';
                 }}
               >

@@ -34,10 +34,9 @@ export default function ProtectedRoute({ children }) {
         setIsAuthenticated(false);
       }
     } catch {
-      // Not authenticated
+      // Not authenticated — clear all app data and token before redirect to login
+      backendApi.auth.logout();
       setIsAuthenticated(false);
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
     } finally {
       setLoading(false);
     }

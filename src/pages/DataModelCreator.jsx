@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Database, Download, Upload, Sparkles, Save, FileCode, Trash2, Plus, ChevronDown, FileText } from 'lucide-react';
+import { Database, Download, Upload, Sparkles, Save, FileCode, Trash2, Plus, ChevronDown, FileText, Plug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {

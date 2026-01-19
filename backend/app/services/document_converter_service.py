@@ -142,5 +142,45 @@ def pptx_to_pdf(pptx_bytes: bytes) -> Tuple[bytes, str]:
 
 
 def pdf_to_pptx(pdf_bytes: bytes) -> Tuple[bytes, str]:
-    """PDF to PPTX: not implemented in-service (needs pdf2image/poppler). Returns clear error."""
-    return b'', "PDF to PPT is not yet available. Use PDF to DOC or PPT to PDF."
+    """Convert PDF to .pptx: one slide per page, each page rendered as an image. Uses PyMuPDF and python-pptx."""
+    if not PPTX_AVAILABLE:
+        return b'', "PDF to PPT requires python-pptx"
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        return b'', "PDF to PPT requires PyMuPDF. Install: pip install PyMuPDF"
+    try:
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        if len(doc) == 0:
+            doc.close()
+            return b'', "PDF has no pages."
+        prs = Presentation()
+        # EMU: 914400 per inch (OOXML)
+        EMU_PER_INCH = 914400
+        slide_w_inch = prs.slide_width / EMU_PER_INCH
+        slide_h_inch = prs.slide_height / EMU_PER_INCH
+        from pptx.util import Inches
+
+        for i in range(len(doc)):
+            page = doc[i]
+            blank = prs.slide_layouts[6]  # Blank
+            slide = prs.slides.add_slide(blank)
+            pix = page.get_pixmap(dpi=150, alpha=False)
+            img_bytes = pix.tobytes("png")
+            stream = io.BytesIO(img_bytes)
+            img_w_inch = pix.width / 150.0
+            img_h_inch = pix.height / 150.0
+            scale = min(slide_w_inch / img_w_inch, slide_h_inch / img_h_inch) if img_w_inch and img_h_inch else 1.0
+            w = img_w_inch * scale
+            h = img_h_inch * scale
+            left = (slide_w_inch - w) / 2.0
+            top = (slide_h_inch - h) / 2.0
+            slide.shapes.add_picture(stream, Inches(left), Inches(top), width=Inches(w), height=Inches(h))
+        doc.close()
+        buf = io.BytesIO()
+        prs.save(buf)
+        buf.seek(0)
+        return buf.read(), ''
+    except Exception as e:
+        logger.exception("pdf_to_pptx failed")
+        return b'', str(e)

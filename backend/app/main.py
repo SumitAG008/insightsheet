@@ -1119,11 +1119,19 @@ async def convert_pdf_to_ppt(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """PDF to PPTX: not yet supported. Returns 400 with message."""
-    await file.read()  # consume to avoid connection issues
-    raise HTTPException(
-        status_code=400,
-        detail="PDF to PPT is not yet available. Use PDF to DOC or PPT to PDF.",
+    """Convert PDF to PPTX (one slide per page as image). In-app, no API key. File not stored."""
+    data, out_name, media = await _convert_endpoint(
+        file, current_user, db,
+        in_ext=[".pdf"],
+        out_ext=".pptx",
+        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        converter_fn=pdf_to_pptx,
+        processing_type="pdf_to_ppt",
+    )
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type=media,
+        headers={"Content-Disposition": f"attachment; filename={out_name}"},
     )
 
 

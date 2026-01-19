@@ -17,6 +17,7 @@ import SQLGenerator from '@/components/datamodel/SQLGenerator';
 import AISchemaAssistant from '@/components/datamodel/AISchemaAssistant';
 import SchemaImporter from '@/components/datamodel/SchemaImporter';
 import { meldraAi } from '@/api/meldraClient';
+import { backendApi } from '@/api/backendClient';
 import { jsonToSchema, xmlToSchema, autoConvertToSchema } from '@/utils/schemaConverter';
 
 export default function DataModelCreator() {
@@ -260,6 +261,79 @@ export default function DataModelCreator() {
     toast.success(`Schema imported: ${tableCount} table(s), ${columnCount} columns, ${relCount} relationships`);
   };
 
+  const handleImportFromDBConnect = async () => {
+    const raw = sessionStorage.getItem('db_connection');
+    if (!raw) {
+      toast.error('Connect to a database in DB Connect first, then try again.');
+      return;
+    }
+    let conn;
+    try {
+      conn = JSON.parse(raw);
+    } catch {
+      toast.error('Invalid DB Connect session. Reconnect in DB Connect and try again.');
+      return;
+    }
+    if (!conn.connectionId || !conn.dbType) {
+      toast.error('No active connection. Open DB Connect, run Test Connection, then try again.');
+      return;
+    }
+    try {
+      const res = await backendApi.db.getSchema(conn.connectionId, conn.dbType);
+      if (!res.success) {
+        toast.error(res.error || 'Failed to fetch schema');
+        return;
+      }
+      const rawTables = res.tables || [];
+      const rawRels = res.relationships || [];
+
+      const tables = rawTables.map((t, idx) => ({
+        id: `table_${Date.now()}_${idx}`,
+        name: t.name || `Table${idx + 1}`,
+        x: 100 + idx * 250,
+        y: 100 + idx * 200,
+        columns: (t.columns || []).map((c, ci) => ({
+          id: `col_${Date.now()}_${idx}_${ci}`,
+          name: c.name || `col_${ci}`,
+          type: String(c.type || 'TEXT').toUpperCase().replace(/^CHARACTER VARYING$/i, 'VARCHAR'),
+          primaryKey: !!c.primaryKey,
+          nullable: c.nullable !== false,
+          autoIncrement: false,
+          defaultValue: c.default || null
+        }))
+      }));
+
+      const nameToTable = Object.fromEntries(tables.map(t => [t.name, t]));
+      const relationships = [];
+      rawRels.forEach((r, i) => {
+        const fromT = nameToTable[r.fromTable];
+        const toT = nameToTable[r.toTable];
+        if (!fromT || !toT) return;
+        const fromCol = fromT.columns.find(c => c.name === r.fromColumn);
+        const toCol = toT.columns.find(c => c.name === r.toColumn);
+        if (fromCol && toCol) {
+          relationships.push({
+            id: `rel_${Date.now()}_${i}`,
+            fromTable: fromT.id,
+            fromColumn: fromCol.id,
+            toTable: toT.id,
+            toColumn: toCol.id
+          });
+        }
+      });
+
+      const importedSchema = {
+        name: 'Imported from DB Connect',
+        tables,
+        relationships
+      };
+      handleImportFromSQL(importedSchema, false);
+    } catch (err) {
+      console.error('Import from DB Connect:', err);
+      toast.error(err.message || 'Failed to import schema from DB Connect');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 p-4 md:p-8">
       <div className="max-w-[1600px] mx-auto">
@@ -299,6 +373,10 @@ export default function DataModelCreator() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-white dark:bg-slate-800 w-56">
+                  <DropdownMenuItem onClick={handleImportFromDBConnect}>
+                    <Plug className="w-4 h-4 mr-2" />
+                    From DB Connect
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('mysql'); setShowSchemaImporter(true); }}>
                     <FileCode className="w-4 h-4 mr-2" />
                     From MySQL

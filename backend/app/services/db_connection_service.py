@@ -161,6 +161,7 @@ class DatabaseConnectionService:
             conn_info["last_used"] = datetime.utcnow()
             
             tables = []
+            relationships = []
             
             if db_type == "postgresql":
                 cursor = conn.cursor()
@@ -215,6 +216,25 @@ class DatabaseConnectionService:
                         "columns": columns,
                         "rowCount": row_count
                     })
+                
+                # Foreign keys for relationships (Data Model Creator / Import from DB Connect)
+                cursor.execute("""
+                    SELECT
+                        kcu.table_name AS from_table,
+                        kcu.column_name AS from_column,
+                        ccu.table_name AS to_table,
+                        ccu.column_name AS to_column
+                    FROM information_schema.table_constraints tc
+                    JOIN information_schema.key_column_usage kcu
+                        ON tc.constraint_name = kcu.constraint_name AND tc.table_schema = kcu.table_schema
+                    JOIN information_schema.constraint_column_usage ccu
+                        ON tc.constraint_name = ccu.constraint_name AND tc.table_schema = ccu.table_schema
+                    WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_schema = 'public'
+                """)
+                relationships = [
+                    {"fromTable": r[0], "fromColumn": r[1], "toTable": r[2], "toColumn": r[3]}
+                    for r in cursor.fetchall()
+                ]
                 cursor.close()
                 
             elif db_type == "mysql":
@@ -355,6 +375,7 @@ class DatabaseConnectionService:
             return {
                 "success": True,
                 "tables": tables,
+                "relationships": relationships,
                 "schema": {"tables": tables}
             }
             

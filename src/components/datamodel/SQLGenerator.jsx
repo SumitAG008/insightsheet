@@ -21,6 +21,69 @@ const SQL_DIALECTS = [
   { value: 'oracle', label: 'Oracle' }
 ];
 
+function generateCreateTable(table, dialect) {
+  let sql = `CREATE TABLE ${table.name} (\n`;
+
+  const columnDefs = table.columns.map(col => {
+    let def = `  ${col.name} ${col.type}`;
+
+    if (col.primaryKey) {
+      def += ' PRIMARY KEY';
+    }
+
+    if (col.autoIncrement) {
+      if (dialect === 'postgresql') {
+        def = `  ${col.name} SERIAL`;
+        if (col.primaryKey) def += ' PRIMARY KEY';
+      } else if (dialect === 'mysql') {
+        def += ' AUTO_INCREMENT';
+      } else if (dialect === 'sqlite') {
+        def += ' AUTOINCREMENT';
+      } else if (dialect === 'mssql') {
+        def += ' IDENTITY(1,1)';
+      }
+    }
+
+    if (!col.nullable && !col.primaryKey) {
+      def += ' NOT NULL';
+    }
+
+    if (col.unique) {
+      def += ' UNIQUE';
+    }
+
+    if (col.defaultValue) {
+      if (col.type.includes('CHAR') || col.type.includes('TEXT')) {
+        def += ` DEFAULT '${col.defaultValue}'`;
+      } else {
+        def += ` DEFAULT ${col.defaultValue}`;
+      }
+    }
+
+    return def;
+  });
+
+  sql += columnDefs.join(',\n');
+  sql += '\n);\n';
+
+  return sql;
+}
+
+function generateForeignKey(rel, tables, dialect) {
+  const fromTable = tables.find(t => t.id === rel.fromTable);
+  const toTable = tables.find(t => t.id === rel.toTable);
+  const fromColumn = fromTable?.columns.find(c => c.id === rel.fromColumn);
+  const toColumn = toTable?.columns.find(c => c.id === rel.toColumn);
+
+  if (!fromTable || !toTable || !fromColumn || !toColumn) {
+    return '-- Invalid relationship\n';
+  }
+
+  const constraintName = `fk_${fromTable.name}_${toTable.name}_${fromColumn.name}`;
+
+  return `ALTER TABLE ${fromTable.name}\n  ADD CONSTRAINT ${constraintName}\n  FOREIGN KEY (${fromColumn.name})\n  REFERENCES ${toTable.name}(${toColumn.name});\n\n`;
+}
+
 export default function SQLGenerator({ schema }) {
   const [dialect, setDialect] = useState('postgresql');
   const [copied, setCopied] = useState(false);
@@ -34,13 +97,11 @@ export default function SQLGenerator({ schema }) {
     sql += `-- Generated on: ${new Date().toLocaleString()}\n`;
     sql += `-- Dialect: ${SQL_DIALECTS.find(d => d.value === dialect)?.label}\n\n`;
 
-    // Generate CREATE TABLE statements
     schema.tables.forEach((table, index) => {
       if (index > 0) sql += '\n';
       sql += generateCreateTable(table, dialect);
     });
 
-    // Generate ALTER TABLE statements for foreign keys
     if (schema.relationships && schema.relationships.length > 0) {
       sql += '\n-- Foreign Key Constraints\n\n';
       schema.relationships.forEach(rel => {
@@ -50,74 +111,6 @@ export default function SQLGenerator({ schema }) {
 
     return sql;
   }, [schema, dialect]);
-
-  const generateCreateTable = (table, dialect) => {
-    let sql = `CREATE TABLE ${table.name} (\n`;
-
-    const columnDefs = table.columns.map(col => {
-      let def = `  ${col.name} ${col.type}`;
-
-      // Primary Key
-      if (col.primaryKey) {
-        def += ' PRIMARY KEY';
-      }
-
-      // Auto Increment
-      if (col.autoIncrement) {
-        if (dialect === 'postgresql') {
-          def = `  ${col.name} SERIAL`;
-          if (col.primaryKey) def += ' PRIMARY KEY';
-        } else if (dialect === 'mysql') {
-          def += ' AUTO_INCREMENT';
-        } else if (dialect === 'sqlite') {
-          def += ' AUTOINCREMENT';
-        } else if (dialect === 'mssql') {
-          def += ' IDENTITY(1,1)';
-        }
-      }
-
-      // NOT NULL
-      if (!col.nullable && !col.primaryKey) {
-        def += ' NOT NULL';
-      }
-
-      // UNIQUE
-      if (col.unique) {
-        def += ' UNIQUE';
-      }
-
-      // DEFAULT
-      if (col.defaultValue) {
-        if (col.type.includes('CHAR') || col.type.includes('TEXT')) {
-          def += ` DEFAULT '${col.defaultValue}'`;
-        } else {
-          def += ` DEFAULT ${col.defaultValue}`;
-        }
-      }
-
-      return def;
-    });
-
-    sql += columnDefs.join(',\n');
-    sql += '\n);\n';
-
-    return sql;
-  };
-
-  const generateForeignKey = (rel, tables, dialect) => {
-    const fromTable = tables.find(t => t.id === rel.fromTable);
-    const toTable = tables.find(t => t.id === rel.toTable);
-    const fromColumn = fromTable?.columns.find(c => c.id === rel.fromColumn);
-    const toColumn = toTable?.columns.find(c => c.id === rel.toColumn);
-
-    if (!fromTable || !toTable || !fromColumn || !toColumn) {
-      return '-- Invalid relationship\n';
-    }
-
-    const constraintName = `fk_${fromTable.name}_${toTable.name}_${fromColumn.name}`;
-
-    return `ALTER TABLE ${fromTable.name}\n  ADD CONSTRAINT ${constraintName}\n  FOREIGN KEY (${fromColumn.name})\n  REFERENCES ${toTable.name}(${toColumn.name});\n\n`;
-  };
 
   const generateInsertStatements = () => {
     if (!schema.tables || schema.tables.length === 0) {

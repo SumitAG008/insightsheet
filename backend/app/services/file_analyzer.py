@@ -2,7 +2,10 @@
 File Analyzer Service
 AI-powered analysis of Excel files to understand structure, data, and insights
 """
+import math
+import warnings
 import pandas as pd
+import numpy as np
 import openpyxl
 import xlrd
 import io
@@ -14,6 +17,37 @@ import re
 from app.services.ai_service import invoke_llm
 
 logger = logging.getLogger(__name__)
+
+
+def _make_json_safe(obj: Any) -> Any:
+    """Replace nan/inf and numpy types so the result is JSON-serializable."""
+    if obj is None:
+        return None
+    if isinstance(obj, dict):
+        return {k: _make_json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_make_json_safe(v) for v in obj]
+    if isinstance(obj, (np.integer, np.int32, np.int64)):
+        return int(obj)
+    if isinstance(obj, (np.bool_,)):
+        return bool(obj)
+    if isinstance(obj, (np.floating, np.float32, np.float64)):
+        f = float(obj)
+        return None if not math.isfinite(f) else f
+    if isinstance(obj, float):
+        return None if not math.isfinite(obj) else obj
+    try:
+        if pd.isna(obj):
+            return None
+    except (TypeError, ValueError):
+        pass
+    # pandas Timestamp / datetime-like
+    if hasattr(obj, 'isoformat') and callable(getattr(obj, 'isoformat', None)):
+        try:
+            return obj.isoformat()
+        except Exception:
+            return str(obj)
+    return obj
 
 
 class FileAnalyzerService:
@@ -64,7 +98,7 @@ class FileAnalyzerService:
             # Generate overall summary
             overall_summary = await self._generate_overall_summary(analysis_results, filename)
 
-            return {
+            result = {
                 "filename": filename,
                 "file_type": file_ext.upper(),
                 "sheet_count": len(sheets_data),
@@ -72,6 +106,7 @@ class FileAnalyzerService:
                 "overall_summary": overall_summary,
                 "recommendations": self._generate_recommendations(analysis_results)
             }
+            return _make_json_safe(result)
 
         except Exception as e:
             logger.error(f"Error analyzing file: {str(e)}")
@@ -234,12 +269,14 @@ class FileAnalyzerService:
                 col_info['type'] = 'categorical'
                 categorical_columns.append(col)
 
-            # Check if date
+            # Check if date (suppress "Could not infer format" UserWarning from dateutil)
             try:
-                pd.to_datetime(df[col], errors='raise')
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    pd.to_datetime(df[col], errors='raise')
                 col_info['type'] = 'date'
                 date_columns.append(col)
-            except:
+            except Exception:
                 pass
 
             column_analysis.append(col_info)

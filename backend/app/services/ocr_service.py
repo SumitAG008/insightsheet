@@ -498,8 +498,8 @@ class OCRService:
         img = Image.open(io.BytesIO(data))
         iw, ih = img.size
 
-        # Resize: 1400px balances quality (readable small text) vs 55s on Railway. 1000px dropped too many fields.
-        max_dim = 1400
+        # Resize: 1200px to finish within 55s on Railway. 1400px timed out; 1000px dropped fields.
+        max_dim = 1200
         if max(iw, ih) > max_dim:
             ratio = max_dim / max(iw, ih)
             new_w, new_h = int(iw * ratio), int(ih * ratio)

@@ -10,6 +10,7 @@ import {
   Rocket, CheckCircle, Star, Layers, Workflow, 
   Eye, Globe, FileCheck, Target, Lightbulb, Mail
 } from 'lucide-react';
+import CookieConsent from '@/components/CookieConsent';
 
 export default function Landing() {
   return (
@@ -400,6 +401,8 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+
+      <CookieConsent privacyUrl="/Privacy" />
     </div>
   );
 }

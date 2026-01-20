@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 # Import local modules
-from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, init_db
+from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, init_db
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -317,11 +317,13 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
         user = authenticate_user(db, user_data.email, user_data.password)
 
         if not user:
-            # Log failed login
+            # Log failed login (IP + geo for security and compliance)
+            client_ip = _get_client_ip(request)
             login_history = LoginHistory(
                 user_email=user_data.email,
                 event_type="failed_login",
-                ip_address=request.client.host
+                ip_address=client_ip or None,
+                location=_resolve_geolocation(client_ip) if client_ip else None
             )
             db.add(login_history)
             db.commit()
@@ -348,11 +350,13 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
             expires_delta=access_token_expires
         )
 
-        # Log successful login
+        # Log successful login (IP + geo for security and compliance)
+        client_ip = _get_client_ip(request)
         login_history = LoginHistory(
             user_email=user.email,
             event_type="login",
-            ip_address=request.client.host
+            ip_address=client_ip or None,
+            location=_resolve_geolocation(client_ip) if client_ip else None
         )
         db.add(login_history)
         db.commit()
@@ -1657,16 +1661,19 @@ async def get_activity_history(
 @app.post("/api/login-history")
 async def create_login_history(
     login_data: dict,
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create login history entry"""
+    """Create login history entry. IP and location are always set server-side for security and compliance."""
     try:
+        client_ip = _get_client_ip(request)
+        loc = _resolve_geolocation(client_ip) if client_ip else login_data.get("location")
         login_history = LoginHistory(
             user_email=login_data.get("user_email", current_user["email"]),
             event_type=login_data.get("event_type", "login"),
-            ip_address=login_data.get("ip_address"),
-            location=login_data.get("location"),
+            ip_address=client_ip or None,
+            location=loc,
             browser=login_data.get("browser"),
             device=login_data.get("device"),
             session_duration=login_data.get("session_duration")
@@ -1681,6 +1688,25 @@ async def create_login_history(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create login history: {str(e)}"
         )
+
+
+class ConsentRequest(BaseModel):
+    accepted: bool
+
+
+@app.post("/api/consent")
+async def record_consent(body: ConsentRequest, request: Request, db: Session = Depends(get_db)):
+    """Record cookie consent (accept/reject) for compliance. No auth required."""
+    try:
+        client_ip = _get_client_ip(request)
+        ua = request.headers.get("user-agent") or ""
+        entry = ConsentLog(ip_address=client_ip or None, accepted=body.accepted, user_agent=ua[:500] if ua else None)
+        db.add(entry)
+        db.commit()
+        return {"ok": True}
+    except Exception as e:
+        logger.warning(f"Consent log error: {e}")
+        return {"ok": False}
 
 
 @app.get("/api/login-history")
@@ -1988,7 +2014,7 @@ _IP_LOOKUP_CACHE_MAX = 5000
 
 
 def _get_client_ip(request: Request) -> str:
-    """Resolve client IP from X-Forwarded-For, X-Real-IP, or request.client."""
+    """Resolve client IP from X-Forwarded-For, X-Real-IP, or request.client. Required for security and compliance."""
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -1998,6 +2024,30 @@ def _get_client_ip(request: Request) -> str:
     if request.client:
         return request.client.host or ""
     return ""
+
+
+def _resolve_geolocation(ip: str) -> Optional[str]:
+    """Resolve IP to 'City, Country' for security and compliance. Returns None on failure or for private IPs."""
+    if not ip or _is_private_ip(ip):
+        return None
+    try:
+        import requests
+        url = f"https://ipapi.co/{ip}/json/"
+        r = requests.get(url, timeout=2)
+        if r.ok:
+            j = r.json()
+            city = j.get("city") or ""
+            country = j.get("country_name") or j.get("country_code") or ""
+            if city or country:
+                return f"{city}, {country}".strip(", ")
+        if r.status_code == 429:
+            r2 = requests.get(f"http://ip-api.com/json/{ip}", timeout=2)
+            if r2.ok and r2.json().get("status") == "success":
+                j = r2.json()
+                return f"{j.get('city') or ''}, {j.get('country') or ''}".strip(", ")
+    except Exception:
+        pass
+    return None
 
 
 def _is_private_ip(ip: str) -> bool:

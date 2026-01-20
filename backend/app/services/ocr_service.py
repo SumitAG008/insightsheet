@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 try:
     import pytesseract
     from pytesseract import Output
-    from PIL import Image
+    from PIL import Image, ImageEnhance
     PYTESSERACT_AVAILABLE = True
 except ImportError:
     PYTESSERACT_AVAILABLE = False
@@ -52,7 +52,8 @@ FIELD_PLACEHOLDER = "________________"
 
 def _normalize_ocr_text(s: str) -> str:
     """
-    Fix common OCR mistakes: checkboxes [) [|] -> [ ], stray | -> I, border/garbage.
+    Fix common OCR mistakes: checkboxes [) [|] -> [ ], stray | -> I, border/garbage,
+    and common word errors (e.g. "Ltd" read as "d").
     """
     if not s or not isinstance(s, str):
         return s
@@ -62,6 +63,8 @@ def _normalize_ocr_text(s: str) -> str:
     s = re.sub(r'\[\s*[\)\|]\]?', '[ ]', s)
     # | at word start when followed by lowercase: "| confirm" -> "I confirm", ". | consent" -> ". I consent"
     s = re.sub(r'(\s|^)\|(\s*[a-z])', r'\1I\2', s)
+    # "Acme Logistics d" / "Company d" at end of word -> "Ltd" (common OCR misread)
+    s = re.sub(r'(\b\w{2,}) d\b', r'\1 Ltd', s)
     return s
 
 
@@ -113,17 +116,51 @@ def _is_label_line(text: str) -> bool:
 
 
 def _is_checkbox_line(text: str) -> Tuple[bool, int]:
-    """True if line is checkbox options like 'Full-time [ ] Part-time [ ] Contractor'. Returns (is_checkbox, n_options)."""
+    """True if line is checkbox options. Returns (is_checkbox, n_options). Kept for backward compat."""
+    ok, opts = _get_checkbox_options(text, False)
+    return (ok, len(opts))
+
+
+def _get_checkbox_options(text: str, prev_line_is_label: bool = False) -> Tuple[bool, List[str], Optional[str]]:
+    """
+    Detect checkbox lines and return (is_checkbox, options, label).
+    - "[ ] A [ ] B [ ] C" -> (True, [A, B, C], None)
+    - "Employment type: Contractor Full-time Part-time" -> (True, [Contractor, Full-time, Part-time], "Employment type:")
+    - "Contractor Full-time Part-time" when prev_line_is_label -> (True, [Contractor, Full-time, Part-time], None)
+    """
     if not text or not isinstance(text, str):
-        return False, 0
+        return False, [], None
     t = text.strip()
-    if '[ ]' not in t or len(t) > 120:
-        return False, 0
-    parts = [p.strip() for p in re.split(r'\s*\[\s*\]\s*', t) if p.strip()]
-    n = len(parts)
-    if 2 <= n <= 4 and all(len(p) < 30 for p in parts):
-        return True, n
-    return False, 0
+    if not t or len(t) > 150:
+        return False, [], None
+
+    # Explicit [ ] pattern: "A [ ] B [ ] C" or "[ ] A [ ] B"
+    if '[ ]' in t:
+        parts = [p.strip() for p in re.split(r'\s*\[\s*\]\s*', t) if p.strip()]
+        if 2 <= len(parts) <= 6 and all(len(p) < 35 for p in parts):
+            return True, parts, None
+
+    # ☐ (U+2610) or "O O O" style
+    if '\u2610' in t or '\u25A1' in t or re.search(r'\b[Oo]\s+[Oo]\s+[Oo]\b', t):
+        parts = [p.strip() for p in re.split(r'[\u2610\u25A1\s]+', t) if p.strip() and len(p) > 1]
+        if 2 <= len(parts) <= 6:
+            return True, parts, None
+
+    # "Employment type: Contractor Full-time Part-time" — label and options on one line
+    if ':' in t:
+        idx = t.index(':')
+        left, right = t[: idx + 1].strip(), t[idx + 1:].strip()
+        words = [w for w in right.split() if len(w) > 1 and not re.match(r'^[Oo\u2610\u25A1]+$', w)]
+        if 2 <= len(words) <= 5 and all(len(w) < 25 for w in words):
+            return True, words, left
+
+    # "Contractor Full-time Part-time" when previous line was a label (Employment type:)
+    if prev_line_is_label:
+        words = [w for w in t.split() if len(w) > 1 and not re.match(r'^[Oo\u2610\u25A1\[\]\)\(]+$', w)]
+        if 2 <= len(words) <= 5 and all(len(w) < 25 for w in words) and len(t) < 100:
+            return True, words, None
+
+    return False, [], None
 
 
 def _compute_section_boxes(
@@ -168,7 +205,7 @@ def _compute_section_boxes(
 
 def _detect_tables_from_words(
     words: List[Dict[str, Any]],
-    gap_px: int = 20,
+    gap_px: int = 28,
 ) -> List[Dict[str, Any]]:
     """
     Cluster words into rows by line_num, split into columns by horizontal gaps.
@@ -248,6 +285,11 @@ def _detect_tables_from_words(
             for r in table_rows:
                 while len(r) < max_cols:
                     r.append("")
+            # Replace OCR garbage in header row (e.g. "a", "a =" from misread table borders)
+            for j, c in enumerate(table_rows[0]):
+                cs = (c or "").strip()
+                if len(cs) <= 3 and re.match(r'^[a-zA-Z]\s*=?\s*$', cs):
+                    table_rows[0][j] = "—"
             # Bbox from first/last words
             all_ws = []
             for k in table_keys:
@@ -270,6 +312,7 @@ def _detect_tables_from_words(
         else:
             i += 1
 
+    tables.sort(key=lambda t: (t.get('top', 0), t.get('left', 0)))
     return tables
 
 
@@ -339,6 +382,14 @@ def _parse_form_like_text(text: str) -> List[Dict[str, Any]]:
             if opts:
                 blocks.append({"type": "checkbox", "options": opts})
                 i += 2  # skip next "O O O" line
+                continue
+
+        # --- Checkbox options on this line when previous line was a label (e.g. "Employment type:" -> "Contractor Full-time Part-time")
+        if i > 0 and (lines[i - 1] or '').strip().endswith(':') and not ln.endswith(':'):
+            words = [w for w in ln.split() if len(w) > 1 and not re.match(r'^[Oo\u2610\u25A1\[\]\)\(]+$', w)]
+            if 2 <= len(words) <= 5 and all(len(w) < 25 for w in words) and len(ln) < 100:
+                blocks.append({"type": "checkbox", "options": words})
+                i += 1
                 continue
 
         # --- Table: 2+ consecutive lines with same number of columns (2–8) when split by tab or 2+ spaces
@@ -446,9 +497,18 @@ class OCRService:
 
         if img.mode not in ('RGB', 'L'):
             img = img.convert('RGB')
+        # Preprocess: grayscale and slight contrast boost for better form/table OCR
+        if img.mode == 'RGB':
+            img = img.convert('L')
+        try:
+            enh = ImageEnhance.Contrast(img)
+            img = enh.enhance(1.25)
+        except Exception:
+            pass
 
         try:
-            d = pytesseract.image_to_data(img, lang='eng', config='--psm 6', output_type=Output.DICT)
+            # PSM 4 = single column of variable-sized text (helps forms with sections/tables)
+            d = pytesseract.image_to_data(img, lang='eng', config='--psm 4', output_type=Output.DICT)
         except pytesseract.TesseractNotFoundError:
             logger.error("Tesseract OCR is not installed or not in PATH.")
             raise RuntimeError(
@@ -501,9 +561,12 @@ class OCRService:
                 'block_num': key[0],
             })
 
+        # Top-to-bottom, left-to-right order for correct reading and export alignment
+        layout.sort(key=lambda ln: (ln.get('top', 0), ln.get('left', 0)))
+
         # Reconstruct text for backward compatibility (form mode / editing); use normalized
         text = '\n'.join(ln['text'] for ln in layout) if layout else _normalize_ocr_text(
-            pytesseract.image_to_string(img, lang='eng', config='--psm 6').strip()
+            pytesseract.image_to_string(img, lang='eng', config='--psm 4').strip()
         )
 
         return {
@@ -558,6 +621,9 @@ class OCRService:
                     return t
             return None
 
+        def _prev_is_label(prev: Optional[Dict]) -> bool:
+            return bool(prev and ((prev.get('text') or '').strip().endswith(':')))
+
         def _draw_table(t: Dict[str, Any]):
             rows = t.get('rows') or []
             if not rows:
@@ -588,7 +654,7 @@ class OCRService:
                 cy = page_h - (top_img + i * row_h) * scale
                 c.line(left, cy, left + w, cy)
 
-        for ln in layout:
+        for idx, ln in enumerate(layout):
             bnum = ln.get('block_num', 0)
             lnum = ln.get('line_num', 0)
             t = _find_table(bnum, lnum)
@@ -605,11 +671,12 @@ class OCRService:
             text = (ln.get('text') or '').strip()
             if not text:
                 continue
+            prev_ln = layout[idx - 1] if idx > 0 else None
             x_pt = left * scale
             y_pt = page_h - (top + height) * scale
-            font_size = max(6, min(14, height * scale))
+            font_size = max(8, min(14, height * scale * 0.7))
             c.setFont("Helvetica", font_size)
-            is_cb, n_cb = _is_checkbox_line(text)
+            is_cb, opts, label = _get_checkbox_options(text, _prev_is_label(prev_ln))
 
             if _is_section_header(text):
                 # Tight rectangular box around section header (same-to-same as uploaded form)
@@ -620,16 +687,18 @@ class OCRService:
                 rh = (height + 2 * pad) * scale
                 c.rect(rx, ry, rw, rh)
                 c.drawString(x_pt, y_pt, text[:500])
-            elif is_cb:
-                # Generic: [ ] Option1 [ ] Option2 [ ] Option3 — draw small box then label for each
-                parts = [p.strip() for p in re.split(r'\s*\[\s*\]\s*', text) if p.strip()]
+            elif is_cb and opts:
+                # Label (e.g. "Employment type:") + [ ] Option for each — preserves form alignment
                 sq, char_pt = 8, 5
                 cx = x_pt
-                for part in (parts or [text]):
+                if label:
+                    c.drawString(cx, y_pt, (label + " ")[:60])
+                    cx += max(50, (len(label) + 1) * char_pt)
+                for part in opts:
                     c.rect(cx, y_pt - 6, sq, sq)
                     cx += sq + 4
-                    c.drawString(cx, y_pt, part[:40])
-                    cx += max(len(part) * char_pt, 40) + 10
+                    c.drawString(cx, y_pt, (part or "")[:40])
+                    cx += max(len(part or "") * char_pt, 40) + 10
             elif _is_label_line(text):
                 c.drawString(x_pt, y_pt, text[:500])
                 # Generic: extend underline to right margin (exact match to any form's input line)
@@ -670,7 +739,7 @@ class OCRService:
             return None
 
         prev_bottom = 0
-        for ln in layout:
+        for idx, ln in enumerate(layout):
             bnum = ln.get('block_num', 0)
             lnum = ln.get('line_num', 0)
             t = _find_table(bnum, lnum)
@@ -691,6 +760,8 @@ class OCRService:
             text = (ln.get('text') or '').strip()
             if not text:
                 continue
+            prev_ln = layout[idx - 1] if idx > 0 else None
+            prev_is_label = bool(prev_ln and ((prev_ln.get('text') or '').strip().endswith(':')))
             left = ln.get('left', 0)
             top = ln.get('top', 0)
             width = ln.get('width', 0)
@@ -698,6 +769,8 @@ class OCRService:
             bottom = top + height
             gap = (top - prev_bottom) * scale if prev_bottom else top * scale
             gap_pt = Pt(max(0, min(gap, 72)))
+            font_pt = Pt(max(9, min(12, height * scale * 0.5)))
+            is_cb, opts, label = _get_checkbox_options(text, prev_is_label)
 
             if _is_section_header(text):
                 # Section header in a tight bordered box (one-cell table), same as uploaded form
@@ -705,6 +778,9 @@ class OCRService:
                 tbl.style = 'Table Grid'
                 tc = tbl.rows[0].cells[0]
                 tc.text = text
+                for run in tc.paragraphs[0].runs:
+                    run.font.size = font_pt
+                    run.font.name = 'Arial'
                 try:
                     tbl.columns[0].width = Pt(max(width + 12, 50) * scale)
                 except Exception:
@@ -724,25 +800,39 @@ class OCRService:
                         tblPr.append(ti)
                 except Exception:
                     pass
-            elif _is_checkbox_line(text)[0]:
-                # Checkbox line: use ☐ (U+2610) instead of [ ]
+            elif is_cb and opts:
+                # Checkbox: label (if any) + ☐ Option for each — preserves Employment type, Contractor, etc.
                 p = doc.add_paragraph()
-                display = re.sub(r'\s*\[\s*\]\s*', ' \u2610 ', text).strip()
-                p.add_run(display or text)
+                if label:
+                    r0 = p.add_run(label + " ")
+                    r0.font.size = font_pt
+                    r0.font.name = 'Arial'
+                for i, o in enumerate(opts or []):
+                    if i > 0:
+                        p.add_run("  ")
+                    p.add_run("\u2610 " + (o or ""))  # ☐ Option
+                for run in p.runs:
+                    run.font.size = font_pt
+                    run.font.name = 'Arial'
                 p.paragraph_format.left_indent = Pt(max(0, left * scale))
                 p.paragraph_format.space_before = gap_pt
             elif _is_label_line(text):
                 p = doc.add_paragraph()
-                p.add_run(text + " ")
-                # Generic: underline length from remaining width to right (exact match to any form)
+                r1 = p.add_run(text + " ")
+                r1.font.size = font_pt
+                r1.font.name = 'Arial'
                 n = max(24, min(80, int((image_width - left) * scale / 5)))
                 r = p.add_run("_" * n)
                 r.underline = True
+                r.font.size = font_pt
+                r.font.name = 'Arial'
                 p.paragraph_format.left_indent = Pt(max(0, left * scale))
                 p.paragraph_format.space_before = gap_pt
             else:
                 p = doc.add_paragraph()
-                p.add_run(text)
+                r = p.add_run(text)
+                r.font.size = font_pt
+                r.font.name = 'Arial'
                 p.paragraph_format.left_indent = Pt(max(0, left * scale))
                 p.paragraph_format.space_before = gap_pt
             prev_bottom = bottom

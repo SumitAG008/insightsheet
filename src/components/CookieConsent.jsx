@@ -1,9 +1,15 @@
-// Meldra-styled cookie consent (Amadeus-style positioning). Used on developer.meldra.ai / /developers.
+// Cookie consent banner. Tracks accept/reject via API for compliance.
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'meldra_cookie_consent';
+
+function getApiBase() {
+  if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined' && window.location?.hostname === 'localhost') return 'http://localhost:8001';
+  return null;
+}
 
 export default function CookieConsent({ privacyUrl, className }) {
   const [visible, setVisible] = useState(false);
@@ -14,7 +20,19 @@ export default function CookieConsent({ privacyUrl, className }) {
     } catch (_) { setVisible(false); }
   }, []);
 
+  const recordConsent = (accepted) => {
+    const api = getApiBase();
+    if (api) {
+      fetch(`${api}/api/consent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accepted }),
+      }).catch(() => {});
+    }
+  };
+
   const hide = (value) => {
+    recordConsent(value === 'accepted');
     try { window.localStorage.setItem(STORAGE_KEY, value); } catch (_) {}
     setVisible(false);
   };

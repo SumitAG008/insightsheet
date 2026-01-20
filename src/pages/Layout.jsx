@@ -19,6 +19,7 @@ import { LoginHistory } from '@/api/entities';
 import { getIPAndLocation, getBrowserInfo } from '@/components/tracking/ActivityLogger';
 import ActivityLogger from '@/components/tracking/ActivityLogger';
 import LogoutWarningModal from '@/components/common/LogoutWarningModal';
+import CookieConsent from '@/components/CookieConsent';
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -597,6 +598,9 @@ export default function Layout({ children, currentPageName }) {
         onCancel={() => setShowLogoutWarning(false)}
         onConfirm={handleLogoutConfirm}
       />
+
+      {/* Cookie consent — main app; tracks accept/reject for compliance */}
+      <CookieConsent privacyUrl={createPageUrl('Privacy')} />
     </div>
   );
 }

@@ -152,6 +152,17 @@ class FileProcessingHistory(Base):
     created_date = Column(DateTime, default=datetime.utcnow)
 
 
+class ConsentLog(Base):
+    """Cookie/consent decisions for compliance. No auth required to record."""
+    __tablename__ = "consent_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ip_address = Column(String(100), nullable=True)
+    accepted = Column(Boolean, nullable=False)
+    user_agent = Column(String(500), nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow)
+
+
 # Create all tables
 def init_db():
     """Initialize database tables and add missing columns"""

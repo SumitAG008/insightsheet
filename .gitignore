@@ -22,3 +22,6 @@ build/
 
 # OS
 .DS_Store
+
+# Local planning (do not push; new features only for testing)
+AI_ML_EXPANSION_ROADMAP.md

@@ -1,7 +1,7 @@
 // components/dashboard/CleaningTools.jsx - ML-aware cleaning (outliers, fill missing)
 import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Wand2, Trash, Type, CheckCircle, TrendingDown, Fill } from 'lucide-react';
+import { Wand2, Trash, Type, CheckCircle, TrendingDown, PaintBucket } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { dedupe, trim, inferTypes, removeOutliers, fillMissing } from '@/lib/dataCleaning';
@@ -186,7 +186,7 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
               size="sm"
               className="bg-slate-700 hover:bg-slate-600 text-white"
             >
-              <Fill className="w-4 h-4 mr-1" />
+              <PaintBucket className="w-4 h-4 mr-1" />
               Fill missing
             </Button>
           </div>

@@ -876,6 +876,12 @@ class OCRExportRequest(BaseModel):
     text: str
     format: str  # "doc" or "pdf"
     title: Optional[str] = "OCR Document"
+    # Layout mode: same positions as the original image (exactly editable)
+    layout: Optional[list] = None
+    image_width: Optional[int] = None
+    image_height: Optional[int] = None
+    tables: Optional[list] = None  # from extract for real table grids
+    mode: Optional[str] = "form"  # "form" = flow/structure; "layout" = match image positions
 
 
 @app.post("/api/files/ocr-extract")
@@ -911,7 +917,7 @@ async def ocr_extract(
             )
 
         ocr = OCRService()
-        text = ocr.extract_text(io.BytesIO(file_content))
+        out = ocr.extract_with_layout(io.BytesIO(file_content))
 
         processing_history = FileProcessingHistory(
             user_email=current_user["email"],
@@ -924,7 +930,13 @@ async def ocr_extract(
         db.commit()
         logger.info(f"OCR extract: {file.filename} by {current_user['email']}")
 
-        return {"text": text}
+        return {
+            "text": out["text"],
+            "layout": out.get("layout"),
+            "image_width": out.get("image_width"),
+            "image_height": out.get("image_height"),
+            "tables": out.get("tables"),
+        }
     except HTTPException:
         raise
     except RuntimeError as e:
@@ -961,13 +973,29 @@ async def ocr_export(
 
         ocr = OCRService()
         title = (body.title or "OCR Document").strip() or "OCR Document"
+        use_layout = (
+            (body.mode or "form") == "layout"
+            and body.layout is not None
+            and (body.image_width or 0) > 0
+            and (body.image_height or 0) > 0
+        )
 
         if body.format == "doc":
-            data = ocr.text_to_docx(body.text, title=title)
+            if use_layout:
+                data = ocr.text_to_docx_layout(
+                    body.layout, body.image_width, body.image_height, title=title, tables=body.tables
+                )
+            else:
+                data = ocr.text_to_docx(body.text, title=title)
             media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            filename = f"ocr_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.docx"
+            filename = f"ocr_export_{datetime.utcnow().strftime('%Y%m%d_%H%m%S')}.docx"
         else:
-            data = ocr.text_to_pdf(body.text, title=title)
+            if use_layout:
+                data = ocr.text_to_pdf_layout(
+                    body.layout, body.image_width, body.image_height, title=title, tables=body.tables
+                )
+            else:
+                data = ocr.text_to_pdf(body.text, title=title)
             media = "application/pdf"
             filename = f"ocr_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
 
@@ -1004,6 +1032,18 @@ async def ocr_export(
 _MAX_CONVERT_MB = 25  # max file size for convert endpoints (free); premium uses 100
 
 
+def _ascii_safe_filename(s: str) -> str:
+    """Make a string safe for Content-Disposition filename= (HTTP headers must be latin-1)."""
+    if not s or not s.strip():
+        return "file"
+    for old, new in (
+        ("\u2013", "-"), ("\u2014", "-"), ("\u2011", "-"), ("\u00A0", " "),
+        ("\u2018", "'"), ("\u2019", "'"), ("\u201C", '"'), ("\u201D", '"'),
+    ):
+        s = s.replace(old, new)
+    return "".join(c if ord(c) < 128 else "_" for c in s)
+
+
 async def _convert_endpoint(
     file: UploadFile,
     current_user: dict,
@@ -1033,6 +1073,7 @@ async def _convert_endpoint(
         raise HTTPException(status_code=400, detail=err)
 
     base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
+    base = _ascii_safe_filename(base)
     out_name = f"{base}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}{out_ext}"
     rec = FileProcessingHistory(
         user_email=current_user["email"],
@@ -1188,12 +1229,13 @@ async def excel_to_ppt(
 
         logger.info(f"Excel to PPT conversion: {file.filename} by {current_user['email']}")
 
+        base = _ascii_safe_filename(file.filename.replace(".xlsx", "").replace(".xls", ""))
         # Return file as download
         return StreamingResponse(
             io.BytesIO(ppt_data),
             media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
             headers={
-                "Content-Disposition": f"attachment; filename={file.filename.replace('.xlsx', '').replace('.xls', '')}_presentation.pptx"
+                "Content-Disposition": f"attachment; filename={base}_presentation.pptx"
             }
         )
 
@@ -1414,7 +1456,9 @@ async def process_zip(
         logger.info(f"ZIP processing: {file.filename} by {current_user['email']}")
 
         # Generate filename: original_name_timestamp.zip (IMMEDIATE DOWNLOAD, NO STORAGE)
-        original_name = file.filename.replace('.zip', '').replace('.ZIP', '').replace(' ', '_')
+        original_name = _ascii_safe_filename(
+            file.filename.replace(".zip", "").replace(".ZIP", "").replace(" ", "_")
+        )
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]  # YYYYMMDD_HHMMSS_mmm
         output_filename = f"{original_name}_{timestamp}.zip"
         

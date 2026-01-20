@@ -1,43 +1,83 @@
 """
 OCR Service for InsightSheet-lite / Meldra
 Extracts text from images (JPG, PNG, WebP, BMP, TIFF, GIF) and exports to editable DOC or PDF.
-Form-aware: preserves sections, label/field lines, tables, and checkboxes so output looks like
-the original form and is editable (fill-in underlines, tables, checkbox placeholders).
+- Form mode: form-like structure (sections, labels, tables, checkboxes) in document flow.
+- Layout mode: places text at original (x,y) so output matches the image layout (exactly editable).
 """
 import io
 import re
 import logging
-from typing import Union, BinaryIO, List, Dict, Any
+from typing import Union, BinaryIO, List, Dict, Any, Tuple, Optional
 
 logger = logging.getLogger(__name__)
 
 # Optional imports - fail gracefully if not available
 try:
     import pytesseract
+    from pytesseract import Output
     from PIL import Image
     PYTESSERACT_AVAILABLE = True
 except ImportError:
     PYTESSERACT_AVAILABLE = False
+    Output = None
 
 try:
     from docx import Document
+    from docx.shared import Pt
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
+    Pt = None
 
 try:
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table as RlTable, TableStyle
+    from reportlab.pdfgen import canvas as pdf_canvas
     from reportlab.lib import colors
     from reportlab.lib.units import inch
     REPORTLAB_AVAILABLE = True
 except ImportError:
     REPORTLAB_AVAILABLE = False
+    pdf_canvas = None
 
 
 # Placeholder for fillable "field" so user can type over it in Word/PDF
 FIELD_PLACEHOLDER = "________________"
+
+
+def _normalize_ocr_text(s: str) -> str:
+    """
+    Fix common OCR mistakes: checkboxes [) [|] -> [ ], stray | -> I, border/garbage.
+    """
+    if not s or not isinstance(s, str):
+        return s
+    # [| confirm / [| consent -> I confirm / I consent
+    s = re.sub(r'\[\s*\|(\s+[a-z])', r'I\1', s)
+    # [) [|] [ )] etc (checkbox misreads) -> [ ] (do not consume trailing space)
+    s = re.sub(r'\[\s*[\)\|]\]?', '[ ]', s)
+    # | at word start when followed by lowercase: "| confirm" -> "I confirm", ". | consent" -> ". I consent"
+    s = re.sub(r'(\s|^)\|(\s*[a-z])', r'\1I\2', s)
+    return s
+
+
+def _is_border_or_noise(s: str) -> bool:
+    """True if the line is likely a table border, rule, or OCR garbage (e.g. "a a -----", "|")."""
+    if not s or not isinstance(s, str):
+        return True
+    t = s.strip()
+    if not t:
+        return True
+    # Mostly dashes, pipes, dots, underscores, equals
+    if re.match(r'^[\s\-=\|\.\*#_]+$', t):
+        return True
+    # Very short non-word
+    if len(t) <= 4 and not re.search(r'[a-zA-Z]{2,}', t):
+        return True
+    # Lines that are mostly dashes/equals with no real words (e.g. "a a -----", table borders)
+    if re.search(r'[-=]{3,}', t) and not re.search(r'[a-zA-Z]{2,}', t):
+        return True
+    return False
 
 
 def _split_into_columns(line: str) -> List[str]:
@@ -47,13 +87,125 @@ def _split_into_columns(line: str) -> List[str]:
     return [c.strip() for c in re.split(r'  +', line) if c.strip()]
 
 
+def _detect_tables_from_words(
+    words: List[Dict[str, Any]],
+    gap_px: int = 20,
+) -> List[Dict[str, Any]]:
+    """
+    Cluster words into rows by line_num, split into columns by horizontal gaps.
+    Returns: [{ "rows": [[c1,c2,...],...], "block_num", "line_start", "line_end", "left", "top", "width", "height" }]
+    """
+    if not words:
+        return []
+
+    # Group by (block_num, line_num), sort
+    by_line: Dict[Tuple[int, int], List[Dict]] = {}
+    for w in words:
+        key = (w.get('block_num', 0), w.get('line_num', 0))
+        by_line.setdefault(key, []).append(w)
+
+    tables: List[Dict[str, Any]] = []
+    sorted_keys = sorted(by_line.keys())
+    i = 0
+    while i < len(sorted_keys):
+        key = sorted_keys[i]
+        line_words = sorted(by_line[key], key=lambda w: w.get('left', 0))
+        block_num, line_num = key
+
+        # Column boundaries: gap > gap_px
+        cells: List[str] = []
+        curr: List[str] = []
+        prev_right = -1000
+        for w in line_words:
+            left = w.get('left', 0)
+            width = w.get('width', 0)
+            txt = (w.get('text') or '').strip()
+            if left - prev_right > gap_px and curr:
+                cells.append(_normalize_ocr_text(' '.join(curr)))
+                curr = []
+            curr.append(txt)
+            prev_right = left + width
+        if curr:
+            cells.append(_normalize_ocr_text(' '.join(curr)))
+
+        # Need 2+ columns to be a table row
+        if len(cells) < 2:
+            i += 1
+            continue
+
+        table_rows = [cells]
+        table_keys = [key]
+        j = i + 1
+        while j < len(sorted_keys):
+            nkey = sorted_keys[j]
+            nblock, nline = nkey
+            nwords = sorted(by_line[nkey], key=lambda w: w.get('left', 0))
+            ncells = []
+            ncurr = []
+            npr = -1000
+            for w in nwords:
+                left = w.get('left', 0)
+                width = w.get('width', 0)
+                txt = (w.get('text') or '').strip()
+                if left - npr > gap_px and ncurr:
+                    ncells.append(_normalize_ocr_text(' '.join(ncurr)))
+                    ncurr = []
+                ncurr.append(txt)
+                npr = left + width
+            if ncurr:
+                ncells.append(_normalize_ocr_text(' '.join(ncurr)))
+
+            if len(ncells) < 2:
+                break
+            if abs(len(ncells) - len(cells)) > 1:
+                break
+            table_rows.append(ncells)
+            table_keys.append(nkey)
+            j += 1
+
+        if len(table_rows) >= 2:
+            # Normalize row lengths
+            max_cols = max(len(r) for r in table_rows)
+            for r in table_rows:
+                while len(r) < max_cols:
+                    r.append("")
+            # Bbox from first/last words
+            all_ws = []
+            for k in table_keys:
+                all_ws.extend(by_line[k])
+            left = min(w.get('left', 0) for w in all_ws)
+            top = min(w.get('top', 0) for w in all_ws)
+            right = max(w.get('left', 0) + w.get('width', 0) for w in all_ws)
+            bottom = max(w.get('top', 0) + w.get('height', 0) for w in all_ws)
+            tables.append({
+                "rows": table_rows,
+                "block_num": block_num,
+                "line_start": line_num,
+                "line_end": table_keys[-1][1],
+                "left": left,
+                "top": top,
+                "width": max(1, right - left),
+                "height": max(1, bottom - top),
+            })
+            i = j
+        else:
+            i += 1
+
+    return tables
+
+
 def _parse_form_like_text(text: str) -> List[Dict[str, Any]]:
     """
     Parse OCR text into structure: section, label (with optional fill line), table, checkbox, paragraph.
-    Produces a list of blocks that text_to_docx and text_to_pdf can render in a form-like way.
+    Normalizes OCR noise ([) -> [ ], | -> I) and drops border/garbage lines.
     """
     blocks: List[Dict[str, Any]] = []
-    lines = [ln.rstrip() for ln in text.splitlines()]
+    raw = [ln.rstrip() for ln in text.splitlines()]
+    lines = []
+    for ln in raw:
+        n = _normalize_ocr_text(ln)
+        if not _is_border_or_noise(n):
+            lines.append(n)
 
     i = 0
     while i < len(lines):
@@ -200,6 +352,247 @@ class OCRService:
         except Exception as e:
             logger.error(f"OCR extraction error: {e}")
             raise
+
+    def extract_with_layout(self, image_data: Union[bytes, BinaryIO]) -> Dict[str, Any]:
+        """
+        Run OCR and return text plus per-line bounding boxes so export can preserve layout.
+        Returns: { "text": str, "layout": [{"text", "left", "top", "width", "height"}], "image_width": int, "image_height": int }
+        """
+        if not PYTESSERACT_AVAILABLE:
+            raise RuntimeError("pytesseract or Pillow not installed.")
+
+        data = image_data.read() if hasattr(image_data, 'read') else image_data
+        img = Image.open(io.BytesIO(data))
+        iw, ih = img.size
+
+        if img.mode not in ('RGB', 'L'):
+            img = img.convert('RGB')
+
+        try:
+            d = pytesseract.image_to_data(img, lang='eng', config='--psm 6', output_type=Output.DICT)
+        except pytesseract.TesseractNotFoundError:
+            logger.error("Tesseract OCR is not installed or not in PATH.")
+            raise RuntimeError(
+                "Tesseract OCR is not installed. Please install Tesseract: "
+                "https://github.com/tesseract-ocr/tesseract"
+            )
+
+        n = len(d['text'])
+        words: List[Dict[str, Any]] = []
+        lines_map: Dict[Tuple[int, int], Dict[str, Any]] = {}
+
+        for i in range(n):
+            t = (d['text'][i] or '').strip()
+            if not t:
+                continue
+            key = (d['block_num'][i], d['line_num'][i])
+            words.append({
+                'text': t, 'left': d['left'][i], 'top': d['top'][i],
+                'width': d['width'][i], 'height': d['height'][i],
+                'line_num': d['line_num'][i], 'block_num': d['block_num'][i],
+            })
+            if key not in lines_map:
+                lines_map[key] = {'texts': [], 'left': [], 'top': [], 'width': [], 'height': []}
+            lines_map[key]['texts'].append(t)
+            lines_map[key]['left'].append(d['left'][i])
+            lines_map[key]['top'].append(d['top'][i])
+            lines_map[key]['width'].append(d['width'][i])
+            lines_map[key]['height'].append(d['height'][i])
+
+        tables = _detect_tables_from_words(words)
+
+        layout = []
+        for key in sorted(lines_map.keys()):
+            arr = lines_map[key]
+            raw_text = ' '.join(arr['texts'])
+            text = _normalize_ocr_text(raw_text)
+            if _is_border_or_noise(text):
+                continue
+            left = min(arr['left'])
+            top = min(arr['top'])
+            right = max(l + w for l, w in zip(arr['left'], arr['width']))
+            bottom = max(t + h for t, h in zip(arr['top'], arr['height']))
+            layout.append({
+                'text': text,
+                'left': int(left),
+                'top': int(top),
+                'width': int(right - left),
+                'height': int(bottom - top),
+                'line_num': key[1],
+                'block_num': key[0],
+            })
+
+        # Reconstruct text for backward compatibility (form mode / editing); use normalized
+        text = '\n'.join(ln['text'] for ln in layout) if layout else _normalize_ocr_text(
+            pytesseract.image_to_string(img, lang='eng', config='--psm 6').strip()
+        )
+
+        return {
+            'text': text,
+            'layout': layout,
+            'image_width': iw,
+            'image_height': ih,
+            'tables': tables,
+        }
+
+    def _layout_to_page_scale(self, image_width: int, image_height: int) -> Tuple[float, float, float, float]:
+        """Fit image to letter; return (scale, page_w_pt, page_h_pt, _). scale keeps aspect."""
+        pw, ph = letter
+        if not image_width or not image_height:
+            return 1.0, float(pw), float(ph), 1.0
+        scale_x = pw / image_width
+        scale_y = ph / image_height
+        scale = min(scale_x, scale_y)
+        return scale, image_width * scale, image_height * scale, scale
+
+    def text_to_pdf_layout(
+        self,
+        layout: List[Dict[str, Any]],
+        image_width: int,
+        image_height: int,
+        title: str = "OCR Document",
+        tables: Optional[List[Dict[str, Any]]] = None,
+    ) -> bytes:
+        """
+        PDF with text placed at original (x,y). Tables are drawn as grids with cell text.
+        """
+        if not REPORTLAB_AVAILABLE or pdf_canvas is None:
+            raise RuntimeError("reportlab is not installed. Install: pip install reportlab")
+
+        scale, page_w, page_h, _ = self._layout_to_page_scale(image_width, image_height)
+        buf = io.BytesIO()
+        c = pdf_canvas.Canvas(buf, pagesize=(page_w, page_h))
+        c.setTitle(title or "OCR Document")
+        tables = tables or []
+        drawn = set()  # (block_num, line_start)
+
+        def _find_table(bnum: int, lnum: int):
+            for t in tables:
+                if t.get('block_num') == bnum and t.get('line_start', 0) <= lnum <= t.get('line_end', 0):
+                    return t
+            return None
+
+        def _draw_table(t: Dict[str, Any]):
+            rows = t.get('rows') or []
+            if not rows:
+                return
+            nr, nc = len(rows), max(len(r) for r in rows) if rows else 0
+            if nc == 0:
+                return
+            left = t.get('left', 0) * scale
+            top_img = t.get('top', 0)
+            w = max(1, t.get('width', 1)) * scale
+            h = max(1, t.get('height', 1)) * scale
+            row_h = h / nr
+            col_w = w / nc
+            # PDF y: image top is at page_h - top_img*scale; bottom of table is at page_h - (top_img+h)*scale
+            for ri, row in enumerate(rows):
+                for cj, cell in enumerate(row):
+                    if cj >= nc:
+                        break
+                    x = left + cj * col_w + 2
+                    y_bottom = page_h - (top_img + (ri + 1) * row_h) * scale
+                    c.setFont("Helvetica", max(6, min(10, row_h * 0.6)))
+                    c.drawString(x, y_bottom, (str(cell) or "")[:80])
+            # Grid
+            for i in range(nc + 1):
+                cx = left + i * col_w
+                c.line(cx, page_h - (top_img + h) * scale, cx, page_h - top_img * scale)
+            for i in range(nr + 1):
+                cy = page_h - (top_img + i * row_h) * scale
+                c.line(left, cy, left + w, cy)
+
+        for ln in layout:
+            bnum = ln.get('block_num', 0)
+            lnum = ln.get('line_num', 0)
+            t = _find_table(bnum, lnum)
+            if t:
+                key = (t.get('block_num', 0), t.get('line_start', 0))
+                if key not in drawn:
+                    _draw_table(t)
+                    drawn.add(key)
+                continue
+            left = ln.get('left', 0)
+            top = ln.get('top', 0)
+            width = ln.get('width', 0)
+            height = ln.get('height', 12)
+            text = (ln.get('text') or '').strip()
+            if not text:
+                continue
+            x_pt = left * scale
+            y_pt = page_h - (top + height) * scale
+            font_size = max(6, min(14, height * scale))
+            c.setFont("Helvetica", font_size)
+            c.drawString(x_pt, y_pt, text[:500])
+
+        c.save()
+        buf.seek(0)
+        return buf.read()
+
+    def text_to_docx_layout(
+        self,
+        layout: List[Dict[str, Any]],
+        image_width: int,
+        image_height: int,
+        title: str = "OCR Document",
+        tables: Optional[List[Dict[str, Any]]] = None,
+    ) -> bytes:
+        """
+        DOCX that approximates original positions. Tables are added as real Word tables.
+        """
+        if not DOCX_AVAILABLE or Pt is None:
+            raise RuntimeError("python-docx is not installed. Install: pip install python-docx")
+
+        scale, page_w, page_h, _ = self._layout_to_page_scale(image_width, image_height)
+        doc = Document()
+        doc.add_heading(title or "OCR Document", level=0)
+
+        tables = tables or []
+        drawn = set()
+
+        def _find_table(bnum: int, lnum: int):
+            for t in tables:
+                if t.get('block_num') == bnum and t.get('line_start', 0) <= lnum <= t.get('line_end', 0):
+                    return t
+            return None
+
+        prev_bottom = 0
+        for ln in layout:
+            bnum = ln.get('block_num', 0)
+            lnum = ln.get('line_num', 0)
+            t = _find_table(bnum, lnum)
+            if t:
+                key = (t.get('block_num', 0), t.get('line_start', 0))
+                if key not in drawn:
+                    rows = t.get('rows') or []
+                    if rows:
+                        nc = max(len(r) for r in rows)
+                        tbl = doc.add_table(rows=len(rows), cols=nc)
+                        tbl.style = 'Table Grid'
+                        for ri, row in enumerate(rows):
+                            for cj, cell in enumerate(row):
+                                if cj < nc:
+                                    tbl.rows[ri].cells[cj].text = (str(cell) or "").strip()
+                    drawn.add(key)
+                continue
+            text = (ln.get('text') or '').strip()
+            if not text:
+                continue
+            left = ln.get('left', 0)
+            top = ln.get('top', 0)
+            height = ln.get('height', 12)
+            bottom = top + height
+
+            p = doc.add_paragraph(text)
+            p.paragraph_format.left_indent = Pt(max(0, left * scale))
+            gap = (top - prev_bottom) * scale if prev_bottom else top * scale
+            p.paragraph_format.space_before = Pt(max(0, min(gap, 72)))
+            prev_bottom = bottom
+
+        buf = io.BytesIO()
+        doc.save(buf)
+        buf.seek(0)
+        return buf.read()
 
     def text_to_docx(self, text: str, title: str = "OCR Document") -> bytes:
         """

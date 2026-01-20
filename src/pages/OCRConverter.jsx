@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { generateDownloadFilename, downloadBlob } from '@/utils/fileNaming';
 import {
   ScanLine, FileText, Upload, Loader2, CheckCircle, AlertCircle,
@@ -19,6 +21,11 @@ export default function OCRConverter() {
   const [extracting, setExtracting] = useState(false);
   const [ocrDone, setOcrDone] = useState(false);
   const [text, setText] = useState('');
+  const [layout, setLayout] = useState(null);
+  const [imageWidth, setImageWidth] = useState(null);
+  const [imageHeight, setImageHeight] = useState(null);
+  const [tables, setTables] = useState(null);
+  const [exportMode, setExportMode] = useState('layout'); // 'form' | 'layout' — layout = match image positions
   const [exporting, setExporting] = useState(null); // 'doc' | 'pdf' | null
   const [error, setError] = useState('');
   const [user, setUser] = useState(null);
@@ -69,6 +76,10 @@ export default function OCRConverter() {
     setFile(f);
     setError('');
     setText('');
+    setLayout(null);
+    setImageWidth(null);
+    setImageHeight(null);
+    setTables(null);
     setOcrDone(false);
   };
 
@@ -77,8 +88,12 @@ export default function OCRConverter() {
     setExtracting(true);
     setError('');
     try {
-      const { text: extracted } = await backendApi.files.ocrExtract(file);
-      setText(extracted ?? '');
+      const res = await backendApi.files.ocrExtract(file);
+      setText(res.text ?? '');
+      setLayout(res.layout ?? null);
+      setImageWidth(res.image_width ?? null);
+      setImageHeight(res.image_height ?? null);
+      setTables(res.tables ?? null);
       setOcrDone(true);
     } catch (err) {
       setError(err.message || 'OCR extraction failed. Ensure the backend has Tesseract installed.');
@@ -97,11 +112,19 @@ export default function OCRConverter() {
     setExporting(format);
     setError('');
     try {
-      const blob = await backendApi.files.ocrExport({
+      const payload = {
         text,
         format,
         title: (file?.name || 'OCR').replace(/\.[^/.]+$/, '') || 'OCR Document',
-      });
+      };
+      if (exportMode === 'layout' && layout && imageWidth && imageHeight) {
+        payload.layout = layout;
+        payload.image_width = imageWidth;
+        payload.image_height = imageHeight;
+        if (tables) payload.tables = tables;
+        payload.mode = 'layout';
+      }
+      const blob = await backendApi.files.ocrExport(payload);
       const ext = format === 'doc' ? '.docx' : '.pdf';
       const name = generateDownloadFilename(file?.name || 'image', ext);
       downloadBlob(blob, name);
@@ -115,6 +138,10 @@ export default function OCRConverter() {
   const handleReset = () => {
     setFile(null);
     setText('');
+    setLayout(null);
+    setImageWidth(null);
+    setImageHeight(null);
+    setTables(null);
     setOcrDone(false);
     setError('');
     sessionStorage.removeItem(SAVE_KEY);
@@ -161,7 +188,7 @@ export default function OCRConverter() {
             </strong>
             <br />
             <span className="text-sm text-slate-900 dark:text-slate-200 font-bold">
-              JPG, PNG, WebP, BMP, TIFF, GIF supported. Edit the extracted text, then export to DOC or PDF. Export keeps form structure: sections, fill-in lines, tables, and checkboxes so you can complete the form in Word or PDF.
+              JPG, PNG, WebP, BMP, TIFF, GIF supported. Edit the extracted text, then export to DOC or PDF. <strong>Layout</strong>: places text at the same positions as the image (exactly editable). <strong>Form</strong>: sections, fill-in lines, tables, and checkboxes.
             </span>
           </AlertDescription>
         </Alert>
@@ -233,6 +260,23 @@ export default function OCRConverter() {
               placeholder="Extracted text will appear here. You can edit and fill in any corrections."
               className="min-h-[220px] mb-4 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
             />
+            <div className="flex flex-wrap items-center gap-4 mb-4">
+              <div className="flex items-center gap-2">
+                <Label htmlFor="export-mode" className="text-slate-200 text-sm font-medium shrink-0">Export as</Label>
+                <Select value={exportMode} onValueChange={setExportMode}>
+                  <SelectTrigger id="export-mode" className="w-[220px] bg-slate-800/50 border-slate-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="layout">Layout (match image)</SelectItem>
+                    <SelectItem value="form">Form (sections, tables, fields)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <span className="text-slate-400 text-sm">
+                {exportMode === 'layout' ? 'Positions match the original image.' : 'Flow structure: sections, labels, tables.'}
+              </span>
+            </div>
             <div className="flex flex-wrap gap-2">
               <Button
                 onClick={handleSave}

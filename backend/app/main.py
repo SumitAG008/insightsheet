@@ -10,6 +10,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Dict, Any, List
 from datetime import timedelta, datetime
 import asyncio
+import io
 import os
 import logging
 from logging.handlers import RotatingFileHandler
@@ -37,12 +38,17 @@ from app.services.ai_service import (
 )
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
-from app.services.ocr_service import OCRService
+from app.services.ocr_service import (
+    OCRService,
+    OCR_SPACE_MAX_BYTES,
+    extract_with_layout_ocrspace,
+)
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
 from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email
 from app.services.db_connection_service import DatabaseConnectionService
 from app.services.document_converter_service import pdf_to_docx, docx_to_pdf, pptx_to_pdf, pdf_to_pptx
+from PIL import Image
 
 load_dotenv()
 
@@ -977,17 +983,31 @@ async def ocr_extract(
                 detail=f"Invalid file type. Allowed: {', '.join(OCRService.ALLOWED_IMAGE_EXTENSIONS)}"
             )
 
-        ocr = OCRService()
-        try:
-            out = await asyncio.wait_for(
-                asyncio.to_thread(ocr.extract_with_layout, io.BytesIO(file_content)),
-                55.0
-            )
-        except asyncio.TimeoutError:
-            raise HTTPException(
-                status_code=503,
-                detail="OCR is taking too long. Try a smaller or simpler image, or try again later."
-            )
+        out = None
+        api_key = (os.getenv("OCR_SPACE_API_KEY") or "").strip()
+        if api_key and len(file_content) <= OCR_SPACE_MAX_BYTES:
+            try:
+                img = Image.open(io.BytesIO(file_content))
+                iw, ih = img.size
+                out = await extract_with_layout_ocrspace(
+                    api_key, file_content, iw, ih, file.filename or "image.png"
+                )
+                logger.info(f"OCR extract via OCR.space: {file.filename}")
+            except Exception as e:
+                logger.warning(f"OCR.space failed, falling back to Tesseract: {e}")
+
+        if out is None:
+            ocr = OCRService()
+            try:
+                out = await asyncio.wait_for(
+                    asyncio.to_thread(ocr.extract_with_layout, io.BytesIO(file_content)),
+                    55.0
+                )
+            except asyncio.TimeoutError:
+                raise HTTPException(
+                    status_code=503,
+                    detail="OCR is taking too long. Try a smaller or simpler image, or try again later."
+                )
 
         processing_history = FileProcessingHistory(
             user_email=current_user["email"],

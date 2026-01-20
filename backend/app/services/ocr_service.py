@@ -5,11 +5,18 @@ Extracts text from images (JPG, PNG, WebP, BMP, TIFF, GIF) and exports to editab
 - Layout mode: places text at original (x,y) so output matches the image layout (exactly editable).
 """
 import io
+import os
 import re
 import logging
 from typing import Union, BinaryIO, List, Dict, Any, Tuple, Optional
 
+import httpx
+
 logger = logging.getLogger(__name__)
+
+# OCR.space: 25k req/mo free, 1MB file limit, 2–5s. Set OCR_SPACE_API_KEY to use.
+OCR_SPACE_API_URL = "https://api.ocr.space/parse/image"
+OCR_SPACE_MAX_BYTES = 1024 * 1024  # 1MB free tier
 
 # Optional imports - fail gracefully if not available
 try:
@@ -434,6 +441,112 @@ def _parse_form_like_text(text: str) -> List[Dict[str, Any]]:
         i += 1
 
     return blocks
+
+
+def _mime_from_filename(filename: str) -> str:
+    ext = (os.path.splitext(filename or "")[1] or "").lower()
+    m = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
+         ".bmp": "image/bmp", ".tiff": "image/tiff", ".tif": "image/tiff", ".gif": "image/gif"}
+    return m.get(ext, "image/png")
+
+
+async def extract_with_layout_ocrspace(
+    api_key: str,
+    file_content: bytes,
+    image_width: int,
+    image_height: int,
+    filename: str,
+) -> Dict[str, Any]:
+    """
+    Call OCR.space API and return { text, layout, image_width, image_height, tables }
+    in the same format as OCRService.extract_with_layout. Uses TextOverlay for coordinates
+    when available; otherwise builds a simple layout from ParsedText.
+    """
+    mime = _mime_from_filename(filename)
+    fname = (filename or "image.png").strip() or "image.png"
+    data = {"apikey": api_key, "isOverlayRequired": "true", "OCREngine": "2", "language": "eng"}
+    files = {"file": (fname, file_content, mime)}
+
+    async with httpx.AsyncClient() as client:
+        r = await client.post(OCR_SPACE_API_URL, data=data, files=files, timeout=30.0)
+    r.raise_for_status()
+    j = r.json()
+
+    if j.get("OCRExitCode") != 1:
+        raise RuntimeError(f"OCR.space error: {j.get('ErrorMessage', j)}")
+    parsed = (j.get("ParsedResults") or [])
+    if not parsed:
+        raise RuntimeError("OCR.space: no ParsedResults")
+    pr = parsed[0]
+    parsed_text = (pr.get("ParsedText") or "").strip()
+    overlay = pr.get("TextOverlay") or {}
+    lines_raw = overlay.get("Lines") or []
+
+    words: List[Dict[str, Any]] = []
+    layout: List[Dict[str, Any]] = []
+
+    if lines_raw:
+        for line_idx, line in enumerate(lines_raw):
+            wrds = line.get("Words") or []
+            if not wrds:
+                continue
+            texts = [str(w.get("WordText") or "").strip() for w in wrds if (w.get("WordText") or "").strip()]
+            line_text = _normalize_ocr_text(" ".join(texts))
+            if _is_border_or_noise(line_text):
+                continue
+            lefts = [int(w.get("Left", 0)) for w in wrds]
+            tops = [int(w.get("Top", 0)) for w in wrds]
+            rights = [int(w.get("Left", 0)) + int(w.get("Width", 0)) for w in wrds]
+            bots = [int(w.get("Top", 0)) + int(w.get("Height", 0)) for w in wrds]
+            L, T = min(lefts), min(tops)
+            R, B = max(rights), max(bots)
+            layout.append({
+                "text": line_text,
+                "left": L,
+                "top": T,
+                "width": max(1, R - L),
+                "height": max(1, B - T),
+                "line_num": line_idx,
+                "block_num": 0,
+            })
+            for w in wrds:
+                wt = (w.get("WordText") or "").strip()
+                if wt:
+                    words.append({
+                        "text": wt,
+                        "left": int(w.get("Left", 0)),
+                        "top": int(w.get("Top", 0)),
+                        "width": int(w.get("Width", 0)),
+                        "height": int(w.get("Height", 0)),
+                        "line_num": line_idx,
+                        "block_num": 0,
+                    })
+    else:
+        for i, ln in enumerate(parsed_text.splitlines()):
+            t = _normalize_ocr_text(ln.strip())
+            if not t or _is_border_or_noise(t):
+                continue
+            layout.append({
+                "text": t,
+                "left": 0,
+                "top": i * 20,
+                "width": max(100, min(400, len(t) * 8)),
+                "height": 18,
+                "line_num": i,
+                "block_num": 0,
+            })
+
+    layout.sort(key=lambda x: (x.get("top", 0), x.get("left", 0)))
+    tables = _detect_tables_from_words(words) if words else []
+    text = "\n".join(ln["text"] for ln in layout) if layout else _normalize_ocr_text(parsed_text)
+
+    return {
+        "text": text,
+        "layout": layout,
+        "image_width": image_width,
+        "image_height": image_height,
+        "tables": tables,
+    }
 
 
 class OCRService:

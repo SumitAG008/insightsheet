@@ -240,3 +240,66 @@ async def suggest_chart_type(
 
     except Exception as e:
         raise Exception(f"Chart suggestion error: {str(e)}")
+
+
+async def generate_transform(
+    columns: List[Dict[str, Any]],
+    sample_rows: Optional[List[Dict]] = None,
+    instruction: str = ""
+) -> Dict[str, Any]:
+    """
+    Generate a new column transform from natural language.
+    Returns { new_column_name, col_a, col_b, op } where op is add|subtract|multiply|divide|percentage|concat.
+    """
+    try:
+        prompt = f"""
+You are a data transform assistant. The user wants to create a new column from existing columns.
+
+Column names: {json.dumps([c.get('name', c) if isinstance(c, dict) else c for c in columns])}
+
+{f'Sample rows (first 3): {json.dumps((sample_rows or [])[:3], indent=2)}' if sample_rows else ''}
+
+User instruction: "{instruction}"
+
+Respond with ONLY a JSON object (no markdown, no extra text):
+{{
+  "new_column_name": "snake_case_name",
+  "col_a": "exact column name for first operand",
+  "col_b": "exact column name for second operand",
+  "op": "add" | "subtract" | "multiply" | "divide" | "percentage" | "concat"
+}}
+
+For "percentage", the formula is (col_a / col_b) * 100.
+For "concat", col_a and col_b are text columns joined with a space; if the user specifies a separator, you may add "separator": " - ".
+Use only column names that exist in the list. new_column_name must be valid (letters, numbers, underscores).
+"""
+        out = await invoke_llm(prompt=prompt, response_schema={"type": "json_object"})
+        # Normalize keys to snake_case for backend
+        return {
+            "new_column_name": (out.get("new_column_name") or out.get("newColumnName") or "new_column").strip().replace(" ", "_"),
+            "col_a": out.get("col_a") or out.get("colA") or "",
+            "col_b": out.get("col_b") or out.get("colB") or "",
+            "op": (out.get("op") or "add").lower(),
+            "separator": out.get("separator", " "),
+        }
+    except Exception as e:
+        raise Exception(f"Transform generation error: {str(e)}")
+
+
+async def explain_sql(sql: str, schema: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+    """Explain SQL in plain English."""
+    try:
+        prompt = f"""
+Explain this SQL in 2-4 short, clear sentences. Focus on what the query does and which tables/columns it uses.
+
+{f'Schema context: {json.dumps(schema, indent=2)}' if schema else ''}
+
+SQL:
+{sql}
+
+Respond with JSON: {{ "explanation": "your explanation here" }}
+"""
+        out = await invoke_llm(prompt=prompt, response_schema={"type": "json_object"})
+        return {"explanation": out.get("explanation", "Could not generate explanation.")}
+    except Exception as e:
+        raise Exception(f"Explain SQL error: {str(e)}")

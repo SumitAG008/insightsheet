@@ -305,6 +305,30 @@ export const backendApi = {
       });
       return response.json();
     },
+
+    transform: async (instruction, columns, sampleRows) => {
+      const response = await apiCall('/api/ai/transform', {
+        method: 'POST',
+        body: { instruction, columns, sample_rows: sampleRows || null },
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Transform failed');
+      }
+      return response.json();
+    },
+
+    explainSql: async (sql, schema) => {
+      const response = await apiCall('/api/ai/explain-sql', {
+        method: 'POST',
+        body: { sql, schema: schema || null },
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || 'Explain SQL failed');
+      }
+      return response.json();
+    },
   },
 
   // File Processing

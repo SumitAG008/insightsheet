@@ -24,10 +24,14 @@ except ImportError:
 try:
     from docx import Document
     from docx.shared import Pt
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
     Pt = None
+    OxmlElement = None
+    qn = None
 
 try:
     from reportlab.lib.pagesizes import letter
@@ -85,6 +89,81 @@ def _split_into_columns(line: str) -> List[str]:
     if '\t' in line:
         return [c.strip() for c in line.split('\t') if c.strip()]
     return [c.strip() for c in re.split(r'  +', line) if c.strip()]
+
+
+def _is_section_header(text: str) -> bool:
+    """True if line is a section header like "1) Personal Details", "2. Work History"."""
+    if not text or not isinstance(text, str):
+        return False
+    return bool(re.match(r'^\d+[\)\.]\s*\S', text.strip()))
+
+
+def _is_label_line(text: str) -> bool:
+    """True if line is a form label (ends with :, short, not a section header)."""
+    if not text or not isinstance(text, str):
+        return False
+    t = text.strip()
+    if len(t) >= 60:
+        return False
+    if not t.endswith(':'):
+        return False
+    if _is_section_header(t):
+        return False
+    return True
+
+
+def _is_checkbox_line(text: str) -> Tuple[bool, int]:
+    """True if line is checkbox options like 'Full-time [ ] Part-time [ ] Contractor'. Returns (is_checkbox, n_options)."""
+    if not text or not isinstance(text, str):
+        return False, 0
+    t = text.strip()
+    if '[ ]' not in t or len(t) > 120:
+        return False, 0
+    parts = [p.strip() for p in re.split(r'\s*\[\s*\]\s*', t) if p.strip()]
+    n = len(parts)
+    if 2 <= n <= 4 and all(len(p) < 30 for p in parts):
+        return True, n
+    return False, 0
+
+
+def _compute_section_boxes(
+    layout: List[Dict[str, Any]],
+    tables: List[Dict[str, Any]],
+    pad_px: int = 6,
+) -> List[Dict[str, Any]]:
+    """
+    Compute one box per section (1), 2), 3)...) around header + all content.
+    Generic: works for any form. Returns [{left, top, width, height}, ...].
+    """
+    if not layout:
+        return []
+    headers = [ln for ln in layout if _is_section_header((ln.get('text') or '').strip())]
+    if not headers:
+        return []
+
+    def _key(ln):
+        return (ln.get('block_num', 0), ln.get('line_num', 0))
+
+    boxes = []
+    for i, h in enumerate(headers):
+        start = _key(h)
+        end = _key(headers[i + 1]) if i + 1 < len(headers) else (99999, 99999)
+        bbox_list = []
+        for ln in layout:
+            if start <= _key(ln) < end:
+                bbox_list.append((ln.get('left', 0), ln.get('top', 0), ln.get('width', 0), ln.get('height', 0)))
+        for t in (tables or []):
+            k = (t.get('block_num', 0), t.get('line_start', 0))
+            if start <= k < end:
+                bbox_list.append((t.get('left', 0), t.get('top', 0), t.get('width', 0), t.get('height', 0)))
+        if not bbox_list:
+            continue
+        L = max(0, min(l for l, _, _, _ in bbox_list) - pad_px)
+        T = max(0, min(t for _, t, _, _ in bbox_list) - pad_px)
+        R = max(l + w for l, _, w, _ in bbox_list) + pad_px
+        B = max(t + h for _, t, _, h in bbox_list) + pad_px
+        boxes.append({'left': L, 'top': T, 'width': max(1, R - L), 'height': max(1, B - T)})
+    return boxes
 
 
 def _detect_tables_from_words(
@@ -465,6 +544,13 @@ class OCRService:
         c.setTitle(title or "OCR Document")
         tables = tables or []
         drawn = set()  # (block_num, line_start)
+        c.setStrokeColorRGB(0, 0, 0)
+
+        # Draw section boundary boxes first (each section like 1), 2), 3) as one block — exact match to form)
+        for box in _compute_section_boxes(layout, tables):
+            x = box['left'] * scale
+            y = page_h - (box['top'] + box['height']) * scale
+            c.rect(x, y, box['width'] * scale, box['height'] * scale)
 
         def _find_table(bnum: int, lnum: int):
             for t in tables:
@@ -523,7 +609,34 @@ class OCRService:
             y_pt = page_h - (top + height) * scale
             font_size = max(6, min(14, height * scale))
             c.setFont("Helvetica", font_size)
-            c.drawString(x_pt, y_pt, text[:500])
+            is_cb, n_cb = _is_checkbox_line(text)
+
+            if _is_section_header(text):
+                # Tight rectangular box around section header (same-to-same as uploaded form)
+                pad = 2
+                rx = (left - pad) * scale
+                ry = page_h - (top + height + pad) * scale
+                rw = (width + 2 * pad) * scale
+                rh = (height + 2 * pad) * scale
+                c.rect(rx, ry, rw, rh)
+                c.drawString(x_pt, y_pt, text[:500])
+            elif is_cb:
+                # Generic: [ ] Option1 [ ] Option2 [ ] Option3 — draw small box then label for each
+                parts = [p.strip() for p in re.split(r'\s*\[\s*\]\s*', text) if p.strip()]
+                sq, char_pt = 8, 5
+                cx = x_pt
+                for part in (parts or [text]):
+                    c.rect(cx, y_pt - 6, sq, sq)
+                    cx += sq + 4
+                    c.drawString(cx, y_pt, part[:40])
+                    cx += max(len(part) * char_pt, 40) + 10
+            elif _is_label_line(text):
+                c.drawString(x_pt, y_pt, text[:500])
+                # Generic: extend underline to right margin (exact match to any form's input line)
+                ul_len = max(100, min(400, page_w - x_pt - 24))
+                c.line(x_pt, y_pt - 2, x_pt + ul_len, y_pt - 2)
+            else:
+                c.drawString(x_pt, y_pt, text[:500])
 
         c.save()
         buf.seek(0)
@@ -580,13 +693,58 @@ class OCRService:
                 continue
             left = ln.get('left', 0)
             top = ln.get('top', 0)
+            width = ln.get('width', 0)
             height = ln.get('height', 12)
             bottom = top + height
-
-            p = doc.add_paragraph(text)
-            p.paragraph_format.left_indent = Pt(max(0, left * scale))
             gap = (top - prev_bottom) * scale if prev_bottom else top * scale
-            p.paragraph_format.space_before = Pt(max(0, min(gap, 72)))
+            gap_pt = Pt(max(0, min(gap, 72)))
+
+            if _is_section_header(text):
+                # Section header in a tight bordered box (one-cell table), same as uploaded form
+                tbl = doc.add_table(rows=1, cols=1)
+                tbl.style = 'Table Grid'
+                tc = tbl.rows[0].cells[0]
+                tc.text = text
+                try:
+                    tbl.columns[0].width = Pt(max(width + 12, 50) * scale)
+                except Exception:
+                    pass
+                tc.paragraphs[0].paragraph_format.space_before = gap_pt
+                tc.paragraphs[0].paragraph_format.space_after = Pt(4)
+                # Indent table to match original (left) so each section aligns like the image
+                try:
+                    if OxmlElement and qn:
+                        tblPr = tbl._tbl.find(qn('w:tblPr'))
+                        if tblPr is None:
+                            tblPr = OxmlElement('w:tblPr')
+                            tbl._tbl.insert(0, tblPr)
+                        ti = OxmlElement('w:tblInd')
+                        ti.set(qn('w:type'), 'dxa')
+                        ti.set(qn('w:w'), str(int(max(0, left * scale) * 20)))
+                        tblPr.append(ti)
+                except Exception:
+                    pass
+            elif _is_checkbox_line(text)[0]:
+                # Checkbox line: use ☐ (U+2610) instead of [ ]
+                p = doc.add_paragraph()
+                display = re.sub(r'\s*\[\s*\]\s*', ' \u2610 ', text).strip()
+                p.add_run(display or text)
+                p.paragraph_format.left_indent = Pt(max(0, left * scale))
+                p.paragraph_format.space_before = gap_pt
+            elif _is_label_line(text):
+                p = doc.add_paragraph()
+                p.add_run(text + " ")
+                # Generic: underline length from remaining width to right (exact match to any form)
+                n = max(24, min(80, int((image_width - left) * scale / 5)))
+                r = p.add_run("_" * n)
+                r.underline = True
+                p.paragraph_format.left_indent = Pt(max(0, left * scale))
+                p.paragraph_format.space_before = gap_pt
+            else:
+                p = doc.add_paragraph()
+                p.add_run(text)
+                p.paragraph_format.left_indent = Pt(max(0, left * scale))
+                p.paragraph_format.space_before = gap_pt
             prev_bottom = bottom
 
         buf = io.BytesIO()

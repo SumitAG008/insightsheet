@@ -31,7 +31,8 @@ from app.utils.auth import (
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from app.services.ai_service import (
-    invoke_llm, generate_image, generate_formula, analyze_data, suggest_chart_type
+    invoke_llm, generate_image, generate_formula, analyze_data, suggest_chart_type,
+    generate_transform, explain_sql
 )
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
@@ -175,6 +176,17 @@ class DataAnalysisRequest(BaseModel):
 class ChartSuggestionRequest(BaseModel):
     columns: List[Dict[str, str]]
     data_preview: Optional[List[Dict]] = None
+
+
+class TransformRequest(BaseModel):
+    columns: List[Dict[str, Any]]
+    sample_rows: Optional[List[Dict]] = None
+    instruction: str
+
+
+class ExplainSqlRequest(BaseModel):
+    sql: str
+    schema: Optional[Dict[str, Any]] = None
 
 
 class ZipProcessingOptions(BaseModel):
@@ -864,6 +876,50 @@ async def suggest_chart_endpoint(
 
     except Exception as e:
         logger.error(f"Chart suggestion error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/ai/transform")
+async def generate_transform_endpoint(
+    request: TransformRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Generate new column transform from natural language (e.g. Profit = Revenue - Cost)."""
+    try:
+        result = await generate_transform(
+            request.columns, request.sample_rows, request.instruction
+        )
+        activity = UserActivity(
+            user_email=current_user["email"],
+            activity_type="ai_transform"
+        )
+        db.add(activity)
+        db.commit()
+        return result
+    except Exception as e:
+        logger.error(f"AI transform error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/ai/explain-sql")
+async def explain_sql_endpoint(
+    request: ExplainSqlRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Explain SQL in plain English."""
+    try:
+        result = await explain_sql(request.sql, request.schema)
+        activity = UserActivity(
+            user_email=current_user["email"],
+            activity_type="ai_explain_sql"
+        )
+        db.add(activity)
+        db.commit()
+        return result
+    except Exception as e:
+        logger.error(f"Explain SQL error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

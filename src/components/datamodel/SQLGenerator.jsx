@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Copy, Download, Database, Check } from 'lucide-react';
+import { Copy, Download, Database, Check, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { backendApi } from '@/api/meldraClient';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -87,6 +89,8 @@ function generateForeignKey(rel, tables, dialect) {
 export default function SQLGenerator({ schema }) {
   const [dialect, setDialect] = useState('postgresql');
   const [copied, setCopied] = useState(false);
+  const [explainLoading, setExplainLoading] = useState(false);
+  const [explainResult, setExplainResult] = useState('');
 
   const generateSQL = useMemo(() => {
     if (!schema.tables || schema.tables.length === 0) {
@@ -199,6 +203,19 @@ export default function SQLGenerator({ schema }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleExplain = async () => {
+    setExplainLoading(true);
+    setExplainResult('');
+    try {
+      const r = await backendApi.llm.explainSql(generateSQL, schema);
+      setExplainResult(r.explanation || '');
+    } catch (e) {
+      setExplainResult('Error: ' + (e.message || 'Could not explain'));
+    } finally {
+      setExplainLoading(false);
+    }
+  };
+
   const handleDownload = () => {
     const blob = new Blob([generateSQL], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -258,6 +275,15 @@ export default function SQLGenerator({ schema }) {
             </Button>
 
             <Button
+              onClick={handleExplain}
+              disabled={explainLoading || !generateSQL || (schema.tables?.length || 0) === 0}
+              variant="outline"
+              className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300"
+            >
+              {explainLoading ? <span className="animate-spin">⏳</span> : <MessageSquare className="w-4 h-4 mr-2" />}
+              Explain
+            </Button>
+            <Button
               onClick={handleDownload}
               className="bg-gradient-to-r from-blue-600 to-emerald-600"
             >
@@ -266,6 +292,13 @@ export default function SQLGenerator({ schema }) {
             </Button>
           </div>
         </div>
+
+        {explainResult && (
+          <Alert className="mb-4 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-700">
+            <MessageSquare className="h-4 w-4 text-emerald-600" />
+            <AlertDescription className="text-slate-800 dark:text-slate-200">{explainResult}</AlertDescription>
+          </Alert>
+        )}
 
         <Tabs defaultValue="create" className="w-full">
           <TabsList className="bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700">

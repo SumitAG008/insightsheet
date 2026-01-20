@@ -105,7 +105,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           
-          // Convert to JSON
+          // Convert to JSON (header: 1 = array of arrays; works with .xls and .xlsx)
           const jsonData = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
           
           if (jsonData.length === 0) {
@@ -113,16 +113,53 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
             return;
           }
           
-          const headers = jsonData[0].filter(h => h && h.trim() !== '');
-          const rows = jsonData.slice(1)
-            .filter(row => row.some(cell => cell !== '' && cell !== null && cell !== undefined))
+          // Auto-detect header row: many files have title/empty rows, then headers (e.g. row 4–5), then data.
+          // Use the first row with at least 2 non-empty cells in the first 20 rows.
+          let headerRow = 0;
+          for (let r = 0; r < Math.min(20, jsonData.length); r++) {
+            const row = jsonData[r] || [];
+            const nonEmpty = row.filter(c => c != null && c !== '' && String(c).trim() !== '').length;
+            if (nonEmpty >= 2) {
+              headerRow = r;
+              break;
+            }
+          }
+          
+          const headerRowRaw = jsonData[headerRow] || [];
+          const dataRows = jsonData.slice(headerRow + 1);
+          const maxDataCols = dataRows.length
+            ? Math.max(...dataRows.map(r => (r || []).length))
+            : 0;
+          const numCols = Math.max(headerRowRaw.length, maxDataCols, 1);
+          
+          // Build headers: use "Column_N" for empty (merged cells or blank headers)
+          const headers = [];
+          const seen = new Set();
+          for (let i = 0; i < numCols; i++) {
+            const h = headerRowRaw[i];
+            const val = (h != null && h !== '') ? String(h).trim() : '';
+            let name = val || `Column_${i + 1}`;
+            if (seen.has(name)) {
+              let n = 1;
+              while (seen.has(`${name}_${n}`)) n++;
+              name = `${name}_${n}`;
+            }
+            seen.add(name);
+            headers.push(name);
+          }
+          
+          const rows = dataRows
+            .filter(row => (row || []).some(cell => cell !== '' && cell !== null && cell !== undefined))
             .map(row => {
               const obj = {};
               headers.forEach((header, idx) => {
-                const value = row[idx];
+                const value = row && row[idx];
                 if (value !== null && value !== undefined && value !== '') {
-                  if (!isNaN(value) && typeof value !== 'string') {
-                    obj[header] = parseFloat(value);
+                  if (typeof value === 'number') {
+                    obj[header] = value;
+                  } else if (typeof value === 'string' && !isNaN(parseFloat(value)) && value.trim() !== '') {
+                    const n = parseFloat(value);
+                    obj[header] = Number.isInteger(n) ? n : Math.round(n * 100) / 100;
                   } else {
                     obj[header] = value;
                   }

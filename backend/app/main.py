@@ -6,9 +6,10 @@ from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Request, 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Dict, Any, List
 from datetime import timedelta, datetime
+import asyncio
 import os
 import logging
 from logging.handlers import RotatingFileHandler
@@ -186,7 +187,7 @@ class TransformRequest(BaseModel):
 
 class ExplainSqlRequest(BaseModel):
     sql: str
-    schema: Optional[Dict[str, Any]] = None
+    db_schema: Optional[Dict[str, Any]] = Field(None, alias="schema")
 
 
 class ZipProcessingOptions(BaseModel):
@@ -914,7 +915,7 @@ async def explain_sql_endpoint(
 ):
     """Explain SQL in plain English."""
     try:
-        result = await explain_sql(request.sql, request.schema)
+        result = await explain_sql(request.sql, request.db_schema)
         activity = UserActivity(
             user_email=current_user["email"],
             activity_type="ai_explain_sql"
@@ -977,7 +978,16 @@ async def ocr_extract(
             )
 
         ocr = OCRService()
-        out = ocr.extract_with_layout(io.BytesIO(file_content))
+        try:
+            out = await asyncio.wait_for(
+                asyncio.to_thread(ocr.extract_with_layout, io.BytesIO(file_content)),
+                55.0
+            )
+        except asyncio.TimeoutError:
+            raise HTTPException(
+                status_code=503,
+                detail="OCR is taking too long. Try a smaller or simpler image, or try again later."
+            )
 
         processing_history = FileProcessingHistory(
             user_email=current_user["email"],

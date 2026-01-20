@@ -495,6 +495,14 @@ class OCRService:
         img = Image.open(io.BytesIO(data))
         iw, ih = img.size
 
+        # Resize very large images to avoid 502/timeouts and OOM on Railway (Tesseract is CPU/memory heavy)
+        max_dim = 2000
+        if max(iw, ih) > max_dim:
+            ratio = max_dim / max(iw, ih)
+            new_w, new_h = int(iw * ratio), int(ih * ratio)
+            img = img.resize((new_w, new_h), getattr(getattr(Image, 'Resampling', None), 'LANCZOS', None) or Image.LANCZOS)
+            iw, ih = img.size
+
         if img.mode not in ('RGB', 'L'):
             img = img.convert('RGB')
         # Preprocess: grayscale and slight contrast boost for better form/table OCR

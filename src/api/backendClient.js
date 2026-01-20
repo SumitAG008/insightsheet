@@ -34,31 +34,41 @@ const setToken = (token) => {
   }
 };
 
-// Helper function for API calls
+// Helper function for API calls. options.timeoutMs aborts the request to avoid hanging on "Signing in..."
 const apiCall = async (endpoint, options = {}) => {
+  const { timeoutMs, ...rest } = options;
   const token = getToken();
 
-  const headers = {
-    ...options.headers,
-  };
+  const headers = { ...rest.headers };
 
-  // Add auth token if available and not already set
   if (token && !headers['Authorization']) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Add Content-Type for JSON requests
-  if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+  if (rest.body && typeof rest.body === 'object' && !(rest.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
-    options.body = JSON.stringify(options.body);
+    rest.body = JSON.stringify(rest.body);
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  let timeoutId;
+  if (timeoutMs) {
+    const controller = new AbortController();
+    timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    rest.signal = controller.signal;
+  }
 
-  // Handle unauthorized — clear all app data and redirect to login
+  let response;
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, { ...rest, headers });
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      throw new Error('Request timed out. Please check your connection and try again.');
+    }
+    throw e;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+
   if (response.status === 401) {
     clearAllAppSessionData();
     setToken(null);
@@ -92,8 +102,13 @@ export const backendApi = {
       const response = await apiCall('/api/auth/login', {
         method: 'POST',
         body: { email, password },
+        timeoutMs: 25000,
       });
       const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || `Login failed: ${response.status}`);
+      }
 
       if (data.access_token) {
         setToken(data.access_token);

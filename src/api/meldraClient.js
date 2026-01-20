@@ -65,53 +65,52 @@ const setToken = (token) => {
   }
 };
 
-// Helper function for API calls
+// Helper function for API calls. options.timeoutMs aborts to avoid long hangs (e.g. OCR).
 const apiCall = async (endpoint, options = {}) => {
+  const { timeoutMs, ...rest } = options;
   const token = getToken();
 
-  const headers = {
-    ...options.headers,
-  };
+  const headers = { ...rest.headers };
 
-  // Add auth token if available
   if (token && !headers['Authorization']) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Add Content-Type for JSON requests
-  if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+  if (rest.body && typeof rest.body === 'object' && !(rest.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
-    options.body = JSON.stringify(options.body);
+    rest.body = JSON.stringify(rest.body);
   }
 
+  let timeoutId;
+  if (timeoutMs) {
+    const controller = new AbortController();
+    timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    rest.signal = controller.signal;
+  }
+
+  let response;
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
-      headers,
-    });
-
-    // Handle unauthorized — clear all app data and redirect to login
-    if (response.status === 401) {
-      clearAllAppSessionData();
-      setToken(null);
-      window.location.href = '/Login';
-      throw new Error('Unauthorized');
-    }
-
-    return response;
+    response = await fetch(`${API_URL}${endpoint}`, { ...rest, headers });
   } catch (error) {
-    // Network error - backend not reachable
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out. Try a smaller image or try again later.');
+    }
     if (error.name === 'TypeError' && (error.message.includes('fetch') || error.message.includes('Failed to fetch'))) {
-      const errorMsg = `Cannot connect to backend server at ${API_URL}. Please ensure the backend is running.`;
-      console.error('Backend connection failed:', {
-        url: `${API_URL}${endpoint}`,
-        error: error.message,
-        apiUrl: API_URL
-      });
-      throw new Error(errorMsg);
+      throw new Error(`Cannot connect to backend at ${API_URL}. Check your connection or try again later.`);
     }
     throw error;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
+
+  if (response.status === 401) {
+    clearAllAppSessionData();
+    setToken(null);
+    window.location.href = '/Login';
+    throw new Error('Unauthorized');
+  }
+
+  return response;
 };
 
 // Backend API Client
@@ -405,11 +404,16 @@ export const backendApi = {
       const response = await apiCall('/api/files/analyze', {
         method: 'POST',
         body: formData,
+        timeoutMs: 60000,
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || 'Analysis failed');
+        const err = await response.json().catch(() => ({}));
+        const status = response.status;
+        if (status === 502 || status === 503 || status === 504) {
+          throw new Error(err.detail || 'Analysis took too long or the server is busy. Try a smaller file or try again later.');
+        }
+        throw new Error(err.detail || 'Analysis failed');
       }
 
       return response.json();
@@ -421,9 +425,14 @@ export const backendApi = {
       const response = await apiCall('/api/files/ocr-extract', {
         method: 'POST',
         body: formData,
+        timeoutMs: 90000,
       });
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
+        const status = response.status;
+        if (status === 502 || status === 503 || status === 504) {
+          throw new Error(err.detail || 'OCR took too long or the server is busy. Try a smaller image or try again later.');
+        }
         throw new Error(err.detail || 'OCR extraction failed');
       }
       return response.json();

@@ -69,17 +69,20 @@ def _normalize_ocr_text(s: str) -> str:
 
 
 def _is_border_or_noise(s: str) -> bool:
-    """True if the line is likely a table border, rule, or OCR garbage (e.g. "a a -----", "|")."""
+    """True if the line is likely a table border, rule, or OCR garbage. Keeps labels and real fields."""
     if not s or not isinstance(s, str):
         return True
     t = s.strip()
     if not t:
         return True
+    # Never drop label-like lines: "Full Name:", "Employment type:", "ID:"
+    if re.search(r'\b[a-zA-Z]{2,}\s*:', t):
+        return False
     # Mostly dashes, pipes, dots, underscores, equals
     if re.match(r'^[\s\-=\|\.\*#_]+$', t):
         return True
-    # Very short non-word
-    if len(t) <= 4 and not re.search(r'[a-zA-Z]{2,}', t):
+    # Very short non-word only: 1–2 chars with no real word (drop "|", "a", "a ="; keep "ID", "No", "N/A")
+    if len(t) <= 2 and not re.search(r'[a-zA-Z]{2,}', t):
         return True
     # Lines that are mostly dashes/equals with no real words (e.g. "a a -----", table borders)
     if re.search(r'[-=]{3,}', t) and not re.search(r'[a-zA-Z]{2,}', t):
@@ -495,8 +498,8 @@ class OCRService:
         img = Image.open(io.BytesIO(data))
         iw, ih = img.size
 
-        # Resize so OCR finishes within 55s on Railway (Tesseract is CPU/memory heavy)
-        max_dim = 1000
+        # Resize: 1400px balances quality (readable small text) vs 55s on Railway. 1000px dropped too many fields.
+        max_dim = 1400
         if max(iw, ih) > max_dim:
             ratio = max_dim / max(iw, ih)
             new_w, new_h = int(iw * ratio), int(ih * ratio)

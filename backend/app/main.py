@@ -1043,11 +1043,13 @@ async def ocr_export(
 
         ocr = OCRService()
         title = (body.title or "OCR Document").strip() or "OCR Document"
+        # Use layout only when we have lines or tables to place; else fall back to form (text) so fields are not lost
         use_layout = (
             (body.mode or "form") == "layout"
             and body.layout is not None
             and (body.image_width or 0) > 0
             and (body.image_height or 0) > 0
+            and (len(body.layout or []) > 0 or (body.tables and len(body.tables) > 0))
         )
 
         if body.format == "doc":

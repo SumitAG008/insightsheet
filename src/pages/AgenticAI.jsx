@@ -10,6 +10,8 @@ import {
   Play, Eye, Download, Zap, Target, TrendingUp, Lightbulb, Upload, FileText, X, Shield
 } from 'lucide-react';
 import FileUploadZone from '@/components/upload/FileUploadZone';
+import { runCleanPipeline, getAutoFillOptions } from '@/lib/dataCleaning';
+import { applyTransform } from '@/lib/transformUtils';
 
 export default function AgenticAI() {
   const [task, setTask] = useState('');
@@ -116,44 +118,46 @@ Return JSON:
 
       setAgent({ phase: 'planning', plan });
 
-      // STEP 2: Execute each step
+      // STEP 2: Execute each step (carry updated data across clean/transform)
       const results = [];
+      let currentData = data;
       for (let i = 0; i < plan.steps.length; i++) {
         const step = plan.steps[i];
         setAgent({ phase: 'executing', plan, currentStep: i + 1, totalSteps: plan.steps.length });
 
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Execute based on action type
         let stepResult;
         switch (step.action) {
           case 'analyze':
-            stepResult = await executeAnalysis(step, data);
+            stepResult = await executeAnalysis(step, currentData);
             break;
           case 'clean':
-            stepResult = await executeClean(step, data);
+            stepResult = await executeClean(step, currentData);
             break;
           case 'transform':
-            stepResult = await executeTransform(step, data);
+            stepResult = await executeTransform(step, currentData);
             break;
           case 'calculate':
-            stepResult = await executeCalculate(step, data);
+            stepResult = await executeCalculate(step, currentData);
             break;
           case 'visualize':
-            stepResult = await executeVisualize(step, data);
+            stepResult = await executeVisualize(step, currentData);
             break;
           case 'report':
-            stepResult = await executeReport(step, data);
+            stepResult = await executeReport(step, currentData);
             break;
           default:
             stepResult = { success: true, output: 'Step completed' };
         }
+        if (stepResult?.updatedData) currentData = stepResult.updatedData;
 
         results.push({
           step: step.step,
           action: step.action,
           description: step.description,
-          ...stepResult
+          success: stepResult?.success !== false,
+          output: stepResult?.output ?? 'Step completed'
         });
       }
 
@@ -224,44 +228,44 @@ Provide specific, actionable insights.`;
   };
 
   const executeClean = async (step, data) => {
-    // Perform actual data cleaning
-    let cleaned = [...data.rows];
-    
-    // Remove duplicates
-    const seen = new Set();
-    cleaned = cleaned.filter(row => {
-      const key = JSON.stringify(row);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
-
-    // Fill missing values
-    cleaned = cleaned.map(row => {
-      const newRow = {};
-      Object.keys(row).forEach(key => {
-        newRow[key] = row[key] || 'N/A';
-      });
-      return newRow;
-    });
-
-    const removedCount = data.rows.length - cleaned.length;
-
-    // Update session data
-    const cleanedData = { ...data, rows: cleaned };
+    const { fill } = getAutoFillOptions(data.rows || [], data.headers || []);
+    const opts = { fill, outlierColumns: [], outlierThreshold: 1.5 };
+    const { data: cleanedData, summary } = runCleanPipeline(data, opts);
+    setData(cleanedData);
     sessionStorage.setItem('insightsheet_data', JSON.stringify(cleanedData));
-
     return {
       success: true,
-      output: `Cleaned data: Removed ${removedCount} duplicates, filled missing values. New row count: ${cleaned.length}`
+      output: `Cleaned: ${summary.join('; ')}. Rows: ${cleanedData.rows.length}`,
+      updatedData: cleanedData
     };
   };
 
   const executeTransform = async (step, data) => {
-    return {
-      success: true,
-      output: 'Data transformed successfully (implement specific transformations based on step.description)'
-    };
+    try {
+      const columns = (data.headers || []).map((h) => ({ name: h }));
+      const r = await backendApi.llm.transform(step.description || step.reasoning || 'Create a useful new column', columns, (data.rows || []).slice(0, 15));
+      const name = (r.new_column_name || 'new_column').replace(/\s+/g, '_');
+      const colA = r.col_a || r.colA;
+      const colB = r.col_b || r.colB;
+      const op = (r.op || 'add').toLowerCase();
+      if (!colA || !colB || !(data.headers || []).includes(colA) || !(data.headers || []).includes(colB)) {
+        return { success: true, output: `Transform suggested columns that don't exist (${colA}, ${colB}). No change applied.` };
+      }
+      if ((data.headers || []).includes(name)) {
+        return { success: true, output: `Column "${name}" already exists. No change applied.` };
+      }
+      const newRows = applyTransform(data.rows || [], colA, colB, op, name, r.separator || ' ');
+      const updated = { headers: [...(data.headers || []), name], rows: newRows };
+      setData(updated);
+      sessionStorage.setItem('insightsheet_data', JSON.stringify(updated));
+      return {
+        success: true,
+        output: `Created column "${name}" = ${colA} ${op} ${colB}. Rows: ${newRows.length}`,
+        updatedData: updated
+      };
+    } catch (e) {
+      return { success: false, output: `Transform failed: ${e.message || 'unknown error'}` };
+    }
   };
 
   const executeCalculate = async (step, data) => {

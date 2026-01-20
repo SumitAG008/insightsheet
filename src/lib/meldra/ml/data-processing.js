@@ -145,9 +145,11 @@ export function detectOutliers(data, threshold = 1.5) {
 }
 
 /**
- * Fill missing values in dataset
+ * Fill missing values in dataset.
+ * Only null, undefined, and '' are treated as missing. Non-numeric strings (e.g. "N/A") are never replaced.
+ * Mean/median use only numeric non-missing values; mode uses all non-missing.
  *
- * @param {Array} data - Data with potential null/undefined values
+ * @param {Array} data - Data with potential null/undefined/'' values
  * @param {string} strategy - Fill strategy: 'mean', 'median', 'mode', 'forward', 'backward'
  * @returns {Array} - Data with filled values
  *
@@ -156,61 +158,51 @@ export function detectOutliers(data, threshold = 1.5) {
  * // [1, 3, 3, 4, 5]
  */
 export function fillMissingValues(data, strategy = 'mean') {
-  const validData = data.filter(val => val !== null && val !== undefined && !isNaN(val));
+  const isMissing = (v) => v === null || v === undefined || v === '';
 
   let fillValue;
 
   switch (strategy) {
     case 'mean': {
-      const sum = validData.reduce((acc, val) => acc + val, 0);
-      fillValue = sum / validData.length;
+      const valid = data.filter(v => !isMissing(v)).map(v => parseFloat(v)).filter(v => !isNaN(v));
+      fillValue = valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null;
       break;
     }
     case 'median': {
-      const sorted = [...validData].sort((a, b) => a - b);
+      const valid = data.filter(v => !isMissing(v)).map(v => parseFloat(v)).filter(v => !isNaN(v));
+      if (!valid.length) { fillValue = null; break; }
+      const sorted = [...valid].sort((a, b) => a - b);
       const mid = Math.floor(sorted.length / 2);
-      fillValue = sorted.length % 2 === 0
-        ? (sorted[mid - 1] + sorted[mid]) / 2
-        : sorted[mid];
+      fillValue = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
       break;
     }
     case 'mode': {
-      const frequency = {};
-      let maxFreq = 0;
-      validData.forEach(val => {
-        frequency[val] = (frequency[val] || 0) + 1;
-        if (frequency[val] > maxFreq) {
-          maxFreq = frequency[val];
-          fillValue = val;
-        }
-      });
+      const valid = data.filter(v => !isMissing(v));
+      const f = {};
+      let best = null, n = 0;
+      valid.forEach(v => { f[v] = (f[v] || 0) + 1; if (f[v] > n) { n = f[v]; best = v; } });
+      fillValue = best;
       break;
     }
     case 'forward': {
-      let lastValid = validData[0];
-      return data.map(val => {
-        if (val !== null && val !== undefined && !isNaN(val)) {
-          lastValid = val;
-          return val;
-        }
-        return lastValid;
+      let last = null;
+      return data.map(v => {
+        if (!isMissing(v)) { last = v; return v; }
+        return last;
       });
     }
     case 'backward': {
-      let nextValid = validData[validData.length - 1];
-      return data.reverse().map(val => {
-        if (val !== null && val !== undefined && !isNaN(val)) {
-          nextValid = val;
-          return val;
-        }
-        return nextValid;
+      let next = null;
+      return [...data].reverse().map(v => {
+        if (!isMissing(v)) { next = v; return v; }
+        return next;
       }).reverse();
     }
     default:
-      fillValue = 0;
+      fillValue = null;
   }
 
-  return data.map(val => (val === null || val === undefined || isNaN(val)) ? fillValue : val);
+  return data.map(val => isMissing(val) ? fillValue : val);
 }
 
 /**

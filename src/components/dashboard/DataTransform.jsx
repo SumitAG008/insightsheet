@@ -1,10 +1,12 @@
-// components/dashboard/DataTransform.jsx - Fixed with better contrast and readability
+// components/dashboard/DataTransform.jsx - NL "Create column" + manual ops
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Wand2, Plus, Minus, Divide, X as Multiply, Percent, Calculator } from 'lucide-react';
+import { Wand2, Plus, Minus, Divide, X as Multiply, Percent, Calculator, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { backendApi } from '@/api/meldraClient';
+import { applyTransform } from '@/lib/transformUtils';
 
 export default function DataTransform({ data, onDataUpdate }) {
   const [operation, setOperation] = useState('add');
@@ -12,6 +14,9 @@ export default function DataTransform({ data, onDataUpdate }) {
   const [column2, setColumn2] = useState('');
   const [newColumnName, setNewColumnName] = useState('');
   const [transforming, setTransforming] = useState(false);
+  const [aiInstruction, setAiInstruction] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   const numericColumns = data.headers.filter(header => {
     return data.rows.some(row => {
@@ -28,61 +33,48 @@ export default function DataTransform({ data, onDataUpdate }) {
     { id: 'percentage', name: 'Percentage (%)', icon: Percent, example: '(A / B) × 100' }
   ];
 
+  const handleAiTransform = async () => {
+    if (!aiInstruction.trim()) return;
+    setAiError('');
+    setAiLoading(true);
+    try {
+      const columns = (data.headers || []).map((h) => ({ name: h }));
+      const r = await backendApi.llm.transform(aiInstruction, columns, (data.rows || []).slice(0, 5));
+      const name = (r.new_column_name || 'new_column').replace(/\s+/g, '_');
+      if (!(data.headers || []).includes(r.col_a) || !(data.headers || []).includes(r.col_b)) {
+        setAiError('AI chose columns that don\'t exist. Try: "Profit as Revenue minus Cost"');
+        return;
+      }
+      if ((data.headers || []).includes(name)) {
+        setAiError('Column "' + name + '" already exists.');
+        return;
+      }
+      const newRows = applyTransform(data.rows || [], r.col_a, r.col_b, r.op || 'add', name, r.separator);
+      onDataUpdate({ headers: [...(data.headers || []), name], rows: newRows });
+      setAiInstruction('');
+    } catch (e) {
+      setAiError(e.message || 'AI transform failed');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleTransform = () => {
     if (!column1 || !column2 || !newColumnName) {
       alert('Please select both columns and enter a name for the new column');
       return;
     }
-
-    if (data.headers.includes(newColumnName)) {
+    if ((data.headers || []).includes(newColumnName)) {
       alert('A column with this name already exists');
       return;
     }
-
     setTransforming(true);
-
     setTimeout(() => {
-      const newRows = data.rows.map(row => {
-        const val1 = parseFloat(row[column1]) || 0;
-        const val2 = parseFloat(row[column2]) || 0;
-        let result;
-
-        switch (operation) {
-          case 'add':
-            result = val1 + val2;
-            break;
-          case 'subtract':
-            result = val1 - val2;
-            break;
-          case 'multiply':
-            result = val1 * val2;
-            break;
-          case 'divide':
-            result = val2 !== 0 ? val1 / val2 : 0;
-            break;
-          case 'percentage':
-            result = val2 !== 0 ? (val1 / val2) * 100 : 0;
-            break;
-          default:
-            result = 0;
-        }
-
-        return {
-          ...row,
-          [newColumnName]: Math.round(result * 100) / 100
-        };
-      });
-
-      onDataUpdate({
-        headers: [...data.headers, newColumnName],
-        rows: newRows
-      });
-
-      setColumn1('');
-      setColumn2('');
-      setNewColumnName('');
+      const newRows = applyTransform(data.rows || [], column1, column2, operation, newColumnName);
+      onDataUpdate({ headers: [...(data.headers || []), newColumnName], rows: newRows });
+      setColumn1(''); setColumn2(''); setNewColumnName('');
       setTransforming(false);
-    }, 800);
+    }, 500);
   };
 
   return (
@@ -101,6 +93,33 @@ export default function DataTransform({ data, onDataUpdate }) {
         </div>
 
         <div className="space-y-4">
+          {/* Create with AI */}
+          <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <label className="text-sm font-semibold text-blue-300 mb-2 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              Create with AI
+            </label>
+            <p className="text-xs text-slate-400 mb-2">e.g. &quot;Profit as Revenue minus Cost&quot;, &quot;FullName as First plus Last&quot;</p>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Describe the new column..."
+                value={aiInstruction}
+                onChange={(e) => { setAiInstruction(e.target.value); setAiError(''); }}
+                className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400 flex-1"
+                disabled={aiLoading}
+              />
+              <Button
+                onClick={handleAiTransform}
+                disabled={aiLoading || !aiInstruction.trim()}
+                className="bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+              >
+                {aiLoading ? <span className="animate-spin">⏳</span> : <Sparkles className="w-4 h-4 mr-1" />}
+                Generate
+              </Button>
+            </div>
+            {aiError && <p className="text-red-400 text-sm mt-1">{aiError}</p>}
+          </div>
+
           {/* Operation Selection */}
           <div>
             <label className="text-sm font-semibold text-slate-200 mb-3 block">

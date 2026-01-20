@@ -495,8 +495,8 @@ class OCRService:
         img = Image.open(io.BytesIO(data))
         iw, ih = img.size
 
-        # Resize to avoid 502/503/OOM and to finish within 55s on Railway (Tesseract is CPU/memory heavy)
-        max_dim = 1200
+        # Resize so OCR finishes within 55s on Railway (Tesseract is CPU/memory heavy)
+        max_dim = 1000
         if max(iw, ih) > max_dim:
             ratio = max_dim / max(iw, ih)
             new_w, new_h = int(iw * ratio), int(ih * ratio)

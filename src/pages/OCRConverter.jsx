@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { generateDownloadFilename, downloadBlob } from '@/utils/fileNaming';
 import {
   ScanLine, FileText, Upload, Loader2, CheckCircle, AlertCircle,
@@ -26,6 +27,7 @@ export default function OCRConverter() {
   const [imageHeight, setImageHeight] = useState(null);
   const [tables, setTables] = useState(null);
   const [exportMode, setExportMode] = useState('layout'); // 'form' | 'layout' — layout = match image positions
+  const [preserveImage, setPreserveImage] = useState(false); // PDF: use original image (exact copy)
   const [exporting, setExporting] = useState(null); // 'doc' | 'pdf' | null
   const [error, setError] = useState('');
   const [user, setUser] = useState(null);
@@ -117,7 +119,19 @@ export default function OCRConverter() {
         format,
         title: (file?.name || 'OCR').replace(/\.[^/.]+$/, '') || 'OCR Document',
       };
-      if (exportMode === 'layout' && layout && imageWidth && imageHeight) {
+      if (format === 'pdf' && preserveImage && file) {
+        const base64 = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => {
+            const s = r.result;
+            res(typeof s === 'string' && s.includes(',') ? s.split(',')[1] : (s || ''));
+          };
+          r.onerror = rej;
+          r.readAsDataURL(file);
+        });
+        payload.preserve_image = true;
+        payload.image_base64 = base64;
+      } else if (exportMode === 'layout' && layout && imageWidth && imageHeight) {
         payload.layout = layout;
         payload.image_width = imageWidth;
         payload.image_height = imageHeight;
@@ -188,7 +202,7 @@ export default function OCRConverter() {
             </strong>
             <br />
             <span className="text-sm text-slate-900 dark:text-slate-200 font-bold">
-              JPG, PNG, WebP, BMP, TIFF, GIF supported. Edit the extracted text, then export to DOC or PDF. <strong>Layout</strong>: places text at the same positions as the image (exactly editable). <strong>Form</strong>: sections, fill-in lines, tables, and checkboxes.
+              JPG, PNG, WebP, BMP, TIFF, GIF supported. Edit the extracted text, then export to DOC or PDF. <strong>Layout</strong> (default): keeps the same format as the original image so you can fill, sign, and send — format stays acceptable. <strong>Form</strong>: flow structure with sections, fill-in lines, tables, and checkboxes.
             </span>
           </AlertDescription>
         </Alert>
@@ -274,8 +288,19 @@ export default function OCRConverter() {
                 </Select>
               </div>
               <span className="text-slate-400 text-sm">
-                {exportMode === 'layout' ? 'Positions match the original image.' : 'Flow structure: sections, labels, tables.'}
+                {exportMode === 'layout' ? 'Same format as the original so filled & signed forms stay acceptable.' : 'Flow structure: sections, labels, tables.'}
               </span>
+              <div className="flex items-center gap-2 ml-4">
+                <Checkbox
+                  id="preserve-image"
+                  checked={preserveImage}
+                  onCheckedChange={(v) => setPreserveImage(!!v)}
+                  className="border-slate-500 data-[state=checked]:bg-emerald-600"
+                />
+                <Label htmlFor="preserve-image" className="text-slate-300 text-sm cursor-pointer">
+                  Exact copy (PDF looks like the original image)
+                </Label>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button

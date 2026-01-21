@@ -438,14 +438,22 @@ export const backendApi = {
       return response.json();
     },
 
-    ocrExport: async ({ text, format, title, layout, image_width, image_height, tables, mode }) => {
-      const body = { text: text || '', format, title: title || 'OCR Document' };
-      if (mode === 'layout' && layout != null && image_width != null && image_height != null) {
-        body.layout = layout;
-        body.image_width = image_width;
-        body.image_height = image_height;
-        if (tables != null) body.tables = tables;
+    ocrExport: async (payload) => {
+      const body = {
+        text: payload.text ?? '',
+        format: payload.format,
+        title: payload.title || 'OCR Document',
+      };
+      if (payload.mode === 'layout' && payload.layout != null && payload.image_width != null && payload.image_height != null) {
+        body.layout = payload.layout;
+        body.image_width = payload.image_width;
+        body.image_height = payload.image_height;
+        if (payload.tables != null) body.tables = payload.tables;
         body.mode = 'layout';
+      }
+      if (payload.preserve_image && payload.image_base64) {
+        body.preserve_image = true;
+        body.image_base64 = payload.image_base64;
       }
       const response = await apiCall('/api/files/ocr-export', {
         method: 'POST',

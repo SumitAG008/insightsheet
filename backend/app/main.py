@@ -10,6 +10,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Dict, Any, List
 from datetime import timedelta, datetime
 import asyncio
+import base64
 import io
 import os
 import logging
@@ -42,6 +43,7 @@ from app.services.ocr_service import (
     OCRService,
     OCR_SPACE_MAX_BYTES,
     extract_with_layout_ocrspace,
+    pdf_from_image,
 )
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
@@ -939,7 +941,7 @@ async def explain_sql_endpoint(
 # ============================================================================
 
 class OCRExportRequest(BaseModel):
-    """Request body for OCR export (text -> DOC or PDF)."""
+    """Request body for OCR export: text -> DOC or PDF. Generic for any form or document image."""
     text: str
     format: str  # "doc" or "pdf"
     title: Optional[str] = "OCR Document"
@@ -949,6 +951,9 @@ class OCRExportRequest(BaseModel):
     image_height: Optional[int] = None
     tables: Optional[list] = None  # from extract for real table grids
     mode: Optional[str] = "form"  # "form" = flow/structure; "layout" = match image positions
+    # Exact copy: use original image as full PDF page (looks exactly like input). PDF only.
+    preserve_image: Optional[bool] = False
+    image_base64: Optional[str] = None  # required when preserve_image=True
 
 
 @app.post("/api/files/ocr-extract")
@@ -958,8 +963,8 @@ async def ocr_extract(
     db: Session = Depends(get_db)
 ):
     """
-    Extract text from an image using OCR (JPG, PNG, WebP, BMP, TIFF, GIF).
-    ZERO STORAGE: File content not stored. Returns extracted text for editing, then use ocr-export to get DOC/PDF.
+    Extract text from an image using OCR (JPG, PNG, WebP, BMP, TIFF, GIF). Generic: any form, invoice, or document.
+    ZERO STORAGE: File content not stored. Returns text, layout, tables for editing; use ocr-export to get DOC/PDF.
     """
     try:
         subscription = db.query(Subscription).filter(
@@ -1055,11 +1060,35 @@ async def ocr_export(
     db: Session = Depends(get_db)
 ):
     """
-    Export edited OCR text to editable DOC or PDF. Call after ocr-extract and user edits.
+    Export edited OCR text to editable DOC or PDF. Generic for any form or document. Call after ocr-extract.
     """
     try:
         if body.format not in ("doc", "pdf"):
             raise HTTPException(status_code=400, detail="format must be 'doc' or 'pdf'")
+
+        # Exact copy: original image as full PDF page (looks exactly like the scan)
+        if body.format == "pdf" and body.preserve_image and body.image_base64:
+            try:
+                image_bytes = base64.b64decode(body.image_base64)
+            except Exception as e:
+                raise HTTPException(status_code=400, detail="Invalid image_base64 for preserve_image.")
+            data = pdf_from_image(image_bytes)
+            filename = f"ocr_exact_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
+            processing_history = FileProcessingHistory(
+                user_email=current_user["email"],
+                processing_type="ocr_to_pdf",
+                original_filename=filename,
+                file_size_mb=len(data) / (1024 * 1024),
+                status="success"
+            )
+            db.add(processing_history)
+            db.commit()
+            logger.info(f"OCR export pdf (preserve_image): {current_user['email']}")
+            return StreamingResponse(
+                io.BytesIO(data),
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
 
         ocr = OCRService()
         title = (body.title or "OCR Document").strip() or "OCR Document"
@@ -1072,10 +1101,20 @@ async def ocr_export(
             and (len(body.layout or []) > 0 or (body.tables and len(body.tables) > 0))
         )
 
+        # Layout: merge user-edited body.text into layout so DOC/PDF reflect textarea edits.
+        layout_to_use = body.layout
+        if use_layout and body.layout and body.text is not None:
+            edited_lines = [ln.rstrip() for ln in (body.text or "").splitlines()]
+            layout_copy = [dict(ln) for ln in body.layout]
+            for i in range(len(layout_copy)):
+                if i < len(edited_lines):
+                    layout_copy[i]["text"] = edited_lines[i]
+            layout_to_use = layout_copy
+
         if body.format == "doc":
             if use_layout:
                 data = ocr.text_to_docx_layout(
-                    body.layout, body.image_width, body.image_height, title=title, tables=body.tables
+                    layout_to_use, body.image_width, body.image_height, title=title, tables=body.tables
                 )
             else:
                 data = ocr.text_to_docx(body.text, title=title)
@@ -1084,7 +1123,7 @@ async def ocr_export(
         else:
             if use_layout:
                 data = ocr.text_to_pdf_layout(
-                    body.layout, body.image_width, body.image_height, title=title, tables=body.tables
+                    layout_to_use, body.image_width, body.image_height, title=title, tables=body.tables
                 )
             else:
                 data = ocr.text_to_pdf(body.text, title=title)

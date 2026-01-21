@@ -1,8 +1,8 @@
 """
-OCR Service for InsightSheet-lite / Meldra
+OCR Service for InsightSheet-lite / Meldra. Generic: works with any form, invoice, or document image.
 Extracts text from images (JPG, PNG, WebP, BMP, TIFF, GIF) and exports to editable DOC or PDF.
-- Form mode: form-like structure (sections, labels, tables, checkboxes) in document flow.
-- Layout mode: places text at original (x,y) so output matches the image layout (exactly editable).
+- Form mode: structure (sections, labels, tables, checkboxes) in document flow. Form-agnostic.
+- Layout mode: places text at original (x,y) so output matches the image layout. Preserves format.
 """
 import io
 import os
@@ -52,15 +52,37 @@ except ImportError:
     REPORTLAB_AVAILABLE = False
     pdf_canvas = None
 
+try:
+    import fitz  # PyMuPDF
+    FITZ_AVAILABLE = True
+except ImportError:
+    FITZ_AVAILABLE = False
+    fitz = None
+
 
 # Placeholder for fillable "field" so user can type over it in Word/PDF
 FIELD_PLACEHOLDER = "________________"
 
+# Single tokens that are labels, not a single checkbox option (generic).
+_LABEL_LIKE_SINGLE = frozenset(
+    {"id", "name", "email", "phone", "address", "date", "signature", "role", "company", "number", "code", "ref", "tax", "vat"}
+)
+
+# Two-word compound labels: never treat as checkbox options when they appear after a label (generic across forms).
+_COMPOUND_LABEL_PHRASES = frozenset({
+    "employee id", "full name", "form id", "start date", "end date", "phone number", "postal code",
+    "street address", "work history", "personal details", "contact number", "email address",
+    "company name", "job title", "date of birth", "marital status", "account number", "reference number",
+    "invoice number", "order number", "zip code", "tax id", "vat number", "signature date",
+    "place of birth", "nationality", "bank account", "sort code", "policy number", "license number",
+    "passport number", "national insurance", "social security", "country code", "area code",
+})
+
 
 def _normalize_ocr_text(s: str) -> str:
     """
-    Fix common OCR mistakes: checkboxes [) [|] -> [ ], stray | -> I, border/garbage,
-    and common word errors (e.g. "Ltd" read as "d").
+    Fix common OCR mistakes. Generic: checkboxes [) [|] -> [ ], stray | -> I,
+    "Ltd" misread as " d", spaced hyphens (Part - time -> Part-time, ID - 001 -> ID-001), section brackets.
     """
     if not s or not isinstance(s, str):
         return s
@@ -72,6 +94,10 @@ def _normalize_ocr_text(s: str) -> str:
     s = re.sub(r'(\s|^)\|(\s*[a-z])', r'\1I\2', s)
     # "Acme Logistics d" / "Company d" at end of word -> "Ltd" (common OCR misread)
     s = re.sub(r'(\b\w{2,}) d\b', r'\1 Ltd', s)
+    # "Part - time" -> "Part-time", "ONB - 2026 - 001" -> "ONB-2026-001" (OCR.space extra spaces)
+    s = re.sub(r'(\w)\s+-\s+(\w)', r'\1-\2', s)
+    # "[ 1) Section" -> "1) Section" (stray [ before section header)
+    s = re.sub(r'^\[\s*(\d+[\)\.]\s*\S)', r'\1', s)
     return s
 
 
@@ -82,7 +108,7 @@ def _is_border_or_noise(s: str) -> bool:
     t = s.strip()
     if not t:
         return True
-    # Never drop label-like lines: "Full Name:", "Employment type:", "ID:"
+    # Never drop label-like lines: "Full Name:", "Label:", "ID:"
     if re.search(r'\b[a-zA-Z]{2,}\s*:', t):
         return False
     # Mostly dashes, pipes, dots, underscores, equals
@@ -105,7 +131,7 @@ def _split_into_columns(line: str) -> List[str]:
 
 
 def _is_section_header(text: str) -> bool:
-    """True if line is a section header like "1) Personal Details", "2. Work History"."""
+    """True if line is a section header: "1) Title", "2. Section Name", etc. Generic."""
     if not text or not isinstance(text, str):
         return False
     return bool(re.match(r'^\d+[\)\.]\s*\S', text.strip()))
@@ -133,10 +159,10 @@ def _is_checkbox_line(text: str) -> Tuple[bool, int]:
 
 def _get_checkbox_options(text: str, prev_line_is_label: bool = False) -> Tuple[bool, List[str], Optional[str]]:
     """
-    Detect checkbox lines and return (is_checkbox, options, label).
+    Detect checkbox lines and return (is_checkbox, options, label). Generic for any form.
     - "[ ] A [ ] B [ ] C" -> (True, [A, B, C], None)
-    - "Employment type: Contractor Full-time Part-time" -> (True, [Contractor, Full-time, Part-time], "Employment type:")
-    - "Contractor Full-time Part-time" when prev_line_is_label -> (True, [Contractor, Full-time, Part-time], None)
+    - "Label: Option A Option B Option C" -> (True, [Option A, Option B, Option C], "Label:")
+    - "Option A Option B" when prev_line_is_label -> (True, [Option A, Option B], None)
     """
     if not text or not isinstance(text, str):
         return False, [], None
@@ -144,30 +170,38 @@ def _get_checkbox_options(text: str, prev_line_is_label: bool = False) -> Tuple[
     if not t or len(t) > 150:
         return False, [], None
 
+    def _reject_single_label(opts: List[str]) -> bool:
+        return len(opts) == 1 and (opts[0] or "").lower().strip() in _LABEL_LIKE_SINGLE
+
     # Explicit [ ] pattern: "A [ ] B [ ] C" or "[ ] A [ ] B"
     if '[ ]' in t:
         parts = [p.strip() for p in re.split(r'\s*\[\s*\]\s*', t) if p.strip()]
-        if 2 <= len(parts) <= 6 and all(len(p) < 35 for p in parts):
+        if 2 <= len(parts) <= 6 and all(len(p) < 35 for p in parts) and not _reject_single_label(parts):
             return True, parts, None
 
     # ☐ (U+2610) or "O O O" style
     if '\u2610' in t or '\u25A1' in t or re.search(r'\b[Oo]\s+[Oo]\s+[Oo]\b', t):
         parts = [p.strip() for p in re.split(r'[\u2610\u25A1\s]+', t) if p.strip() and len(p) > 1]
-        if 2 <= len(parts) <= 6:
+        if 2 <= len(parts) <= 6 and not _reject_single_label(parts):
             return True, parts, None
 
-    # "Employment type: Contractor Full-time Part-time" — label and options on one line
+    # "Label: Option A Option B Option C" — label and options on one line
     if ':' in t:
         idx = t.index(':')
         left, right = t[: idx + 1].strip(), t[idx + 1:].strip()
         words = [w for w in right.split() if len(w) > 1 and not re.match(r'^[Oo\u2610\u25A1]+$', w)]
-        if 2 <= len(words) <= 5 and all(len(w) < 25 for w in words):
+        if 2 <= len(words) <= 5 and all(len(w) < 25 for w in words) and not _reject_single_label(words):
             return True, words, left
 
-    # "Contractor Full-time Part-time" when previous line was a label (Employment type:)
+    # "Option A Option B" when previous line was a label. Generic: reject section-like parentheticals
+    # and 2-word compound labels (e.g. "Employee ID", "Work History") via blocklist.
     if prev_line_is_label:
+        if '(' in t or ')' in t:
+            return False, [], None
         words = [w for w in t.split() if len(w) > 1 and not re.match(r'^[Oo\u2610\u25A1\[\]\)\(]+$', w)]
-        if 2 <= len(words) <= 5 and all(len(w) < 25 for w in words) and len(t) < 100:
+        if 2 <= len(words) <= 5 and all(len(w) < 25 for w in words) and len(t) < 100 and not _reject_single_label(words):
+            if len(words) == 2 and ' '.join(w.lower() for w in words) in _COMPOUND_LABEL_PHRASES:
+                return False, [], None
             return True, words, None
 
     return False, [], None
@@ -328,8 +362,9 @@ def _detect_tables_from_words(
 
 def _parse_form_like_text(text: str) -> List[Dict[str, Any]]:
     """
-    Parse OCR text into structure: section, label (with optional fill line), table, checkbox, paragraph.
-    Normalizes OCR noise ([) -> [ ], | -> I) and drops border/garbage lines.
+    Parse OCR text into structure: section, label (with fill line), table, checkbox, paragraph.
+    Generic: form-agnostic. Normalizes OCR noise and drops border/garbage. Uses blocklists to avoid
+    misclassifying compound labels or section subheaders as checkbox options.
     """
     blocks: List[Dict[str, Any]] = []
     raw = [ln.rstrip() for ln in text.splitlines()]
@@ -346,7 +381,7 @@ def _parse_form_like_text(text: str) -> List[Dict[str, Any]]:
             i += 1
             continue
 
-        # --- Section header: "1) Personal Details" or "2. Work History"
+        # --- Section header: "1) Section A", "2. Section B", etc.
         if re.match(r'^\d+[\).]\s*\S', ln):
             blocks.append({"type": "section", "text": ln})
             i += 1
@@ -361,7 +396,7 @@ def _parse_form_like_text(text: str) -> List[Dict[str, Any]]:
                 i += 1
                 continue
 
-        # --- Checkbox: "[ ] A [ ] B [ ] C" (form-style) or "O O O", "☐ ☐ ☐"; or "Full-time Part-time Contractor" followed by "O O O"
+        # --- Checkbox: "[ ] A [ ] B [ ] C" or "O O O", "☐ ☐ ☐"; or "Option A Option B" followed by "O O O"
         parts = [x.strip() for x in re.split(r'\[\s*\]', ln) if x.strip()]
         if 2 <= len(parts) <= 6 and all(len(p) < 30 for p in parts):
             blocks.append({"type": "checkbox", "options": parts})
@@ -373,11 +408,11 @@ def _parse_form_like_text(text: str) -> List[Dict[str, Any]]:
             opts: List[str] = []
             if i > 0 and lines[i - 1]:
                 prev = lines[i - 1]
-                # "Employment Type: O O O" -> label stays, we use generic
+                # "Label: O O O" -> label stays, we use generic options
                 if prev.endswith(':'):
                     opts = ["Option 1", "Option 2", "Option 3"]
                 else:
-                    # "Full-time Part-time Contractor" -> use these
+                    # "Option A Option B" -> use these
                     opts = [w for w in re.split(r'\s+', prev) if len(w) > 1 and not re.match(r'^[Oo\u2610\u25A1]+$', w)]
             if not opts or len(opts) > 6:
                 opts = ["Option 1", "Option 2", "Option 3"]
@@ -385,22 +420,25 @@ def _parse_form_like_text(text: str) -> List[Dict[str, Any]]:
             i += 1
             continue
 
-        # If this line looks like option labels and next is "O O O", we'll handle on next iter; here treat as paragraph if not like a header
+        # If this line looks like option labels and next is "O O O", we'll handle on next iter.
+        # Reject section-like lines with parentheticals (e.g. "Section (Note)") — generic.
         next_is_oo = i + 1 < len(lines) and bool(re.search(r'[Oo]\s+[Oo]\s+[Oo]', lines[i + 1]))
-        if next_is_oo and 2 <= len(re.split(r'\s+', ln)) <= 5 and not ln.endswith(':'):
+        if next_is_oo and 2 <= len(re.split(r'\s+', ln)) <= 5 and not ln.endswith(':') and '(' not in ln and ')' not in ln:
             opts = [w for w in re.split(r'\s+', ln) if len(w) > 1]
             if opts:
                 blocks.append({"type": "checkbox", "options": opts})
                 i += 2  # skip next "O O O" line
                 continue
 
-        # --- Checkbox options on this line when previous line was a label (e.g. "Employment type:" -> "Contractor Full-time Part-time")
-        if i > 0 and (lines[i - 1] or '').strip().endswith(':') and not ln.endswith(':'):
+        # --- Checkbox options on this line when previous line was a label. Generic: allow 2–5 options;
+        # reject section-like parentheticals and 2-word compound labels via blocklist.
+        if i > 0 and (lines[i - 1] or '').strip().endswith(':') and not ln.endswith(':') and '(' not in ln and ')' not in ln:
             words = [w for w in ln.split() if len(w) > 1 and not re.match(r'^[Oo\u2610\u25A1\[\]\)\(]+$', w)]
             if 2 <= len(words) <= 5 and all(len(w) < 25 for w in words) and len(ln) < 100:
-                blocks.append({"type": "checkbox", "options": words})
-                i += 1
-                continue
+                if not (len(words) == 2 and ' '.join(w.lower() for w in words) in _COMPOUND_LABEL_PHRASES):
+                    blocks.append({"type": "checkbox", "options": words})
+                    i += 1
+                    continue
 
         # --- Table: 2+ consecutive lines with same number of columns (2–8) when split by tab or 2+ spaces
         cols = _split_into_columns(ln)
@@ -425,7 +463,7 @@ def _parse_form_like_text(text: str) -> List[Dict[str, Any]]:
                 i = j
                 continue
 
-        # --- Label (ends with :) + fill line: "Full Name:", "Email:", etc. Add an editable underline.
+        # --- Label (ends with :) + fill line. Add an editable underline. Generic.
         if ln.endswith(':') and len(ln) < 100 and not re.match(r'^\d+[\).]', ln):
             blocks.append({"type": "label", "text": ln})
             i += 1
@@ -549,8 +587,24 @@ async def extract_with_layout_ocrspace(
     }
 
 
+def pdf_from_image(image_bytes: bytes) -> bytes:
+    """
+    Create a PDF that looks exactly like the input image (full-page image).
+    Use for preserve_image / "Exact copy" export. Requires PyMuPDF.
+    """
+    if not FITZ_AVAILABLE or fitz is None:
+        raise RuntimeError("PyMuPDF is not installed. Install: pip install PyMuPDF")
+    doc = fitz.open()
+    page = doc.new_page()  # A4
+    page.insert_image(page.rect, stream=image_bytes)
+    buf = io.BytesIO()
+    doc.save(buf, deflate=False)
+    doc.close()
+    return buf.getvalue()
+
+
 class OCRService:
-    """Service for OCR: image -> text, and text -> editable DOC/PDF with form-like layout."""
+    """OCR: image -> text, and text -> editable DOC/PDF. Generic for any form, invoice, or document."""
 
     # Image extensions we support
     ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif', '.gif'}
@@ -812,7 +866,7 @@ class OCRService:
                 c.rect(rx, ry, rw, rh)
                 c.drawString(x_pt, y_pt, text[:500])
             elif is_cb and opts:
-                # Label (e.g. "Employment type:") + [ ] Option for each — preserves form alignment
+                # Label (if any) + [ ] Option for each — preserves alignment. Generic.
                 sq, char_pt = 8, 5
                 cx = x_pt
                 if label:
@@ -925,7 +979,7 @@ class OCRService:
                 except Exception:
                     pass
             elif is_cb and opts:
-                # Checkbox: label (if any) + ☐ Option for each — preserves Employment type, Contractor, etc.
+                # Checkbox: label (if any) + ☐ Option for each. Generic.
                 p = doc.add_paragraph()
                 if label:
                     r0 = p.add_run(label + " ")

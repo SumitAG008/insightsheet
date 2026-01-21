@@ -198,7 +198,7 @@ export default function FileAnalyzer() {
               <CardTitle>Overall Summary</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
                   <p className="text-sm text-muted-foreground">File Type</p>
                   <p className="text-2xl font-bold">{analysis.file_type}</p>
@@ -213,6 +213,12 @@ export default function FileAnalyzer() {
                     {analysis.overall_summary?.total_rows?.toLocaleString() || 'N/A'}
                   </p>
                 </div>
+                {analysis.overall_summary?.overall_data_quality_score != null && (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg">
+                    <p className="text-sm text-muted-foreground">Data Quality Score (ML)</p>
+                    <p className="text-2xl font-bold">{analysis.overall_summary.overall_data_quality_score}/100</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -258,11 +264,30 @@ export default function FileAnalyzer() {
             <Card key={sheetIdx}>
               <CardHeader>
                 <CardTitle>{sheet.name || `Sheet ${sheetIdx + 1}`}</CardTitle>
-                <CardDescription>
-                  {sheet.row_count} rows × {sheet.column_count} columns
+                <CardDescription className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  <span>{sheet.row_count} rows × {sheet.column_count} columns</span>
+                  {sheet.data_quality_score != null && (
+                    <span className="text-amber-600 dark:text-amber-400">Data quality: {sheet.data_quality_score}/100</span>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Outliers (ML - IQR) */}
+                {sheet.outliers?.by_column?.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Outliers (IQR)</h3>
+                    <div className="space-y-2">
+                      {sheet.outliers.by_column.map((o, i) => (
+                        <div key={i} className="p-2 rounded bg-amber-50 dark:bg-amber-950/50 text-sm">
+                          <span className="font-medium">{o.column}</span>: {o.count} outlier(s)
+                          {o.sample_values?.length > 0 && (
+                            <span className="text-muted-foreground"> — sample: {o.sample_values.slice(0, 3).join(', ')}</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {/* Data Quality */}
                 {sheet.quality_issues && sheet.quality_issues.length > 0 && (
                   <div>

@@ -281,6 +281,21 @@ class FileAnalyzerService:
 
             column_analysis.append(col_info)
 
+        # Outlier detection (IQR) for numeric columns — ML use case
+        outliers_by_column = []
+        for col in numeric_columns:
+            o = self._detect_outliers_iqr(df[col])
+            if o['count'] > 0:
+                outliers_by_column.append({
+                    'column': str(col),
+                    'count': o['count'],
+                    'sample_values': o['sample_values'],
+                })
+            for c in column_analysis:
+                if c['name'] == str(col):
+                    c['outliers'] = o
+                    break
+
         # Data quality issues
         quality_issues = []
         for col_info in column_analysis:
@@ -291,6 +306,14 @@ class FileAnalyzerService:
                     'severity': 'high' if col_info['null_percentage'] > 50 else 'medium',
                     'message': f"{col_info['name']} has {col_info['null_percentage']:.1f}% missing values"
                 })
+        for ob in outliers_by_column:
+            quality_issues.append({
+                'type': 'outliers',
+                'column': ob['column'],
+                'count': ob['count'],
+                'severity': 'medium',
+                'message': f"{ob['column']} has {ob['count']} outlier(s) (IQR method). Sample: {ob['sample_values'][:3]}"
+            })
 
         # Duplicate rows
         duplicate_count = df.duplicated().sum()
@@ -310,6 +333,14 @@ class FileAnalyzerService:
         # Generate AI summary
         ai_summary = await self._generate_ai_summary(sheet_data, column_analysis, df)
 
+        # Data quality score (0–100) from missing %, duplicates, outliers — ML use case
+        data_quality_score = self._compute_data_quality_score(
+            row_count=row_count,
+            duplicate_count=duplicate_count,
+            columns=column_analysis,
+            outliers_by_column=outliers_by_column,
+        )
+
         return {
             'name': sheet_data['name'],
             'row_count': row_count,
@@ -321,9 +352,53 @@ class FileAnalyzerService:
             'text_columns': text_columns,
             'quality_issues': quality_issues,
             'duplicate_rows': duplicate_count,
+            'outliers': {
+                'by_column': outliers_by_column,
+                'total_count': sum(o['count'] for o in outliers_by_column),
+            },
+            'data_quality_score': data_quality_score,
             'ai_summary': ai_summary,
             'data_preview': df.head(10).to_dict('records') if len(df) > 0 else []
         }
+
+    def _detect_outliers_iqr(self, series: pd.Series) -> Dict[str, Any]:
+        """
+        IQR-based outlier detection for a numeric column.
+        Returns { "count": int, "sample_values": list } (JSON-safe floats).
+        """
+        s = pd.to_numeric(series, errors='coerce').dropna()
+        if s.empty or len(s) < 4:
+            return {"count": 0, "sample_values": []}
+        q1, q3 = s.quantile(0.25), s.quantile(0.75)
+        iqr = q3 - q1
+        if iqr <= 0:
+            iqr = max(1e-9, s.std() or 1e-9)
+        lower, upper = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+        out = s[(s < lower) | (s > upper)]
+        count = int(out.size)
+        samples = [float(x) for x in out.head(5).tolist() if math.isfinite(x)]
+        return {"count": count, "sample_values": samples}
+
+    def _compute_data_quality_score(
+        self,
+        row_count: int,
+        duplicate_count: int,
+        columns: List[Dict],
+        outliers_by_column: List[Dict],
+    ) -> int:
+        """
+        Compute 0–100 data quality score from missing %, duplicates, and outliers.
+        """
+        if row_count <= 0:
+            return 100
+        missing_penalty = min(33.0, sum(c.get('null_percentage', 0) for c in columns) / max(1, len(columns)))
+        dup_pct = (duplicate_count / row_count) * 100
+        duplicate_penalty = min(33.0, dup_pct)
+        total_outliers = sum(o.get('count', 0) for o in outliers_by_column)
+        out_pct = (total_outliers / row_count) * 33.0  # 100% outliers => 33
+        outlier_penalty = min(33.0, out_pct)
+        score = 100.0 - (missing_penalty + duplicate_penalty + outlier_penalty)
+        return int(max(0, min(100, round(score))))
 
     async def _generate_ai_summary(
         self,
@@ -398,12 +473,15 @@ class FileAnalyzerService:
         all_quality_issues = []
         for sheet in analysis_results:
             all_quality_issues.extend(sheet.get('quality_issues', []))
+        scores = [s.get('data_quality_score') for s in analysis_results if s.get('data_quality_score') is not None]
+        overall_data_quality_score = int(round(sum(scores) / len(scores))) if scores else None
 
         return {
             "total_sheets": len(analysis_results),
             "total_rows": total_rows,
             "total_columns": total_columns,
             "total_quality_issues": len(all_quality_issues),
+            "overall_data_quality_score": overall_data_quality_score,
             "file_size_category": self._categorize_file_size(total_rows),
             "complexity": self._assess_complexity(analysis_results)
         }

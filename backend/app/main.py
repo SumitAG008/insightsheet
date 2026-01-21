@@ -966,6 +966,7 @@ async def ocr_extract(
     Extract text from an image using OCR (JPG, PNG, WebP, BMP, TIFF, GIF). Generic: any form, invoice, or document.
     ZERO STORAGE: File content not stored. Returns text, layout, tables for editing; use ocr-export to get DOC/PDF.
     """
+    ocr_space_error = None
     try:
         subscription = db.query(Subscription).filter(
             Subscription.user_email == current_user["email"]
@@ -990,7 +991,12 @@ async def ocr_extract(
 
         out = None
         api_key = (os.getenv("OCR_SPACE_API_KEY") or "").strip()
-        if api_key and len(file_content) <= OCR_SPACE_MAX_BYTES:
+
+        if not api_key:
+            logger.info("OCR.space skipped: OCR_SPACE_API_KEY not set. Using Tesseract. Set OCR_SPACE_API_KEY in Railway to use the API.")
+        elif len(file_content) > OCR_SPACE_MAX_BYTES:
+            logger.info("OCR.space skipped: file > 1MB. Using Tesseract.")
+        else:
             try:
                 img = Image.open(io.BytesIO(file_content))
                 iw, ih = img.size
@@ -999,7 +1005,8 @@ async def ocr_extract(
                 )
                 logger.info(f"OCR extract via OCR.space: {file.filename}")
             except Exception as e:
-                logger.warning(f"OCR.space failed, falling back to Tesseract: {e}")
+                ocr_space_error = f"{type(e).__name__}: {e}"
+                logger.warning("OCR.space failed, falling back to Tesseract: %s", ocr_space_error)
 
         if out is None:
             ocr = OCRService()
@@ -1009,10 +1016,10 @@ async def ocr_extract(
                     55.0
                 )
             except asyncio.TimeoutError:
-                raise HTTPException(
-                    status_code=503,
-                    detail="OCR is taking too long. Try a smaller or simpler image, or try again later."
-                )
+                msg = "OCR is taking too long. Try a smaller or simpler image, or try again later."
+                if ocr_space_error:
+                    msg += f" (OCR.space had failed: {ocr_space_error})"
+                raise HTTPException(status_code=503, detail=msg)
 
         processing_history = FileProcessingHistory(
             user_email=current_user["email"],
@@ -1036,7 +1043,12 @@ async def ocr_extract(
         raise
     except RuntimeError as e:
         if "Tesseract" in str(e) or "not installed" in str(e).lower():
-            raise HTTPException(status_code=503, detail=str(e))
+            detail = str(e)
+            if ocr_space_error:
+                detail += f" (OCR.space had failed: {ocr_space_error})"
+            else:
+                detail += " Set OCR_SPACE_API_KEY in Railway to use OCR.space API instead."
+            raise HTTPException(status_code=503, detail=detail)
         raise HTTPException(status_code=500, detail=str(e))
     except Exception as e:
         logger.error(f"OCR extract error: {str(e)}")

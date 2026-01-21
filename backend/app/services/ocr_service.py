@@ -505,9 +505,16 @@ async def extract_with_layout_ocrspace(
     data = {"apikey": api_key, "isOverlayRequired": "true", "OCREngine": "2", "language": "eng"}
     files = {"file": (fname, file_content, mime)}
 
-    async with httpx.AsyncClient() as client:
-        r = await client.post(OCR_SPACE_API_URL, data=data, files=files, timeout=30.0)
-    r.raise_for_status()
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.post(OCR_SPACE_API_URL, data=data, files=files, timeout=30.0)
+        r.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        body = (e.response.text or "")[:400]
+        raise RuntimeError(f"OCR.space HTTP {e.response.status_code}: {body}") from e
+    except httpx.RequestError as e:
+        raise RuntimeError(f"OCR.space request failed: {e}") from e
+
     j = r.json()
 
     if j.get("OCRExitCode") != 1:

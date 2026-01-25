@@ -54,6 +54,9 @@ from app.services.api_key_service import (
     generate_api_key, verify_api_key, get_api_key_by_header, track_api_usage,
     get_usage_stats, get_monthly_billing, update_monthly_billing
 )
+from app.services.security_ai_service import SecurityAIService
+from app.services.compliance_ai_service import ComplianceAIService
+from app.services.predictive_ml_service import PredictiveMLService
 from PIL import Image
 
 load_dotenv()
@@ -885,6 +888,260 @@ async def get_user_usage(
             for k in keys
         ],
     }
+
+
+# ============================================================================
+# SECURITY AI/ML ENDPOINTS
+# ============================================================================
+
+class FraudDetectionRequest(BaseModel):
+    user_email: Optional[str] = None
+    days: int = 7
+
+
+class AccessPatternRequest(BaseModel):
+    user_email: str
+    days: int = 30
+
+
+@app.post("/api/ai/security/fraud-detection")
+async def detect_fraud(
+    request: FraudDetectionRequest,
+    current_user: dict = Depends(get_current_admin_user),  # Admin only
+    db: Session = Depends(get_db)
+):
+    """
+    AI-powered fraud detection using ML:
+    - Multiple IPs from different locations
+    - Unusual access patterns
+    - Suspicious login times
+    - Failed login spikes
+    """
+    try:
+        service = SecurityAIService()
+        result = await service.detect_fraud_patterns(
+            db,
+            user_email=request.user_email,
+            days=request.days
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Fraud detection error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Fraud detection failed: {str(e)}")
+
+
+@app.post("/api/ai/security/access-patterns")
+async def analyze_access_patterns(
+    request: AccessPatternRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze user access patterns using ML
+    Users can analyze their own patterns; admins can analyze any user
+    """
+    try:
+        # Users can only analyze their own patterns unless admin
+        if current_user["role"] != "admin" and request.user_email != current_user["email"]:
+            raise HTTPException(status_code=403, detail="You can only analyze your own access patterns")
+        
+        service = SecurityAIService()
+        result = await service.analyze_access_patterns(
+            db,
+            user_email=request.user_email,
+            days=request.days
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Access pattern analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Pattern analysis failed: {str(e)}")
+
+
+@app.get("/api/ai/security/api-abuse")
+async def detect_api_abuse(
+    api_key_id: Optional[int] = None,
+    hours: int = 24,
+    current_user: dict = Depends(get_current_admin_user),  # Admin only
+    db: Session = Depends(get_db)
+):
+    """
+    Detect API abuse patterns (rate limit violations, unusual usage)
+    Admin only
+    """
+    try:
+        service = SecurityAIService()
+        result = service.detect_api_abuse(
+            db,
+            api_key_id=api_key_id,
+            hours=hours
+        )
+        return result
+    except Exception as e:
+        logger.error(f"API abuse detection error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Abuse detection failed: {str(e)}")
+
+
+# ============================================================================
+# COMPLIANCE AI ENDPOINTS
+# ============================================================================
+
+@app.get("/api/ai/compliance/gdpr-check")
+async def gdpr_compliance_check(
+    user_email: Optional[str] = None,
+    current_user: dict = Depends(get_current_admin_user),  # Admin only
+    db: Session = Depends(get_db)
+):
+    """
+    AI-powered GDPR compliance check:
+    - Data minimization
+    - Right to deletion
+    - Consent management
+    - Data retention
+    """
+    try:
+        service = ComplianceAIService()
+        result = await service.gdpr_compliance_check(db, user_email=user_email)
+        return result
+    except Exception as e:
+        logger.error(f"GDPR compliance check error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Compliance check failed: {str(e)}")
+
+
+@app.get("/api/ai/compliance/privacy-analysis/{user_email}")
+async def analyze_data_privacy(
+    user_email: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze user's data privacy footprint
+    Users can analyze their own data; admins can analyze any user
+    """
+    try:
+        # Users can only analyze their own privacy unless admin
+        if current_user["role"] != "admin" and user_email != current_user["email"]:
+            raise HTTPException(status_code=403, detail="You can only analyze your own privacy data")
+        
+        service = ComplianceAIService()
+        result = await service.analyze_data_privacy(db, user_email=user_email)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Privacy analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Privacy analysis failed: {str(e)}")
+
+
+@app.get("/api/ai/compliance/audit-report")
+async def generate_audit_report(
+    days: int = 30,
+    current_user: dict = Depends(get_current_admin_user),  # Admin only
+    db: Session = Depends(get_db)
+):
+    """
+    Generate AI-powered audit report for compliance (GDPR, CCPA, SOC 2)
+    Admin only
+    """
+    try:
+        service = ComplianceAIService()
+        result = await service.generate_audit_report(db, days=days)
+        return result
+    except Exception as e:
+        logger.error(f"Audit report error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Audit report failed: {str(e)}")
+
+
+# ============================================================================
+# PREDICTIVE ML ENDPOINTS
+# ============================================================================
+
+class ForecastRequest(BaseModel):
+    data: List[Dict[str, Any]]
+    date_column: str
+    value_column: str
+    periods: int = 12
+    method: str = "linear"  # linear, exponential, moving_average, ai_based
+
+
+class TrendDetectionRequest(BaseModel):
+    data: List[Dict[str, Any]]
+    date_column: str
+    value_column: str
+
+
+class AnomalyDetectionRequest(BaseModel):
+    data: List[Dict[str, Any]]
+    value_column: str
+
+
+@app.post("/api/ai/ml/forecast")
+async def forecast_time_series(
+    request: ForecastRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    ML-powered time series forecasting
+    Methods: linear, exponential, moving_average, ai_based
+    """
+    try:
+        service = PredictiveMLService()
+        result = await service.forecast_time_series(
+            data=request.data,
+            date_column=request.date_column,
+            value_column=request.value_column,
+            periods=request.periods,
+            method=request.method
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Forecast error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Forecasting failed: {str(e)}")
+
+
+@app.post("/api/ai/ml/detect-trends")
+async def detect_trends(
+    request: TrendDetectionRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    ML-powered trend detection and pattern analysis
+    """
+    try:
+        service = PredictiveMLService()
+        result = await service.detect_trends(
+            data=request.data,
+            date_column=request.date_column,
+            value_column=request.value_column
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Trend detection error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Trend detection failed: {str(e)}")
+
+
+@app.post("/api/ai/ml/predict-anomalies")
+async def predict_anomalies(
+    request: AnomalyDetectionRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    ML-powered anomaly detection using statistical methods + AI
+    """
+    try:
+        service = PredictiveMLService()
+        result = await service.predict_anomalies(
+            data=request.data,
+            value_column=request.value_column
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Anomaly detection error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Anomaly detection failed: {str(e)}")
 
 
 # ============================================================================

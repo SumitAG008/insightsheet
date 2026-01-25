@@ -44,7 +44,31 @@ See `AI_ML_DEEPLEARNING_STRATEGY.md` for the full strategy.
 |--------|-------|----------|--------------|
 | **Tesseract / OCR.space** | `ocr_service.py`, `main.ocr_extract` | OCR Converter | Image → text + layout; export to DOC/PDF |
 
-### 1.6 Deep Learning (DL)
+### 1.6 Security AI/ML
+
+| Feature | Where | API / UI | What It Does |
+|--------|-------|----------|--------------|
+| **Fraud detection** | `security_ai_service.detect_fraud_patterns` | `POST /api/ai/security/fraud-detection` (admin) | Detects multiple IPs, impossible travel, unusual access times, failed login spikes |
+| **Access pattern analysis** | `security_ai_service.analyze_access_patterns` | `POST /api/ai/security/access-patterns` | ML analysis of user login patterns, behavioral insights |
+| **API abuse detection** | `security_ai_service.detect_api_abuse` | `GET /api/ai/security/api-abuse` (admin) | Detects rate limit violations, unusual API usage patterns |
+
+### 1.7 Compliance AI
+
+| Feature | Where | API / UI | What It Does |
+|--------|-------|----------|--------------|
+| **GDPR compliance check** | `compliance_ai_service.gdpr_compliance_check` | `GET /api/ai/compliance/gdpr-check` (admin) | AI-powered GDPR compliance assessment, data retention checks |
+| **Privacy analysis** | `compliance_ai_service.analyze_data_privacy` | `GET /api/ai/compliance/privacy-analysis/{email}` | Analyzes user's data privacy footprint, compliance status |
+| **Audit report** | `compliance_ai_service.generate_audit_report` | `GET /api/ai/compliance/audit-report` (admin) | Generates comprehensive compliance audit report |
+
+### 1.8 Predictive ML
+
+| Feature | Where | API / UI | What It Does |
+|--------|-------|----------|--------------|
+| **Time series forecasting** | `predictive_ml_service.forecast_time_series` | `POST /api/ai/ml/forecast` | Forecasts future values using linear/exponential/moving_average/AI methods |
+| **Trend detection** | `predictive_ml_service.detect_trends` | `POST /api/ai/ml/detect-trends` | Detects trends, patterns, seasonality in time series data |
+| **Anomaly prediction** | `predictive_ml_service.predict_anomalies` | `POST /api/ai/ml/predict-anomalies` | Predicts anomalies using statistical methods + AI insights |
+
+### 1.9 Deep Learning (DL)
 
 | Status | Notes |
 |--------|-------|
@@ -112,6 +136,21 @@ curl -X POST "%BASE%/api/ai/explain-sql" -H "Authorization: Bearer %TOKEN%" -H "
 curl -X POST "%BASE%/api/files/analyze" -H "Authorization: Bearer %TOKEN%" -F "file=@your.xlsx"
 ```
 
+**Fraud detection (Security AI):**
+```bash
+curl -X POST "%BASE%/api/ai/security/fraud-detection" -H "Authorization: Bearer %TOKEN%" -H "Content-Type: application/json" -d "{\"days\": 7}"
+```
+
+**GDPR compliance check (Compliance AI):**
+```bash
+curl -X GET "%BASE%/api/ai/compliance/gdpr-check" -H "Authorization: Bearer %TOKEN%"
+```
+
+**Forecast time series (Predictive ML):**
+```bash
+curl -X POST "%BASE%/api/ai/ml/forecast" -H "Authorization: Bearer %TOKEN%" -H "Content-Type: application/json" -d "{\"data\":[{\"date\":\"2024-01-01\",\"value\":100},...],\"date_column\":\"date\",\"value_column\":\"value\",\"periods\":12,\"method\":\"linear\"}"
+```
+
 ---
 
 ## 4. Roadmap (from AI_ML_DEEPLEARNING_STRATEGY.md)
@@ -144,7 +183,9 @@ curl -X POST "%BASE%/api/files/analyze" -H "Authorization: Bearer %TOKEN%" -F "f
 | Area | In App Now | Testable | Roadmap |
 |------|------------|----------|---------|
 | **AI (LLM)** | Formula, analyze, chart suggest, transform, explain SQL, DALL·E, Agentic, File AI summary | §2.1, §2.2 (#8) | Stronger Agentic, NL validation, smart clean |
-| **ML** | Outliers (IQR), data quality score in File Analyzer | §2.2 (#9, #10) | CleaningTools, forecasting, similarity |
+| **ML** | Outliers (IQR), data quality score, forecasting, trend detection, anomaly prediction | §2.2 (#9, #10), §2.5 (#19-21) | CleaningTools, similarity search |
+| **Security AI/ML** | Fraud detection, access pattern analysis, API abuse detection | §2.3 (#13-15) | Real-time threat detection, behavioral biometrics |
+| **Compliance AI** | GDPR checks, privacy analysis, audit reports | §2.4 (#16-18) | Automated compliance monitoring, data retention automation |
 | **DL** | — | — | OCR (DocTR/Document AI), optional forecasting |
 
 If you tell me your priority (e.g. “test File Analyzer ML” or “add forecasting”), I can turn it into concrete test steps or implementation tasks.

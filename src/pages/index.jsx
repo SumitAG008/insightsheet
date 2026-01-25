@@ -107,21 +107,34 @@ function _getCurrentPage(url) {
     return pageName || Object.keys(PAGES)[0];
 }
 
-// developer.meldra.ai: only API/docs; everything else redirects to insight.meldra.ai (main app)
+// developer.meldra.ai and api.developer.meldra.ai: only API/docs; everything else redirects to insight.meldra.ai (main app)
 const INSIGHT_BASE = 'https://insight.meldra.ai';
 
 // Create a wrapper component that uses useLocation inside the Router context
 function PagesContent() {
     const location = useLocation();
-    const isDeveloperDomain = typeof window !== 'undefined' && window.location.hostname === 'developer.meldra.ai';
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+    const isDeveloperDomain = hostname === 'developer.meldra.ai';
+    const isApiDeveloperDomain = hostname === 'api.developer.meldra.ai';
 
+    // api.developer.meldra.ai: technical API docs only (no commercial info, with interactive testing)
+    if (isApiDeveloperDomain) {
+        const p = (location.pathname || '/').toLowerCase().replace(/\/$/, '') || '/';
+        if (p !== '/' && p !== '/developers' && p !== 'developers') {
+            window.location.replace(INSIGHT_BASE + location.pathname + location.search);
+            return null;
+        }
+        return <Developers isApiDeveloperDomain={true} />;
+    }
+
+    // developer.meldra.ai: full developer portal (with commercial info)
     if (isDeveloperDomain) {
         const p = (location.pathname || '/').toLowerCase().replace(/\/$/, '') || '/';
         if (p !== '/' && p !== 'developers') {
             window.location.replace(INSIGHT_BASE + location.pathname + location.search);
             return null;
         }
-        return <Developers />;
+        return <Developers isApiDeveloperDomain={false} />;
     }
 
     const currentPage = _getCurrentPage(location.pathname);

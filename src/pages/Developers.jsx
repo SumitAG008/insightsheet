@@ -11,21 +11,36 @@ import CookieConsent from '@/components/CookieConsent';
 import Logo from '@/components/branding/Logo';
 import {
   Key, FileText, FileArchive, Mail, ArrowRight, CheckCircle, Shield, Briefcase,
-  ChevronDown, ChevronRight, BookOpen, Download, HelpCircle, Layers,
+  ChevronDown, ChevronRight, BookOpen, Download, HelpCircle, Layers, Terminal,
 } from 'lucide-react';
+import ApiTestingConsole from '@/components/ApiTestingConsole';
 
 const INSIGHT = 'https://insight.meldra.ai';
 
-const SIDEBAR_LINKS = [
-  { id: 'get-started', label: 'Get started' },
-  { id: 'authentication', label: 'Authentication' },
-  { id: 'reference', label: 'API reference' },
-  { id: 'endpoints', label: 'Endpoints' },
-  { id: 'usage-tracking', label: 'Usage & Billing' },
-  { id: 'changelog', label: 'Changelog' },
-  { id: 'commercial', label: 'Commercial use' },
-  { id: 'pricing', label: 'Pricing' },
-];
+const getSidebarLinks = (isApiDev) => {
+  const base = [
+    { id: 'get-started', label: 'Get started' },
+    { id: 'authentication', label: 'Authentication' },
+    { id: 'reference', label: 'API reference' },
+    { id: 'endpoints', label: 'Endpoints' },
+  ];
+  
+  if (isApiDev) {
+    return [
+      ...base,
+      { id: 'test-api', label: 'Test API' },
+      { id: 'changelog', label: 'Changelog' },
+    ];
+  }
+  
+  return [
+    ...base,
+    { id: 'usage-tracking', label: 'Usage & Billing' },
+    { id: 'changelog', label: 'Changelog' },
+    { id: 'commercial', label: 'Commercial use' },
+    { id: 'pricing', label: 'Pricing' },
+  ];
+};
 
 const ENDPOINTS = [
   { 
@@ -135,16 +150,22 @@ function scrollTo(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
 }
 
-export default function Developers() {
-  const isDev = typeof window !== 'undefined' && window.location.hostname === 'developer.meldra.ai';
+export default function Developers({ isApiDeveloperDomain = false }) {
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
+  const isDev = hostname === 'developer.meldra.ai' || hostname === 'api.developer.meldra.ai';
+  const isApiDev = isApiDeveloperDomain || hostname === 'api.developer.meldra.ai';
   const reg = isDev ? `${INSIGHT}/register` : '/register';
   const signIn = isDev ? `${INSIGHT}/login` : '/login';
   const privacy = `${INSIGHT}/privacy`;
 
   useEffect(() => {
-    document.title = 'developer.meldra.ai – Meldra API';
+    if (isApiDev) {
+      document.title = 'api.developer.meldra.ai – Meldra API Documentation';
+    } else {
+      document.title = 'developer.meldra.ai – Meldra API';
+    }
     return () => { document.title = 'Meldra'; };
-  }, []);
+  }, [isApiDev]);
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -204,7 +225,7 @@ export default function Developers() {
         {/* Sidebar — sticky on desktop */}
         <aside className="hidden lg:block w-52 flex-shrink-0">
           <nav className="sticky top-28 space-y-1">
-            {SIDEBAR_LINKS.map(({ id, label }) => (
+            {getSidebarLinks(isApiDev).map(({ id, label }) => (
               <a
                 key={id}
                 href={`#${id}`}
@@ -225,11 +246,16 @@ export default function Developers() {
             </h2>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
               <p className="text-slate-600 mb-4">
-                Meldra API keys are paid. Contact us for a key and base URL. If you don&apos;t have a key yet, get one by emailing support. It usually takes a short time.
+                {isApiDev ? (
+                  <>API keys are required for all requests. Contact support to obtain your API key and base URL.</>
+                ) : (
+                  <>Meldra API keys are paid. Contact us for a key and base URL. If you don&apos;t have a key yet, get one by emailing support. It usually takes a short time.</>
+                )}
               </p>
               <a href="mailto:support@meldra.ai?subject=Meldra%20API%20key%20request" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
                 <Mail className="w-5 h-5" /> support@meldra.ai
               </a>
+              {!isApiDev && (
               <div className="mt-6 pt-6 border-t border-slate-200">
                 <h3 className="font-semibold text-blue-600 mb-2 flex items-center gap-2"><Shield className="w-4 h-4" /> In-app vs API</h3>
                 <div className="grid sm:grid-cols-2 gap-4 text-slate-600 text-sm">
@@ -245,8 +271,22 @@ export default function Developers() {
                   </div>
                 </div>
               </div>
+              )}
             </div>
           </section>
+
+          {/* Interactive API Testing Console - Only on api.developer.meldra.ai */}
+          {isApiDev && (
+            <section id="test-api" className="scroll-mt-28">
+              <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <Terminal className="w-6 h-6 text-blue-600" /> Test API Endpoints
+              </h2>
+              <p className="text-slate-600 mb-6">
+                Test API endpoints directly from this page. Enter your API key and select a file to test any endpoint.
+              </p>
+              <ApiTestingConsole />
+            </section>
+          )}
 
           {/* API reference and examples */}
           <section id="reference" className="scroll-mt-28">
@@ -379,7 +419,8 @@ export default function Developers() {
             </div>
           </section>
 
-          {/* Usage Tracking & Billing */}
+          {/* Usage Tracking & Billing - Hidden on api.developer.meldra.ai */}
+          {!isApiDev && (
           <section id="usage-tracking" className="scroll-mt-28">
             <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
               <Layers className="w-6 h-6 text-blue-600" /> Usage Tracking & Billing
@@ -468,6 +509,7 @@ export default function Developers() {
               </div>
             </div>
           </section>
+          )}
 
           {/* Changelog — collapsible, royal blue */}
           <section id="changelog" className="scroll-mt-28">
@@ -489,7 +531,8 @@ export default function Developers() {
             </Collapsible>
           </section>
 
-          {/* Commercial use — royal blue only */}
+          {/* Commercial use — Hidden on api.developer.meldra.ai */}
+          {!isApiDev && (
           <section id="commercial" className="scroll-mt-28">
             <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
               <Briefcase className="w-6 h-6 text-blue-600" /> Using the Meldra API commercially
@@ -503,8 +546,10 @@ export default function Developers() {
               <p className="text-slate-500 text-sm">For the full Meldra app (data analysis, file tools), go to <a href={INSIGHT} className="text-blue-600 hover:text-blue-700">insight.meldra.ai</a>.</p>
             </div>
           </section>
+          )}
 
-          {/* Pricing */}
+          {/* Pricing - Hidden on api.developer.meldra.ai */}
+          {!isApiDev && (
           <section id="pricing" className="scroll-mt-28">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Pricing</h2>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
@@ -518,6 +563,7 @@ export default function Developers() {
               </a>
             </div>
           </section>
+          )}
 
           {/* CTA — royal blue */}
           <div className="text-center pt-6">

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Home, Calendar, User, ArrowLeft } from 'lucide-react';
 import CookieConsent from '@/components/CookieConsent';
 import Logo from '@/components/branding/Logo';
+import BlogPromoBanner from '@/components/BlogPromoBanner';
 
 const INSIGHT = 'https://insight.meldra.ai';
 
@@ -287,9 +288,17 @@ export default function BlogPost() {
           Back to Blog
         </Link>
 
+        {/* Promotional Banner */}
+        <div className="mb-8">
+          <BlogPromoBanner 
+            title={post.title}
+            postId={parseInt(id || '0')}
+            category={post.category}
+          />
+        </div>
+
         {/* Post Content */}
         <article className="prose prose-slate max-w-none">
-          <h1 className="text-4xl font-bold text-slate-900 mb-4">{post.title}</h1>
           <div className="flex items-center gap-4 text-sm text-slate-600 mb-8">
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4" />

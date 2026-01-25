@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Calendar, User, ArrowRight, Home } from 'lucide-react';
 import CookieConsent from '@/components/CookieConsent';
 import Logo from '@/components/branding/Logo';
+import BlogPromoBanner from '@/components/BlogPromoBanner';
 
 const INSIGHT = 'https://insight.meldra.ai';
 
@@ -203,19 +204,24 @@ export default function DevelopersBlog() {
           {/* Blog Posts */}
           <div className="space-y-8">
             {filteredPosts.map((post) => (
-              <Card key={post.id} className="border border-slate-200 hover:border-blue-300 transition-colors">
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row gap-6">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
+              <div key={post.id} className="space-y-4">
+                {/* Promotional Banner */}
+                <BlogPromoBanner 
+                  title={post.title}
+                  postId={post.id}
+                  category={post.category}
+                />
+                
+                {/* Post Details Card */}
+                <Card className="border border-slate-200 hover:border-blue-300 transition-colors">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center gap-3">
                         <span className={`px-2 py-1 rounded text-xs font-medium border ${getCategoryColor(post.category)}`}>
                           {CATEGORIES.find(c => c.id === post.category)?.label || post.category}
                         </span>
                       </div>
-                      <h2 className="text-2xl font-bold text-blue-600 mb-3 hover:text-blue-700">
-                        <Link to={`/developers/blog/${post.id}`}>{post.title}</Link>
-                      </h2>
-                      <div className="flex items-center gap-4 text-sm text-slate-600 mb-4">
+                      <div className="flex items-center gap-4 text-sm text-slate-600">
                         <div className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
                           <span>{formatDate(post.date)}</span>
@@ -225,7 +231,7 @@ export default function DevelopersBlog() {
                           <span>By {post.author}</span>
                         </div>
                       </div>
-                      <p className="text-slate-700 mb-4 leading-relaxed">{post.summary}</p>
+                      <p className="text-slate-700 leading-relaxed">{post.summary}</p>
                       {post.readMore && (
                         <Link 
                           to={`/developers/blog/${post.id}`}
@@ -235,16 +241,9 @@ export default function DevelopersBlog() {
                         </Link>
                       )}
                     </div>
-                    {post.image && (
-                      <div className="md:w-48 flex-shrink-0">
-                        <div className="w-full h-32 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
-                          <span className="text-slate-400 text-xs">Image</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             ))}
           </div>
 

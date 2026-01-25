@@ -330,16 +330,23 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
         user = authenticate_user(db, user_data.email, user_data.password)
 
         if not user:
-            # Log failed login (IP + geo for security and compliance)
+            # Log failed login (IP + geo + browser/device for security and compliance)
+            # IMPORTANT: This tracks ALL users who attempt login, not just one user
+            # Every login attempt (successful or failed) is recorded in login_history table
             client_ip = _get_client_ip(request)
+            user_agent = request.headers.get("user-agent", "")
+            browser_info = _parse_user_agent(user_agent)
             login_history = LoginHistory(
-                user_email=user_data.email,
+                user_email=user_data.email,  # Tracks the email that attempted login
                 event_type="failed_login",
-                ip_address=client_ip or None,
-                location=_resolve_geolocation(client_ip) if client_ip else None
+                ip_address=client_ip or None,  # Tracks IP of ALL users
+                location=_resolve_geolocation(client_ip) if client_ip else None,
+                browser=browser_info.get("browser"),
+                device=browser_info.get("device")
             )
             db.add(login_history)
             db.commit()
+            logger.info(f"Failed login tracked for ALL users: {user_data.email} from IP {client_ip}")
 
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -363,16 +370,24 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
             expires_delta=access_token_expires
         )
 
-        # Log successful login (IP + geo for security and compliance)
+        # Log successful login (IP + geo + browser/device for security and compliance)
+        # IMPORTANT: This tracks ALL users who log in, not just one user
+        # Every user who signs up and logs in will have their IP, location, and browser tracked
+        # The login_history table stores records for ALL users - check admin endpoint to see all entries
         client_ip = _get_client_ip(request)
+        user_agent = request.headers.get("user-agent", "")
+        browser_info = _parse_user_agent(user_agent)
         login_history = LoginHistory(
-            user_email=user.email,
+            user_email=user.email,  # Tracks the email of the user who logged in
             event_type="login",
-            ip_address=client_ip or None,
-            location=_resolve_geolocation(client_ip) if client_ip else None
+            ip_address=client_ip or None,  # Tracks IP of ALL users who log in
+            location=_resolve_geolocation(client_ip) if client_ip else None,
+            browser=browser_info.get("browser"),
+            device=browser_info.get("device")
         )
         db.add(login_history)
         db.commit()
+        logger.info(f"Login tracked for ALL users: {user.email} from IP {client_ip} - All signups are tracked in login_history table")
 
         logger.info(f"User logged in: {user.email}")
 
@@ -2162,8 +2177,15 @@ async def get_admin_ip_tracking(
     from_date: Optional[str] = None,
     to_date: Optional[str] = None
 ):
-    """IP tracking table for security (admin only). Filters: user_email, ip_address, event_type, from_date, to_date (ISO)."""
+    """IP tracking table for security (admin only). Shows ALL users who have logged in.
+    
+    IMPORTANT: This endpoint returns login history for ALL users, not just one user.
+    Every user who signs up and logs in is tracked in the login_history table.
+    Use filters (user_email, ip_address, etc.) to narrow down results if needed.
+    
+    Filters: user_email, ip_address, event_type, from_date, to_date (ISO)."""
     try:
+        # Query ALL login history records - all users are tracked
         q = db.query(LoginHistory).order_by(LoginHistory.created_date.desc())
         if user_email:
             q = q.filter(LoginHistory.user_email.ilike(f"%{user_email}%"))
@@ -2271,6 +2293,48 @@ def _get_client_ip(request: Request) -> str:
     if request.client:
         return request.client.host or ""
     return ""
+
+
+def _parse_user_agent(user_agent: str) -> Dict[str, Optional[str]]:
+    """Parse user agent string to extract browser and device info. Returns dict with 'browser' and 'device' keys."""
+    if not user_agent:
+        return {"browser": None, "device": None}
+    
+    ua_lower = user_agent.lower()
+    
+    # Browser detection
+    browser = None
+    if "chrome" in ua_lower and "edg" not in ua_lower:
+        browser = "Chrome"
+    elif "firefox" in ua_lower:
+        browser = "Firefox"
+    elif "safari" in ua_lower and "chrome" not in ua_lower:
+        browser = "Safari"
+    elif "edg" in ua_lower or "edge" in ua_lower:
+        browser = "Edge"
+    elif "opera" in ua_lower:
+        browser = "Opera"
+    elif "msie" in ua_lower or "trident" in ua_lower:
+        browser = "Internet Explorer"
+    
+    # Device detection
+    device = None
+    if "mobile" in ua_lower or "android" in ua_lower:
+        device = "Mobile"
+    elif "tablet" in ua_lower or "ipad" in ua_lower:
+        device = "Tablet"
+    elif "iphone" in ua_lower:
+        device = "iPhone"
+    elif "windows" in ua_lower:
+        device = "Windows"
+    elif "mac" in ua_lower or "macintosh" in ua_lower:
+        device = "Mac"
+    elif "linux" in ua_lower:
+        device = "Linux"
+    else:
+        device = "Desktop"
+    
+    return {"browser": browser, "device": device}
 
 
 def _resolve_geolocation(ip: str) -> Optional[str]:

@@ -27,7 +27,7 @@ const BLOG_POSTS = [
   {
     id: 1,
     title: 'Getting Started with Meldra API: Your First Document Conversion',
-    date: '2025-01-25',
+    date: '2026-01-25',
     author: 'Meldra Team',
     category: 'tutorials',
     summary: 'Learn how to convert PDF to DOC, DOC to PDF, and more using the Meldra API. This comprehensive guide walks you through authentication, making your first API call, and handling responses. Perfect for developers new to document conversion APIs.',
@@ -37,7 +37,7 @@ const BLOG_POSTS = [
   {
     id: 2,
     title: 'How to Generate and Use Your Meldra API Key',
-    date: '2025-01-24',
+    date: '2026-01-24',
     author: 'Meldra Team',
     category: 'tutorials',
     summary: 'Step-by-step guide on obtaining your Meldra API key, understanding authentication, and securing your credentials. Learn about rate limits, best practices, and how to integrate the API key into your applications.',
@@ -47,7 +47,7 @@ const BLOG_POSTS = [
   {
     id: 3,
     title: 'What Can the Meldra API Do? Complete Feature Overview',
-    date: '2025-01-23',
+    date: '2026-01-23',
     author: 'Meldra Team',
     category: 'api-docs',
     summary: 'Discover all the capabilities of the Meldra API: document conversion (PDF, DOC, PPT), ZIP file cleaning, and more. Understand use cases, technical specifications, and how each endpoint works in real-world scenarios.',
@@ -57,7 +57,7 @@ const BLOG_POSTS = [
   {
     id: 4,
     title: 'API v1.0 Released: Document Conversion and ZIP Cleaning Now Available',
-    date: '2025-01-20',
+    date: '2026-01-20',
     author: 'Meldra Team',
     category: 'updates',
     summary: 'We\'re excited to announce the launch of Meldra API v1.0! This release includes document conversion endpoints (PDF↔DOC, PPT↔PDF) and ZIP file cleaning. Read about new features, improvements, and what\'s coming next.',
@@ -67,7 +67,7 @@ const BLOG_POSTS = [
   {
     id: 5,
     title: 'Building a Document Processing Pipeline with Meldra API',
-    date: '2025-01-18',
+    date: '2026-01-18',
     author: 'Meldra Team',
     category: 'engineering',
     summary: 'Learn how to build scalable document processing pipelines using the Meldra API. This engineering deep-dive covers batch processing, error handling, retry logic, and performance optimization strategies.',
@@ -77,7 +77,7 @@ const BLOG_POSTS = [
   {
     id: 6,
     title: 'How Company X Automated Their Document Workflow with Meldra',
-    date: '2025-01-15',
+    date: '2026-01-15',
     author: 'Meldra Team',
     category: 'success-stories',
     summary: 'Case study: How a leading enterprise reduced document processing time by 80% using Meldra API. Learn about their implementation, challenges overcome, and the results they achieved.',

@@ -282,8 +282,11 @@ export default function Developers() {
                   All requests require an <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700">X-API-Key</code> header with your Meldra API key.
                 </p>
                 <div className="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto">
-                  <div>X-API-Key: meldra_abc123def456...</div>
+                  <div>X-API-Key: your_api_key_here</div>
                 </div>
+                <p className="text-slate-500 text-xs mt-2 italic">
+                  Replace <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">your_api_key_here</code> with your actual API key from support@meldra.ai
+                </p>
               </div>
               <div>
                 <h3 className="font-semibold text-slate-900 mb-2">Base URL</h3>

@@ -22,6 +22,7 @@ const getSidebarLinks = (isApiDev) => {
     { id: 'get-started', label: 'Get started' },
     { id: 'authentication', label: 'Authentication' },
     { id: 'reference', label: 'API reference' },
+    { id: 'what-api-does', label: 'What This API Does' },
     { id: 'endpoints', label: 'Endpoints' },
   ];
   
@@ -189,6 +190,9 @@ export default function Developers({ isApiDeveloperDomain = false }) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            <Link to="/developers/blog" className="text-slate-700 hover:text-blue-600 px-3 py-2 text-sm font-medium">
+              Blog
+            </Link>
             <a href="mailto:support@meldra.ai" className="text-slate-700 hover:text-blue-600 px-3 py-2 text-sm font-medium flex items-center gap-1.5">
               <HelpCircle className="w-4 h-4" /> Support
             </a>
@@ -244,17 +248,33 @@ export default function Developers({ isApiDeveloperDomain = false }) {
             <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
               <Key className="w-6 h-6 text-blue-600" /> Get an API key
             </h2>
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
-              <p className="text-slate-600 mb-4">
-                {isApiDev ? (
-                  <>API keys are required for all requests. Contact support to obtain your API key and base URL.</>
-                ) : (
-                  <>Meldra API keys are paid. Contact us for a key and base URL. If you don&apos;t have a key yet, get one by emailing support. It usually takes a short time.</>
-                )}
-              </p>
-              <a href="mailto:support@meldra.ai?subject=Meldra%20API%20key%20request" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
-                <Mail className="w-5 h-5" /> support@meldra.ai
-              </a>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-4">
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-2">How to Generate Your API Key</h3>
+                <ol className="list-decimal list-inside space-y-2 text-slate-600 text-sm">
+                  <li><strong>Contact Support:</strong> Send an email to <a href="mailto:support@meldra.ai?subject=Meldra%20API%20key%20request" className="text-blue-600 hover:text-blue-700">support@meldra.ai</a> with subject "Meldra API Key Request"</li>
+                  <li><strong>Provide Information:</strong> Include your name, company, intended use case, and expected usage volume</li>
+                  <li><strong>Receive Your Key:</strong> You'll receive an email containing:
+                    <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
+                      <li>Your API key (format: <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">meldra_xxxxxxxxxxxxx</code>)</li>
+                      <li>Base URL: <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">https://api.developer.meldra.ai</code></li>
+                      <li>Rate limits and quotas</li>
+                      <li>Documentation links</li>
+                    </ul>
+                  </li>
+                  <li><strong>Store Securely:</strong> Never commit API keys to version control. Use environment variables or secure vaults.</li>
+                </ol>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-amber-800 text-sm">
+                  <strong>Important:</strong> API keys are required for all requests and are not publicly available. Each key is tied to your account and usage is tracked for billing purposes.
+                </p>
+              </div>
+              <div>
+                <a href="mailto:support@meldra.ai?subject=Meldra%20API%20key%20request" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
+                  <Mail className="w-5 h-5" /> Request API Key
+                </a>
+              </div>
               {!isApiDev && (
               <div className="mt-6 pt-6 border-t border-slate-200">
                 <h3 className="font-semibold text-blue-600 mb-2 flex items-center gap-2"><Shield className="w-4 h-4" /> In-app vs API</h3>
@@ -416,6 +436,83 @@ export default function Developers({ isApiDeveloperDomain = false }) {
                   </div>
                 );
               })}
+            </div>
+          </section>
+
+          {/* What This API Does */}
+          <section id="what-api-does" className="scroll-mt-28">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4">What This API Does</h2>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-6">
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-3">Document Conversion</h3>
+                <div className="space-y-4">
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <h4 className="font-medium text-blue-600 mb-2">PDF → DOCX</h4>
+                    <p className="text-slate-600 text-sm mb-2">
+                      Convert PDF files to editable Microsoft Word documents while preserving formatting, layout, and structure. Perfect for extracting text from PDFs, converting scanned documents, or processing PDF forms.
+                    </p>
+                    <p className="text-slate-500 text-xs"><strong>Use cases:</strong> Extract text from PDFs, convert scanned documents, process PDF forms into editable Word documents</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <h4 className="font-medium text-blue-600 mb-2">DOC/DOCX → PDF</h4>
+                    <p className="text-slate-600 text-sm mb-2">
+                      Transform Word documents into PDF format for distribution, archiving, or printing. Maintains document structure, fonts, and formatting.
+                    </p>
+                    <p className="text-slate-500 text-xs"><strong>Use cases:</strong> Generate PDF reports from Word templates, convert documents for printing, create standardized formats</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <h4 className="font-medium text-blue-600 mb-2">PPT/PPTX → PDF</h4>
+                    <p className="text-slate-600 text-sm mb-2">
+                      Convert PowerPoint presentations to PDF for sharing, archiving, or printing. Preserves slide layouts and content.
+                    </p>
+                    <p className="text-slate-500 text-xs"><strong>Use cases:</strong> Archive presentations, share slides without requiring PowerPoint, create print-ready versions</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <h4 className="font-medium text-blue-600 mb-2">PDF → PPTX</h4>
+                    <p className="text-slate-600 text-sm mb-2">
+                      Transform PDF documents into PowerPoint presentations (one slide per page). Useful for converting reports or documents into presentation format.
+                    </p>
+                    <p className="text-slate-500 text-xs"><strong>Use cases:</strong> Convert PDF reports to presentations, create slides from document pages</p>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-3">ZIP File Cleaning</h3>
+                <div className="bg-white p-4 rounded-lg border border-slate-200">
+                  <p className="text-slate-600 text-sm mb-2">
+                    Clean and sanitize ZIP file contents by removing or replacing invalid characters in filenames, enforcing length limits, standardizing naming conventions, and handling special characters for cross-platform compatibility.
+                  </p>
+                  <p className="text-slate-500 text-xs mb-2"><strong>Features:</strong></p>
+                  <ul className="text-slate-600 text-sm space-y-1 list-disc list-inside ml-2">
+                    <li>Remove or replace invalid characters</li>
+                    <li>Enforce filename length limits</li>
+                    <li>Standardize naming conventions</li>
+                    <li>Handle special characters for cross-platform compatibility</li>
+                  </ul>
+                  <p className="text-slate-500 text-xs mt-2"><strong>Use cases:</strong> Process user-uploaded ZIP files, standardize file naming, clean archives before processing</p>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-3">API Features</h3>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <h4 className="font-medium text-slate-800 mb-2">Secure Authentication</h4>
+                    <p className="text-slate-600 text-xs">API key-based authentication with rate limiting and usage tracking</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <h4 className="font-medium text-slate-800 mb-2">High Reliability</h4>
+                    <p className="text-slate-600 text-xs">High availability infrastructure with error handling and retry logic</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <h4 className="font-medium text-slate-800 mb-2">Fast Performance</h4>
+                    <p className="text-slate-600 text-xs">Fast processing times with scalable architecture</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <h4 className="font-medium text-slate-800 mb-2">Easy Integration</h4>
+                    <p className="text-slate-600 text-xs">RESTful API with clear documentation and examples</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 

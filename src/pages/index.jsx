@@ -45,6 +45,8 @@ import PLBuilder from "./PLBuilder";
 import FileAnalyzer from "./FileAnalyzer";
 import Reviews from "./Reviews";
 import DatabaseConnection from "./DatabaseConnection";
+import DevelopersBlog from "./DevelopersBlog";
+import BlogPost from "./BlogPost";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
@@ -139,7 +141,7 @@ function PagesContent() {
 
     const currentPage = _getCurrentPage(location.pathname);
 
-    // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword/VerifyEmail)
+    // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword/VerifyEmail, Blog)
     const noLayoutRoutes = ['/', '/pricing', '/developers', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
     const isNoLayoutRoute = noLayoutRoutes.some(route => {
         const path = location.pathname.toLowerCase();
@@ -156,6 +158,8 @@ function PagesContent() {
                 <Route path="/Pricing" element={<Pricing />} />
                 <Route path="/developers" element={<Developers />} />
                 <Route path="/Developers" element={<Developers />} />
+                <Route path="/developers/blog" element={<DevelopersBlog />} />
+                <Route path="/developers/blog/:id" element={<BlogPost />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />

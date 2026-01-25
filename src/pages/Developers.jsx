@@ -18,19 +18,117 @@ const INSIGHT = 'https://insight.meldra.ai';
 
 const SIDEBAR_LINKS = [
   { id: 'get-started', label: 'Get started' },
+  { id: 'authentication', label: 'Authentication' },
   { id: 'reference', label: 'API reference' },
   { id: 'endpoints', label: 'Endpoints' },
+  { id: 'usage-tracking', label: 'Usage & Billing' },
   { id: 'changelog', label: 'Changelog' },
   { id: 'commercial', label: 'Commercial use' },
   { id: 'pricing', label: 'Pricing' },
 ];
 
 const ENDPOINTS = [
-  { method: 'POST', path: '/v1/convert/pdf-to-doc', name: 'PDF → DOC', body: 'file: PDF', Icon: FileText, id: 'pdf-to-doc' },
-  { method: 'POST', path: '/v1/convert/doc-to-pdf', name: 'DOC → PDF', body: 'file: .docx', Icon: FileText, id: 'doc-to-pdf' },
-  { method: 'POST', path: '/v1/convert/ppt-to-pdf', name: 'PPT → PDF', body: 'file: .pptx', Icon: FileText, id: 'ppt-to-pdf' },
-  { method: 'POST', path: '/v1/convert/pdf-to-ppt', name: 'PDF → PPT', body: 'file: PDF', Icon: FileText, id: 'pdf-to-ppt' },
-  { method: 'POST', path: '/v1/zip/clean', name: 'ZIP Cleaner', body: 'file: ZIP, options (optional JSON)', Icon: FileArchive, id: 'zip-clean' },
+  { 
+    method: 'POST', 
+    path: '/v1/convert/pdf-to-doc', 
+    name: 'PDF → DOC', 
+    body: 'file: PDF (multipart/form-data)', 
+    Icon: FileText, 
+    id: 'pdf-to-doc',
+    description: 'Convert PDF files to Microsoft Word (.docx) format',
+    requestExample: `curl -X POST "https://api.developer.meldra.ai/v1/convert/pdf-to-doc" \\
+  -H "X-API-Key: your_api_key_here" \\
+  -F "file=@document.pdf"`,
+    responseExample: 'Binary .docx file (Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document)',
+    statusCodes: [
+      { code: 200, description: 'Success - Returns .docx binary' },
+      { code: 400, description: 'Bad request - Invalid file format or missing file' },
+      { code: 401, description: 'Unauthorized - Invalid or missing API key' },
+      { code: 429, description: 'Rate limit exceeded' },
+      { code: 500, description: 'Server error' },
+    ],
+  },
+  { 
+    method: 'POST', 
+    path: '/v1/convert/doc-to-pdf', 
+    name: 'DOC → PDF', 
+    body: 'file: .doc or .docx (multipart/form-data)', 
+    Icon: FileText, 
+    id: 'doc-to-pdf',
+    description: 'Convert Microsoft Word documents to PDF format',
+    requestExample: `curl -X POST "https://api.developer.meldra.ai/v1/convert/doc-to-pdf" \\
+  -H "X-API-Key: your_api_key_here" \\
+  -F "file=@document.docx"`,
+    responseExample: 'Binary .pdf file (Content-Type: application/pdf)',
+    statusCodes: [
+      { code: 200, description: 'Success - Returns .pdf binary' },
+      { code: 400, description: 'Bad request - Invalid file format' },
+      { code: 401, description: 'Unauthorized - Invalid API key' },
+      { code: 429, description: 'Rate limit exceeded' },
+      { code: 500, description: 'Server error' },
+    ],
+  },
+  { 
+    method: 'POST', 
+    path: '/v1/convert/ppt-to-pdf', 
+    name: 'PPT → PDF', 
+    body: 'file: .ppt or .pptx (multipart/form-data)', 
+    Icon: FileText, 
+    id: 'ppt-to-pdf',
+    description: 'Convert PowerPoint presentations to PDF format',
+    requestExample: `curl -X POST "https://api.developer.meldra.ai/v1/convert/ppt-to-pdf" \\
+  -H "X-API-Key: your_api_key_here" \\
+  -F "file=@presentation.pptx"`,
+    responseExample: 'Binary .pdf file (Content-Type: application/pdf)',
+    statusCodes: [
+      { code: 200, description: 'Success - Returns .pdf binary' },
+      { code: 400, description: 'Bad request - Invalid file format' },
+      { code: 401, description: 'Unauthorized - Invalid API key' },
+      { code: 429, description: 'Rate limit exceeded' },
+      { code: 500, description: 'Server error' },
+    ],
+  },
+  { 
+    method: 'POST', 
+    path: '/v1/convert/pdf-to-ppt', 
+    name: 'PDF → PPT', 
+    body: 'file: PDF (multipart/form-data)', 
+    Icon: FileText, 
+    id: 'pdf-to-ppt',
+    description: 'Convert PDF files to PowerPoint (.pptx) format (one slide per page)',
+    requestExample: `curl -X POST "https://api.developer.meldra.ai/v1/convert/pdf-to-ppt" \\
+  -H "X-API-Key: your_api_key_here" \\
+  -F "file=@document.pdf"`,
+    responseExample: 'Binary .pptx file (Content-Type: application/vnd.openxmlformats-officedocument.presentationml.presentation)',
+    statusCodes: [
+      { code: 200, description: 'Success - Returns .pptx binary' },
+      { code: 400, description: 'Bad request - Invalid file format' },
+      { code: 401, description: 'Unauthorized - Invalid API key' },
+      { code: 429, description: 'Rate limit exceeded' },
+      { code: 500, description: 'Server error' },
+    ],
+  },
+  { 
+    method: 'POST', 
+    path: '/v1/zip/clean', 
+    name: 'ZIP Cleaner', 
+    body: 'file: ZIP (multipart/form-data), options: JSON (optional)', 
+    Icon: FileArchive, 
+    id: 'zip-clean',
+    description: 'Clean ZIP file names (sanitize characters, remove spaces, enforce length limits)',
+    requestExample: `curl -X POST "https://api.developer.meldra.ai/v1/zip/clean" \\
+  -H "X-API-Key: your_api_key_here" \\
+  -F "file=@archive.zip" \\
+  -F 'options={"allowedChars":"a-z0-9-_","replaceChar":"_","removeSpaces":true,"maxLength":255}'`,
+    responseExample: 'Binary cleaned ZIP file (Content-Type: application/zip)',
+    statusCodes: [
+      { code: 200, description: 'Success - Returns cleaned ZIP binary' },
+      { code: 400, description: 'Bad request - Invalid ZIP or options JSON' },
+      { code: 401, description: 'Unauthorized - Invalid API key' },
+      { code: 429, description: 'Rate limit exceeded' },
+      { code: 500, description: 'Server error' },
+    ],
+  },
 ];
 
 function scrollTo(id) {
@@ -172,9 +270,47 @@ export default function Developers() {
             </div>
           </section>
 
+          {/* Authentication */}
+          <section id="authentication" className="scroll-mt-28">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <Key className="w-6 h-6 text-blue-600" /> Authentication
+            </h2>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-4">
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-2">API Key Header</h3>
+                <p className="text-slate-600 text-sm mb-3">
+                  All requests require an <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700">X-API-Key</code> header with your Meldra API key.
+                </p>
+                <div className="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                  <div>X-API-Key: meldra_abc123def456...</div>
+                </div>
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-2">Base URL</h3>
+                <p className="text-slate-600 text-sm mb-2">
+                  Production: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700">https://api.developer.meldra.ai</code>
+                </p>
+                <p className="text-slate-500 text-xs">
+                  Your API key email will include the exact base URL to use. Some enterprise plans may have custom URLs.
+                </p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-2">Rate Limits</h3>
+                <ul className="text-slate-600 text-sm space-y-1 list-disc list-inside">
+                  <li><strong>Standard:</strong> 60 requests/minute, 10,000 requests/day</li>
+                  <li><strong>Premium:</strong> 120 requests/minute, 50,000 requests/day</li>
+                  <li><strong>Enterprise:</strong> Custom limits (contact support)</li>
+                </ul>
+                <p className="text-slate-500 text-xs mt-2">
+                  Rate limit headers: <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">X-RateLimit-Remaining</code>, <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">X-RateLimit-Reset</code>
+                </p>
+              </div>
+            </div>
+          </section>
+
           {/* Endpoints — royal blue, no green */}
           <section id="endpoints" className="scroll-mt-28">
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">Endpoints</h2>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">API Endpoints</h2>
             <p className="text-slate-600 text-sm mb-6">
               Base: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700">https://api.developer.meldra.ai</code> (or as provided). All: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700">X-API-Key: &lt;key&gt;</code>.
             </p>
@@ -184,23 +320,149 @@ export default function Developers() {
                 const isZip = e.id === 'zip-clean';
                 const sectionId = e.id === 'pdf-to-doc' ? 'convert' : isZip ? 'zip-clean' : undefined;
                 return (
-                  <div key={e.path} id={sectionId} className="scroll-mt-28 bg-slate-50 border border-slate-200 rounded-xl p-6">
+                  <div key={e.path} id={sectionId} className="scroll-mt-28 bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-4">
                     <div className="flex flex-wrap items-start gap-4">
                       <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
                         <Icon className="w-5 h-5 text-blue-600" />
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <span className="text-blue-600 font-mono text-sm font-semibold">{e.method}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-2">
+                          <span className="text-blue-600 font-mono text-sm font-semibold bg-blue-50 px-2 py-0.5 rounded">{e.method}</span>
                           <code className="text-blue-700 font-mono text-sm break-all">{e.path}</code>
                         </div>
-                        <p className="font-semibold text-slate-900">{e.name}</p>
-                        <p className="text-slate-600 text-sm">Body: {e.body}</p>
+                        <p className="font-semibold text-slate-900 mb-1">{e.name}</p>
+                        {e.description && <p className="text-slate-600 text-sm mb-3">{e.description}</p>}
+                        <div className="mb-3">
+                          <p className="text-slate-700 text-sm font-medium mb-1">Request Body:</p>
+                          <p className="text-slate-600 text-sm">{e.body}</p>
+                        </div>
                       </div>
                     </div>
+                    
+                    {e.requestExample && (
+                      <div>
+                        <p className="text-slate-700 text-sm font-medium mb-2">Example (cURL):</p>
+                        <div className="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-xs overflow-x-auto">
+                          <pre className="whitespace-pre-wrap">{e.requestExample}</pre>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {e.responseExample && (
+                      <div>
+                        <p className="text-slate-700 text-sm font-medium mb-2">Response:</p>
+                        <div className="bg-slate-100 p-3 rounded-lg">
+                          <p className="text-slate-600 text-sm font-mono">{e.responseExample}</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {e.statusCodes && e.statusCodes.length > 0 && (
+                      <div>
+                        <p className="text-slate-700 text-sm font-medium mb-2">Status Codes:</p>
+                        <div className="space-y-1">
+                          {e.statusCodes.map((sc, idx) => (
+                            <div key={idx} className="flex gap-3 text-sm">
+                              <code className="bg-slate-200 px-2 py-0.5 rounded font-mono text-blue-700 min-w-[60px] text-center">{sc.code}</code>
+                              <span className="text-slate-600">{sc.description}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
+            </div>
+          </section>
+
+          {/* Usage Tracking & Billing */}
+          <section id="usage-tracking" className="scroll-mt-28">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <Layers className="w-6 h-6 text-blue-600" /> Usage Tracking & Billing
+            </h2>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-6">
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-3">Usage Tracking</h3>
+                <p className="text-slate-600 text-sm mb-4">
+                  All API requests are automatically tracked. You can view usage statistics, costs, and billing information through the API or your dashboard.
+                </p>
+                <div className="space-y-3">
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <p className="font-medium text-slate-900 mb-2">Tracked Metrics:</p>
+                    <ul className="text-slate-600 text-sm space-y-1 list-disc list-inside">
+                      <li>Request count per endpoint</li>
+                      <li>Response status codes</li>
+                      <li>Processing time (milliseconds)</li>
+                      <li>Request/response sizes (bytes)</li>
+                      <li>Token usage (for AI endpoints, if applicable)</li>
+                      <li>Cost per request (USD)</li>
+                    </ul>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <p className="font-medium text-slate-900 mb-2">View Usage:</p>
+                    <div className="bg-slate-900 text-green-400 p-3 rounded-lg font-mono text-xs overflow-x-auto">
+                      <div>GET /api/developer/keys/&#123;key_id&#125;/usage</div>
+                      <div className="text-slate-400 mt-1">Returns: total requests, cost, tokens, by endpoint, by status</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-3">Billing & Costs</h3>
+                <div className="space-y-3">
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <p className="font-medium text-slate-900 mb-2">Pricing Model:</p>
+                    <ul className="text-slate-600 text-sm space-y-1 list-disc list-inside">
+                      <li><strong>Base cost:</strong> $0.001 per request</li>
+                      <li><strong>Token cost:</strong> $0.00001 per token (AI endpoints only)</li>
+                      <li><strong>Hardware cost:</strong> ~30% of revenue (infrastructure)</li>
+                      <li><strong>Margin:</strong> Revenue - Hardware costs</li>
+                    </ul>
+                  </div>
+                  <div className="bg-white p-4 rounded-lg border border-slate-200">
+                    <p className="font-medium text-slate-900 mb-2">Monthly Billing:</p>
+                    <p className="text-slate-600 text-sm mb-2">
+                      Billing summaries are generated monthly. Each API key has a billing record per month with:
+                    </p>
+                    <ul className="text-slate-600 text-sm space-y-1 list-disc list-inside">
+                      <li>Total requests</li>
+                      <li>Total tokens used</li>
+                      <li>Total cost (USD)</li>
+                      <li>Hardware cost (USD)</li>
+                      <li>Margin (USD)</li>
+                      <li>Payment status</li>
+                    </ul>
+                  </div>
+                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                    <p className="text-amber-800 text-sm">
+                      <strong>Note:</strong> Actual pricing may vary by plan. Contact <a href="mailto:support@meldra.ai" className="underline">support@meldra.ai</a> for enterprise pricing and custom agreements.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold text-slate-900 mb-3">API Endpoints for Usage</h3>
+                <div className="space-y-2">
+                  <div className="bg-slate-900 text-green-400 p-3 rounded-lg font-mono text-xs">
+                    <div className="text-blue-400">GET</div>
+                    <div>/api/developer/keys</div>
+                    <div className="text-slate-400 text-xs mt-1">List all your API keys</div>
+                  </div>
+                  <div className="bg-slate-900 text-green-400 p-3 rounded-lg font-mono text-xs">
+                    <div className="text-blue-400">GET</div>
+                    <div>/api/developer/keys/&#123;key_id&#125;/usage</div>
+                    <div className="text-slate-400 text-xs mt-1">Get usage stats for a specific key</div>
+                  </div>
+                  <div className="bg-slate-900 text-green-400 p-3 rounded-lg font-mono text-xs">
+                    <div className="text-blue-400">GET</div>
+                    <div>/api/developer/usage</div>
+                    <div className="text-slate-400 text-xs mt-1">Get overall usage across all keys</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 

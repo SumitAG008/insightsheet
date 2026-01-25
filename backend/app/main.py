@@ -28,7 +28,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 # Import local modules
-from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, init_db
+from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, ApiKey, ApiUsage, ApiBilling, init_db
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -50,6 +50,10 @@ from app.services.pl_builder import PLBuilderService
 from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email
 from app.services.db_connection_service import DatabaseConnectionService
 from app.services.document_converter_service import pdf_to_docx, docx_to_pdf, pptx_to_pdf, pdf_to_pptx
+from app.services.api_key_service import (
+    generate_api_key, verify_api_key, get_api_key_by_header, track_api_usage,
+    get_usage_stats, get_monthly_billing, update_monthly_billing
+)
 from PIL import Image
 
 load_dotenv()
@@ -705,6 +709,166 @@ async def get_me(current_user: dict = Depends(get_current_user), db: Session = D
         "full_name": user.full_name,
         "role": user.role,
         "created_date": user.created_date
+    }
+
+
+# ============================================================================
+# API KEY MANAGEMENT (developer.meldra.ai)
+# ============================================================================
+
+class ApiKeyCreateRequest(BaseModel):
+    name: Optional[str] = None
+    plan: str = "standard"  # standard, premium, enterprise
+    rate_limit_per_minute: int = 60
+    rate_limit_per_day: int = 10000
+    monthly_quota: int = 100000
+
+
+class ApiKeyResponse(BaseModel):
+    id: int
+    key_prefix: str
+    name: Optional[str]
+    is_active: bool
+    plan: str
+    rate_limit_per_minute: int
+    rate_limit_per_day: int
+    monthly_quota: int
+    created_date: datetime
+    last_used: Optional[datetime]
+    expires_date: Optional[datetime]
+
+
+@app.post("/api/developer/keys", response_model=Dict[str, Any])
+async def create_api_key(
+    request: ApiKeyCreateRequest,
+    current_user: dict = Depends(get_current_admin_user),  # Only admins can create keys
+    db: Session = Depends(get_db)
+):
+    """Create a new API key (admin only)"""
+    try:
+        full_key, key_hash = generate_api_key()
+        key_prefix = full_key[:12]  # First 12 chars for display
+        
+        api_key = ApiKey(
+            user_email=current_user["email"],  # Admin creating it
+            key_hash=key_hash,
+            key_prefix=key_prefix,
+            name=request.name,
+            plan=request.plan,
+            rate_limit_per_minute=request.rate_limit_per_minute,
+            rate_limit_per_day=request.rate_limit_per_day,
+            monthly_quota=request.monthly_quota,
+            created_by=current_user["email"],
+        )
+        db.add(api_key)
+        db.commit()
+        db.refresh(api_key)
+        
+        logger.info(f"API key created: {key_prefix}... by {current_user['email']}")
+        
+        # Return the full key ONCE (never stored in DB)
+        return {
+            "id": api_key.id,
+            "api_key": full_key,  # Only returned once!
+            "key_prefix": key_prefix,
+            "name": api_key.name,
+            "plan": api_key.plan,
+            "base_url": api_key.base_url or "https://api.developer.meldra.ai",
+            "warning": "Save this key now. It will not be shown again.",
+        }
+    except Exception as e:
+        logger.error(f"Error creating API key: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create API key: {str(e)}")
+
+
+@app.get("/api/developer/keys", response_model=List[ApiKeyResponse])
+async def list_api_keys(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """List API keys for current user"""
+    keys = db.query(ApiKey).filter(ApiKey.user_email == current_user["email"]).all()
+    return [
+        {
+            "id": k.id,
+            "key_prefix": k.key_prefix,
+            "name": k.name,
+            "is_active": k.is_active,
+            "plan": k.plan,
+            "rate_limit_per_minute": k.rate_limit_per_minute,
+            "rate_limit_per_day": k.rate_limit_per_day,
+            "monthly_quota": k.monthly_quota,
+            "created_date": k.created_date,
+            "last_used": k.last_used,
+            "expires_date": k.expires_date,
+        }
+        for k in keys
+    ]
+
+
+@app.get("/api/developer/keys/{key_id}/usage")
+async def get_key_usage(
+    key_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+):
+    """Get usage statistics for an API key"""
+    api_key = db.query(ApiKey).filter(
+        and_(ApiKey.id == key_id, ApiKey.user_email == current_user["email"])
+    ).first()
+    
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    
+    start = datetime.fromisoformat(start_date) if start_date else None
+    end = datetime.fromisoformat(end_date) if end_date else None
+    
+    stats = get_usage_stats(db, api_key_id=key_id, start_date=start, end_date=end)
+    
+    # Get current month billing
+    now = datetime.utcnow()
+    billing = get_monthly_billing(db, key_id, now.year, now.month)
+    
+    return {
+        "api_key_id": key_id,
+        "key_prefix": api_key.key_prefix,
+        "usage_stats": stats,
+        "current_month_billing": {
+            "billing_month": billing.billing_month if billing else None,
+            "total_requests": billing.total_requests if billing else 0,
+            "total_cost_usd": float(billing.total_cost_usd) if billing else 0.0,
+            "hardware_cost_usd": float(billing.hardware_cost_usd) if billing else 0.0,
+            "margin_usd": float(billing.margin_usd) if billing else 0.0,
+        } if billing else None,
+    }
+
+
+@app.get("/api/developer/usage")
+async def get_user_usage(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get overall usage for current user across all API keys"""
+    stats = get_usage_stats(db, user_email=current_user["email"])
+    
+    # Get all keys
+    keys = db.query(ApiKey).filter(ApiKey.user_email == current_user["email"]).all()
+    
+    return {
+        "user_email": current_user["email"],
+        "total_usage": stats,
+        "api_keys": [
+            {
+                "id": k.id,
+                "key_prefix": k.key_prefix,
+                "name": k.name,
+                "plan": k.plan,
+                "is_active": k.is_active,
+            }
+            for k in keys
+        ],
     }
 
 

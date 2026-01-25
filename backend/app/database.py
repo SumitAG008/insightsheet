@@ -163,6 +163,66 @@ class ConsentLog(Base):
     created_date = Column(DateTime, default=datetime.utcnow)
 
 
+class ApiKey(Base):
+    """Meldra API keys for developer.meldra.ai / api.developer.meldra.ai"""
+    __tablename__ = "api_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)  # Owner of the key
+    key_hash = Column(String(255), unique=True, index=True, nullable=False)  # Hashed API key
+    key_prefix = Column(String(20), nullable=False)  # First 8 chars for display (e.g., "meldra_")
+    name = Column(String(255), nullable=True)  # Optional name/description
+    is_active = Column(Boolean, default=True)
+    rate_limit_per_minute = Column(Integer, default=60)  # Requests per minute
+    rate_limit_per_day = Column(Integer, default=10000)  # Requests per day
+    monthly_quota = Column(Integer, default=100000)  # Monthly request quota
+    plan = Column(String(50), default="standard")  # standard, premium, enterprise
+    base_url = Column(String(500), nullable=True)  # Custom base URL if provided
+    created_date = Column(DateTime, default=datetime.utcnow)
+    expires_date = Column(DateTime, nullable=True)  # Optional expiration
+    last_used = Column(DateTime, nullable=True)
+    created_by = Column(String(255), nullable=True)  # Admin who created it
+
+
+class ApiUsage(Base):
+    """Track API usage for billing and analytics"""
+    __tablename__ = "api_usage"
+
+    id = Column(Integer, primary_key=True, index=True)
+    api_key_id = Column(Integer, index=True, nullable=False)  # Foreign key to api_keys
+    user_email = Column(String(255), index=True, nullable=False)  # Owner
+    endpoint = Column(String(255), nullable=False)  # e.g., "/v1/convert/pdf-to-doc"
+    method = Column(String(10), default="POST")
+    status_code = Column(Integer, nullable=False)  # HTTP status
+    request_size_bytes = Column(Integer, nullable=True)  # Request body size
+    response_size_bytes = Column(Integer, nullable=True)  # Response body size
+    processing_time_ms = Column(Integer, nullable=True)  # Processing time in milliseconds
+    tokens_used = Column(Integer, default=0)  # For AI endpoints (if applicable)
+    cost_usd = Column(Float, default=0.0)  # Calculated cost
+    ip_address = Column(String(100), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+class ApiBilling(Base):
+    """Monthly billing summaries for API usage"""
+    __tablename__ = "api_billing"
+
+    id = Column(Integer, primary_key=True, index=True)
+    api_key_id = Column(Integer, index=True, nullable=False)
+    user_email = Column(String(255), index=True, nullable=False)
+    billing_month = Column(String(7), nullable=False, index=True)  # "2024-01" format
+    total_requests = Column(Integer, default=0)
+    total_tokens = Column(Integer, default=0)
+    total_cost_usd = Column(Float, default=0.0)
+    hardware_cost_usd = Column(Float, default=0.0)  # Infrastructure cost
+    margin_usd = Column(Float, default=0.0)  # Revenue - costs
+    payment_status = Column(String(50), default="pending")  # pending, paid, overdue
+    invoice_id = Column(String(255), nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 # Create all tables
 def init_db():
     """Initialize database tables and add missing columns"""

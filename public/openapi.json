@@ -4,21 +4,166 @@
     "title": "Meldra API",
     "description": "Document conversion (PDF, DOC, PPT) and ZIP Cleaner. Use in your apps with a paid Meldra API key. Base URL as provided with your key.",
     "version": "1.0.0",
-    "contact": { "email": "support@meldra.ai" }
+    "contact": { "email": "support@meldra.ai" },
+    "license": { "name": "Proprietary", "url": "https://insight.meldra.ai/disclaimer" }
   },
-  "servers": [{ "url": "https://api.developer.meldra.ai", "description": "Production (or as provided with your key)" }],
+  "servers": [
+    { "url": "https://api.developer.meldra.ai", "description": "Production (or as provided with your key)" }
+  ],
   "security": [{ "ApiKeyAuth": [] }],
   "components": {
     "securitySchemes": {
-      "ApiKeyAuth": { "type": "apiKey", "in": "header", "name": "X-API-Key", "description": "Your Meldra API key" }
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Your Meldra API key. Get one at developer.meldra.ai or contact support@meldra.ai"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "detail": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "status_code": {
+            "type": "integer",
+            "description": "HTTP status code"
+          }
+        },
+        "required": ["detail"]
+      },
+      "ZipOptions": {
+        "type": "object",
+        "properties": {
+          "allowedChars": {
+            "type": "string",
+            "description": "Allowed characters pattern (e.g., 'a-z0-9-_')",
+            "default": "a-z0-9-_"
+          },
+          "disallowedChars": {
+            "type": "string",
+            "description": "Characters to remove"
+          },
+          "replaceChar": {
+            "type": "string",
+            "description": "Character to replace disallowed chars",
+            "default": "_"
+          },
+          "removeSpaces": {
+            "type": "boolean",
+            "description": "Remove spaces from filenames",
+            "default": true
+          },
+          "maxLength": {
+            "type": "integer",
+            "description": "Maximum filename length",
+            "default": 255
+          },
+          "languages": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Language codes for processing"
+          }
+        }
+      }
+    },
+    "responses": {
+      "RateLimitExceeded": {
+        "description": "Rate limit exceeded",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "detail": "Rate limit exceeded. Try again later.",
+              "status_code": 429
+            }
+          }
+        },
+        "headers": {
+          "X-RateLimit-Remaining": {
+            "schema": { "type": "integer" },
+            "description": "Remaining requests in current window"
+          },
+          "X-RateLimit-Reset": {
+            "schema": { "type": "integer" },
+            "description": "Unix timestamp when rate limit resets"
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Invalid or missing API key",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            },
+            "example": {
+              "detail": "Invalid API key",
+              "status_code": 401
+            }
+          }
+        }
+      }
     }
   },
   "paths": {
     "/v1/convert/pdf-to-doc": {
       "post": {
-        "summary": "PDF to DOC",
-        "requestBody": { "content": { "multipart/form-data": { "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary", "description": "PDF file" } }, "required": ["file"] } } } },
-        "responses": { "200": { "description": ".docx binary" }, "4xx": { "description": "Client error" }, "5xx": { "description": "Server error" } }
+        "summary": "Convert PDF to DOCX",
+        "description": "Convert a PDF file to Microsoft Word (.docx) format. Returns binary .docx file.",
+        "operationId": "convertPdfToDoc",
+        "tags": ["Document Conversion"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "PDF file to convert (max 50MB)"
+                  }
+                },
+                "required": ["file"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success - Returns .docx binary file",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - Invalid file format or file too large",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "429": { "$ref": "#/components/responses/RateLimitExceeded" },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Error" }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/convert/doc-to-pdf": {

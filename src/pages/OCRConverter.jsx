@@ -202,7 +202,7 @@ export default function OCRConverter() {
             </strong>
             <br />
             <span className="text-sm text-slate-900 dark:text-slate-200 font-bold">
-              JPG, PNG, WebP, BMP, TIFF, GIF supported. Edit the extracted text, then export to DOC or PDF. <strong>Layout</strong> (default): keeps the same format as the original image so you can fill, sign, and send — format stays acceptable. <strong>Form</strong>: flow structure with sections, fill-in lines, tables, and checkboxes.
+              JPG, PNG, WebP, BMP, TIFF, GIF supported. <strong>Layout</strong> (default): DOC/PDF match the image format and alignment so you can fill, sign, and send. <strong>Form</strong>: flow structure. Use Layout for best match to your form.
             </span>
           </AlertDescription>
         </Alert>

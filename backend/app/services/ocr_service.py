@@ -793,12 +793,7 @@ class OCRService:
         tables = tables or []
         drawn = set()  # (block_num, line_start)
         c.setStrokeColorRGB(0, 0, 0)
-
-        # Draw section boundary boxes first (each section like 1), 2), 3) as one block — exact match to form)
-        for box in _compute_section_boxes(layout, tables):
-            x = box['left'] * scale
-            y = page_h - (box['top'] + box['height']) * scale
-            c.rect(x, y, box['width'] * scale, box['height'] * scale)
+        # Omit section boxes so the PDF matches the image; text and tables are drawn at (x,y).
 
         def _find_table(bnum: int, lnum: int):
             for t in tables:
@@ -864,14 +859,9 @@ class OCRService:
             is_cb, opts, label = _get_checkbox_options(text, _prev_is_label(prev_ln))
 
             if _is_section_header(text):
-                # Tight rectangular box around section header (same-to-same as uploaded form)
-                pad = 2
-                rx = (left - pad) * scale
-                ry = page_h - (top + height + pad) * scale
-                rw = (width + 2 * pad) * scale
-                rh = (height + 2 * pad) * scale
-                c.rect(rx, ry, rw, rh)
+                c.setFont("Helvetica-Bold", max(10, min(14, height * scale * 0.75)))
                 c.drawString(x_pt, y_pt, text[:500])
+                c.setFont("Helvetica", font_size)
             elif is_cb and opts:
                 # Label (if any) + [ ] Option for each — preserves alignment. Generic.
                 sq, char_pt = 8, 5
@@ -912,7 +902,11 @@ class OCRService:
 
         scale, page_w, page_h, _ = self._layout_to_page_scale(image_width, image_height)
         doc = Document()
-        doc.add_heading(title or "OCR Document", level=0)
+        # No heading in layout mode — start at top so output matches the image.
+        s = doc.sections[0]
+        s.page_width = Pt(page_w)
+        s.page_height = Pt(page_h)
+        s.left_margin = s.right_margin = s.top_margin = s.bottom_margin = Pt(10)
 
         tables = tables or []
         drawn = set()
@@ -923,6 +917,20 @@ class OCRService:
                     return t
             return None
 
+        def _tbl_set_indent(tbl, left_pt: float):
+            try:
+                if OxmlElement and qn:
+                    tblPr = tbl._tbl.find(qn('w:tblPr'))
+                    if tblPr is None:
+                        tblPr = OxmlElement('w:tblPr')
+                        tbl._tbl.insert(0, tblPr)
+                    ti = OxmlElement('w:tblInd')
+                    ti.set(qn('w:type'), 'dxa')
+                    ti.set(qn('w:w'), str(int(max(0, left_pt) * 20)))
+                    tblPr.append(ti)
+            except Exception:
+                pass
+
         prev_bottom = 0
         for idx, ln in enumerate(layout):
             bnum = ln.get('block_num', 0)
@@ -931,6 +939,14 @@ class OCRService:
             if t:
                 key = (t.get('block_num', 0), t.get('line_start', 0))
                 if key not in drawn:
+                    tleft, ttop = t.get('left', 0), t.get('top', 0)
+                    theight = t.get('height', 20)
+                    gap = (ttop - prev_bottom) * scale if prev_bottom else ttop * scale
+                    gap_pt = Pt(max(0, min(gap, 200)))
+                    p = doc.add_paragraph()
+                    p.paragraph_format.space_before = Pt(0)
+                    p.paragraph_format.space_after = gap_pt
+                    p.paragraph_format.line_spacing = Pt(1)
                     rows = t.get('rows') or []
                     if rows:
                         nc = max(len(r) for r in rows)
@@ -940,7 +956,9 @@ class OCRService:
                             for cj, cell in enumerate(row):
                                 if cj < nc:
                                     tbl.rows[ri].cells[cj].text = (str(cell) or "").strip()
+                        _tbl_set_indent(tbl, tleft * scale)
                     drawn.add(key)
+                    prev_bottom = ttop + theight
                 continue
             text = (ln.get('text') or '').strip()
             if not text:
@@ -953,38 +971,19 @@ class OCRService:
             height = ln.get('height', 12)
             bottom = top + height
             gap = (top - prev_bottom) * scale if prev_bottom else top * scale
-            gap_pt = Pt(max(0, min(gap, 72)))
-            font_pt = Pt(max(9, min(12, height * scale * 0.5)))
+            gap_pt = Pt(max(0, min(gap, 200)))
+            font_pt = Pt(max(9, min(14, height * scale * 0.65)))
             is_cb, opts, label = _get_checkbox_options(text, prev_is_label)
 
             if _is_section_header(text):
-                # Section header in a tight bordered box (one-cell table), same as uploaded form
-                tbl = doc.add_table(rows=1, cols=1)
-                tbl.style = 'Table Grid'
-                tc = tbl.rows[0].cells[0]
-                tc.text = text
-                for run in tc.paragraphs[0].runs:
-                    run.font.size = font_pt
-                    run.font.name = 'Arial'
-                try:
-                    tbl.columns[0].width = Pt(max(width + 12, 50) * scale)
-                except Exception:
-                    pass
-                tc.paragraphs[0].paragraph_format.space_before = gap_pt
-                tc.paragraphs[0].paragraph_format.space_after = Pt(4)
-                # Indent table to match original (left) so each section aligns like the image
-                try:
-                    if OxmlElement and qn:
-                        tblPr = tbl._tbl.find(qn('w:tblPr'))
-                        if tblPr is None:
-                            tblPr = OxmlElement('w:tblPr')
-                            tbl._tbl.insert(0, tblPr)
-                        ti = OxmlElement('w:tblInd')
-                        ti.set(qn('w:type'), 'dxa')
-                        ti.set(qn('w:w'), str(int(max(0, left * scale) * 20)))
-                        tblPr.append(ti)
-                except Exception:
-                    pass
+                p = doc.add_paragraph()
+                r = p.add_run(text)
+                r.bold = True
+                r.font.size = font_pt
+                r.font.name = 'Arial'
+                p.paragraph_format.left_indent = Pt(max(0, left * scale))
+                p.paragraph_format.space_before = gap_pt
+                p.paragraph_format.space_after = Pt(4)
             elif is_cb and opts:
                 # Checkbox: label (if any) + ☐ Option for each. Generic.
                 p = doc.add_paragraph()

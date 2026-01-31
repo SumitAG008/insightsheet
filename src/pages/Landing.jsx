@@ -44,14 +44,14 @@ export default function Landing() {
         <div className="text-center mb-20">
           <Badge className="mb-8 text-base px-5 py-2.5 border border-blue-200 bg-blue-50 text-blue-700 tracking-wide font-semibold">
             <Sparkles className="w-4 h-4 mr-2" />
-            Reports &amp; Slides From Your Data—No Formulas. We Don&apos;t Store Your Files.
+            Reports &amp; Slides From Your Data—No Formulas. Privacy-First by Design.
           </Badge>
           <h1 className="text-5xl md:text-7xl lg:text-8xl text-slate-900 font-bold mb-6 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", lineHeight: '1.1', letterSpacing: '-0.03em' }}>
             Data Made Simple
           </h1>
           <p className="text-xl md:text-2xl text-slate-600 max-w-4xl mx-auto mb-12 leading-relaxed font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>
             Upload your data, ask questions in plain English, and get charts, P&Ls, and presentation-ready reports. 
-            Your files never leave your control—we don&apos;t store them.
+            Designed to minimize data retention and keep you in control.
           </p>
           {/* Zero Storage Promise — royal blue accents */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 md:p-10 mb-16 max-w-4xl mx-auto">
@@ -59,17 +59,16 @@ export default function Landing() {
               <Shield className="w-10 h-10 text-blue-600 flex-shrink-0 mt-1" />
               <div>
                 <h3 className="text-2xl md:text-3xl font-bold text-slate-900 mb-4 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
-                  We Don&apos;t Store Your Data
+                  Privacy-First by Design
                 </h3>
                 <p className="text-base md:text-lg text-slate-600 leading-relaxed mb-6 font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
-                  <strong className="text-slate-900 font-semibold">Your files never touch our servers.</strong> Everything runs on your device. 
-                  When you&apos;re done, your report or presentation downloads straight to you. Nothing is left on our side—so you stay in control and compliant.
+                  <strong className="text-slate-900 font-semibold">We minimize what we store.</strong> Files are processed to provide the service and are not retained by default after processing completes.
                 </p>
                 <div className="flex flex-wrap gap-4 text-sm md:text-base text-slate-600">
-                  <span className="flex items-center gap-2 font-medium"><CheckCircle className="w-5 h-5 text-blue-600" /> We don&apos;t keep your files</span>
-                  <span className="flex items-center gap-2 font-medium"><CheckCircle className="w-5 h-5 text-blue-600" /> Download as soon as it&apos;s ready</span>
-                  <span className="flex items-center gap-2 font-medium"><CheckCircle className="w-5 h-5 text-blue-600" /> Works on your device</span>
-                  <span className="flex items-center gap-2 font-medium"><CheckCircle className="w-5 h-5 text-blue-600" /> Nothing left behind when you close</span>
+                  <span className="flex items-center gap-2 font-medium"><CheckCircle className="w-5 h-5 text-blue-600" /> Not retained by default</span>
+                  <span className="flex items-center gap-2 font-medium"><CheckCircle className="w-5 h-5 text-blue-600" /> Download exports when ready</span>
+                  <span className="flex items-center gap-2 font-medium"><CheckCircle className="w-5 h-5 text-blue-600" /> Privacy-first defaults</span>
+                  <span className="flex items-center gap-2 font-medium"><CheckCircle className="w-5 h-5 text-blue-600" /> Security-focused architecture</span>
                 </div>
               </div>
             </div>
@@ -105,7 +104,7 @@ export default function Landing() {
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
                 <Eye className="w-10 h-10 text-blue-600 mx-auto mb-4" />
                 <h3 className="font-bold text-slate-900 mb-2">Leaders</h3>
-                <p className="text-slate-600 text-sm font-light">Ask questions about your data in plain English. Your files never leave your control.</p>
+                <p className="text-slate-600 text-sm font-light">Ask questions about your data in plain English. Privacy-first defaults help keep you in control.</p>
               </div>
             </div>
           </div>

@@ -33,19 +33,19 @@ export default function Security() {
         <div className="flex flex-wrap justify-center gap-3 mb-12">
           <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-sm py-2 px-4">
             <CheckCircle className="w-4 h-4 mr-2" />
-            GDPR Compliant
+            GDPR-Ready
           </Badge>
           <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-sm py-2 px-4">
             <CheckCircle className="w-4 h-4 mr-2" />
-            CCPA Compliant
+            Privacy-Ready
           </Badge>
           <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-sm py-2 px-4">
             <CheckCircle className="w-4 h-4 mr-2" />
-            Zero Data Storage
+            No File Retention by Default
           </Badge>
           <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/30 text-sm py-2 px-4">
             <Lock className="w-4 h-4 mr-2" />
-            Encrypted
+            Encrypted in Transit
           </Badge>
         </div>
 
@@ -56,10 +56,10 @@ export default function Security() {
               <div className="w-12 h-12 bg-blue-500/20 dark:bg-blue-500/20 rounded-lg flex items-center justify-center mb-4">
                 <FileCheck className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
-              <CardTitle className="text-slate-900 dark:text-white">ZERO File Storage</CardTitle>
+              <CardTitle className="text-slate-900 dark:text-white">No File Retention by Default</CardTitle>
             </CardHeader>
             <CardContent className="text-slate-600 dark:text-slate-300">
-              <p>Your Excel, CSV, ZIP, and PDF files are <strong className="text-slate-900 dark:text-white">NEVER stored</strong> on our servers. All processing happens in-memory and files are deleted immediately after.</p>
+              <p>Your Excel, CSV, ZIP, and PDF files are processed to provide the service and are <strong className="text-slate-900 dark:text-white">not retained by default</strong> after processing completes.</p>
             </CardContent>
           </Card>
 
@@ -68,10 +68,10 @@ export default function Security() {
               <div className="w-12 h-12 bg-purple-500/20 dark:bg-purple-500/20 rounded-lg flex items-center justify-center mb-4">
                 <Eye className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
-              <CardTitle className="text-slate-900 dark:text-white">ZERO AI Data Storage</CardTitle>
+              <CardTitle className="text-slate-900 dark:text-white">Minimal AI Data Retention</CardTitle>
             </CardHeader>
             <CardContent className="text-slate-600 dark:text-slate-300">
-              <p>Your questions and AI responses are <strong className="text-slate-900 dark:text-white">NOT logged</strong>. They're completely ephemeral and exist only during your session.</p>
+              <p>We minimize retention of AI inputs and outputs. Operational metadata (like timestamps and usage) may be stored for reliability, security, and billing.</p>
             </CardContent>
           </Card>
 
@@ -92,10 +92,10 @@ export default function Security() {
               <div className="w-12 h-12 bg-orange-500/20 dark:bg-orange-500/20 rounded-lg flex items-center justify-center mb-4">
                 <Database className="w-6 h-6 text-orange-600 dark:text-orange-400" />
               </div>
-              <CardTitle className="text-slate-900 dark:text-white">Encrypted Database</CardTitle>
+              <CardTitle className="text-slate-900 dark:text-white">Data Protection</CardTitle>
             </CardHeader>
             <CardContent className="text-slate-600 dark:text-slate-300">
-              <p>All data encrypted at rest and in transit. PostgreSQL with SSL/TLS. Only essential information stored.</p>
+              <p>We use encryption in transit (TLS) and follow least-privilege access practices. Only essential account and billing information is stored.</p>
             </CardContent>
           </Card>
 
@@ -104,10 +104,10 @@ export default function Security() {
               <div className="w-12 h-12 bg-cyan-500/20 dark:bg-cyan-500/20 rounded-lg flex items-center justify-center mb-4">
                 <Globe className="w-6 h-6 text-cyan-600 dark:text-cyan-400" />
               </div>
-              <CardTitle className="text-slate-900 dark:text-white">GDPR & CCPA</CardTitle>
+              <CardTitle className="text-slate-900 dark:text-white">Privacy Controls</CardTitle>
             </CardHeader>
             <CardContent className="text-slate-600 dark:text-slate-300">
-              <p>Compliant with EU and California privacy laws. Your rights protected. Delete your data anytime.</p>
+              <p>We support privacy best practices and user controls like access, export, and deletion.</p>
             </CardContent>
           </Card>
 
@@ -157,7 +157,7 @@ export default function Security() {
               <p>❌ <strong className="text-slate-900 dark:text-white">Chart Data:</strong> Visualizations or graphs</p>
               <p>❌ <strong className="text-slate-900 dark:text-white">Spreadsheet Values:</strong> Cells, formulas, or data</p>
               <p className="text-sm text-red-700 dark:text-red-300 mt-4 font-semibold">
-                Your business data NEVER leaves your browser during processing!
+                We aim to minimize data retention during processing.
               </p>
             </CardContent>
           </Card>
@@ -167,7 +167,8 @@ export default function Security() {
         <Alert className="mb-12 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30">
           <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
           <AlertDescription className="text-slate-700 dark:text-slate-300 ml-2">
-            <strong className="text-blue-700 dark:text-blue-300">Privacy-First Architecture:</strong> We built InsightSheet-lite so that your sensitive data never touches our servers. Files are processed in-memory and immediately discarded. We only store what's essential for authentication and billing.
+            <strong className="text-blue-700 dark:text-blue-300">Data Protection:</strong> We take steps to protect your data, including encryption in transit and secure storage practices.
+            <strong className="text-blue-700 dark:text-blue-300">Privacy-First Architecture:</strong> We minimize what we store. Files are processed to provide the service and are not retained by default after processing. We store what's essential for authentication, billing, and security.
           </AlertDescription>
         </Alert>
 
@@ -207,11 +208,11 @@ export default function Security() {
             <div>
               <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2 flex items-center">
                 <CheckCircle className="w-5 h-5 mr-2 text-purple-600 dark:text-purple-400" />
-                PCI-DSS (Payment Security)
+                Payments (via Stripe)
               </h3>
               <ul className="list-disc ml-6 space-y-1 text-slate-600 dark:text-slate-400">
                 <li>Payments processed by Stripe (PCI Level 1)</li>
-                <li>We NEVER handle your credit card details</li>
+                <li>We do not handle raw credit card details</li>
                 <li>Secure payment forms</li>
               </ul>
             </div>

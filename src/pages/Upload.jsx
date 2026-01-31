@@ -37,7 +37,7 @@ export default function Upload() {
           
           <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-full mb-6">
             <Shield className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span className="text-sm text-slate-700 dark:text-slate-300 font-semibold">100% Private • Zero Storage • Excel & CSV Support</span>
+            <span className="text-sm text-slate-700 dark:text-slate-300 font-semibold">Privacy-First • Minimal Retention • Excel & CSV Support</span>
           </div>
           
           <h1 className="text-4xl md:text-6xl font-bold mb-6 text-slate-900 dark:text-white leading-tight">
@@ -82,8 +82,7 @@ export default function Upload() {
                 <h3 className="text-lg font-bold text-slate-900 dark:text-emerald-300 mb-2">Privacy-First Architecture</h3>
                 <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
                   All data processing happens in your browser. CSV files are parsed using native JavaScript - 
-                  no external libraries, no uploads, no tracking. AI analysis uses anonymous, encrypted requests 
-                  with zero data retention. Your data stays yours, always.
+                  no external libraries, no tracking. When server-side processing is needed, we aim to minimize what is stored and retain only operational metadata for reliability, security, and billing.
                 </p>
               </div>
             </div>

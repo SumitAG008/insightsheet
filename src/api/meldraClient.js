@@ -419,9 +419,10 @@ export const backendApi = {
       return response.json();
     },
 
-    ocrExtract: async (file) => {
+    ocrExtract: async (file, ocrLang) => {
       const formData = new FormData();
       formData.append('file', file);
+      if (ocrLang) formData.append('ocr_lang', ocrLang);
       const response = await apiCall('/api/files/ocr-extract', {
         method: 'POST',
         body: formData,

@@ -2,7 +2,7 @@
 FastAPI Backend for InsightSheet-lite
 Privacy-first data analysis platform with ZERO data storage
 """
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Request, status
+from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Request, status, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -1397,6 +1397,7 @@ class OCRExportRequest(BaseModel):
 @app.post("/api/files/ocr-extract")
 async def ocr_extract(
     file: UploadFile = File(...),
+    ocr_lang: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -1437,7 +1438,7 @@ async def ocr_extract(
             ocr = OCRService()
             try:
                 out = await asyncio.wait_for(
-                    asyncio.to_thread(ocr.extract_pdf_with_layout, file_content, 25),
+                    asyncio.to_thread(ocr.extract_pdf_with_layout, file_content, 25, ocr_lang),
                     90.0
                 )
             except asyncio.TimeoutError:
@@ -1469,7 +1470,7 @@ async def ocr_extract(
                 img = Image.open(io.BytesIO(file_content))
                 iw, ih = img.size
                 out = await extract_with_layout_ocrspace(
-                    api_key, file_content, iw, ih, file.filename or "image.png"
+                    api_key, file_content, iw, ih, file.filename or "image.png", ocr_lang
                 )
                 logger.info(f"OCR extract via OCR.space: {file.filename}")
             except Exception as e:
@@ -1480,7 +1481,7 @@ async def ocr_extract(
             ocr = OCRService()
             try:
                 out = await asyncio.wait_for(
-                    asyncio.to_thread(ocr.extract_with_layout, io.BytesIO(file_content)),
+                    asyncio.to_thread(ocr.extract_with_layout, io.BytesIO(file_content), ocr_lang),
                     55.0
                 )
             except asyncio.TimeoutError:

@@ -27,6 +27,7 @@ export default function OCRConverter() {
   const [imageHeight, setImageHeight] = useState(null);
   const [tables, setTables] = useState(null);
   const [pages, setPages] = useState(null);
+  const [ocrLang, setOcrLang] = useState('eng');
   const [exportMode, setExportMode] = useState('layout'); // 'form' | 'layout' — layout = match image positions
   const [preserveImage, setPreserveImage] = useState(false); // PDF: use original image (exact copy)
   const [exporting, setExporting] = useState(null); // 'doc' | 'pdf' | null
@@ -92,7 +93,7 @@ export default function OCRConverter() {
     setExtracting(true);
     setError('');
     try {
-      const res = await backendApi.files.ocrExtract(file);
+      const res = await backendApi.files.ocrExtract(file, ocrLang);
       setText(res.text ?? '');
       setLayout(res.layout ?? null);
       setImageWidth(res.image_width ?? null);
@@ -247,6 +248,21 @@ export default function OCRConverter() {
                 </div>
               </div>
               {!extracting && <Button onClick={handleReset} variant="outline" size="sm">Remove</Button>}
+            </div>
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <Label htmlFor="ocr-lang" className="text-slate-200 text-sm font-medium shrink-0">OCR language</Label>
+              <Select value={ocrLang} onValueChange={setOcrLang}>
+                <SelectTrigger id="ocr-lang" className="w-[240px] bg-slate-800/50 border-slate-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eng">English</SelectItem>
+                  <SelectItem value="hin+eng">Hindi + English</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-slate-400 text-sm">
+                Choose Hindi + English for bilingual PDFs to avoid garbled text.
+              </span>
             </div>
             {error && (
               <Alert className="mb-4 bg-red-500/10 border-red-500/30">

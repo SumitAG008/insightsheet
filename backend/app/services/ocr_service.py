@@ -21,6 +21,9 @@ OCR_SPACE_MAX_BYTES = 1024 * 1024  # 1MB free tier
 # Tesseract can occasionally hang on complex/noisy inputs; set a hard per-call timeout.
 TESSERACT_TIMEOUT_SECONDS = int(os.getenv("TESSERACT_TIMEOUT_SECONDS", "18") or "18")
 
+# Default OCR language. Use 'hin+eng' for Hindi+English documents.
+OCR_DEFAULT_LANG = (os.getenv("OCR_DEFAULT_LANG") or "eng").strip() or "eng"
+
 # Optional imports - fail gracefully if not available
 try:
     import pytesseract
@@ -70,6 +73,57 @@ def _pdf_has_meaningful_text(page) -> bool:
         return len(t) >= 20
     except Exception:
         return False
+
+
+def _is_supported_ocr_lang(lang: str) -> bool:
+    if not lang or not isinstance(lang, str):
+        return False
+    l = lang.strip().lower()
+    return l in {"eng", "hin", "hin+eng", "eng+hin"}
+
+
+def _normalize_ocr_lang(lang: Optional[str]) -> str:
+    l = (lang or "").strip().lower()
+    if not l:
+        return OCR_DEFAULT_LANG
+    if l == "eng+hin":
+        return "hin+eng"
+    return l
+
+
+def _looks_garbled_digital_text(s: str) -> bool:
+    """Detect common 'custom-encoded font' extraction garbage from digital PDFs.
+
+    If most characters are punctuation/symbols and there are very few letters (Latin/Devanagari),
+    treat as garbled and fall back to raster+OCR.
+    """
+    if not s or not isinstance(s, str):
+        return True
+    t = s.strip()
+    if len(t) < 20:
+        return True
+
+    total = len(t)
+    latin = sum(1 for ch in t if ('a' <= ch.lower() <= 'z'))
+    devanagari = sum(1 for ch in t if ('\u0900' <= ch <= '\u097f'))
+    letters = latin + devanagari
+    digits = sum(1 for ch in t if ch.isdigit())
+    whitespace = sum(1 for ch in t if ch.isspace())
+    replacement = t.count('\ufffd')
+
+    non_info = total - letters - digits - whitespace
+    if replacement > 0 and replacement / max(1, total) > 0.02:
+        return True
+
+    # If there are almost no letters, it's likely nonsense.
+    if letters < 5 and total > 40:
+        return True
+
+    # If most characters are symbols/punctuation rather than letters/digits.
+    if non_info / max(1, total) > 0.55 and letters / max(1, total) < 0.20:
+        return True
+
+    return False
 
 
 def _pdf_page_to_layout(page) -> Dict[str, Any]:
@@ -578,6 +632,7 @@ async def extract_with_layout_ocrspace(
     image_width: int,
     image_height: int,
     filename: str,
+    ocr_lang: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Call OCR.space API and return { text, layout, image_width, image_height, tables }
@@ -586,7 +641,11 @@ async def extract_with_layout_ocrspace(
     """
     mime = _mime_from_filename(filename)
     fname = (filename or "image.png").strip() or "image.png"
-    data = {"apikey": api_key, "isOverlayRequired": "true", "OCREngine": "2", "language": "eng"}
+    lang = _normalize_ocr_lang(ocr_lang)
+    if not _is_supported_ocr_lang(lang):
+        lang = OCR_DEFAULT_LANG
+    # OCR.space language codes generally follow Tesseract naming for common langs
+    data = {"apikey": api_key, "isOverlayRequired": "true", "OCREngine": "2", "language": lang}
     files = {"file": (fname, file_content, mime)}
 
     try:
@@ -708,7 +767,7 @@ class OCRService:
                 "Also install Tesseract: https://github.com/tesseract-ocr/tesseract (e.g. apt-get install tesseract-ocr)"
             )
 
-    def extract_text(self, image_data: Union[bytes, BinaryIO]) -> str:
+    def extract_text(self, image_data: Union[bytes, BinaryIO], ocr_lang: Optional[str] = None) -> str:
         """
         Run OCR on an image and return extracted text.
 
@@ -728,13 +787,17 @@ class OCRService:
         if img.mode not in ('RGB', 'L'):
             img = img.convert('RGB')
 
+        lang = _normalize_ocr_lang(ocr_lang)
+        if not _is_supported_ocr_lang(lang):
+            lang = OCR_DEFAULT_LANG
+
         try:
             # PSM 6 = Assume a single uniform block of text (default for documents)
             # PSM 4 = Assume a single column of variable-size text (helps forms with multiple blocks)
             # PSM 3 = Fully automatic; can help noisy/form layouts
             text = pytesseract.image_to_string(
                 img,
-                lang='eng',
+                lang=lang,
                 config='--psm 6',
                 timeout=TESSERACT_TIMEOUT_SECONDS,
             )
@@ -758,7 +821,7 @@ class OCRService:
             logger.error(f"OCR extraction error: {e}")
             raise
 
-    def extract_with_layout(self, image_data: Union[bytes, BinaryIO]) -> Dict[str, Any]:
+    def extract_with_layout(self, image_data: Union[bytes, BinaryIO], ocr_lang: Optional[str] = None) -> Dict[str, Any]:
         """
         Run OCR and return text plus per-line bounding boxes so export can preserve layout.
         Returns: { "text": str, "layout": [{"text", "left", "top", "width", "height"}], "image_width": int, "image_height": int }
@@ -789,11 +852,15 @@ class OCRService:
         except Exception:
             pass
 
+        lang = _normalize_ocr_lang(ocr_lang)
+        if not _is_supported_ocr_lang(lang):
+            lang = OCR_DEFAULT_LANG
+
         try:
             # PSM 4 = single column of variable-sized text (helps forms with sections/tables)
             d = pytesseract.image_to_data(
                 img,
-                lang='eng',
+                lang=lang,
                 config='--psm 4',
                 output_type=Output.DICT,
                 timeout=TESSERACT_TIMEOUT_SECONDS,
@@ -862,7 +929,7 @@ class OCRService:
 
         # Reconstruct text for backward compatibility (form mode / editing); use normalized
         text = '\n'.join(ln['text'] for ln in layout) if layout else _normalize_ocr_text(
-            pytesseract.image_to_string(img, lang='eng', config='--psm 4').strip()
+            pytesseract.image_to_string(img, lang=lang, config='--psm 4').strip()
         )
 
         return {
@@ -873,7 +940,7 @@ class OCRService:
             'tables': tables,
         }
 
-    def extract_pdf_with_layout(self, pdf_bytes: bytes, max_pages: int = 25) -> Dict[str, Any]:
+    def extract_pdf_with_layout(self, pdf_bytes: bytes, max_pages: int = 25, ocr_lang: Optional[str] = None) -> Dict[str, Any]:
         """Extract a PDF into per-page layouts.
 
         - Digital PDFs: extract positioned text via PyMuPDF.
@@ -887,15 +954,34 @@ class OCRService:
             n_pages = min(len(doc), max_pages)
             pages: List[Dict[str, Any]] = []
 
+            lang = _normalize_ocr_lang(ocr_lang)
+            if not _is_supported_ocr_lang(lang):
+                lang = OCR_DEFAULT_LANG
+
             for i in range(n_pages):
                 page = doc[i]
+
+                use_digital = False
                 if _pdf_has_meaningful_text(page):
+                    try:
+                        digital_text = (page.get_text("text") or "").strip()
+                        # Many Hindi/complex PDFs have a selectable text layer that extracts as junk.
+                        if digital_text and not _looks_garbled_digital_text(digital_text):
+                            use_digital = True
+                    except Exception:
+                        use_digital = False
+
+                if use_digital:
                     out = _pdf_page_to_layout(page)
-                else:
-                    # Rasterize scanned pages (DPI chosen to balance speed/accuracy)
-                    pix = page.get_pixmap(dpi=160, alpha=False)
+                    # Layout-based extraction can still be garbage if fonts are custom-encoded.
+                    if _looks_garbled_digital_text(out.get("text") or ""):
+                        use_digital = False
+
+                if not use_digital:
+                    # Rasterize pages (DPI chosen to balance speed/accuracy)
+                    pix = page.get_pixmap(dpi=170, alpha=False)
                     img_bytes = pix.tobytes("png")
-                    out = self.extract_with_layout(io.BytesIO(img_bytes))
+                    out = self.extract_with_layout(io.BytesIO(img_bytes), ocr_lang=lang)
                 out["page"] = i + 1
                 pages.append(out)
 

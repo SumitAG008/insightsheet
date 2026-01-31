@@ -165,15 +165,15 @@ export default function Pricing() {
         </Alert>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mt-6">
           {plans.map((plan) => (
             <div
               key={plan.id}
               className={`relative ${plan.popular ? 'md:scale-105 z-10' : ''}`}
             >
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <Badge className="text-white px-4 py-1 bg-blue-600">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+                  <Badge className="text-white px-4 py-1 bg-blue-600 shadow">
                     Most Popular
                   </Badge>
                 </div>

@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { FileText, FileType, Upload, Loader2, AlertCircle, Shield } from 'lucide-react';
 import { generateDownloadFilename, downloadBlob } from '@/utils/fileNaming';
 import { getApiBase } from '@/utils/apiConfig';
@@ -17,13 +19,14 @@ const MODES = [
   { id: 'pdf2ppt', label: 'PDF to PPT', accept: '.pdf', outExt: '.pptx', slug: 'pdf-to-ppt', Icon: FileType },
 ];
 
-async function convertViaBackend(file, slug) {
+async function convertViaBackend(file, slug, options = {}) {
   const api = getApiBase();
   if (!api) throw new Error('Backend not configured. Set VITE_API_URL.');
   const token = getToken();
   if (!token) throw new Error('NOT_LOGGED_IN');
   const form = new FormData();
   form.append('file', file);
+  if (options.ocrLang) form.append('ocr_lang', options.ocrLang);
   const res = await fetch(`${api}/api/convert/${slug}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
@@ -50,6 +53,7 @@ export default function PdfDocConverter() {
   const [file, setFile] = useState(null);
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState('');
+  const [ocrLang, setOcrLang] = useState('eng');
 
   useEffect(() => {
     const m = MODES.find((x) => x.id === modeParam);
@@ -76,7 +80,8 @@ export default function PdfDocConverter() {
     setConverting(true);
     setError('');
     try {
-      const blob = await convertViaBackend(file, current.slug);
+      const opts = current.id === 'pdf2doc' ? { ocrLang } : {};
+      const blob = await convertViaBackend(file, current.slug, opts);
       const name = generateDownloadFilename(file.name, outExt);
       downloadBlob(blob, name);
     } catch (err) {
@@ -139,6 +144,26 @@ export default function PdfDocConverter() {
             <p className="text-slate-300 text-sm">Output: {outExt}</p>
             {file && <p className="text-blue-300 text-sm mt-2 font-medium">{file.name}</p>}
           </label>
+
+          {mode === 'pdf2doc' && (
+            <div className="mt-6">
+              <div className="flex flex-wrap items-center gap-3">
+                <Label htmlFor="pdf2doc-lang" className="text-slate-200 text-sm font-medium shrink-0">OCR language</Label>
+                <Select value={ocrLang} onValueChange={setOcrLang}>
+                  <SelectTrigger id="pdf2doc-lang" className="w-[240px] bg-slate-800/50 border-slate-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="eng">English</SelectItem>
+                    <SelectItem value="hin+eng">Hindi + English</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <p className="text-slate-400 text-sm mt-2">
+                If the PDF uses custom fonts or is scanned, conversion will automatically fall back to OCR.
+              </p>
+            </div>
+          )}
 
           {file && (
             <Button

@@ -36,6 +36,13 @@ except ImportError:
     REPORTLAB_AVAILABLE = False
 
 
+try:
+    from .ocr_service import OCRService, _looks_garbled_digital_text
+    OCR_SERVICE_AVAILABLE = True
+except Exception:
+    OCR_SERVICE_AVAILABLE = False
+
+
 def pdf_to_docx(pdf_bytes: bytes) -> Tuple[bytes, str]:
     """Convert PDF to .docx. Returns (docx_bytes, error). error is '' on success."""
     if not PDF2DOCX_AVAILABLE:
@@ -55,6 +62,52 @@ def pdf_to_docx(pdf_bytes: bytes) -> Tuple[bytes, str]:
         return docx_buf.read(), ''
     except Exception as e:
         logger.exception("pdf_to_docx failed")
+        return b'', str(e)
+
+
+def _docx_to_text(docx_bytes: bytes) -> str:
+    if not DOCX_AVAILABLE:
+        return ""
+    try:
+        doc = Document(io.BytesIO(docx_bytes))
+        parts = []
+        for p in doc.paragraphs:
+            t = (p.text or "").strip()
+            if t:
+                parts.append(t)
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    t = (cell.text or "").strip()
+                    if t:
+                        parts.append(t)
+        return "\n".join(parts).strip()
+    except Exception:
+        return ""
+
+
+def pdf_to_docx_smart(pdf_bytes: bytes, ocr_lang: str = None) -> Tuple[bytes, str]:
+    docx_bytes, err = pdf_to_docx(pdf_bytes)
+    if not err and docx_bytes:
+        extracted = _docx_to_text(docx_bytes)
+        if extracted:
+            try:
+                if not _looks_garbled_digital_text(extracted):
+                    return docx_bytes, ''
+            except Exception:
+                return docx_bytes, ''
+
+    if not OCR_SERVICE_AVAILABLE:
+        return docx_bytes, err or "PDF to DOC conversion produced unreadable output and OCR fallback is unavailable"
+
+    try:
+        svc = OCRService()
+        extracted = svc.extract_pdf_with_layout(pdf_bytes, max_pages=25, ocr_lang=ocr_lang)
+        pages = extracted.get("pages") or []
+        out = svc.text_to_docx_layout_pages(pages, title="Converted Document")
+        return out, ''
+    except Exception as e:
+        logger.exception("pdf_to_docx_smart OCR fallback failed")
         return b'', str(e)
 
 

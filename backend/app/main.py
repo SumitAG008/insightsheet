@@ -49,7 +49,7 @@ from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
 from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email
 from app.services.db_connection_service import DatabaseConnectionService
-from app.services.document_converter_service import pdf_to_docx, docx_to_pdf, pptx_to_pdf, pdf_to_pptx
+from app.services.document_converter_service import pdf_to_docx, pdf_to_docx_smart, docx_to_pdf, pptx_to_pdf, pdf_to_pptx
 from app.services.api_key_service import (
     generate_api_key, verify_api_key, get_api_key_by_header, track_api_usage,
     get_usage_stats, get_monthly_billing, update_monthly_billing
@@ -1712,6 +1712,7 @@ async def _convert_endpoint(
     media_type: str,
     converter_fn,
     processing_type: str,
+    converter_kwargs: Optional[dict] = None,
 ):
     """Shared logic for /api/convert/* endpoints. Returns (data_bytes, out_filename) or raises HTTPException."""
     subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
@@ -1727,7 +1728,10 @@ async def _convert_endpoint(
     if ext not in in_ext:
         raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {', '.join(in_ext)}")
 
-    data, err = converter_fn(raw)
+    if converter_kwargs:
+        data, err = converter_fn(raw, **converter_kwargs)
+    else:
+        data, err = converter_fn(raw)
     if err:
         raise HTTPException(status_code=400, detail=err)
 
@@ -1750,6 +1754,7 @@ async def _convert_endpoint(
 @app.post("/api/convert/pdf-to-doc")
 async def convert_pdf_to_doc(
     file: UploadFile = File(...),
+    ocr_lang: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1759,8 +1764,9 @@ async def convert_pdf_to_doc(
         in_ext=[".pdf"],
         out_ext=".docx",
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        converter_fn=pdf_to_docx,
+        converter_fn=pdf_to_docx_smart,
         processing_type="pdf_to_doc",
+        converter_kwargs={"ocr_lang": ocr_lang},
     )
     return StreamingResponse(
         io.BytesIO(data),

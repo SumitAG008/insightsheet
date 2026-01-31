@@ -124,10 +124,20 @@ export default function Pricing() {
   ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
       {/* Pricing Section — same theme as Landing, Developers */}
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-12">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <a href="/">
+            <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-white">
+              <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
+              Back to Home
+            </Button>
+          </a>
+          <div />
+        </div>
+
+        <div className="text-center mb-6">
           <Badge className="mb-4 border border-blue-200 bg-blue-50 text-blue-700">
             <Star className="w-4 h-4 mr-1" />
             Choose Your Plan
@@ -135,7 +145,7 @@ export default function Pricing() {
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
             Simple, Transparent Pricing
           </h2>
-          <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-8">
+          <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-6">
             Start free. Upgrade when you need bigger files and more reports.
           </p>
 
@@ -156,7 +166,7 @@ export default function Pricing() {
           )}
         </div>
 
-        <Alert className="mb-8 max-w-4xl mx-auto bg-blue-50 border-blue-200">
+        <Alert className="mb-4 max-w-4xl mx-auto bg-blue-50 border-blue-200">
           <AlertCircle className="h-5 w-5 text-blue-600" />
           <AlertDescription className="text-blue-800">
             <strong>Coming Soon:</strong> Stripe payment integration is being set up. Premium subscriptions will be available soon. 
@@ -165,7 +175,7 @@ export default function Pricing() {
         </Alert>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mt-6">
+        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mt-0 pt-4">
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -180,7 +190,11 @@ export default function Pricing() {
               )}
 
               <div className="relative group h-full">
-                <div className="relative bg-slate-50 border border-slate-200 rounded-2xl p-8 h-full flex flex-col">
+                <div
+                  className={`relative bg-white/80 backdrop-blur border rounded-2xl p-8 h-full flex flex-col shadow-sm transition-shadow group-hover:shadow-md ${
+                    plan.popular ? 'border-blue-200 ring-2 ring-blue-200' : 'border-slate-200'
+                  }`}
+                >
                   <div className="text-center mb-6">
                     <plan.icon className="w-12 h-12 mx-auto mb-4 text-blue-600" />
                     <h3 className="text-2xl font-bold text-slate-900 mb-2">{plan.name}</h3>

@@ -15,6 +15,7 @@ import {
   LineChart as RechartsLineChart, Line, 
   PieChart as RechartsPieChart, Pie, 
   AreaChart, Area,
+  ScatterChart, Scatter, ZAxis,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
   ComposedChart,
   Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -164,10 +165,11 @@ export default function EnhancedChartPanel({ data }) {
     // Special processing for specific chart types
     if (type === 'pareto') {
       chartDataArray.sort((a, b) => b[yColumn] - a[yColumn]);
+      const total = chartDataArray.reduce((sum, i) => sum + (Number(i[yColumn]) || 0), 0) || 1;
       let cumulative = 0;
       chartDataArray = chartDataArray.map(item => {
         cumulative += item[yColumn];
-        return { ...item, cumulative, percent: (cumulative / chartDataArray.reduce((sum, i) => sum + i[yColumn], 0)) * 100 };
+        return { ...item, cumulative, percent: (cumulative / total) * 100 };
       });
     }
 
@@ -177,16 +179,235 @@ export default function EnhancedChartPanel({ data }) {
       const min = Math.min(...values);
       const max = Math.max(...values);
       const bins = 10;
-      const binWidth = (max - min) / bins;
-      const histogram = Array(bins).fill(0).map((_, i) => ({
-        name: `${(min + i * binWidth).toFixed(1)}-${(min + (i + 1) * binWidth).toFixed(1)}`,
-        count: 0
-      }));
-      values.forEach(val => {
-        const binIndex = Math.min(Math.floor((val - min) / binWidth), bins - 1);
-        histogram[binIndex].count++;
+      if (!isFinite(min) || !isFinite(max)) {
+        setError('Histogram needs numeric values. Please check your Y column.');
+        return null;
+      }
+
+      if (min === max) {
+        chartDataArray = [{ name: `${min.toFixed(2)}`, count: values.length }];
+      } else {
+        const binWidth = (max - min) / bins;
+        const histogram = Array(bins).fill(0).map((_, i) => ({
+          name: `${(min + i * binWidth).toFixed(1)}-${(min + (i + 1) * binWidth).toFixed(1)}`,
+          count: 0
+        }));
+        values.forEach(val => {
+          const binIndex = Math.min(Math.floor((val - min) / binWidth), bins - 1);
+          histogram[binIndex].count++;
+        });
+        chartDataArray = histogram;
+      }
+    }
+
+    if (type === 'bubble') {
+      chartDataArray = chartDataArray.map(item => {
+        const z = yColumn2 && item[yColumn2] !== undefined
+          ? Math.abs(Number(item[yColumn2]) || 0)
+          : Math.max(1, Math.abs(Number(item[yColumn]) || 0));
+        return { ...item, z };
       });
-      chartDataArray = histogram;
+    }
+
+    if (type === 'funnel') {
+      chartDataArray.sort((a, b) => (Number(b[yColumn]) || 0) - (Number(a[yColumn]) || 0));
+    }
+
+    if (type === 'variance_column' || type === 'variance_waterfall') {
+      if (!yColumn2) {
+        setError('This chart requires Y-Axis 2 (Second Value).');
+        return null;
+      }
+
+      chartDataArray = chartDataArray.map(item => {
+        const actual = Number(item[yColumn]) || 0;
+        const budget = Number(item[yColumn2]) || 0;
+        const variance = actual - budget;
+        const variancePct = budget === 0 ? null : (variance / budget) * 100;
+        return { ...item, actual, budget, variance, variancePct };
+      });
+
+      if (type === 'variance_waterfall') {
+        let cumulative = 0;
+        chartDataArray = chartDataArray
+          .slice()
+          .sort((a, b) => Math.abs(Number(b.variance) || 0) - Math.abs(Number(a.variance) || 0))
+          .map(item => {
+            const delta = Number(item.variance) || 0;
+            const start = cumulative;
+            const end = start + delta;
+            cumulative = end;
+            return {
+              ...item,
+              start,
+              delta,
+              base: Math.min(start, end),
+              pos: delta > 0 ? delta : 0,
+              neg: delta < 0 ? delta : 0,
+              end
+            };
+          });
+      }
+    }
+
+    if (type === 'moving_average') {
+      const windowSize = 3;
+      const series = chartDataArray.slice();
+      chartDataArray = series.map((item, idx) => {
+        const start = Math.max(0, idx - windowSize + 1);
+        const window = series.slice(start, idx + 1).map(d => Number(d[yColumn]) || 0);
+        const ma = window.reduce((a, b) => a + b, 0) / window.length;
+        return { ...item, ma: Math.round(ma * 100) / 100 };
+      });
+    }
+
+    if (type === 'run_chart') {
+      const values = chartDataArray.map(d => Number(d[yColumn]) || 0);
+      const mean = values.reduce((a, b) => a + b, 0) / (values.length || 1);
+      chartDataArray = chartDataArray.map(d => ({ ...d, mean }));
+    }
+
+    if (type === 'control_chart' || type === 'cusum') {
+      const values = chartDataArray.map(d => Number(d[yColumn]) || 0);
+      const mean = values.reduce((a, b) => a + b, 0) / (values.length || 1);
+      const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / (values.length || 1);
+      const sigma = Math.sqrt(variance);
+      const ucl = mean + 3 * sigma;
+      const lcl = mean - 3 * sigma;
+
+      if (type === 'control_chart') {
+        chartDataArray = chartDataArray.map(d => ({ ...d, mean, ucl, lcl }));
+      }
+
+      if (type === 'cusum') {
+        let s = 0;
+        chartDataArray = chartDataArray.map(d => {
+          const v = Number(d[yColumn]) || 0;
+          s += v - mean;
+          return { ...d, mean, cusum: Math.round(s * 100) / 100 };
+        });
+      }
+    }
+
+    if (type === 'scurve') {
+      let cumulative = 0;
+      chartDataArray = chartDataArray.map(d => {
+        cumulative += Number(d[yColumn]) || 0;
+        return { ...d, cumulative: Math.round(cumulative * 100) / 100 };
+      });
+    }
+
+    if (type === 'log_scale' || type === 'semi_log') {
+      const mapped = chartDataArray
+        .map(d => {
+          const v = Number(d[yColumn]);
+          if (!isFinite(v) || v <= 0) return null;
+          return { ...d, logValue: Math.round(Math.log10(v) * 1000) / 1000 };
+        })
+        .filter(Boolean);
+      if (mapped.length === 0) {
+        setError('Log charts require positive numeric values (> 0).');
+        return null;
+      }
+      chartDataArray = mapped;
+    }
+
+    if (type === 'waterfall') {
+      let cumulative = 0;
+      chartDataArray = chartDataArray.map(item => {
+        const delta = Number(item[yColumn]) || 0;
+        const start = cumulative;
+        const end = start + delta;
+        cumulative = end;
+        return {
+          ...item,
+          start,
+          delta,
+          base: Math.min(start, end),
+          pos: delta > 0 ? delta : 0,
+          neg: delta < 0 ? delta : 0,
+          end
+        };
+      });
+    }
+
+    if (type === 'heatmap') {
+      const vals = chartDataArray.map(d => Number(d[yColumn]) || 0);
+      const min = Math.min(...vals);
+      const max = Math.max(...vals);
+      const span = (max - min) || 1;
+      chartDataArray = chartDataArray.map(d => {
+        const v = Number(d[yColumn]) || 0;
+        const t = (v - min) / span;
+        return { ...d, _heat: Math.max(0, Math.min(1, t)) };
+      });
+    }
+
+    if (type === 'gantt') {
+      if (!yColumn2) {
+        setError('Gantt chart requires Y-Axis 2 (Second Value) as Duration (or End).');
+        return null;
+      }
+      chartDataArray = chartDataArray.map(item => {
+        const start = Number(item[yColumn]) || 0;
+        const duration = Number(item[yColumn2]) || 0;
+        return {
+          ...item,
+          ganttStart: Math.max(0, start),
+          ganttDuration: Math.max(0, duration)
+        };
+      });
+    }
+
+    if (type === 'box_whisker') {
+      const groups = {};
+      data.rows.forEach(row => {
+        const key = row[xColumn];
+        const val = parseFloat(row[yColumn]);
+        if (!key || isNaN(val)) return;
+        const keyStr = String(key).trim();
+        const displayKey = keyStr.length > 20 ? keyStr.substring(0, 17) + '...' : keyStr;
+        if (!groups[displayKey]) {
+          groups[displayKey] = { name: displayKey, fullName: keyStr, values: [] };
+        }
+        groups[displayKey].values.push(val);
+      });
+
+      const quantile = (sorted, q) => {
+        const pos = (sorted.length - 1) * q;
+        const base = Math.floor(pos);
+        const rest = pos - base;
+        if (sorted[base + 1] !== undefined) {
+          return sorted[base] + rest * (sorted[base + 1] - sorted[base]);
+        }
+        return sorted[base];
+      };
+
+      chartDataArray = Object.values(groups).map(g => {
+        const sorted = g.values.slice().sort((a, b) => a - b);
+        const min = sorted[0];
+        const max = sorted[sorted.length - 1];
+        const q1 = quantile(sorted, 0.25);
+        const median = quantile(sorted, 0.5);
+        const q3 = quantile(sorted, 0.75);
+        return {
+          name: g.name,
+          fullName: g.fullName,
+          min,
+          q1,
+          median,
+          q3,
+          max,
+          iqr: q3 - q1
+        };
+      });
+
+      if (chartDataArray.length === 0) {
+        setError('Box & Whisker needs at least one category and numeric values.');
+        return null;
+      }
+
+      chartDataArray.sort((a, b) => (Number(b.median) || 0) - (Number(a.median) || 0));
     }
 
     if (type === 'error_bars') {
@@ -529,6 +750,292 @@ export default function EnhancedChartPanel({ data }) {
           </ResponsiveContainer>
         );
 
+      case 'waterfall':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsBarChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '12px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Bar dataKey="base" stackId="a" fill="transparent" />
+              <Bar dataKey="pos" name="Increase" stackId="a" fill="#10B981" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="neg" name="Decrease" stackId="a" fill="#EF4444" radius={[6, 6, 0, 0]} />
+              <ReferenceLine y={0} stroke="#94a3b8" opacity={0.5} />
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'heatmap':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsBarChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '12px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Bar dataKey={yColumn} name={yColumn} radius={[6, 6, 0, 0]}>
+                {chartData.map((entry, index) => {
+                  const t = Number(entry._heat);
+                  const r = Math.round(59 + (16 - 59) * t);
+                  const g = Math.round(130 + (185 - 130) * t);
+                  const b = Math.round(246 + (129 - 246) * t);
+                  const color = `rgb(${r}, ${g}, ${b})`;
+                  return <Cell key={`cell-${index}`} fill={color} />;
+                })}
+              </Bar>
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'variance_column':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsBarChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '12px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Bar dataKey="variance" name="Variance" radius={[6, 6, 0, 0]}>
+                {chartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={(Number(entry.variance) || 0) >= 0 ? '#10B981' : '#EF4444'} />
+                ))}
+              </Bar>
+              <ReferenceLine y={0} stroke="#94a3b8" opacity={0.5} />
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'variance_waterfall':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsBarChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '12px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Bar dataKey="base" stackId="a" fill="transparent" />
+              <Bar dataKey="pos" name="Favorable" stackId="a" fill="#10B981" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="neg" name="Unfavorable" stackId="a" fill="#EF4444" radius={[6, 6, 0, 0]} />
+              <ReferenceLine y={0} stroke="#94a3b8" opacity={0.5} />
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'moving_average':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsLineChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Line type="monotone" dataKey={yColumn} name={yColumn} stroke={primaryColor} strokeWidth={3} dot={{ fill: primaryColor, r: 5 }} />
+              <Line type="monotone" dataKey="ma" name="Moving Avg" stroke={secondaryColor} strokeWidth={3} dot={false} />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        );
+
+      case 'run_chart':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsLineChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <ReferenceLine y={chartData[0]?.mean} stroke="#F59E0B" strokeDasharray="4 4" opacity={0.9} />
+              <Line type="monotone" dataKey={yColumn} stroke={primaryColor} strokeWidth={3} dot={{ fill: primaryColor, r: 5 }} />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        );
+
+      case 'control_chart':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsLineChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <ReferenceLine y={chartData[0]?.ucl} stroke="#EF4444" strokeDasharray="4 4" opacity={0.8} />
+              <ReferenceLine y={chartData[0]?.mean} stroke="#F59E0B" strokeDasharray="4 4" opacity={0.9} />
+              <ReferenceLine y={chartData[0]?.lcl} stroke="#EF4444" strokeDasharray="4 4" opacity={0.8} />
+              <Line type="monotone" dataKey={yColumn} stroke={primaryColor} strokeWidth={3} dot={{ fill: primaryColor, r: 5 }} />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        );
+
+      case 'cusum':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsLineChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <ReferenceLine y={0} stroke="#94a3b8" opacity={0.5} />
+              <Line type="monotone" dataKey="cusum" name="CUSUM" stroke={secondaryColor} strokeWidth={3} dot={{ fill: secondaryColor, r: 5 }} />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        );
+
+      case 'scurve':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsLineChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Line type="monotone" dataKey="cumulative" name="Cumulative" stroke={primaryColor} strokeWidth={3} dot={{ fill: primaryColor, r: 5 }} />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        );
+
+      case 'log_scale':
+      case 'semi_log':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsLineChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Line type="monotone" dataKey="logValue" name="log10(value)" stroke={primaryColor} strokeWidth={3} dot={{ fill: primaryColor, r: 5 }} />
+            </RechartsLineChart>
+          </ResponsiveContainer>
+        );
+
+      case 'gantt':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsBarChart {...commonProps} layout="vertical" margin={{ top: 20, right: 30, left: 110, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis type="number" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <YAxis type="category" dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} width={100} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Bar dataKey="ganttStart" stackId="a" fill="transparent" />
+              <Bar dataKey="ganttDuration" name="Duration" stackId="a" fill={primaryColor} radius={[0, 8, 8, 0]} />
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'pareto':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <ComposedChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis yAxisId="left" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <YAxis yAxisId="right" orientation="right" domain={[0, 100]} stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Bar yAxisId="left" dataKey={yColumn} fill={primaryColor} radius={[8, 8, 0, 0]} />
+              <Line yAxisId="right" type="monotone" dataKey="percent" stroke={secondaryColor} strokeWidth={3} dot={{ fill: secondaryColor, r: 5 }} />
+              <ReferenceLine yAxisId="right" y={80} stroke="#F59E0B" strokeDasharray="4 4" opacity={0.8} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        );
+
+      case 'histogram':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsBarChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '12px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Bar dataKey="count" name="Count" fill={primaryColor} radius={[6, 6, 0, 0]} />
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'funnel':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <RechartsBarChart {...commonProps} layout="vertical" margin={{ top: 20, right: 30, left: 90, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis type="number" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <YAxis type="category" dataKey="name" stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} width={80} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Bar dataKey={yColumn} fill={primaryColor} radius={[0, 8, 8, 0]} />
+            </RechartsBarChart>
+          </ResponsiveContainer>
+        );
+
+      case 'bubble': {
+        const maxZ = Math.max(...chartData.map(d => Number(d.z) || 0), 1);
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis type="category" dataKey="name" stroke="#cbd5e1" style={{ fontSize: '12px', fill: '#cbd5e1' }} interval={0} angle={-45} textAnchor="end" height={100} />
+              <YAxis type="number" dataKey={yColumn} stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <ZAxis type="number" dataKey="z" range={[60, 600]} domain={[0, maxZ]} />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              <Scatter name={yColumn} data={chartData} fill={primaryColor} />
+            </ScatterChart>
+          </ResponsiveContainer>
+        );
+      }
+
+      case 'box_whisker':
+        return (
+          <ResponsiveContainer width="100%" height={400}>
+            <ComposedChart {...commonProps}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#475569" opacity={0.3} />
+              <XAxis dataKey="name" stroke="#cbd5e1" style={{ fontSize: '12px', fill: '#cbd5e1' }} angle={-45} textAnchor="end" height={100} interval={0} />
+              <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (active && payload && payload.length) {
+                    const d = payload[0].payload;
+                    return (
+                      <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-lg">
+                        <p className="text-white font-semibold mb-1">{d.fullName || d.name}</p>
+                        <p className="text-slate-300 text-sm">Min: <span className="text-white">{Number(d.min).toFixed(2)}</span></p>
+                        <p className="text-slate-300 text-sm">Q1: <span className="text-white">{Number(d.q1).toFixed(2)}</span></p>
+                        <p className="text-slate-300 text-sm">Median: <span className="text-white">{Number(d.median).toFixed(2)}</span></p>
+                        <p className="text-slate-300 text-sm">Q3: <span className="text-white">{Number(d.q3).toFixed(2)}</span></p>
+                        <p className="text-slate-300 text-sm">Max: <span className="text-white">{Number(d.max).toFixed(2)}</span></p>
+                      </div>
+                    );
+                  }
+                  return null;
+                }}
+              />
+              <Legend wrapperStyle={{ paddingTop: '20px' }} />
+              {/* IQR box (q1 -> q3) */}
+              <Bar dataKey="q3" stackId="a" fill="transparent" />
+              <Bar dataKey="iqr" stackId="a" name="IQR" fill={primaryColor} radius={[6, 6, 6, 6]} />
+              {/* Median line */}
+              <Line type="monotone" dataKey="median" name="Median" stroke={secondaryColor} strokeWidth={3} dot={false} />
+              {/* Whiskers */}
+              {chartData.map((entry, index) => (
+                <g key={`bw-${index}`}>
+                  <ReferenceLine x={entry.name} y={entry.min} stroke="#94a3b8" strokeDasharray="2 2" opacity={0.8} />
+                  <ReferenceLine x={entry.name} y={entry.max} stroke="#94a3b8" strokeDasharray="2 2" opacity={0.8} />
+                </g>
+              ))}
+            </ComposedChart>
+          </ResponsiveContainer>
+        );
+
       case 'scatter':
       case 'scatter_regression':
         // Scatter chart visualization using line chart with dots
@@ -790,7 +1297,7 @@ export default function EnhancedChartPanel({ data }) {
           </div>
         </div>
 
-        {(chartType === 'multiline' || chartType === 'combo' || chartType === 'stacked_column' || chartType === 'stacked_100' || chartType === 'error_bars') && (
+        {(chartType === 'multiline' || chartType === 'combo' || chartType === 'stacked_column' || chartType === 'stacked_100' || chartType === 'error_bars' || chartType === 'variance_column' || chartType === 'variance_waterfall' || chartType === 'gantt' || chartType === 'bubble') && (
           <div>
             <label className="text-sm text-slate-300 mb-2 block font-medium">
               {chartType === 'error_bars' ? 'Error Value (Optional)' : 'Y-Axis 2 (Second Value)'}

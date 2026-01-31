@@ -1,230 +1,28 @@
 /**
  * Individual Blog Post Page
  */
-import { useParams, Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useParams, Link, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Home, Calendar, User, ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Bookmark, Calendar, ChevronRight, Home, ListChecks, User } from 'lucide-react';
 import CookieConsent from '@/components/CookieConsent';
 import Logo from '@/components/branding/Logo';
 import BlogPromoBanner from '@/components/BlogPromoBanner';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { getPostBySlugOrId } from '@/data/developersBlogPosts';
 
 const INSIGHT = 'https://insight.meldra.ai';
 
-const BLOG_CONTENT = {
-  1: {
-    title: 'Getting Started with Meldra API: Your First Document Conversion',
-    date: '2026-01-25',
-    author: 'Meldra Team',
-    category: 'tutorials',
-    content: `
-# Getting Started with Meldra API: Your First Document Conversion
-
-The Meldra API provides powerful document conversion capabilities that let you transform files between different formats programmatically. In this tutorial, we'll walk through making your first API call to convert a PDF to DOCX.
-
-## Prerequisites
-
-- A Meldra API key (get one from support@meldra.ai)
-- A file to convert (PDF, DOC, PPT, or ZIP)
-- Basic knowledge of HTTP requests
-
-## Step 1: Get Your API Key
-
-Contact support@meldra.ai to obtain your API key. Once you have it, keep it secure and never commit it to version control.
-
-## Step 2: Make Your First Request
-
-Here's a simple example using cURL:
-
-\`\`\`bash
-curl -X POST "https://api.developer.meldra.ai/v1/convert/pdf-to-doc" \\
-  -H "X-API-Key: your_api_key_here" \\
-  -F "file=@document.pdf"
-\`\`\`
-
-## Step 3: Handle the Response
-
-The API returns a binary file (DOCX in this case). Save it to disk or process it in your application.
-
-## Next Steps
-
-- Explore other endpoints (DOC→PDF, PPT→PDF, ZIP cleaning)
-- Integrate into your application
-- Check out our interactive testing console at api.developer.meldra.ai
-    `,
-  },
-  2: {
-    title: 'How to Generate and Use Your Meldra API Key',
-    date: '2026-01-24',
-    author: 'Meldra Team',
-    category: 'tutorials',
-    content: `
-# How to Generate and Use Your Meldra API Key
-
-API keys are required for all Meldra API requests. This guide explains how to obtain, use, and secure your API key.
-
-## Getting Your API Key
-
-### Step 1: Contact Support
-
-Send an email to **support@meldra.ai** with the subject "Meldra API Key Request". Include:
-- Your name and company
-- Intended use case
-- Expected usage volume
-
-### Step 2: Receive Your Key
-
-You'll receive an email containing:
-- Your API key (format: \`meldra_xxxxxxxxxxxxx\`)
-- Base URL: \`https://api.developer.meldra.ai\`
-- Rate limits and quotas
-- Documentation links
-
-### Step 3: Store Securely
-
-**Never commit API keys to version control!** Use environment variables:
-
-\`\`\`bash
-export MELDRA_API_KEY="meldra_xxxxxxxxxxxxx"
-\`\`\`
-
-## Using Your API Key
-
-Include the key in the \`X-API-Key\` header for all requests:
-
-\`\`\`bash
-curl -X POST "https://api.developer.meldra.ai/v1/convert/pdf-to-doc" \\
-  -H "X-API-Key: meldra_xxxxxxxxxxxxx" \\
-  -F "file=@document.pdf"
-\`\`\`
-
-## Security Best Practices
-
-1. **Rotate keys regularly** - Contact support to generate new keys
-2. **Use environment variables** - Never hardcode keys
-3. **Monitor usage** - Check your usage stats regularly
-4. **Revoke compromised keys** - Contact support immediately if a key is exposed
-
-## Rate Limits
-
-- **Standard**: 60 requests/minute, 10,000 requests/day
-- **Premium**: 120 requests/minute, 50,000 requests/day
-- **Enterprise**: Custom limits
-
-## Need Help?
-
-Contact support@meldra.ai for assistance with API keys or usage.
-    `,
-  },
-  3: {
-    title: 'What Can the Meldra API Do? Complete Feature Overview',
-    date: '2026-01-23',
-    author: 'Meldra Team',
-    category: 'api-docs',
-    content: `
-# What Can the Meldra API Do? Complete Feature Overview
-
-The Meldra API provides comprehensive document conversion and file processing capabilities. Here's everything you can do with it.
-
-## Document Conversion
-
-### PDF to DOCX
-Convert PDF files to editable Microsoft Word documents while preserving formatting and layout.
-
-**Use Cases:**
-- Extract text from PDFs for editing
-- Convert scanned documents to editable format
-- Process PDF forms into Word documents
-
-### DOC/DOCX to PDF
-Transform Word documents into PDF format for distribution and archiving.
-
-**Use Cases:**
-- Generate PDF reports from Word templates
-- Convert documents for printing
-- Create standardized document formats
-
-### PPT/PPTX to PDF
-Convert PowerPoint presentations to PDF for sharing and archiving.
-
-**Use Cases:**
-- Archive presentations
-- Share slides without requiring PowerPoint
-- Create print-ready versions
-
-### PDF to PPTX
-Transform PDF documents into PowerPoint presentations (one slide per page).
-
-**Use Cases:**
-- Convert PDF reports to presentations
-- Create slides from document pages
-- Transform documents for presentation
-
-## ZIP File Cleaning
-
-Clean and sanitize ZIP file contents by:
-- Removing or replacing invalid characters in filenames
-- Enforcing length limits
-- Standardizing naming conventions
-- Handling special characters
-
-**Use Cases:**
-- Process user-uploaded ZIP files
-- Standardize file naming across systems
-- Clean archives before processing
-- Ensure cross-platform compatibility
-
-## API Features
-
-### Authentication
-- Secure API key-based authentication
-- Rate limiting per key
-- Usage tracking and analytics
-
-### Reliability
-- High availability infrastructure
-- Error handling and retry logic
-- Status code responses
-
-### Performance
-- Fast processing times
-- Scalable architecture
-- Support for large files
-
-## Integration Examples
-
-### Python
-\`\`\`python
-import requests
-
-response = requests.post(
-    "https://api.developer.meldra.ai/v1/convert/pdf-to-doc",
-    headers={"X-API-Key": "your_key"},
-    files={"file": open("document.pdf", "rb")}
-)
-\`\`\`
-
-### JavaScript/Node.js
-\`\`\`javascript
-const formData = new FormData();
-formData.append('file', fileBlob);
-
-fetch('https://api.developer.meldra.ai/v1/convert/pdf-to-doc', {
-  method: 'POST',
-  headers: { 'X-API-Key': 'your_key' },
-  body: formData
-});
-\`\`\`
-
-## Get Started
-
-Visit api.developer.meldra.ai to explore the API, test endpoints, and view detailed documentation.
-    `,
-  },
-};
-
 export default function BlogPost() {
-  const { id } = useParams();
-  const post = BLOG_CONTENT[parseInt(id || '0')];
+  const { slugOrId } = useParams();
+  const post = getPostBySlugOrId(slugOrId);
+
+  const isNumericId = /^\d+$/.test(String(slugOrId || '').trim());
+
+  if (isNumericId && post?.slug) {
+    return <Navigate to={`/developers/blog/${post.slug}`} replace />;
+  }
 
   if (!post) {
     return (
@@ -238,6 +36,11 @@ export default function BlogPost() {
       </div>
     );
   }
+
+  useEffect(() => {
+    if (!post?.title) return;
+    document.title = `${post.title} | meldra for Developers`;
+  }, [post?.title]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -292,7 +95,8 @@ export default function BlogPost() {
         <div className="mb-8">
           <BlogPromoBanner 
             title={post.title}
-            postId={parseInt(id || '0')}
+            postId={post.id}
+            postSlug={post.slug}
             category={post.category}
           />
         </div>
@@ -309,9 +113,81 @@ export default function BlogPost() {
               <span>By {post.author}</span>
             </div>
           </div>
-          <div className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-            {post.content}
-          </div>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h1: ({ children, ...props }) => (
+                <h1 className="mt-2 mb-6 text-4xl font-bold tracking-tight text-slate-900" {...props}>
+                  {children}
+                </h1>
+              ),
+              h2: ({ children, ...props }) => (
+                <h2 className="mt-10 mb-4 flex items-center gap-2 text-2xl font-bold text-slate-900" {...props}>
+                  <Bookmark className="h-5 w-5 text-blue-700" />
+                  <span>{children}</span>
+                </h2>
+              ),
+              h3: ({ children, ...props }) => (
+                <h3 className="mt-8 mb-3 flex items-center gap-2 text-xl font-semibold text-slate-900" {...props}>
+                  <ChevronRight className="h-5 w-5 text-slate-700" />
+                  <span>{children}</span>
+                </h3>
+              ),
+              ul: ({ children, ...props }) => (
+                <ul className="my-4 space-y-2" {...props}>
+                  {children}
+                </ul>
+              ),
+              ol: ({ children, ...props }) => (
+                <ol className="my-4 space-y-2" {...props}>
+                  {children}
+                </ol>
+              ),
+              li: ({ children, ...props }) => (
+                <li className="flex items-start gap-2" {...props}>
+                  <ListChecks className="mt-1 h-4 w-4 flex-shrink-0 text-emerald-700" />
+                  <span className="min-w-0">{children}</span>
+                </li>
+              ),
+              pre: ({ children, ...props }) => (
+                <pre className="my-6 overflow-x-auto rounded-xl bg-slate-900 p-4 text-slate-100" {...props}>
+                  {children}
+                </pre>
+              ),
+              code: ({ className, children, ...props }) => {
+                const isBlock = typeof className === 'string' && className.includes('language-');
+                if (isBlock) {
+                  return (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
+                }
+                return (
+                  <code className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.95em] text-slate-900" {...props}>
+                    {children}
+                  </code>
+                );
+              },
+              blockquote: ({ children, ...props }) => (
+                <blockquote className="my-6 border-l-4 border-blue-200 bg-blue-50 px-4 py-3 text-slate-700" {...props}>
+                  {children}
+                </blockquote>
+              ),
+              p: ({ children, ...props }) => (
+                <p className="my-4 leading-relaxed text-slate-700" {...props}>
+                  {children}
+                </p>
+              ),
+              a: ({ children, ...props }) => (
+                <a className="text-blue-700 underline underline-offset-2 hover:text-blue-800" {...props}>
+                  {children}
+                </a>
+              ),
+            }}
+          >
+            {post.content || ''}
+          </ReactMarkdown>
         </article>
       </div>
 

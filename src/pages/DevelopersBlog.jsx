@@ -11,86 +11,15 @@ import { Search, Calendar, User, ArrowRight, Home } from 'lucide-react';
 import CookieConsent from '@/components/CookieConsent';
 import Logo from '@/components/branding/Logo';
 import BlogPromoBanner from '@/components/BlogPromoBanner';
+import { BLOG_CATEGORIES, DEVELOPERS_BLOG_POSTS } from '@/data/developersBlogPosts';
 
 const INSIGHT = 'https://insight.meldra.ai';
-
-const CATEGORIES = [
-  { id: 'all', label: 'All Posts' },
-  { id: 'updates', label: 'Updates' },
-  { id: 'tutorials', label: 'Tutorials' },
-  { id: 'success-stories', label: 'Success Stories' },
-  { id: 'engineering', label: 'Engineering' },
-  { id: 'api-docs', label: 'API Documentation' },
-];
-
-const BLOG_POSTS = [
-  {
-    id: 1,
-    title: 'Getting Started with Meldra API: Your First Document Conversion',
-    date: '2026-01-25',
-    author: 'Meldra Team',
-    category: 'tutorials',
-    summary: 'Learn how to convert PDF to DOC, DOC to PDF, and more using the Meldra API. This comprehensive guide walks you through authentication, making your first API call, and handling responses. Perfect for developers new to document conversion APIs.',
-    image: '/api-blog-1.jpg',
-    readMore: true,
-  },
-  {
-    id: 2,
-    title: 'How to Generate and Use Your Meldra API Key',
-    date: '2026-01-24',
-    author: 'Meldra Team',
-    category: 'tutorials',
-    summary: 'Step-by-step guide on obtaining your Meldra API key, understanding authentication, and securing your credentials. Learn about rate limits, best practices, and how to integrate the API key into your applications.',
-    image: '/api-blog-2.jpg',
-    readMore: true,
-  },
-  {
-    id: 3,
-    title: 'What Can the Meldra API Do? Complete Feature Overview',
-    date: '2026-01-23',
-    author: 'Meldra Team',
-    category: 'api-docs',
-    summary: 'Discover all the capabilities of the Meldra API: document conversion (PDF, DOC, PPT), ZIP file cleaning, and more. Understand use cases, technical specifications, and how each endpoint works in real-world scenarios.',
-    image: '/api-blog-3.jpg',
-    readMore: true,
-  },
-  {
-    id: 4,
-    title: 'API v1.0 Released: Document Conversion and ZIP Cleaning Now Available',
-    date: '2026-01-20',
-    author: 'Meldra Team',
-    category: 'updates',
-    summary: 'We\'re excited to announce the launch of Meldra API v1.0! This release includes document conversion endpoints (PDF↔DOC, PPT↔PDF) and ZIP file cleaning. Read about new features, improvements, and what\'s coming next.',
-    image: '/api-blog-4.jpg',
-    readMore: true,
-  },
-  {
-    id: 5,
-    title: 'Building a Document Processing Pipeline with Meldra API',
-    date: '2026-01-18',
-    author: 'Meldra Team',
-    category: 'engineering',
-    summary: 'Learn how to build scalable document processing pipelines using the Meldra API. This engineering deep-dive covers batch processing, error handling, retry logic, and performance optimization strategies.',
-    image: '/api-blog-5.jpg',
-    readMore: true,
-  },
-  {
-    id: 6,
-    title: 'How Company X Automated Their Document Workflow with Meldra',
-    date: '2026-01-15',
-    author: 'Meldra Team',
-    category: 'success-stories',
-    summary: 'Case study: How a leading enterprise reduced document processing time by 80% using Meldra API. Learn about their implementation, challenges overcome, and the results they achieved.',
-    image: '/api-blog-6.jpg',
-    readMore: true,
-  },
-];
 
 export default function DevelopersBlog() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredPosts = BLOG_POSTS.filter(post => {
+  const filteredPosts = DEVELOPERS_BLOG_POSTS.filter(post => {
     const matchesCategory = selectedCategory === 'all' || post.category === selectedCategory;
     const matchesSearch = searchQuery === '' || 
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -159,7 +88,7 @@ export default function DevelopersBlog() {
                   Categories
                 </button>
               </div>
-              {CATEGORIES.map((cat) => (
+              {BLOG_CATEGORIES.map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
@@ -209,6 +138,7 @@ export default function DevelopersBlog() {
                 <BlogPromoBanner 
                   title={post.title}
                   postId={post.id}
+                  postSlug={post.slug}
                   category={post.category}
                 />
                 
@@ -218,7 +148,7 @@ export default function DevelopersBlog() {
                     <div className="flex flex-col gap-4">
                       <div className="flex items-center gap-3">
                         <span className={`px-2 py-1 rounded text-xs font-medium border ${getCategoryColor(post.category)}`}>
-                          {CATEGORIES.find(c => c.id === post.category)?.label || post.category}
+                          {BLOG_CATEGORIES.find(c => c.id === post.category)?.label || post.category}
                         </span>
                       </div>
                       <div className="flex items-center gap-4 text-sm text-slate-600">
@@ -234,7 +164,7 @@ export default function DevelopersBlog() {
                       <p className="text-slate-700 leading-relaxed">{post.summary}</p>
                       {post.readMore && (
                         <Link 
-                          to={`/developers/blog/${post.id}`}
+                          to={`/developers/blog/${post.slug}`}
                           className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
                         >
                           Read more <ArrowRight className="w-4 h-4" />

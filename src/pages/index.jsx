@@ -159,7 +159,7 @@ function PagesContent() {
                 <Route path="/developers" element={<Developers />} />
                 <Route path="/Developers" element={<Developers />} />
                 <Route path="/developers/blog" element={<DevelopersBlog />} />
-                <Route path="/developers/blog/:id" element={<BlogPost />} />
+                <Route path="/developers/blog/:slugOrId" element={<BlogPost />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-export default function BlogPromoBanner({ title, postId, category = 'tutorials' }) {
+export default function BlogPromoBanner({ title, postId, postSlug, category = 'tutorials' }) {
   const categoryColors = {
     'tutorials': 'from-blue-600 to-blue-800',
     'updates': 'from-green-600 to-green-800',
@@ -51,7 +51,7 @@ export default function BlogPromoBanner({ title, postId, category = 'tutorials' 
 
         {/* CTA Button */}
         <div className="mt-4">
-          <Link to={`/developers/blog/${postId}`}>
+          <Link to={`/developers/blog/${postSlug || postId}`}>
             <Button 
               className="bg-white text-blue-600 hover:bg-blue-50 font-semibold px-6 py-2 rounded-full shadow-md hover:shadow-lg transition-all"
             >

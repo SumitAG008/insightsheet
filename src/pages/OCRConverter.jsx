@@ -14,7 +14,7 @@ import {
   Save, Image as ImageIcon, FileType, Lock,
 } from 'lucide-react';
 
-const IMAGE_ACCEPT = '.jpg,.jpeg,.png,.webp,.bmp,.tiff,.tif,.gif';
+const IMAGE_ACCEPT = '.jpg,.jpeg,.png,.webp,.bmp,.tiff,.tif,.gif,.pdf';
 const SAVE_KEY = 'meldra_ocr_draft';
 
 export default function OCRConverter() {
@@ -26,6 +26,7 @@ export default function OCRConverter() {
   const [imageWidth, setImageWidth] = useState(null);
   const [imageHeight, setImageHeight] = useState(null);
   const [tables, setTables] = useState(null);
+  const [pages, setPages] = useState(null);
   const [exportMode, setExportMode] = useState('layout'); // 'form' | 'layout' — layout = match image positions
   const [preserveImage, setPreserveImage] = useState(false); // PDF: use original image (exact copy)
   const [exporting, setExporting] = useState(null); // 'doc' | 'pdf' | null
@@ -63,9 +64,9 @@ export default function OCRConverter() {
     const f = e.target.files?.[0];
     if (!f) return;
     const ext = '.' + (f.name.split('.').pop() || '').toLowerCase();
-    const allowed = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif', '.gif']);
+    const allowed = new Set(['.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif', '.gif', '.pdf']);
     if (!allowed.has(ext)) {
-      setError('Please select an image: JPG, PNG, WebP, BMP, TIFF, or GIF');
+      setError('Please select an image or PDF: JPG, PNG, WebP, BMP, TIFF, GIF, or PDF');
       e.target.value = '';
       return;
     }
@@ -82,6 +83,7 @@ export default function OCRConverter() {
     setImageWidth(null);
     setImageHeight(null);
     setTables(null);
+    setPages(null);
     setOcrDone(false);
   };
 
@@ -96,6 +98,7 @@ export default function OCRConverter() {
       setImageWidth(res.image_width ?? null);
       setImageHeight(res.image_height ?? null);
       setTables(res.tables ?? null);
+      setPages(res.pages ?? null);
       setOcrDone(true);
     } catch (err) {
       setError(err.message || 'OCR extraction failed. Ensure the backend has Tesseract installed.');
@@ -119,6 +122,10 @@ export default function OCRConverter() {
         format,
         title: (file?.name || 'OCR').replace(/\.[^/.]+$/, '') || 'OCR Document',
       };
+      if (exportMode === 'layout' && pages && Array.isArray(pages) && pages.length > 0) {
+        payload.pages = pages;
+        payload.mode = 'layout';
+      }
       if (format === 'pdf' && preserveImage && file) {
         const base64 = await new Promise((res, rej) => {
           const r = new FileReader();
@@ -156,6 +163,7 @@ export default function OCRConverter() {
     setImageWidth(null);
     setImageHeight(null);
     setTables(null);
+    setPages(null);
     setOcrDone(false);
     setError('');
     sessionStorage.removeItem(SAVE_KEY);
@@ -202,7 +210,7 @@ export default function OCRConverter() {
             </strong>
             <br />
             <span className="text-sm text-slate-900 dark:text-slate-200 font-bold">
-              JPG, PNG, WebP, BMP, TIFF, GIF supported. <strong>Layout</strong> (default): DOC/PDF match the image format and alignment so you can fill, sign, and send. <strong>Form</strong>: flow structure. Use Layout for best match to your form.
+              JPG, PNG, WebP, BMP, TIFF, GIF, PDF supported. <strong>Layout</strong> (default): DOC/PDF match the original format and alignment so you can fill, sign, and send. <strong>Form</strong>: flow structure.
             </span>
           </AlertDescription>
         </Alert>
@@ -221,7 +229,7 @@ export default function OCRConverter() {
               <div className="w-20 h-20 bg-[#065f46] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <Upload className="w-10 h-10 text-white" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">Upload Image</h3>
+              <h3 className="text-2xl font-bold text-white mb-2">Upload Image / PDF</h3>
               <p className="text-slate-200 font-semibold mb-2">Scans, photos, forms, screenshots</p>
               <p className="text-slate-300 font-medium text-sm">Max {maxSizeMB}MB</p>
             </label>
@@ -260,7 +268,7 @@ export default function OCRConverter() {
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <p className="text-white font-semibold">Editable text — edit, then Save or Download</p>
-              <Button onClick={handleReset} variant="outline" size="sm">New image</Button>
+              <Button onClick={handleReset} variant="outline" size="sm">New file</Button>
             </div>
             {error && (
               <Alert className="mb-4 bg-red-500/10 border-red-500/30">

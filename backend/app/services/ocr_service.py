@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 OCR_SPACE_API_URL = "https://api.ocr.space/parse/image"
 OCR_SPACE_MAX_BYTES = 1024 * 1024  # 1MB free tier
 
+# Tesseract can occasionally hang on complex/noisy inputs; set a hard per-call timeout.
+TESSERACT_TIMEOUT_SECONDS = int(os.getenv("TESSERACT_TIMEOUT_SECONDS", "18") or "18")
+
 # Optional imports - fail gracefully if not available
 try:
     import pytesseract
@@ -58,6 +61,87 @@ try:
 except ImportError:
     FITZ_AVAILABLE = False
     fitz = None
+
+
+def _pdf_has_meaningful_text(page) -> bool:
+    """Heuristic: determine if PDF page contains selectable text."""
+    try:
+        t = (page.get_text("text") or "").strip()
+        return len(t) >= 20
+    except Exception:
+        return False
+
+
+def _pdf_page_to_layout(page) -> Dict[str, Any]:
+    """Extract positioned text from a digital PDF page into the same layout schema as OCR."""
+    d = page.get_text("dict")
+    w = float(page.rect.width)
+    h = float(page.rect.height)
+    layout: List[Dict[str, Any]] = []
+    words: List[Dict[str, Any]] = []
+    line_num = 0
+
+    for block in d.get("blocks", []) or []:
+        if block.get("type") != 0:
+            continue
+        for ln in block.get("lines", []) or []:
+            spans = ln.get("spans", []) or []
+            texts = []
+            lefts = []
+            tops = []
+            rights = []
+            bots = []
+            for sp in spans:
+                t = (sp.get("text") or "").strip()
+                if not t:
+                    continue
+                bbox = sp.get("bbox") or [0, 0, 0, 0]
+                x0, y0, x1, y1 = bbox
+                texts.append(t)
+                lefts.append(x0)
+                tops.append(y0)
+                rights.append(x1)
+                bots.append(y1)
+                words.append({
+                    "text": t,
+                    "left": int(x0),
+                    "top": int(y0),
+                    "width": int(max(1, x1 - x0)),
+                    "height": int(max(1, y1 - y0)),
+                    "line_num": line_num,
+                    "block_num": int(block.get("number", 0) or 0),
+                })
+
+            if not texts:
+                continue
+            line_text = _normalize_ocr_text(" ".join(texts))
+            if _is_border_or_noise(line_text):
+                continue
+            L = min(lefts) if lefts else 0
+            T = min(tops) if tops else 0
+            R = max(rights) if rights else L + 1
+            B = max(bots) if bots else T + 1
+            layout.append({
+                "text": line_text,
+                "left": int(L),
+                "top": int(T),
+                "width": int(max(1, R - L)),
+                "height": int(max(1, B - T)),
+                "line_num": line_num,
+                "block_num": int(block.get("number", 0) or 0),
+            })
+            line_num += 1
+
+    layout.sort(key=lambda x: (x.get("top", 0), x.get("left", 0)))
+    tables = _detect_tables_from_words(words) if words else []
+    text = "\n".join(ln.get("text", "") for ln in layout).strip()
+    return {
+        "text": text,
+        "layout": layout,
+        "image_width": int(w),
+        "image_height": int(h),
+        "tables": tables,
+    }
 
 
 # Placeholder for fillable "field" so user can type over it in Word/PDF
@@ -615,6 +699,7 @@ class OCRService:
 
     # Image extensions we support
     ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.bmp', '.tiff', '.tif', '.gif'}
+    ALLOWED_PDF_EXTENSIONS = {'.pdf'}
 
     def __init__(self):
         if not PYTESSERACT_AVAILABLE:
@@ -647,8 +732,21 @@ class OCRService:
             # PSM 6 = Assume a single uniform block of text (default for documents)
             # PSM 4 = Assume a single column of variable-size text (helps forms with multiple blocks)
             # PSM 3 = Fully automatic; can help noisy/form layouts
-            text = pytesseract.image_to_string(img, lang='eng', config='--psm 6')
+            text = pytesseract.image_to_string(
+                img,
+                lang='eng',
+                config='--psm 6',
+                timeout=TESSERACT_TIMEOUT_SECONDS,
+            )
             return (text or '').strip()
+        except RuntimeError as e:
+            # pytesseract raises RuntimeError on timeout
+            if 'timeout' in str(e).lower():
+                raise RuntimeError(
+                    f"OCR timed out after {TESSERACT_TIMEOUT_SECONDS}s. "
+                    "Try a clearer scan, fewer pages, or use OCR.space (set OCR_SPACE_API_KEY)."
+                ) from e
+            raise
         except pytesseract.TesseractNotFoundError:
             logger.error("Tesseract OCR is not installed or not in PATH.")
             raise RuntimeError(
@@ -672,8 +770,8 @@ class OCRService:
         img = Image.open(io.BytesIO(data))
         iw, ih = img.size
 
-        # Resize: 1200px to finish within 55s on Railway. 1400px timed out; 1000px dropped fields.
-        max_dim = 1200
+        # Resize to cap worst-case runtime; helps avoid long-running OCR on huge images.
+        max_dim = 1100
         if max(iw, ih) > max_dim:
             ratio = max_dim / max(iw, ih)
             new_w, new_h = int(iw * ratio), int(ih * ratio)
@@ -693,7 +791,20 @@ class OCRService:
 
         try:
             # PSM 4 = single column of variable-sized text (helps forms with sections/tables)
-            d = pytesseract.image_to_data(img, lang='eng', config='--psm 4', output_type=Output.DICT)
+            d = pytesseract.image_to_data(
+                img,
+                lang='eng',
+                config='--psm 4',
+                output_type=Output.DICT,
+                timeout=TESSERACT_TIMEOUT_SECONDS,
+            )
+        except RuntimeError as e:
+            if 'timeout' in str(e).lower():
+                raise RuntimeError(
+                    f"OCR timed out after {TESSERACT_TIMEOUT_SECONDS}s. "
+                    "Try a clearer scan, crop the image, or use OCR.space (set OCR_SPACE_API_KEY)."
+                ) from e
+            raise
         except pytesseract.TesseractNotFoundError:
             logger.error("Tesseract OCR is not installed or not in PATH.")
             raise RuntimeError(
@@ -761,6 +872,41 @@ class OCRService:
             'image_height': ih,
             'tables': tables,
         }
+
+    def extract_pdf_with_layout(self, pdf_bytes: bytes, max_pages: int = 25) -> Dict[str, Any]:
+        """Extract a PDF into per-page layouts.
+
+        - Digital PDFs: extract positioned text via PyMuPDF.
+        - Scanned PDFs: rasterize each page then run existing OCR layout extraction.
+        """
+        if not FITZ_AVAILABLE or fitz is None:
+            raise RuntimeError("PDF OCR requires PyMuPDF. Install: pip install PyMuPDF")
+
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            n_pages = min(len(doc), max_pages)
+            pages: List[Dict[str, Any]] = []
+
+            for i in range(n_pages):
+                page = doc[i]
+                if _pdf_has_meaningful_text(page):
+                    out = _pdf_page_to_layout(page)
+                else:
+                    # Rasterize scanned pages (DPI chosen to balance speed/accuracy)
+                    pix = page.get_pixmap(dpi=160, alpha=False)
+                    img_bytes = pix.tobytes("png")
+                    out = self.extract_with_layout(io.BytesIO(img_bytes))
+                out["page"] = i + 1
+                pages.append(out)
+
+            combined_text = "\n\n".join((p.get("text") or "").strip() for p in pages).strip()
+            return {
+                "text": combined_text,
+                "pages": pages,
+                "page_count": n_pages,
+            }
+        finally:
+            doc.close()
 
     def _layout_to_page_scale(self, image_width: int, image_height: int) -> Tuple[float, float, float, float]:
         """Fit image to letter; return (scale, page_w_pt, page_h_pt, _). scale keeps aspect."""
@@ -883,6 +1029,281 @@ class OCRService:
                 c.drawString(x_pt, y_pt, text[:500])
 
         c.save()
+        buf.seek(0)
+        return buf.read()
+
+    def text_to_pdf_layout_pages(
+        self,
+        pages: List[Dict[str, Any]],
+        title: str = "OCR Document",
+    ) -> bytes:
+        if not REPORTLAB_AVAILABLE or pdf_canvas is None:
+            raise RuntimeError("reportlab is not installed. Install: pip install reportlab")
+        if not pages:
+            return self.text_to_pdf("", title=title)
+
+        buf = io.BytesIO()
+        c = pdf_canvas.Canvas(buf)
+        c.setTitle(title or "OCR Document")
+
+        for i, p in enumerate(pages):
+            layout = p.get("layout") or []
+            iw = int(p.get("image_width") or 0)
+            ih = int(p.get("image_height") or 0)
+            tables = p.get("tables") or []
+
+            scale, page_w, page_h, _ = self._layout_to_page_scale(iw, ih)
+            c.setPageSize((page_w, page_h))
+
+            # Use same drawing logic as single-page layout export
+            drawn = set()
+            c.setStrokeColorRGB(0, 0, 0)
+
+            def _find_table(bnum: int, lnum: int):
+                for t in tables:
+                    if t.get('block_num') == bnum and t.get('line_start', 0) <= lnum <= t.get('line_end', 0):
+                        return t
+                return None
+
+            def _prev_is_label(prev: Optional[Dict]) -> bool:
+                return bool(prev and ((prev.get('text') or '').strip().endswith(':')))
+
+            def _draw_table(t: Dict[str, Any]):
+                rows = t.get('rows') or []
+                if not rows:
+                    return
+                nr, nc = len(rows), max(len(r) for r in rows) if rows else 0
+                if nc == 0:
+                    return
+                left = t.get('left', 0) * scale
+                top_img = t.get('top', 0)
+                w = max(1, t.get('width', 1)) * scale
+                h = max(1, t.get('height', 1)) * scale
+                row_h = h / nr
+                col_w = w / nc
+                for ri, row in enumerate(rows):
+                    for cj, cell in enumerate(row):
+                        if cj >= nc:
+                            break
+                        x = left + cj * col_w + 2
+                        y_bottom = page_h - (top_img + (ri + 1) * row_h) * scale
+                        c.setFont("Helvetica", max(6, min(10, row_h * 0.6)))
+                        c.drawString(x, y_bottom, (str(cell) or "")[:80])
+                for j in range(nc + 1):
+                    cx = left + j * col_w
+                    c.line(cx, page_h - (top_img + h) * scale, cx, page_h - top_img * scale)
+                for j in range(nr + 1):
+                    cy = page_h - (top_img + j * row_h) * scale
+                    c.line(left, cy, left + w, cy)
+
+            for idx, ln in enumerate(layout):
+                bnum = ln.get('block_num', 0)
+                lnum = ln.get('line_num', 0)
+                t = _find_table(bnum, lnum)
+                if t:
+                    key = (t.get('block_num', 0), t.get('line_start', 0))
+                    if key not in drawn:
+                        _draw_table(t)
+                        drawn.add(key)
+                    continue
+                left = ln.get('left', 0)
+                top = ln.get('top', 0)
+                height = ln.get('height', 12)
+                text = (ln.get('text') or '').strip()
+                if not text:
+                    continue
+                prev_ln = layout[idx - 1] if idx > 0 else None
+                x_pt = left * scale
+                y_pt = page_h - (top + height) * scale
+                font_size = max(8, min(14, height * scale * 0.7))
+                c.setFont("Helvetica", font_size)
+                is_cb, opts, label = _get_checkbox_options(text, _prev_is_label(prev_ln))
+
+                if _is_section_header(text):
+                    c.setFont("Helvetica-Bold", max(10, min(14, height * scale * 0.75)))
+                    c.drawString(x_pt, y_pt, text[:500])
+                    c.setFont("Helvetica", font_size)
+                elif is_cb and opts:
+                    sq, char_pt = 8, 5
+                    cx = x_pt
+                    if label:
+                        c.drawString(cx, y_pt, (label + " ")[:60])
+                        cx += max(50, (len(label) + 1) * char_pt)
+                    for part in opts:
+                        c.rect(cx, y_pt - 6, sq, sq)
+                        cx += sq + 4
+                        c.drawString(cx, y_pt, (part or "")[:40])
+                        cx += max(len(part or "") * char_pt, 40) + 10
+                elif _is_label_line(text):
+                    c.drawString(x_pt, y_pt, text[:500])
+                    ul_len = max(100, min(400, page_w - x_pt - 24))
+                    c.line(x_pt, y_pt - 2, x_pt + ul_len, y_pt - 2)
+                else:
+                    c.drawString(x_pt, y_pt, text[:500])
+
+            if i < len(pages) - 1:
+                c.showPage()
+
+        c.save()
+        buf.seek(0)
+        return buf.read()
+
+    def _append_docx_layout_page(
+        self,
+        doc: "Document",
+        layout: List[Dict[str, Any]],
+        image_width: int,
+        image_height: int,
+        tables: Optional[List[Dict[str, Any]]] = None,
+        is_first_page: bool = False,
+    ) -> None:
+        if not DOCX_AVAILABLE or Pt is None:
+            raise RuntimeError("python-docx is not installed. Install: pip install python-docx")
+
+        scale, page_w, page_h, _ = self._layout_to_page_scale(image_width, image_height)
+        if is_first_page:
+            s = doc.sections[0]
+        else:
+            s = doc.add_section(1)  # NEW_PAGE
+        s.page_width = Pt(page_w)
+        s.page_height = Pt(page_h)
+        s.left_margin = s.right_margin = s.top_margin = s.bottom_margin = Pt(10)
+
+        tables = tables or []
+        drawn = set()
+
+        def _find_table(bnum: int, lnum: int):
+            for t in tables:
+                if t.get('block_num') == bnum and t.get('line_start', 0) <= lnum <= t.get('line_end', 0):
+                    return t
+            return None
+
+        def _tbl_set_indent(tbl, left_pt: float):
+            try:
+                if OxmlElement and qn:
+                    tblPr = tbl._tbl.find(qn('w:tblPr'))
+                    if tblPr is None:
+                        tblPr = OxmlElement('w:tblPr')
+                        tbl._tbl.insert(0, tblPr)
+                    ti = OxmlElement('w:tblInd')
+                    ti.set(qn('w:type'), 'dxa')
+                    ti.set(qn('w:w'), str(int(max(0, left_pt) * 20)))
+                    tblPr.append(ti)
+            except Exception:
+                pass
+
+        prev_bottom = 0
+        for idx, ln in enumerate(layout):
+            bnum = ln.get('block_num', 0)
+            lnum = ln.get('line_num', 0)
+            t = _find_table(bnum, lnum)
+            if t:
+                key = (t.get('block_num', 0), t.get('line_start', 0))
+                if key not in drawn:
+                    tleft, ttop = t.get('left', 0), t.get('top', 0)
+                    theight = t.get('height', 20)
+                    gap = (ttop - prev_bottom) * scale if prev_bottom else ttop * scale
+                    gap_pt = Pt(max(0, min(gap, 200)))
+                    p = doc.add_paragraph()
+                    p.paragraph_format.space_before = Pt(0)
+                    p.paragraph_format.space_after = gap_pt
+                    p.paragraph_format.line_spacing = Pt(1)
+                    rows = t.get('rows') or []
+                    if rows:
+                        nc = max(len(r) for r in rows)
+                        tbl = doc.add_table(rows=len(rows), cols=nc)
+                        tbl.style = 'Table Grid'
+                        for ri, row in enumerate(rows):
+                            for cj, cell in enumerate(row):
+                                if cj < nc:
+                                    tbl.rows[ri].cells[cj].text = (str(cell) or "").strip()
+                        _tbl_set_indent(tbl, tleft * scale)
+                    drawn.add(key)
+                    prev_bottom = ttop + theight
+                continue
+            text = (ln.get('text') or '').strip()
+            if not text:
+                continue
+            prev_ln = layout[idx - 1] if idx > 0 else None
+            prev_is_label = bool(prev_ln and ((prev_ln.get('text') or '').strip().endswith(':')))
+            left = ln.get('left', 0)
+            top = ln.get('top', 0)
+            height = ln.get('height', 12)
+            bottom = top + height
+            gap = (top - prev_bottom) * scale if prev_bottom else top * scale
+            gap_pt = Pt(max(0, min(gap, 200)))
+            font_pt = Pt(max(9, min(14, height * scale * 0.65)))
+            is_cb, opts, label = _get_checkbox_options(text, prev_is_label)
+
+            if _is_section_header(text):
+                p = doc.add_paragraph()
+                r = p.add_run(text)
+                r.bold = True
+                r.font.size = font_pt
+                r.font.name = 'Arial'
+                p.paragraph_format.left_indent = Pt(max(0, left * scale))
+                p.paragraph_format.space_before = gap_pt
+                p.paragraph_format.space_after = Pt(4)
+            elif is_cb and opts:
+                p = doc.add_paragraph()
+                if label:
+                    r0 = p.add_run(label + " ")
+                    r0.font.size = font_pt
+                    r0.font.name = 'Arial'
+                for i, o in enumerate(opts or []):
+                    if i > 0:
+                        p.add_run("  ")
+                    p.add_run("\u2610 " + (o or ""))
+                for run in p.runs:
+                    run.font.size = font_pt
+                    run.font.name = 'Arial'
+                p.paragraph_format.left_indent = Pt(max(0, left * scale))
+                p.paragraph_format.space_before = gap_pt
+            elif _is_label_line(text):
+                p = doc.add_paragraph()
+                r1 = p.add_run(text + " ")
+                r1.font.size = font_pt
+                r1.font.name = 'Arial'
+                n = max(24, min(80, int((image_width - left) * scale / 5)))
+                r = p.add_run("_" * n)
+                r.underline = True
+                r.font.size = font_pt
+                r.font.name = 'Arial'
+                p.paragraph_format.left_indent = Pt(max(0, left * scale))
+                p.paragraph_format.space_before = gap_pt
+            else:
+                p = doc.add_paragraph()
+                r = p.add_run(text)
+                r.font.size = font_pt
+                r.font.name = 'Arial'
+                p.paragraph_format.left_indent = Pt(max(0, left * scale))
+                p.paragraph_format.space_before = gap_pt
+            prev_bottom = bottom
+
+    def text_to_docx_layout_pages(
+        self,
+        pages: List[Dict[str, Any]],
+        title: str = "OCR Document",
+    ) -> bytes:
+        if not DOCX_AVAILABLE or Pt is None:
+            raise RuntimeError("python-docx is not installed. Install: pip install python-docx")
+        doc = Document()
+        _ = title
+        if not pages:
+            return self.text_to_docx("", title=title)
+
+        for i, p in enumerate(pages):
+            self._append_docx_layout_page(
+                doc,
+                p.get("layout") or [],
+                int(p.get("image_width") or 0),
+                int(p.get("image_height") or 0),
+                tables=p.get("tables") or [],
+                is_first_page=(i == 0),
+            )
+
+        buf = io.BytesIO()
+        doc.save(buf)
         buf.seek(0)
         return buf.read()
 

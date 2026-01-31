@@ -1381,6 +1381,8 @@ class OCRExportRequest(BaseModel):
     text: str
     format: str  # "doc" or "pdf"
     title: Optional[str] = "OCR Document"
+    # Multi-page PDF export (preferred when input was a PDF)
+    pages: Optional[list] = None
     # Layout mode: same positions as the original image (exactly editable)
     layout: Optional[list] = None
     image_width: Optional[int] = None
@@ -1399,7 +1401,9 @@ async def ocr_extract(
     db: Session = Depends(get_db)
 ):
     """
-    Extract text from an image using OCR (JPG, PNG, WebP, BMP, TIFF, GIF). Generic: any form, invoice, or document.
+    Extract text from an image or PDF using OCR.
+    - Images: returns text/layout/tables (single-page)
+    - PDFs: returns text/pages[] (multi-page) where each page includes layout/tables
     ZERO STORAGE: File content not stored. Returns text, layout, tables for editing; use ocr-export to get DOC/PDF.
     """
     ocr_space_error = None
@@ -1419,14 +1423,42 @@ async def ocr_extract(
             )
 
         ext = (os.path.splitext(file.filename or "")[1] or "").lower()
-        if ext not in OCRService.ALLOWED_IMAGE_EXTENSIONS:
+        if ext not in (OCRService.ALLOWED_IMAGE_EXTENSIONS | OCRService.ALLOWED_PDF_EXTENSIONS):
             raise HTTPException(
                 status_code=400,
-                detail=f"Invalid file type. Allowed: {', '.join(OCRService.ALLOWED_IMAGE_EXTENSIONS)}"
+                detail=f"Invalid file type. Allowed: {', '.join(sorted(OCRService.ALLOWED_IMAGE_EXTENSIONS | OCRService.ALLOWED_PDF_EXTENSIONS))}"
             )
 
         out = None
         api_key = (os.getenv("OCR_SPACE_API_KEY") or "").strip()
+
+        # PDF: always use PyMuPDF path (digital extraction or OCR per page).
+        if ext in OCRService.ALLOWED_PDF_EXTENSIONS:
+            ocr = OCRService()
+            try:
+                out = await asyncio.wait_for(
+                    asyncio.to_thread(ocr.extract_pdf_with_layout, file_content, 25),
+                    90.0
+                )
+            except asyncio.TimeoutError:
+                raise HTTPException(status_code=503, detail="PDF OCR is taking too long. Try a smaller PDF or fewer pages.")
+
+            processing_history = FileProcessingHistory(
+                user_email=current_user["email"],
+                processing_type="ocr_extract_pdf",
+                original_filename=file.filename,
+                file_size_mb=file_size_mb,
+                status="success"
+            )
+            db.add(processing_history)
+            db.commit()
+            logger.info(f"OCR extract PDF: {file.filename} by {current_user['email']}")
+
+            return {
+                "text": out.get("text"),
+                "pages": out.get("pages"),
+                "page_count": out.get("page_count"),
+            }
 
         if not api_key:
             logger.info("OCR.space skipped: OCR_SPACE_API_KEY not set. Using Tesseract. Set OCR_SPACE_API_KEY in Railway to use the API.")
@@ -1540,6 +1572,53 @@ async def ocr_export(
 
         ocr = OCRService()
         title = (body.title or "OCR Document").strip() or "OCR Document"
+
+        # Multi-page layout export (for PDFs). If pages are provided, ignore single-page layout fields.
+        if (body.mode or "form") == "layout" and body.pages and isinstance(body.pages, list) and len(body.pages) > 0:
+            pages_to_use = body.pages
+            # Merge user-edited body.text into page layouts sequentially so DOC/PDF reflect textarea edits.
+            if body.text is not None:
+                edited_lines = [ln.rstrip() for ln in (body.text or "").splitlines()]
+                pages_copy = []
+                cursor = 0
+                for p in (body.pages or []):
+                    pp = dict(p or {})
+                    layout_src = pp.get("layout") or []
+                    layout_copy = [dict(ln) for ln in layout_src]
+                    for i in range(len(layout_copy)):
+                        if cursor < len(edited_lines):
+                            layout_copy[i]["text"] = edited_lines[cursor]
+                            cursor += 1
+                    pp["layout"] = layout_copy
+                    pages_copy.append(pp)
+                pages_to_use = pages_copy
+
+            if body.format == "doc":
+                data = ocr.text_to_docx_layout_pages(pages_to_use, title=title)
+                media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                filename = f"ocr_export_{datetime.utcnow().strftime('%Y%m%d_%H%m%S')}.docx"
+            else:
+                data = ocr.text_to_pdf_layout_pages(pages_to_use, title=title)
+                media = "application/pdf"
+                filename = f"ocr_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+            processing_history = FileProcessingHistory(
+                user_email=current_user["email"],
+                processing_type="ocr_to_doc" if body.format == "doc" else "ocr_to_pdf",
+                original_filename=filename,
+                file_size_mb=len(data) / (1024 * 1024),
+                status="success"
+            )
+            db.add(processing_history)
+            db.commit()
+            logger.info(f"OCR export {body.format} (pages): {current_user['email']}")
+
+            return StreamingResponse(
+                io.BytesIO(data),
+                media_type=media,
+                headers={"Content-Disposition": f"attachment; filename={filename}"}
+            )
+
         # Use layout only when we have lines or tables to place; else fall back to form (text) so fields are not lost
         use_layout = (
             (body.mode or "form") == "layout"

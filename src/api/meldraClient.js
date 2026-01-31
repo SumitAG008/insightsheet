@@ -444,6 +444,10 @@ export const backendApi = {
         format: payload.format,
         title: payload.title || 'OCR Document',
       };
+      if (payload.mode === 'layout' && payload.pages != null && Array.isArray(payload.pages) && payload.pages.length > 0) {
+        body.pages = payload.pages;
+        body.mode = 'layout';
+      }
       if (payload.mode === 'layout' && payload.layout != null && payload.image_width != null && payload.image_height != null) {
         body.layout = payload.layout;
         body.image_width = payload.image_width;

@@ -9,6 +9,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Dict, Any, List
 from datetime import timedelta, datetime
+import uuid
 import asyncio
 import base64
 import io
@@ -145,6 +146,9 @@ async def startup_event():
     """Initialize database tables on startup"""
     init_db()
     logger.info("Database initialized")
+
+    # Background TTL cleanup for session-scoped history
+    asyncio.create_task(_background_cleanup_file_processing_history())
 
 
 # Pydantic Models
@@ -363,6 +367,15 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
                 detail="Please verify your email address before logging in. Check your inbox for the verification link."
             )
 
+        # Best-effort: session-scoped metadata should not persist across sessions
+        try:
+            db.query(FileProcessingHistory).filter(
+                FileProcessingHistory.user_email == user.email
+            ).delete(synchronize_session=False)
+            db.commit()
+        except Exception:
+            db.rollback()
+
         # Create access token (extended for dev/test email when configured)
         dev_email = (os.getenv("DEV_EXTENDED_SESSION_EMAIL") or "").strip()
         dev_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES_DEV", "10080"))  # 7 days default
@@ -395,36 +408,17 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
         logger.info(f"User logged in: {user.email}")
 
         # Create response with token
-        response_data = {
+        return {
             "access_token": access_token,
             "token_type": "bearer",
             "user": {
                 "email": user.email,
                 "full_name": user.full_name,
-                "role": user.role
-            }
+                "role": user.role,
+                "is_verified": user.is_verified
+            },
+            "expires_in": minutes * 60
         }
-
-        # SECURITY: Optionally set secure cookie (if USE_SECURE_COOKIES is enabled)
-        # Currently using Bearer token in Authorization header (more secure for SPAs)
-        # If you want to use cookies instead, uncomment below and set USE_SECURE_COOKIES=true
-        use_cookies = os.getenv("USE_SECURE_COOKIES", "false").lower() == "true"
-        if use_cookies:
-            from fastapi.responses import JSONResponse
-            response = JSONResponse(content=response_data)
-            # SECURITY: Set secure cookie with proper flags for Safari/iOS
-            response.set_cookie(
-                key="access_token",
-                value=access_token,
-                httponly=True,  # Prevent XSS attacks
-                secure=True,    # Only send over HTTPS
-                samesite="none",  # Required for cross-origin requests
-                max_age=minutes * 60,  # Match token expiry (uses extended minutes for dev email)
-                path="/",
-            )
-            return response
-
-        return response_data
 
     except HTTPException:
         raise
@@ -434,6 +428,83 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
         )
+
+
+@app.post("/api/auth/logout")
+async def logout(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Client-side logout (JWT is stateless). Also clears session-scoped FileProcessingHistory."""
+    try:
+        # Track logout event (best-effort)
+        try:
+            client_ip = _get_client_ip(request)
+            user_agent = request.headers.get("user-agent", "")
+            browser_info = _parse_user_agent(user_agent)
+            db.add(
+                LoginHistory(
+                    user_email=current_user["email"],
+                    event_type="logout",
+                    ip_address=client_ip or None,
+                    location=_resolve_geolocation(client_ip) if client_ip else None,
+                    browser=browser_info.get("browser"),
+                    device=browser_info.get("device"),
+                )
+            )
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        # Delete session-scoped processing history
+        try:
+            db.query(FileProcessingHistory).filter(
+                FileProcessingHistory.user_email == current_user["email"]
+            ).delete(synchronize_session=False)
+            db.commit()
+        except Exception:
+            db.rollback()
+
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"Logout error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Logout failed")
+
+
+def _session_history_ttl_minutes() -> int:
+    """TTL for session-scoped FileProcessingHistory cleanup.
+
+    Since JWT is stateless, we cannot know actual logout/expiry time unless the client calls /logout.
+    We therefore delete history older than the maximum token lifetime (+ small buffer).
+    """
+    try:
+        dev_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES_DEV", "10080"))
+    except Exception:
+        dev_minutes = 10080
+    return max(int(ACCESS_TOKEN_EXPIRE_MINUTES), int(dev_minutes))
+
+
+async def _background_cleanup_file_processing_history() -> None:
+    """Periodic cleanup so file_processing_history does not persist after session expiry."""
+    from app.database import SessionLocal
+
+    while True:
+        try:
+            ttl_minutes = _session_history_ttl_minutes()
+            cutoff = datetime.utcnow() - timedelta(minutes=ttl_minutes + 10)
+            db = SessionLocal()
+            try:
+                db.query(FileProcessingHistory).filter(
+                    FileProcessingHistory.created_date < cutoff
+                ).delete(synchronize_session=False)
+                db.commit()
+            finally:
+                db.close()
+        except Exception:
+            # Never crash server due to cleanup task
+            pass
+        await asyncio.sleep(60 * 30)
 
 
 @app.post("/api/auth/forgot-password")

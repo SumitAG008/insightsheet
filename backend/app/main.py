@@ -1624,6 +1624,16 @@ async def ocr_export(
         if body.format not in ("doc", "pdf"):
             raise HTTPException(status_code=400, detail="format must be 'doc' or 'pdf'")
 
+        subscription = db.query(Subscription).filter(
+            Subscription.user_email == current_user["email"]
+        ).first()
+        _enforce_conversion_quota(
+            db,
+            current_user["email"],
+            "ocr_to_doc" if body.format == "doc" else "ocr_to_pdf",
+            subscription,
+        )
+
         # Exact copy: original image as full PDF page (looks exactly like the scan)
         if body.format == "pdf" and body.preserve_image and body.image_base64:
             try:
@@ -1768,6 +1778,57 @@ async def ocr_export(
 _MAX_CONVERT_MB = 25  # max file size for convert endpoints (free); premium uses 100
 
 
+def _is_subscribed_for_conversions(subscription: Optional[Subscription]) -> bool:
+    if not subscription:
+        return False
+    if (subscription.plan or "").lower() != "premium":
+        return False
+    if (subscription.status or "").lower() != "active":
+        return False
+    return True
+
+
+def _enforce_conversion_quota(
+    db: Session,
+    user_email: str,
+    processing_type: str,
+    subscription: Optional[Subscription],
+):
+    """Enforce per-email quotas for conversion endpoints.
+
+    Free: 1 successful conversion per processing_type per email (lifetime)
+    Subscribed (premium+active): 100 successful conversions per day per processing_type per email
+    """
+    subscribed = _is_subscribed_for_conversions(subscription)
+
+    q = db.query(func.count(FileProcessingHistory.id)).filter(
+        FileProcessingHistory.user_email == user_email,
+        FileProcessingHistory.processing_type == processing_type,
+        FileProcessingHistory.status == "success",
+    )
+
+    if subscribed:
+        start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+        used = q.filter(
+            FileProcessingHistory.created_date >= start,
+            FileProcessingHistory.created_date < end,
+        ).scalar() or 0
+        if used >= 100:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Daily limit reached for {processing_type}. Limit is 100/day for your plan.",
+            )
+        return
+
+    used = q.scalar() or 0
+    if used >= 1:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Free limit reached for {processing_type}. Free tier includes 1 conversion per type per email.",
+        )
+
+
 def _ascii_safe_filename(s: str) -> str:
     """Make a string safe for Content-Disposition filename= (HTTP headers must be latin-1)."""
     if not s or not s.strip():
@@ -1793,6 +1854,7 @@ async def _convert_endpoint(
 ):
     """Shared logic for /api/convert/* endpoints. Returns (data_bytes, out_filename) or raises HTTPException."""
     subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    _enforce_conversion_quota(db, current_user["email"], processing_type, subscription)
     max_mb = 100 if (subscription and subscription.plan == "premium") else _MAX_CONVERT_MB
     max_bytes = max_mb * 1024 * 1024
 
@@ -1929,11 +1991,12 @@ async def excel_to_ppt(
     ZERO STORAGE: File content NOT stored, only processing history
     """
     try:
-        # Check file size based on subscription
         subscription = db.query(Subscription).filter(
             Subscription.user_email == current_user["email"]
         ).first()
+        _enforce_conversion_quota(db, current_user["email"], "excel_to_ppt", subscription)
 
+        # Check file size based on subscription
         max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
         max_size_bytes = max_size_mb * 1024 * 1024
 
@@ -2153,6 +2216,8 @@ async def process_zip(
         subscription = db.query(Subscription).filter(
             Subscription.user_email == current_user["email"]
         ).first()
+
+        _enforce_conversion_quota(db, current_user["email"], "zip_cleaning", subscription)
 
         max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
         max_size_bytes = max_size_mb * 1024 * 1024

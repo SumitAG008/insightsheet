@@ -77,6 +77,7 @@ class User(Base):
     verification_token_expires = Column(DateTime, nullable=True)
     reset_token = Column(String(255), nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
+    trial_used_at = Column(DateTime, nullable=True)
     created_date = Column(DateTime, default=datetime.utcnow)
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -96,6 +97,7 @@ class Subscription(Base):
     # Subscription dates
     subscription_start_date = Column(DateTime, nullable=True)
     subscription_end_date = Column(DateTime, nullable=True)
+    cancelled_at = Column(DateTime, nullable=True)
 
     # Usage limits and tracking
     ai_queries_used = Column(Integer, default=0)
@@ -111,6 +113,21 @@ class Subscription(Base):
 
     created_date = Column(DateTime, default=datetime.utcnow)
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class SubscriptionEventLog(Base):
+    __tablename__ = "subscription_event_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    event_type = Column(String(100), nullable=False)  # start_trial, upgrade, cancel, etc.
+    prev_plan = Column(String(50), nullable=True)
+    new_plan = Column(String(50), nullable=True)
+    prev_status = Column(String(50), nullable=True)
+    new_status = Column(String(50), nullable=True)
+    ip_address = Column(String(100), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 class LoginHistory(Base):
@@ -236,17 +253,28 @@ def init_db():
         
         inspector = inspect(engine)
         
-        # Check if users table exists
-        if 'users' not in inspector.get_table_names():
+        table_names = inspector.get_table_names()
+        if 'users' not in table_names:
             logger.info("Users table doesn't exist yet, will be created by Base.metadata.create_all")
             return
-        
-        columns = [col['name'] for col in inspector.get_columns('users')]
-        logger.info(f"Existing columns in users table: {columns}")
+
+        user_columns = [col['name'] for col in inspector.get_columns('users')]
+        logger.info(f"Existing columns in users table: {user_columns}")
+        subscription_columns = []
+        if 'subscriptions' in table_names:
+            subscription_columns = [col['name'] for col in inspector.get_columns('subscriptions')]
+            logger.info(f"Existing columns in subscriptions table: {subscription_columns}")
         
         with engine.begin() as connection:  # Use begin() for transaction management
-            # Add reset_token if it doesn't exist
-            if 'reset_token' not in columns:
+            # USERS TABLE
+            if DATABASE_URL.startswith("postgresql"):
+                try:
+                    connection.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_unique_idx ON users (LOWER(email));"))
+                except (ProgrammingError, OperationalError) as e:
+                    if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                        logger.warning(f"Could not ensure case-insensitive unique email index: {str(e)}")
+
+            if 'reset_token' not in user_columns:
                 try:
                     logger.info("Adding reset_token column to users table...")
                     if DATABASE_URL.startswith("postgresql"):
@@ -258,8 +286,7 @@ def init_db():
                     if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
                         logger.warning(f"Could not add reset_token column: {str(e)}")
             
-            # Add reset_token_expires if it doesn't exist
-            if 'reset_token_expires' not in columns:
+            if 'reset_token_expires' not in user_columns:
                 try:
                     logger.info("Adding reset_token_expires column to users table...")
                     if DATABASE_URL.startswith("postgresql"):
@@ -271,8 +298,7 @@ def init_db():
                     if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
                         logger.warning(f"Could not add reset_token_expires column: {str(e)}")
             
-            # Add is_verified if it doesn't exist
-            if 'is_verified' not in columns:
+            if 'is_verified' not in user_columns:
                 try:
                     logger.info("Adding is_verified column to users table...")
                     if DATABASE_URL.startswith("postgresql"):
@@ -284,8 +310,7 @@ def init_db():
                     if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
                         logger.warning(f"Could not add is_verified column: {str(e)}")
             
-            # Add verification_token if it doesn't exist
-            if 'verification_token' not in columns:
+            if 'verification_token' not in user_columns:
                 try:
                     logger.info("Adding verification_token column to users table...")
                     if DATABASE_URL.startswith("postgresql"):
@@ -297,8 +322,7 @@ def init_db():
                     if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
                         logger.warning(f"Could not add verification_token column: {str(e)}")
             
-            # Add verification_token_expires if it doesn't exist
-            if 'verification_token_expires' not in columns:
+            if 'verification_token_expires' not in user_columns:
                 try:
                     logger.info("Adding verification_token_expires column to users table...")
                     if DATABASE_URL.startswith("postgresql"):
@@ -309,6 +333,52 @@ def init_db():
                 except (ProgrammingError, OperationalError) as e:
                     if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
                         logger.warning(f"Could not add verification_token_expires column: {str(e)}")
+
+            if 'trial_used_at' not in user_columns:
+                try:
+                    logger.info("Adding trial_used_at column to users table...")
+                    connection.execute(text("ALTER TABLE users ADD COLUMN trial_used_at TIMESTAMP;"))
+                    logger.info("✅ Added trial_used_at column")
+                except (ProgrammingError, OperationalError) as e:
+                    if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                        logger.warning(f"Could not add trial_used_at column: {str(e)}")
+
+            # SUBSCRIPTIONS TABLE
+            if 'subscriptions' in table_names and 'cancelled_at' not in subscription_columns:
+                try:
+                    logger.info("Adding cancelled_at column to subscriptions table...")
+                    connection.execute(text("ALTER TABLE subscriptions ADD COLUMN cancelled_at TIMESTAMP;"))
+                    logger.info("✅ Added cancelled_at column")
+                except (ProgrammingError, OperationalError) as e:
+                    if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                        logger.warning(f"Could not add cancelled_at column: {str(e)}")
+
+            if 'subscriptions' in table_names:
+                # Ensure other Subscription columns exist for older DBs
+                missing_subscription_columns = {
+                    "trial_start_date": "TIMESTAMP",
+                    "trial_end_date": "TIMESTAMP",
+                    "subscription_start_date": "TIMESTAMP",
+                    "subscription_end_date": "TIMESTAMP",
+                    "ai_queries_used": "INTEGER DEFAULT 0",
+                    "ai_queries_limit": "INTEGER DEFAULT 5",
+                    "files_uploaded": "INTEGER DEFAULT 0",
+                    "payment_status": "VARCHAR(50) DEFAULT 'unpaid'",
+                    "transaction_id": "VARCHAR(255)",
+                    "amount_paid": "FLOAT",
+                    "stripe_customer_id": "VARCHAR(255)",
+                    "stripe_subscription_id": "VARCHAR(255)",
+                }
+                for col_name, col_type in missing_subscription_columns.items():
+                    if col_name in subscription_columns:
+                        continue
+                    try:
+                        logger.info(f"Adding {col_name} column to subscriptions table...")
+                        connection.execute(text(f"ALTER TABLE subscriptions ADD COLUMN {col_name} {col_type};"))
+                        logger.info(f"✅ Added {col_name} column")
+                    except (ProgrammingError, OperationalError) as e:
+                        if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                            logger.warning(f"Could not add {col_name} column: {str(e)}")
                         
     except Exception as e:
         # If table doesn't exist or other error, that's ok - tables will be created

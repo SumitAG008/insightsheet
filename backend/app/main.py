@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 # Import local modules
-from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, ApiKey, ApiUsage, ApiBilling, init_db
+from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, ApiKey, ApiUsage, ApiBilling, SubscriptionEventLog, init_db
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -232,6 +232,8 @@ class ActivityLog(BaseModel):
 async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """Register new user"""
     try:
+        # Normalize email (case-insensitive uniqueness)
+        user_data.email = (user_data.email or "").strip().lower()
         # Private beta: only allowed emails can register (stops non-invited users during testing)
         beta_mode = os.getenv("BETA_MODE", "").strip().lower() in ("1", "true", "yes")
         if beta_mode:
@@ -287,15 +289,17 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         db.refresh(new_user)
 
         # Create free subscription (but user can't use it until verified)
-        subscription = Subscription(
-            user_email=user_data.email,
-            plan="free",
-            status="active",
-            ai_queries_limit=5,
-            ai_queries_used=0
-        )
-        db.add(subscription)
-        db.commit()
+        existing_sub = db.query(Subscription).filter(Subscription.user_email == user_data.email).first()
+        if not existing_sub:
+            subscription = Subscription(
+                user_email=user_data.email,
+                plan="free",
+                status="active",
+                ai_queries_limit=5,
+                ai_queries_used=0
+            )
+            db.add(subscription)
+            db.commit()
 
         logger.info(f"New user registered (unverified): {user_data.email}")
         
@@ -333,6 +337,8 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
 async def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db)):
     """Login user and return JWT token"""
     try:
+        # Normalize email
+        user_data.email = (user_data.email or "").strip().lower()
         # Authenticate user
         user = authenticate_user(db, user_data.email, user_data.password)
 
@@ -2250,12 +2256,15 @@ async def get_my_subscription(
         "ai_queries_limit": subscription.ai_queries_limit,
         "files_uploaded": subscription.files_uploaded,
         "payment_status": subscription.payment_status,
+        "trial_start_date": subscription.trial_start_date,
+        "trial_end_date": subscription.trial_end_date,
         "created_date": subscription.created_date
     }
 
 
 @app.post("/api/subscriptions/upgrade")
 async def upgrade_subscription(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -2265,13 +2274,126 @@ async def upgrade_subscription(
     ).first()
 
     if subscription:
+        prev_plan, prev_status = subscription.plan, subscription.status
         subscription.plan = "premium"
+        subscription.status = "active"
         subscription.ai_queries_limit = -1  # Unlimited
         subscription.payment_status = "paid"
         subscription.subscription_start_date = datetime.utcnow()
+        subscription.cancelled_at = None
         db.commit()
 
+        try:
+            client_ip = _get_client_ip(request)
+            ua = request.headers.get("user-agent", "")
+            db.add(SubscriptionEventLog(
+                user_email=current_user["email"],
+                event_type="upgrade",
+                prev_plan=prev_plan,
+                new_plan=subscription.plan,
+                prev_status=prev_status,
+                new_status=subscription.status,
+                ip_address=client_ip or None,
+                user_agent=ua or None,
+            ))
+            db.commit()
+        except Exception:
+            db.rollback()
+
     return {"message": "Subscription upgraded to Premium"}
+
+
+@app.post("/api/subscriptions/start-trial")
+async def start_trial(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Start a one-time trial. If a user has already used a trial (trial_used_at), block."""
+    user = db.query(User).filter(User.email == current_user["email"]).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if user.trial_used_at is not None:
+        raise HTTPException(status_code=400, detail="Trial already used for this email")
+
+    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    if not subscription:
+        subscription = Subscription(user_email=current_user["email"], plan="free", status="active")
+        db.add(subscription)
+        db.commit()
+        db.refresh(subscription)
+
+    prev_plan, prev_status = subscription.plan, subscription.status
+    now = datetime.utcnow()
+    trial_days = int(os.getenv("TRIAL_DAYS", "7"))
+
+    user.trial_used_at = now
+    subscription.plan = "premium"
+    subscription.status = "active"
+    subscription.payment_status = "trial"
+    subscription.trial_start_date = now
+    subscription.trial_end_date = now + timedelta(days=trial_days)
+    subscription.ai_queries_limit = -1
+    db.commit()
+
+    try:
+        client_ip = _get_client_ip(request)
+        ua = request.headers.get("user-agent", "")
+        db.add(SubscriptionEventLog(
+            user_email=current_user["email"],
+            event_type="start_trial",
+            prev_plan=prev_plan,
+            new_plan=subscription.plan,
+            prev_status=prev_status,
+            new_status=subscription.status,
+            ip_address=client_ip or None,
+            user_agent=ua or None,
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+
+    return {"message": "Trial started", "trial_end_date": subscription.trial_end_date}
+
+
+@app.post("/api/subscriptions/cancel")
+async def cancel_subscription(
+    request: Request,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Cancel subscription (stops premium benefits immediately in current simplified billing model)."""
+    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    if not subscription:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+
+    prev_plan, prev_status = subscription.plan, subscription.status
+    subscription.plan = "free"
+    subscription.status = "cancelled"
+    subscription.payment_status = "unpaid"
+    subscription.cancelled_at = datetime.utcnow()
+    subscription.ai_queries_limit = 5
+    db.commit()
+
+    try:
+        client_ip = _get_client_ip(request)
+        ua = request.headers.get("user-agent", "")
+        db.add(SubscriptionEventLog(
+            user_email=current_user["email"],
+            event_type="cancel",
+            prev_plan=prev_plan,
+            new_plan=subscription.plan,
+            prev_status=prev_status,
+            new_status=subscription.status,
+            ip_address=client_ip or None,
+            user_agent=ua or None,
+        ))
+        db.commit()
+    except Exception:
+        db.rollback()
+
+    return {"message": "Subscription canceled"}
 
 
 # ============================================================================

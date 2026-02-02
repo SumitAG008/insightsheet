@@ -981,3 +981,48 @@ async def send_welcome_email(email: str, full_name: str) -> bool:
             logger.error(f"      3. Or check Railway network/firewall settings")
         
         return False
+
+
+async def send_api_key_email(email: str, api_key: str, environment: str, base_url: str) -> bool:
+    resend_api_key = os.getenv("RESEND_API_KEY", "")
+    if not resend_api_key or not RESEND_AVAILABLE:
+        logger.warning("Resend not configured; API key email not sent.")
+        return False
+
+    try:
+        resend.api_key = resend_api_key
+        from_email = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "onboarding@resend.dev"))
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style=\"font-family: Arial, sans-serif;\">
+            <h2>Your Meldra API Key ({environment})</h2>
+            <p>Base URL: <strong>{base_url}</strong></p>
+            <p>Use this header on every request:</p>
+            <pre style=\"background:#f6f8fa;padding:12px;border-radius:6px;\">X-API-Key: {api_key}</pre>
+            <p><strong>Save this key now.</strong> For security, it may not be shown again.</p>
+        </body>
+        </html>
+        """
+        text_content = f"""Your Meldra API Key ({environment})
+
+Base URL: {base_url}
+
+Use this header on every request:
+X-API-Key: {api_key}
+
+Save this key now. For security, it may not be shown again.
+"""
+
+        resend.Emails.send({
+            "from": from_email,
+            "to": [email],
+            "subject": f"Your Meldra API Key ({environment})",
+            "html": html_content,
+            "text": text_content,
+        })
+        logger.info(f"✅ API key email sent via Resend to {email}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send API key email to {email}: {str(e)}")
+        return False

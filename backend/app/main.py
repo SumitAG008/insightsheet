@@ -48,14 +48,16 @@ from app.services.ocr_service import (
 )
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
-from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email
+from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email, send_api_key_email
 from app.services.db_connection_service import DatabaseConnectionService
-from app.services.document_converter_service import pdf_to_docx, pdf_to_docx_smart, docx_to_pdf, pptx_to_pdf, pdf_to_pptx
+from app.services.security_ai_service import SecurityAIService
+from app.services.fraud_detection_service import FraudDetectionService
+from app.services.usage_analytics_service import UsageAnalyticsService
 from app.services.api_key_service import (
     generate_api_key, verify_api_key, get_api_key_by_header, track_api_usage,
     get_usage_stats, get_monthly_billing, update_monthly_billing
 )
-from app.services.security_ai_service import SecurityAIService
+from app.services.document_converter_service import pdf_to_docx, pdf_to_docx_smart, docx_to_pdf, pptx_to_pdf, pdf_to_pptx
 from app.services.compliance_ai_service import ComplianceAIService
 from app.services.predictive_ml_service import PredictiveMLService
 from PIL import Image
@@ -874,6 +876,74 @@ async def create_api_key(
     except Exception as e:
         logger.error(f"Error creating API key: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create API key: {str(e)}")
+
+
+@app.post("/api/developer/keys/request-sandbox", response_model=Dict[str, Any])
+async def request_sandbox_api_key(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Self-serve: create exactly one sandbox API key for the current user."""
+    try:
+        existing = db.query(ApiKey).filter(
+            and_(
+                ApiKey.user_email == current_user["email"],
+                ApiKey.key_prefix.like("meldra_test_%"),
+            )
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=409,
+                detail="Sandbox API key already issued for this account.",
+            )
+
+        full_key, key_hash = generate_api_key(prefix="meldra_test")
+        key_prefix = full_key[:12]  # First 12 chars for display
+
+        sandbox_base_url = os.getenv("DEVELOPER_API_SANDBOX_BASE_URL", "https://api-sandbox.developer.meldra.ai")
+
+        api_key = ApiKey(
+            user_email=current_user["email"],
+            key_hash=key_hash,
+            key_prefix=key_prefix,
+            name="Sandbox Key",
+            plan="sandbox",
+            rate_limit_per_minute=30,
+            rate_limit_per_day=500,
+            monthly_quota=5000,
+            base_url=sandbox_base_url,
+            created_by=current_user["email"],
+        )
+        db.add(api_key)
+        db.commit()
+        db.refresh(api_key)
+
+        try:
+            await send_api_key_email(
+                email=current_user["email"],
+                api_key=full_key,
+                environment="sandbox",
+                base_url=sandbox_base_url,
+            )
+        except Exception as e:
+            logger.warning(f"Failed to email sandbox API key to {current_user['email']}: {str(e)}")
+
+        logger.info(f"Sandbox API key issued: {key_prefix}... to {current_user['email']}")
+
+        return {
+            "id": api_key.id,
+            "api_key": full_key,
+            "key_prefix": key_prefix,
+            "name": api_key.name,
+            "plan": api_key.plan,
+            "base_url": sandbox_base_url,
+            "warning": "Save this key now. It will not be shown again.",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error issuing sandbox API key: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to issue sandbox API key: {str(e)}")
 
 
 @app.get("/api/developer/keys", response_model=List[ApiKeyResponse])

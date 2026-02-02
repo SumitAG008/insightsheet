@@ -9,7 +9,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Play, CheckCircle2, XCircle, FileText, FileArchive } from 'lucide-react';
 
-const API_BASE = 'https://api.developer.meldra.ai';
+const PROXY_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
+  ? `${import.meta.env.VITE_API_URL}/api/developer/proxy`
+  : '/api/developer/proxy';
 
 const ENDPOINTS = [
   {
@@ -83,18 +85,18 @@ export default function ApiTestingConsole() {
 
     try {
       const formData = new FormData();
+      formData.append('endpoint', selectedEndpoint.id);
+      formData.append('api_key', apiKey.trim());
       formData.append('file', file);
 
-      const response = await fetch(`${API_BASE}${selectedEndpoint.path}`, {
+      const response = await fetch(PROXY_URL, {
         method: 'POST',
-        headers: {
-          'X-API-Key': apiKey.trim(),
-        },
         body: formData,
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
+        const errJson = await response.json().catch(() => null);
+        const errorText = errJson?.detail || (await response.text().catch(() => ''));
         throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
       }
 

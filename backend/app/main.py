@@ -27,6 +27,7 @@ from email.mime.multipart import MIMEMultipart
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
+import httpx
 
 # Import local modules
 from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, ApiKey, ApiKeyIssuanceLog, ApiUsage, ApiBilling, SubscriptionEventLog, init_db
@@ -2213,6 +2214,67 @@ async def convert_pdf_to_doc(
         media_type=media,
         headers={"Content-Disposition": f"attachment; filename={out_name}"},
     )
+
+
+@app.post("/api/developer/proxy")
+async def developer_api_proxy(
+    endpoint: str = Form(...),
+    api_key: str = Form(...),
+    file: UploadFile = File(...),
+):
+    """Proxy browser-based API testing requests to api.developer.meldra.ai (avoids CORS)."""
+
+    allowed = {
+        "pdf-to-doc": "/v1/convert/pdf-to-doc",
+        "doc-to-pdf": "/v1/convert/doc-to-pdf",
+        "ppt-to-pdf": "/v1/convert/ppt-to-pdf",
+        "pdf-to-ppt": "/v1/convert/pdf-to-ppt",
+        "zip-clean": "/v1/zip/clean",
+    }
+
+    if endpoint not in allowed:
+        raise HTTPException(status_code=400, detail="Unknown endpoint")
+    if not api_key or not api_key.strip():
+        raise HTTPException(status_code=400, detail="API key is required")
+
+    base = os.getenv("DEVELOPER_API_BASE_URL", "https://api.developer.meldra.ai")
+    target_url = f"{base}{allowed[endpoint]}"
+
+    raw = await file.read()
+    files = {
+        "file": (
+            file.filename or "file",
+            raw,
+            file.content_type or "application/octet-stream",
+        )
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=120) as client:
+            resp = await client.post(
+                target_url,
+                headers={"X-API-Key": api_key.strip()},
+                files=files,
+            )
+
+        if resp.status_code >= 400:
+            return JSONResponse(
+                status_code=resp.status_code,
+                content={"detail": resp.text or resp.reason_phrase},
+            )
+
+        media = resp.headers.get("content-type") or "application/octet-stream"
+        out_name = file.filename or "result"
+        return StreamingResponse(
+            io.BytesIO(resp.content),
+            media_type=media,
+            headers={"Content-Disposition": f"attachment; filename={out_name}"},
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Developer API proxy failed: {str(e)}")
+        raise HTTPException(status_code=502, detail="Developer API proxy failed")
 
 
 @app.post("/api/convert/doc-to-pdf")

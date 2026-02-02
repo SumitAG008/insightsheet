@@ -201,6 +201,22 @@ class ApiKey(Base):
     created_by = Column(String(255), nullable=True)  # Admin who created it
 
 
+class ApiKeyIssuanceLog(Base):
+    """Audit log for API key issuance attempts (commercial/strategic tracking)."""
+    __tablename__ = "api_key_issuance_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    environment = Column(String(50), nullable=False)  # sandbox, production
+    status = Column(String(50), nullable=False)  # success, rejected, error
+    http_status = Column(Integer, nullable=True)
+    api_key_id = Column(Integer, nullable=True)
+    error_message = Column(Text, nullable=True)
+    ip_address = Column(String(100), nullable=True)
+    user_agent = Column(String(500), nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+
+
 class ApiUsage(Base):
     """Track API usage for billing and analytics"""
     __tablename__ = "api_usage"

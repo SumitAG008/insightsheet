@@ -243,6 +243,29 @@ export const backendApi = {
     },
   },
 
+  // Developer API keys
+  developer: {
+    requestSandboxKey: async () => {
+      const response = await apiCall('/api/developer/keys/request-sandbox', {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Sandbox key request failed: ${response.status}`);
+      }
+      return response.json();
+    },
+
+    listKeys: async () => {
+      const response = await apiCall('/api/developer/keys');
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Failed to load API keys: ${response.status}`);
+      }
+      return response.json();
+    },
+  },
+
   // AI/LLM Integration
   llm: {
     invoke: async (prompt, options = {}) => {

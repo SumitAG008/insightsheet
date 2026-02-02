@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import ApiTestingConsole from '@/components/ApiTestingConsole';
 import SupportChatWidget from '@/components/SupportChatWidget';
+import { backendApi, meldraAi } from '@/api/meldraClient';
 
 const INSIGHT = 'https://insight.meldra.ai';
 
@@ -161,6 +162,13 @@ export default function Developers({ isApiDeveloperDomain = false }) {
   const signIn = isDev ? `${INSIGHT}/login` : '/login';
   const privacy = `${INSIGHT}/privacy`;
 
+  const [me, setMe] = React.useState(null);
+  const [keys, setKeys] = React.useState([]);
+  const [sandboxKey, setSandboxKey] = React.useState(null);
+  const [keyLoading, setKeyLoading] = React.useState(false);
+  const [keyError, setKeyError] = React.useState(null);
+  const [copied, setCopied] = React.useState(false);
+
   useEffect(() => {
     if (isApiDev) {
       document.title = 'api.developer.meldra.ai – Meldra API Documentation';
@@ -169,6 +177,69 @@ export default function Developers({ isApiDeveloperDomain = false }) {
     }
     return () => { document.title = 'Meldra'; };
   }, [isApiDev]);
+
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const isAuthed = !!meldraAi?.auth?.isAuthenticated?.();
+        if (!isAuthed) {
+          if (mounted) {
+            setMe(null);
+            setKeys([]);
+          }
+          return;
+        }
+        const meRes = await backendApi.auth.me();
+        if (!mounted) return;
+        setMe(meRes);
+        try {
+          const k = await backendApi.developer.listKeys();
+          if (mounted) setKeys(Array.isArray(k) ? k : []);
+        } catch {
+          if (mounted) setKeys([]);
+        }
+      } catch {
+        if (mounted) {
+          setMe(null);
+          setKeys([]);
+        }
+      }
+    };
+    load();
+    return () => { mounted = false; };
+  }, []);
+
+  const handleRequestSandboxKey = async () => {
+    setKeyLoading(true);
+    setKeyError(null);
+    setSandboxKey(null);
+    try {
+      const res = await backendApi.developer.requestSandboxKey();
+      setSandboxKey(res);
+      try {
+        const k = await backendApi.developer.listKeys();
+        setKeys(Array.isArray(k) ? k : []);
+      } catch {
+        // ignore
+      }
+    } catch (e) {
+      setKeyError(e?.message || 'Failed to request sandbox key');
+    } finally {
+      setKeyLoading(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      if (!sandboxKey?.api_key) return;
+      await navigator.clipboard.writeText(sandboxKey.api_key);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -251,6 +322,95 @@ export default function Developers({ isApiDeveloperDomain = false }) {
               <Key className="w-6 h-6 text-blue-600" /> Get an API key
             </h2>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 space-y-4">
+              <div className="bg-white border border-slate-200 rounded-xl p-5">
+                <h3 className="font-semibold text-slate-900 mb-2">Sandbox API key (self-serve)</h3>
+                <p className="text-slate-600 text-sm">
+                  If you're logged in and your email is verified, you can request a sandbox key. The full key is shown once and also emailed to your verified email.
+                </p>
+                {!me ? (
+                  <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => meldraAi?.auth?.redirectToLogin?.()}>
+                      Sign in to request sandbox key
+                    </Button>
+                    <Button variant="outline" className="border-slate-300" onClick={() => { window.location.href = reg; }}>
+                      Create account
+                    </Button>
+                  </div>
+                ) : !me.is_verified ? (
+                  <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <div className="text-amber-800 text-sm font-medium">Email verification required</div>
+                    <div className="text-amber-800 text-xs mt-1">
+                      Verify {me.email} to request a sandbox API key.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                    <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleRequestSandboxKey} disabled={keyLoading}>
+                      {keyLoading ? 'Requesting…' : 'Request Sandbox Key'}
+                    </Button>
+                    <Button variant="outline" className="border-slate-300" onClick={async () => {
+                      try {
+                        const k = await backendApi.developer.listKeys();
+                        setKeys(Array.isArray(k) ? k : []);
+                      } catch (e) {
+                        setKeyError(e?.message || 'Failed to load keys');
+                      }
+                    }}>
+                      Refresh keys
+                    </Button>
+                  </div>
+                )}
+
+                {keyError && (
+                  <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div className="text-red-800 text-sm">{keyError}</div>
+                  </div>
+                )}
+
+                {sandboxKey?.api_key && (
+                  <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="text-slate-900 text-sm font-semibold">Your sandbox API key (shown once)</div>
+                    <div className="mt-2 bg-slate-900 text-green-400 p-3 rounded-lg font-mono text-xs overflow-x-auto">
+                      {sandboxKey.api_key}
+                    </div>
+                    <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                      <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleCopy}>
+                        {copied ? 'Copied' : 'Copy key'}
+                      </Button>
+                      <Button variant="outline" className="border-slate-300" onClick={() => setSandboxKey(null)}>
+                        Hide
+                      </Button>
+                    </div>
+                    <div className="mt-2 text-slate-700 text-xs">
+                      Base URL: <span className="font-mono">{sandboxKey.base_url}</span>
+                    </div>
+                    <div className="text-slate-600 text-xs mt-1">
+                      This key is also emailed to <strong>{me?.email}</strong>.
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4">
+                  <h4 className="font-semibold text-slate-900 text-sm">My API keys (prefix only)</h4>
+                  <p className="text-slate-500 text-xs mt-1">For security, only the prefix is shown after creation.</p>
+                  <div className="mt-2 space-y-2">
+                    {keys && keys.length > 0 ? (
+                      keys.map((k) => (
+                        <div key={k.id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-3 py-2">
+                          <div>
+                            <div className="text-sm text-slate-900 font-medium">{k.name || 'API Key'}</div>
+                            <div className="text-xs text-slate-600 font-mono">{k.key_prefix}…</div>
+                          </div>
+                          <div className="text-xs text-slate-500">{k.plan}</div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-slate-500">No keys found.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <h3 className="font-semibold text-slate-900 mb-2">How to Generate Your API Key</h3>
                 <ol className="list-decimal list-inside space-y-2 text-slate-600 text-sm">

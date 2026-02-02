@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 # Import local modules
-from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, ApiKey, ApiUsage, ApiBilling, SubscriptionEventLog, init_db
+from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, ApiKey, ApiKeyIssuanceLog, ApiUsage, ApiBilling, SubscriptionEventLog, init_db
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -908,7 +908,8 @@ async def get_me(current_user: dict = Depends(get_current_user), db: Session = D
         "email": user.email,
         "full_name": user.full_name,
         "role": user.role,
-        "created_date": user.created_date
+        "created_date": user.created_date,
+        "is_verified": user.is_verified,
     }
 
 
@@ -1045,18 +1046,70 @@ async def create_api_key(
 
 @app.post("/api/developer/keys/request-sandbox", response_model=Dict[str, Any])
 async def request_sandbox_api_key(
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Self-serve: create exactly one sandbox API key for the current user."""
     try:
-        existing = db.query(ApiKey).filter(
-            and_(
-                ApiKey.user_email == current_user["email"],
-                ApiKey.key_prefix.like("meldra_test_%"),
+        ip_address = getattr(getattr(request, "client", None), "host", None)
+        user_agent = None
+        try:
+            user_agent = request.headers.get("user-agent")
+        except Exception:
+            user_agent = None
+
+        # Prevent duplicates under concurrent requests:
+        # lock the user row for the duration of the check+create transaction.
+        user = (
+            db.query(User)
+            .filter(User.email == current_user["email"])
+            .with_for_update()
+            .first()
+        )
+
+        if user and hasattr(user, "is_verified") and not user.is_verified:
+            db.add(
+                ApiKeyIssuanceLog(
+                    user_email=current_user["email"],
+                    environment="sandbox",
+                    status="rejected",
+                    http_status=403,
+                    error_message="email_not_verified",
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                )
             )
-        ).first()
+            db.commit()
+            raise HTTPException(
+                status_code=403,
+                detail="Please verify your email address before requesting a sandbox API key.",
+            )
+
+        existing = (
+            db.query(ApiKey)
+            .filter(
+                and_(
+                    ApiKey.user_email == current_user["email"],
+                    ApiKey.key_prefix.like("meldra_test_%"),
+                )
+            )
+            .first()
+        )
         if existing:
+            db.add(
+                ApiKeyIssuanceLog(
+                    user_email=current_user["email"],
+                    environment="sandbox",
+                    status="rejected",
+                    http_status=409,
+                    api_key_id=existing.id,
+                    error_message="already_issued",
+                    ip_address=ip_address,
+                    user_agent=user_agent,
+                )
+            )
+            db.commit()
             raise HTTPException(
                 status_code=409,
                 detail="Sandbox API key already issued for this account.",
@@ -1107,6 +1160,19 @@ async def request_sandbox_api_key(
     except HTTPException:
         raise
     except Exception as e:
+        try:
+            db.add(
+                ApiKeyIssuanceLog(
+                    user_email=current_user.get("email") if isinstance(current_user, dict) else "unknown",
+                    environment="sandbox",
+                    status="error",
+                    http_status=500,
+                    error_message=str(e),
+                )
+            )
+            db.commit()
+        except Exception:
+            pass
         logger.error(f"Error issuing sandbox API key: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to issue sandbox API key: {str(e)}")
 

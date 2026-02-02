@@ -2218,63 +2218,146 @@ async def convert_pdf_to_doc(
 
 @app.post("/api/developer/proxy")
 async def developer_api_proxy(
+    request: Request,
     endpoint: str = Form(...),
     api_key: str = Form(...),
     file: UploadFile = File(...),
+    db: Session = Depends(get_db),
 ):
-    """Proxy browser-based API testing requests to api.developer.meldra.ai (avoids CORS)."""
+    """Proxy browser-based API testing requests.
 
-    allowed = {
-        "pdf-to-doc": "/v1/convert/pdf-to-doc",
-        "doc-to-pdf": "/v1/convert/doc-to-pdf",
-        "ppt-to-pdf": "/v1/convert/ppt-to-pdf",
-        "pdf-to-ppt": "/v1/convert/pdf-to-ppt",
-        "zip-clean": "/v1/zip/clean",
-    }
+    This runs conversions locally on the Railway backend and authenticates using X-API-Key
+    (stored hashed in api_keys). This avoids CORS and avoids relying on api.developer.meldra.ai.
+    """
 
-    if endpoint not in allowed:
-        raise HTTPException(status_code=400, detail="Unknown endpoint")
     if not api_key or not api_key.strip():
         raise HTTPException(status_code=400, detail="API key is required")
 
-    base = os.getenv("DEVELOPER_API_BASE_URL", "https://api.developer.meldra.ai")
-    target_url = f"{base}{allowed[endpoint]}"
+    key = get_api_key_by_header(api_key.strip(), db)
+    if not key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    if not key.is_active:
+        raise HTTPException(status_code=403, detail="API key is inactive")
 
+    ip_address = getattr(getattr(request, "client", None), "host", None)
+    user_agent = None
+    try:
+        user_agent = request.headers.get("user-agent")
+    except Exception:
+        user_agent = None
+
+    started = time.time()
     raw = await file.read()
-    files = {
-        "file": (
-            file.filename or "file",
-            raw,
-            file.content_type or "application/octet-stream",
-        )
-    }
+    status_code = 200
+    response_size = None
 
     try:
-        async with httpx.AsyncClient(timeout=120) as client:
-            resp = await client.post(
-                target_url,
-                headers={"X-API-Key": api_key.strip()},
-                files=files,
-            )
+        # Dispatch to local converters
+        if endpoint == "pdf-to-doc":
+            data, err = pdf_to_docx_smart(raw, ocr_lang=None)
+            if err:
+                raise HTTPException(status_code=400, detail=err)
+            media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            out_ext = ".docx"
+        elif endpoint == "doc-to-pdf":
+            data, err = docx_to_pdf(raw)
+            if err:
+                raise HTTPException(status_code=400, detail=err)
+            media = "application/pdf"
+            out_ext = ".pdf"
+        elif endpoint == "ppt-to-pdf":
+            data, err = pptx_to_pdf(raw)
+            if err:
+                raise HTTPException(status_code=400, detail=err)
+            media = "application/pdf"
+            out_ext = ".pdf"
+        elif endpoint == "pdf-to-ppt":
+            data, err = pdf_to_pptx(raw)
+            if err:
+                raise HTTPException(status_code=400, detail=err)
+            media = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            out_ext = ".pptx"
+        elif endpoint == "zip-clean":
+            # Reuse existing zip processor logic (same as /api/files/process-zip but keyed)
+            zip_service = ZipProcessorService()
+            try:
+                data = await zip_service.process_zip(
+                    zip_file=raw,
+                    options={
+                        "allowed_chars": "a-z0-9-_",
+                        "replace_char": "_",
+                        "remove_spaces": True,
+                        "max_length": 255,
+                    },
+                )
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=str(e))
+            media = "application/zip"
+            out_ext = ".zip"
+        else:
+            raise HTTPException(status_code=400, detail="Unknown endpoint")
 
-        if resp.status_code >= 400:
-            return JSONResponse(
-                status_code=resp.status_code,
-                content={"detail": resp.text or resp.reason_phrase},
-            )
+        response_size = len(data) if data is not None else None
+        elapsed_ms = int((time.time() - started) * 1000)
+        track_api_usage(
+            db=db,
+            api_key=key,
+            endpoint=f"/v1/{endpoint}",
+            method="POST",
+            status_code=200,
+            request_size_bytes=len(raw),
+            response_size_bytes=response_size,
+            processing_time_ms=elapsed_ms,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
 
-        media = resp.headers.get("content-type") or "application/octet-stream"
-        out_name = file.filename or "result"
+        base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
+        base = _ascii_safe_filename(base)
+        out_name = f"{base}{out_ext}"
         return StreamingResponse(
-            io.BytesIO(resp.content),
+            io.BytesIO(data),
             media_type=media,
             headers={"Content-Disposition": f"attachment; filename={out_name}"},
         )
-    except HTTPException:
+    except HTTPException as e:
+        status_code = e.status_code
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint=f"/v1/{endpoint}",
+                method="POST",
+                status_code=status_code,
+                request_size_bytes=len(raw) if raw is not None else None,
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
         raise
     except Exception as e:
         logger.error(f"Developer API proxy failed: {str(e)}")
-        raise HTTPException(status_code=502, detail="Developer API proxy failed")
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint=f"/v1/{endpoint}",
+                method="POST",
+                status_code=500,
+                request_size_bytes=len(raw) if raw is not None else None,
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Developer API proxy failed")
 
 
 @app.post("/api/convert/doc-to-pdf")

@@ -254,10 +254,10 @@ export default function ApiTestingConsole() {
           <div className="bg-slate-50 p-3 rounded-lg text-xs font-mono">
             <div className="text-slate-600 mb-1">Request:</div>
             <div className="text-blue-700">
-              {selectedEndpoint.method} {API_BASE}{selectedEndpoint.path}
+              POST {PROXY_URL} (endpoint={selectedEndpoint.id})
             </div>
             <div className="text-slate-600 mt-2">Headers:</div>
-            <div className="text-blue-700">X-API-Key: {apiKey ? '••••••••' : '(required)'}</div>
+            <div className="text-blue-700">X-API-Key: (sent in form body)</div>
           </div>
         )}
       </CardContent>

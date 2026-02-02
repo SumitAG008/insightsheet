@@ -51,7 +51,6 @@ from app.services.pl_builder import PLBuilderService
 from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email, send_api_key_email
 from app.services.db_connection_service import DatabaseConnectionService
 from app.services.security_ai_service import SecurityAIService
-from app.services.fraud_detection_service import FraudDetectionService
 from app.services.usage_analytics_service import UsageAnalyticsService
 from app.services.api_key_service import (
     generate_api_key, verify_api_key, get_api_key_by_header, track_api_usage,

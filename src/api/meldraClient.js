@@ -330,6 +330,24 @@ export const backendApi = {
     },
   },
 
+  // Customer support chat (KB-grounded)
+  support: {
+    chat: async (message, options = {}) => {
+      const response = await apiCall('/api/support/chat', {
+        method: 'POST',
+        body: {
+          message,
+          page: options.page || null,
+        },
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Support chat failed: ${response.status}`);
+      }
+      return response.json();
+    },
+  },
+
   // File Processing
   files: {
     upload: async (file, folder = 'uploads') => {

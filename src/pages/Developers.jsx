@@ -14,6 +14,7 @@ import {
   ChevronDown, ChevronRight, BookOpen, Download, HelpCircle, Layers, Terminal,
 } from 'lucide-react';
 import ApiTestingConsole from '@/components/ApiTestingConsole';
+import SupportChatWidget from '@/components/SupportChatWidget';
 
 const INSIGHT = 'https://insight.meldra.ai';
 
@@ -700,6 +701,8 @@ export default function Developers({ isApiDeveloperDomain = false }) {
       </footer>
 
       <CookieConsent privacyUrl={privacy} />
+
+      <SupportChatWidget page="Developers" />
     </div>
   );
 }

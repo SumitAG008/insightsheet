@@ -60,6 +60,111 @@ from app.services.compliance_ai_service import ComplianceAIService
 from app.services.predictive_ml_service import PredictiveMLService
 from PIL import Image
 
+
+class SupportChatRequest(BaseModel):
+    message: str
+    page: Optional[str] = None
+
+
+def _is_disallowed_support_question(message: str) -> bool:
+    m = (message or "").lower()
+    disallowed_markers = [
+        "database", "schema", "table", "migration", "sqlalchemy",
+        "deploy", "deployment", "railway", "docker", "kubernetes",
+        "log", "logs", "traceback", "stack trace",
+        "env", "environment variable", "openai_api_key", "api key secret",
+        "source code", "codebase", "github", "commit",
+    ]
+    return any(s in m for s in disallowed_markers)
+
+
+def _find_kb_file_path() -> Optional[str]:
+    env_path = os.getenv("AI_ASSISTANT_KB_PATH", "").strip()
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    filename = "MELDRA_AI_ASSISTANT_KB.md"
+    candidates = []
+
+    # current working directory
+    candidates.append(os.path.join(os.getcwd(), filename))
+
+    # repo-root relative from backend/app/main.py
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates.append(os.path.normpath(os.path.join(here, "..", "..", "..", filename)))
+    candidates.append(os.path.normpath(os.path.join(here, "..", "..", filename)))
+
+    for p in candidates:
+        if os.path.exists(p):
+            return p
+    return None
+
+
+def _load_kb_text() -> str:
+    kb_path = _find_kb_file_path()
+    if not kb_path:
+        raise FileNotFoundError("KB file not found. Expected MELDRA_AI_ASSISTANT_KB.md")
+    with open(kb_path, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def _split_kb_sections(kb_text: str) -> List[Dict[str, str]]:
+    lines = (kb_text or "").splitlines()
+    sections: List[Dict[str, str]] = []
+    current_title = "KB"
+    current_buf: List[str] = []
+
+    def flush():
+        nonlocal current_title, current_buf
+        content = "\n".join(current_buf).strip()
+        if content:
+            sections.append({"title": current_title, "content": content})
+        current_buf = []
+
+    for line in lines:
+        if line.startswith("## "):
+            flush()
+            current_title = line.replace("## ", "").strip()
+            current_buf.append(line)
+        else:
+            current_buf.append(line)
+
+    flush()
+    return sections
+
+
+def _extract_keywords(text: str) -> List[str]:
+    import re
+    stop = {
+        "the", "a", "an", "and", "or", "to", "of", "in", "on", "for", "with", "is", "are",
+        "i", "you", "we", "it", "this", "that", "from", "as", "at", "be", "by", "how",
+    }
+    words = re.findall(r"[a-z0-9_-]+", (text or "").lower())
+    out = []
+    for w in words:
+        if len(w) < 3:
+            continue
+        if w in stop:
+            continue
+        out.append(w)
+    return list(dict.fromkeys(out))
+
+
+def _select_relevant_kb_sections(kb_text: str, message: str, top_k: int = 5) -> List[Dict[str, str]]:
+    sections = _split_kb_sections(kb_text)
+    q_words = set(_extract_keywords(message))
+    scored = []
+    for s in sections:
+        s_words = set(_extract_keywords(s["content"]))
+        score = len(q_words.intersection(s_words))
+        scored.append((score, s))
+
+    scored.sort(key=lambda t: t[0], reverse=True)
+    picked = [s for score, s in scored if score > 0][:top_k]
+    if not picked:
+        picked = sections[: min(top_k, len(sections))]
+    return picked
+
 load_dotenv()
 
 # Logging configuration
@@ -805,6 +910,68 @@ async def get_me(current_user: dict = Depends(get_current_user), db: Session = D
         "role": user.role,
         "created_date": user.created_date
     }
+
+
+@app.post("/api/support/chat", response_model=Dict[str, Any])
+async def support_chat(
+    payload: SupportChatRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Customer-facing AI assistant grounded in MELDRA_AI_ASSISTANT_KB.md (no chat storage)."""
+    message = (payload.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Message is required")
+
+    if _is_disallowed_support_question(message):
+        return {
+            "answer": "I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.",
+            "refused": True,
+        }
+
+    try:
+        kb_text = _load_kb_text()
+    except Exception:
+        return {
+            "answer": "I can help with product usage and account/API onboarding, but the knowledge base is currently unavailable. Please contact Meldra support.",
+            "refused": False,
+        }
+
+    picked = _select_relevant_kb_sections(kb_text=kb_text, message=message, top_k=5)
+    kb_context = "\n\n".join([s["content"] for s in picked])
+
+    prompt = (
+        f"You are Meldra's customer-facing Support Assistant.\n\n"
+        f"RULES:\n"
+        f"- Answer ONLY using the provided Knowledge Base excerpts.\n"
+        f"- If the question is outside the KB scope or asks for internal/backend implementation details (database, code, deployment, logs, secrets), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"
+        f"- If you are unsure, ask 1 clarifying question or recommend contacting support.\n"
+        f"- Provide step-by-step guidance with short headings.\n\n"
+        f"USER CONTEXT:\n"
+        f"- User email: {current_user.get('email')}\n"
+        f"- Page: {payload.page or ''}\n\n"
+        f"KNOWLEDGE BASE EXCERPTS:\n"
+        f"{kb_context}\n\n"
+        f"USER QUESTION:\n"
+        f"{message}\n"
+    )
+
+    try:
+        answer = await invoke_llm(
+            prompt=prompt,
+            add_context=False,
+            model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4-turbo-preview"),
+            max_tokens=800,
+        )
+        if not answer:
+            raise Exception("Empty response")
+        return {
+            "answer": answer,
+            "refused": False,
+        }
+    except Exception as e:
+        logger.error(f"Support chat error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Support chat failed")
 
 
 # ============================================================================

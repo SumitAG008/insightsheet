@@ -20,6 +20,7 @@ import { getIPAndLocation, getBrowserInfo } from '@/components/tracking/Activity
 import ActivityLogger from '@/components/tracking/ActivityLogger';
 import LogoutWarningModal from '@/components/common/LogoutWarningModal';
 import CookieConsent from '@/components/CookieConsent';
+import SupportChatWidget from '@/components/SupportChatWidget';
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -601,6 +602,8 @@ export default function Layout({ children, currentPageName }) {
 
       {/* Cookie consent — main app; tracks accept/reject for compliance */}
       <CookieConsent privacyUrl={createPageUrl('Privacy')} />
+
+      <SupportChatWidget page={currentPageName} />
     </div>
   );
 }

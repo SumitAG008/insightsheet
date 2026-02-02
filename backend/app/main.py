@@ -26,7 +26,7 @@ from email.mime.multipart import MIMEMultipart
 
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, and_
 
 # Import local modules
 from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, ApiKey, ApiKeyIssuanceLog, ApiUsage, ApiBilling, SubscriptionEventLog, init_db

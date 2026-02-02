@@ -26,7 +26,7 @@ const getSidebarLinks = (isApiDev) => {
     { id: 'what-api-does', label: 'What This API Does' },
     { id: 'endpoints', label: 'Endpoints' },
   ];
-  
+
   if (isApiDev) {
     return [
       ...base,
@@ -34,9 +34,10 @@ const getSidebarLinks = (isApiDev) => {
       { id: 'changelog', label: 'Changelog' },
     ];
   }
-  
+
   return [
     ...base,
+    { id: 'test-api', label: 'Test API' },
     { id: 'usage-tracking', label: 'Usage & Billing' },
     { id: 'changelog', label: 'Changelog' },
     { id: 'commercial', label: 'Commercial use' },
@@ -296,23 +297,21 @@ export default function Developers({ isApiDeveloperDomain = false }) {
             </div>
           </section>
 
-          {/* Interactive API Testing Console - Only on api.developer.meldra.ai */}
-          {isApiDev && (
-            <section id="test-api" className="scroll-mt-28">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-                <Terminal className="w-6 h-6 text-blue-600" /> Test API Endpoints
-              </h2>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p className="text-blue-800 text-sm">
-                  <strong>Yes, users can run and test the API here!</strong> Enter your API key below, select an endpoint, upload a file, and click "Test API" to make a live API call. The console will show the response and allow you to download the result.
-                </p>
-              </div>
-              <p className="text-slate-600 mb-6">
-                Test API endpoints directly from this page. Enter your API key and select a file to test any endpoint. All requests are made in real-time to the production API.
+          {/* Interactive API Testing Console */}
+          <section id="test-api" className="scroll-mt-28">
+            <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <Terminal className="w-6 h-6 text-blue-600" /> Test API Endpoints
+            </h2>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-blue-800 text-sm">
+                <strong>Yes, you can run and test the API here!</strong> Enter your API key below, select an endpoint, upload a file, and click "Test API" to make a live API call.
               </p>
-              <ApiTestingConsole />
-            </section>
-          )}
+            </div>
+            <p className="text-slate-600 mb-6">
+              Test API endpoints directly from this page. Enter your API key and select a file to test any endpoint.
+            </p>
+            <ApiTestingConsole />
+          </section>
 
           {/* API reference and examples */}
           <section id="reference" className="scroll-mt-28">

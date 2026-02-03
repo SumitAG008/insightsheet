@@ -2470,6 +2470,8 @@ async def developer_api_proxy(
     endpoint: str = Form(...),
     api_key: str = Form(...),
     file: UploadFile = File(...),
+    ocr_lang: Optional[str] = Form(None),
+    options: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
     """Proxy browser-based API testing requests.
@@ -2493,7 +2495,7 @@ async def developer_api_proxy(
         key_owner_email = (getattr(key, "user_email", "") or "").strip().lower()
         bypass_for_owner = bool(key_owner_email) and key_owner_email in bypass_emails
 
-        allowed = {"pdf-to-doc", "doc-to-pdf", "ppt-to-pdf", "pdf-to-ppt", "zip-clean"}
+        allowed = {"pdf-to-doc", "doc-to-pdf", "ppt-to-pdf", "pdf-to-ppt", "zip-clean", "ocr-to-doc", "ocr-to-pdf"}
         if (not bypass_for_owner) and endpoint in allowed:
             used = (
                 db.query(func.count(ApiUsage.id))
@@ -2553,19 +2555,88 @@ async def developer_api_proxy(
             # Reuse existing zip processor logic (same as /api/files/process-zip but keyed)
             zip_service = ZipProcessorService()
             try:
+                user_options = None
+                if options and options.strip():
+                    try:
+                        user_options = json.loads(options)
+                    except Exception:
+                        raise HTTPException(status_code=400, detail="Invalid options JSON")
+
+                merged_options = {
+                    "allowed_chars": "a-z0-9-_",
+                    "replace_char": "_",
+                    "remove_spaces": True,
+                    "max_length": 255,
+                }
+                if isinstance(user_options, dict):
+                    # Support both camelCase (docs) and snake_case (internal)
+                    if user_options.get("allowedChars") is not None:
+                        merged_options["allowed_chars"] = str(user_options.get("allowedChars") or "")
+                    if user_options.get("allowed_chars") is not None:
+                        merged_options["allowed_chars"] = str(user_options.get("allowed_chars") or "")
+                    if user_options.get("replaceChar") is not None:
+                        merged_options["replace_char"] = str(user_options.get("replaceChar") or "")
+                    if user_options.get("replace_char") is not None:
+                        merged_options["replace_char"] = str(user_options.get("replace_char") or "")
+                    if user_options.get("removeSpaces") is not None:
+                        merged_options["remove_spaces"] = bool(user_options.get("removeSpaces"))
+                    if user_options.get("remove_spaces") is not None:
+                        merged_options["remove_spaces"] = bool(user_options.get("remove_spaces"))
+                    if user_options.get("maxLength") is not None:
+                        merged_options["max_length"] = int(user_options.get("maxLength") or 0) or 255
+                    if user_options.get("max_length") is not None:
+                        merged_options["max_length"] = int(user_options.get("max_length") or 0) or 255
+
                 data = await zip_service.process_zip(
                     zip_file=raw,
-                    options={
-                        "allowed_chars": "a-z0-9-_",
-                        "replace_char": "_",
-                        "remove_spaces": True,
-                        "max_length": 255,
-                    },
+                    options=merged_options,
                 )
             except Exception as e:
                 raise HTTPException(status_code=400, detail=str(e))
             media = "application/zip"
             out_ext = ".zip"
+        elif endpoint in ("ocr-to-doc", "ocr-to-pdf"):
+            ext = (os.path.splitext(file.filename or "")[1] or "").lower()
+            if ext not in (OCRService.ALLOWED_IMAGE_EXTENSIONS | OCRService.ALLOWED_PDF_EXTENSIONS):
+                raise HTTPException(status_code=400, detail="Invalid file type for OCR. Upload a PDF or image.")
+
+            ocr = OCRService()
+            lang = ocr_lang
+
+            try:
+                if ext in OCRService.ALLOWED_PDF_EXTENSIONS:
+                    extracted = await asyncio.wait_for(
+                        asyncio.to_thread(ocr.extract_pdf_with_layout, raw, 25, lang),
+                        90.0,
+                    )
+                    pages = extracted.get("pages") or []
+                    if endpoint == "ocr-to-doc":
+                        data = ocr.text_to_docx_layout_pages(pages, title="OCR Document")
+                        media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        out_ext = ".docx"
+                    else:
+                        data = ocr.text_to_pdf_layout_pages(pages, title="OCR Document")
+                        media = "application/pdf"
+                        out_ext = ".pdf"
+                else:
+                    extracted = await asyncio.wait_for(
+                        asyncio.to_thread(ocr.extract_with_layout, io.BytesIO(raw), lang),
+                        55.0,
+                    )
+                    layout = extracted.get("layout") or []
+                    iw = int(extracted.get("image_width") or 0)
+                    ih = int(extracted.get("image_height") or 0)
+                    tables = extracted.get("tables") or []
+                    if endpoint == "ocr-to-doc":
+                        data = ocr.text_to_docx_layout(layout, iw, ih, title="OCR Document", tables=tables)
+                        media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        out_ext = ".docx"
+                    else:
+                        data = ocr.text_to_pdf_layout(layout, iw, ih, title="OCR Document", tables=tables)
+                        media = "application/pdf"
+                        out_ext = ".pdf"
+            except asyncio.TimeoutError:
+                raise HTTPException(status_code=503, detail="OCR is taking too long. Try a smaller file or fewer pages.")
         else:
             raise HTTPException(status_code=400, detail="Unknown endpoint")
 

@@ -184,6 +184,88 @@ file_handler = RotatingFileHandler(
 file_handler.setFormatter(formatter)
 
 logger = logging.getLogger(__name__)
+
+
+def _first_day_next_month_utc(dt: datetime) -> datetime:
+    year = dt.year
+    month = dt.month
+    if month == 12:
+        return datetime(year + 1, 1, 1)
+    return datetime(year, month + 1, 1)
+
+
+def _ensure_subscription_monthly_resets(subscription: Subscription, db: Session) -> None:
+    now = datetime.utcnow()
+
+    if subscription.ai_queries_reset_at is None:
+        subscription.ai_queries_reset_at = _first_day_next_month_utc(now)
+
+    if subscription.ai_queries_reset_at is not None and now >= subscription.ai_queries_reset_at:
+        subscription.ai_queries_used = 0
+        subscription.ai_queries_reset_at = _first_day_next_month_utc(now)
+
+    if subscription.workflow_runs_reset_at is None:
+        subscription.workflow_runs_reset_at = _first_day_next_month_utc(now)
+
+    if subscription.workflow_runs_reset_at is not None and now >= subscription.workflow_runs_reset_at:
+        subscription.workflow_runs_used = 0
+        subscription.workflow_runs_reset_at = _first_day_next_month_utc(now)
+
+    if subscription.conversions_reset_at is None:
+        subscription.conversions_reset_at = _first_day_next_month_utc(now)
+
+    if subscription.conversions_reset_at is not None and now >= subscription.conversions_reset_at:
+        subscription.conversions_used = 0
+        subscription.conversions_reset_at = _first_day_next_month_utc(now)
+
+    db.commit()
+
+
+def _get_or_create_subscription(db: Session, user_email: str) -> Subscription:
+    subscription = db.query(Subscription).filter(Subscription.user_email == user_email).first()
+    if subscription:
+        _ensure_subscription_monthly_resets(subscription, db)
+        return subscription
+
+    subscription = Subscription(
+        user_email=user_email,
+        plan="free",
+        status="active",
+        ai_queries_limit=int(os.getenv("FREE_AI_QUERIES_LIMIT", "10")),
+        ai_queries_used=0,
+        payment_status="unpaid",
+        workflow_runs_limit=int(os.getenv("FREE_WORKFLOW_RUNS_LIMIT", "0")),
+        workflow_runs_used=0,
+        conversions_limit=int(os.getenv("FREE_CONVERSIONS_LIMIT", "0")),
+        conversions_used=0,
+    )
+    db.add(subscription)
+    db.commit()
+    db.refresh(subscription)
+    _ensure_subscription_monthly_resets(subscription, db)
+    return subscription
+
+
+def _enforce_verified_user(db: Session, user_email: str) -> None:
+    user = db.query(User).filter(User.email == user_email).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if hasattr(user, "is_verified") and not user.is_verified:
+        raise HTTPException(status_code=403, detail="Please verify your email address to use this feature")
+
+
+def _enforce_ai_quota(subscription: Subscription) -> None:
+    if (subscription.status or "").lower() != "active":
+        raise HTTPException(status_code=403, detail="Subscription inactive")
+    if subscription.ai_queries_limit is not None and subscription.ai_queries_limit >= 0:
+        if (subscription.ai_queries_used or 0) >= subscription.ai_queries_limit:
+            raise HTTPException(status_code=429, detail="AI query limit reached. Upgrade to increase limits.")
+
+
+def _consume_ai_quota(db: Session, subscription: Subscription) -> None:
+    if subscription.ai_queries_limit is not None and subscription.ai_queries_limit >= 0:
+        subscription.ai_queries_used = (subscription.ai_queries_used or 0) + 1
+        db.commit()
 logger.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
@@ -959,6 +1041,9 @@ async def support_chat(
     )
 
     try:
+        _enforce_verified_user(db, current_user["email"])
+        subscription = _get_or_create_subscription(db, current_user["email"])
+        _enforce_ai_quota(subscription)
         answer = await invoke_llm(
             prompt=prompt,
             add_context=False,
@@ -967,6 +1052,8 @@ async def support_chat(
         )
         if not answer:
             raise Exception("Empty response")
+
+        _consume_ai_quota(db, subscription)
         return {
             "answer": answer,
             "refused": False,
@@ -1538,21 +1625,9 @@ async def invoke_llm_endpoint(
     ZERO STORAGE: Prompt NOT stored, response NOT stored
     """
     try:
-        # Check subscription and limits
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
-
-        if not subscription:
-            raise HTTPException(status_code=404, detail="Subscription not found")
-
-        # Check AI query limit (unlimited for premium)
-        if subscription.plan != "premium":
-            if subscription.ai_queries_used >= subscription.ai_queries_limit:
-                raise HTTPException(
-                    status_code=429,
-                    detail=f"AI query limit reached. Upgrade to Premium for unlimited queries."
-                )
+        _enforce_verified_user(db, current_user["email"])
+        subscription = _get_or_create_subscription(db, current_user["email"])
+        _enforce_ai_quota(subscription)
 
         # Invoke LLM
         try:
@@ -1568,10 +1643,7 @@ async def invoke_llm_endpoint(
                 detail=f"AI service error: {str(llm_error)}"
             )
 
-        # Update usage (only if not premium)
-        if subscription.plan != "premium":
-            subscription.ai_queries_used += 1
-            db.commit()
+        _consume_ai_quota(db, subscription)
 
         # Log activity (NO content stored)
         activity = UserActivity(
@@ -2590,21 +2662,9 @@ async def generate_pl(
         if not prompt:
             raise HTTPException(status_code=400, detail="Prompt is required")
 
-        # Check subscription and limits
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
-
-        if not subscription:
-            raise HTTPException(status_code=404, detail="Subscription not found")
-
-        # Check AI query limit (unlimited for premium)
-        if subscription.plan != "premium":
-            if subscription.ai_queries_used >= subscription.ai_queries_limit:
-                raise HTTPException(
-                    status_code=429,
-                    detail=f"AI query limit reached. Upgrade to Premium for unlimited queries."
-                )
+        _enforce_verified_user(db, current_user["email"])
+        subscription = _get_or_create_subscription(db, current_user["email"])
+        _enforce_ai_quota(subscription)
 
         # Generate P&L
         pl_service = PLBuilderService()
@@ -2613,10 +2673,7 @@ async def generate_pl(
             context
         )
 
-        # Update usage (only if not premium)
-        if subscription.plan != "premium":
-            subscription.ai_queries_used += 1
-            db.commit()
+        _consume_ai_quota(db, subscription)
 
         # Log activity
         activity = UserActivity(
@@ -2741,22 +2798,7 @@ async def get_my_subscription(
     db: Session = Depends(get_db)
 ):
     """Get current user's subscription"""
-    subscription = db.query(Subscription).filter(
-        Subscription.user_email == current_user["email"]
-    ).first()
-
-    if not subscription:
-        # Create free subscription if doesn't exist
-        subscription = Subscription(
-            user_email=current_user["email"],
-            plan="free",
-            status="active",
-            ai_queries_limit=5,
-            ai_queries_used=0
-        )
-        db.add(subscription)
-        db.commit()
-        db.refresh(subscription)
+    subscription = _get_or_create_subscription(db, current_user["email"])
 
     return {
         "id": subscription.id,
@@ -2765,7 +2807,14 @@ async def get_my_subscription(
         "status": subscription.status,
         "ai_queries_used": subscription.ai_queries_used,
         "ai_queries_limit": subscription.ai_queries_limit,
+        "ai_queries_reset_at": subscription.ai_queries_reset_at,
         "files_uploaded": subscription.files_uploaded,
+        "workflow_runs_used": subscription.workflow_runs_used,
+        "workflow_runs_limit": subscription.workflow_runs_limit,
+        "workflow_runs_reset_at": subscription.workflow_runs_reset_at,
+        "conversions_used": subscription.conversions_used,
+        "conversions_limit": subscription.conversions_limit,
+        "conversions_reset_at": subscription.conversions_reset_at,
         "payment_status": subscription.payment_status,
         "trial_start_date": subscription.trial_start_date,
         "trial_end_date": subscription.trial_end_date,

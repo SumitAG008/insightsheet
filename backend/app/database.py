@@ -102,7 +102,16 @@ class Subscription(Base):
     # Usage limits and tracking
     ai_queries_used = Column(Integer, default=0)
     ai_queries_limit = Column(Integer, default=5)  # 5 for free, unlimited (-1) for premium
+    ai_queries_reset_at = Column(DateTime, nullable=True)  # Monthly reset marker (UTC)
     files_uploaded = Column(Integer, default=0)
+
+    workflow_runs_used = Column(Integer, default=0)
+    workflow_runs_limit = Column(Integer, default=0)  # 0 means not enabled for plan
+    workflow_runs_reset_at = Column(DateTime, nullable=True)  # Monthly reset marker (UTC)
+
+    conversions_used = Column(Integer, default=0)
+    conversions_limit = Column(Integer, default=0)  # 0 means not enabled for plan
+    conversions_reset_at = Column(DateTime, nullable=True)  # Monthly reset marker (UTC)
 
     # Payment information
     payment_status = Column(String(50), default="unpaid")  # unpaid, paid, pending
@@ -378,7 +387,14 @@ def init_db():
                     "subscription_end_date": "TIMESTAMP",
                     "ai_queries_used": "INTEGER DEFAULT 0",
                     "ai_queries_limit": "INTEGER DEFAULT 5",
+                    "ai_queries_reset_at": "TIMESTAMP",
                     "files_uploaded": "INTEGER DEFAULT 0",
+                    "workflow_runs_used": "INTEGER DEFAULT 0",
+                    "workflow_runs_limit": "INTEGER DEFAULT 0",
+                    "workflow_runs_reset_at": "TIMESTAMP",
+                    "conversions_used": "INTEGER DEFAULT 0",
+                    "conversions_limit": "INTEGER DEFAULT 0",
+                    "conversions_reset_at": "TIMESTAMP",
                     "payment_status": "VARCHAR(50) DEFAULT 'unpaid'",
                     "transaction_id": "VARCHAR(255)",
                     "amount_paid": "FLOAT",

@@ -19,7 +19,12 @@ export default function DataTransform({ data, onDataUpdate }) {
   const [aiError, setAiError] = useState('');
 
   const [activeSheet, setActiveSheet] = useState(() => data?.workbook?.activeSheet || (data?.workbook?.sheetNames || [])[0] || '');
-  const [excelOp, setExcelOp] = useState('');
+  const [opCategory, setOpCategory] = useState('mathematics');
+  const [excelOp, setExcelOp] = useState('add');
+  const [mathOp, setMathOp] = useState('add');
+  const [lookupOp, setLookupOp] = useState('');
+  const [conditionalOp, setConditionalOp] = useState('');
+
   const [xLookupValueCol, setXLookupValueCol] = useState('');
   const [xLookupSheet, setXLookupSheet] = useState('');
   const [xLookupKeyCol, setXLookupKeyCol] = useState('');
@@ -40,12 +45,16 @@ export default function DataTransform({ data, onDataUpdate }) {
   const [countifsCriteriaCol2, setCountifsCriteriaCol2] = useState('');
   const [countifsNewCol, setCountifsNewCol] = useState('');
 
-  const numericColumns = data.headers.filter(header => {
-    return data.rows.some(row => {
-      const val = row[header];
-      return val !== null && val !== undefined && val !== '' && !isNaN(parseFloat(val));
-    });
-  });
+  const [ifCol, setIfCol] = useState('');
+  const [ifOp, setIfOp] = useState('equals');
+  const [ifValue, setIfValue] = useState('');
+  const [thenType, setThenType] = useState('value');
+  const [thenValue, setThenValue] = useState('');
+  const [thenCol, setThenCol] = useState('');
+  const [elseType, setElseType] = useState('value');
+  const [elseValue, setElseValue] = useState('');
+  const [elseCol, setElseCol] = useState('');
+  const [ifNewCol, setIfNewCol] = useState('');
 
   const operations = [
     { id: 'add', name: 'Add (+)', icon: Plus, example: 'A + B' },
@@ -56,16 +65,23 @@ export default function DataTransform({ data, onDataUpdate }) {
   ];
 
   const opMeta = {
-    add: { group: 'Mathematics', label: 'Add (+)', meaning: 'Creates a new column by adding Column 1 + Column 2.' },
-    subtract: { group: 'Mathematics', label: 'Subtract (-)', meaning: 'Creates a new column by subtracting Column 1 - Column 2.' },
-    multiply: { group: 'Mathematics', label: 'Multiply (×)', meaning: 'Creates a new column by multiplying Column 1 × Column 2.' },
-    divide: { group: 'Mathematics', label: 'Divide (÷)', meaning: 'Creates a new column by dividing Column 1 ÷ Column 2.' },
-    percentage: { group: 'Mathematics', label: 'Percentage (%)', meaning: 'Creates a new column as (Column 1 / Column 2) × 100.' },
-    xlookup: { group: 'Lookups', label: 'XLOOKUP', meaning: 'Adds a new column to the active sheet by looking up a value in another sheet.' },
-    join: { group: 'Lookups', label: 'Join Sheets', meaning: 'Brings columns from another sheet into the active sheet by matching a key column.' },
-    sumifs: { group: 'Aggregations', label: 'SUMIFS', meaning: 'Adds a new column containing the group total of a numeric column by one or two criteria columns.' },
-    countifs: { group: 'Counts', label: 'COUNTIFS', meaning: 'Adds a new column containing the count of rows in the same group (by one or two criteria columns).' },
+    add: { label: 'Add', meaning: 'Add Column 1 and Column 2 to create a new column.' },
+    subtract: { label: 'Subtract', meaning: 'Subtract Column 2 from Column 1 to create a new column.' },
+    multiply: { label: 'Multiply', meaning: 'Multiply Column 1 and Column 2 to create a new column.' },
+    divide: { label: 'Divide', meaning: 'Divide Column 1 by Column 2 to create a new column.' },
+    percentage: { label: 'Percentage', meaning: 'Create a new column as (Column 1 / Column 2) × 100.' },
+    sumifs: { label: 'SUMIFS', meaning: 'Create a new column with totals per group (by one or two criteria columns).' },
+    countifs: { label: 'COUNTIFS', meaning: 'Create a new column with counts per group (by one or two criteria columns).' },
+    xlookup: { label: 'XLOOKUP', meaning: 'Bring a value from another sheet based on matching keys.' },
+    vlookup: { label: 'VLOOKUP', meaning: 'Lookup in another sheet (same selections as XLOOKUP; no formulas).' },
+    hlookup: { label: 'HLOOKUP', meaning: 'Lookup across a sheet/table (same selections as XLOOKUP; no formulas).' },
+    join: { label: 'Join Sheets', meaning: 'Bring multiple columns from another sheet by matching a key column.' },
+    ifelse: { label: 'IF / THEN / ELSE', meaning: 'Create a new column based on a condition (no formulas).' },
   };
+
+  const mathOps = ['add', 'subtract', 'multiply', 'divide', 'percentage', 'sumifs', 'countifs'];
+  const lookupOps = ['vlookup', 'hlookup', 'xlookup', 'join'];
+  const conditionalOps = ['ifelse'];
 
   const sheetNames = data?.workbook?.sheetNames || [];
   const workbookSheets = data?.workbook?.sheets || {};
@@ -79,8 +95,6 @@ export default function DataTransform({ data, onDataUpdate }) {
   const activeHeaders = hasWorkbook && activeSheetTable?.headers?.length ? activeSheetTable.headers : (data.headers || []);
   const activeRows = hasWorkbook && activeSheetTable?.rows?.length ? activeSheetTable.rows : (data.rows || []);
 
-  const allColumns = activeHeaders;
-
   const lookupSheetName = xLookupSheet || (sheetNames.find((n) => n !== activeSheetName) || sheetNames[0] || '');
   const lookupSheetTable = hasWorkbook ? workbookSheets[lookupSheetName] : null;
   const lookupColumns = lookupSheetTable?.headers || [];
@@ -88,6 +102,13 @@ export default function DataTransform({ data, onDataUpdate }) {
   const joinSheetName = joinSheet || (sheetNames.find((n) => n !== activeSheetName) || sheetNames[0] || '');
   const joinSheetTable = hasWorkbook ? workbookSheets[joinSheetName] : null;
   const joinRightColumns = joinSheetTable?.headers || [];
+
+  const numericColumns = (activeHeaders || []).filter((header) => {
+    return (activeRows || []).some((row) => {
+      const val = row?.[header];
+      return val !== null && val !== undefined && val !== '' && !isNaN(parseFloat(val));
+    });
+  });
 
   const handleSheetChange = (sheet) => {
     setActiveSheet(sheet);
@@ -160,7 +181,6 @@ export default function DataTransform({ data, onDataUpdate }) {
       workbook: nextWorkbook,
     });
 
-    setExcelOp('');
     setXLookupValueCol('');
     setXLookupSheet('');
     setXLookupKeyCol('');
@@ -242,7 +262,6 @@ export default function DataTransform({ data, onDataUpdate }) {
       workbook: nextWorkbook,
     });
 
-    setExcelOp('');
     setJoinSheet('');
     setJoinLeftKeyCol('');
     setJoinRightKeyCol('');
@@ -307,7 +326,6 @@ export default function DataTransform({ data, onDataUpdate }) {
       },
     });
 
-    setExcelOp('');
     setSumifsSumCol('');
     setSumifsCriteriaCol1('');
     setSumifsCriteriaCol2('');
@@ -369,10 +387,97 @@ export default function DataTransform({ data, onDataUpdate }) {
       },
     });
 
-    setExcelOp('');
     setCountifsCriteriaCol1('');
     setCountifsCriteriaCol2('');
     setCountifsNewCol('');
+  };
+
+  const handleApplyIfElse = () => {
+    if (!ifCol || !ifNewCol) {
+      alert('Please select an IF column and enter a new column name');
+      return;
+    }
+    if ((activeHeaders || []).includes(ifNewCol)) {
+      alert('A column with this name already exists');
+      return;
+    }
+
+    const compare = (cell) => {
+      const aRaw = cell === null || cell === undefined ? '' : String(cell);
+      const bRaw = ifValue === null || ifValue === undefined ? '' : String(ifValue);
+      const aNum = Number(aRaw);
+      const bNum = Number(bRaw);
+      const aIsNum = aRaw !== '' && Number.isFinite(aNum);
+      const bIsNum = bRaw !== '' && Number.isFinite(bNum);
+      const a = aIsNum && bIsNum ? aNum : aRaw;
+      const b = aIsNum && bIsNum ? bNum : bRaw;
+
+      switch (ifOp) {
+        case 'equals':
+          return String(a).trim() === String(b).trim();
+        case 'not_equals':
+          return String(a).trim() !== String(b).trim();
+        case 'greater':
+          return Number(a) > Number(b);
+        case 'greater_equal':
+          return Number(a) >= Number(b);
+        case 'less':
+          return Number(a) < Number(b);
+        case 'less_equal':
+          return Number(a) <= Number(b);
+        case 'contains':
+          return String(aRaw).toLowerCase().includes(String(bRaw).toLowerCase());
+        case 'is_blank':
+          return aRaw === '';
+        case 'is_not_blank':
+          return aRaw !== '';
+        default:
+          return false;
+      }
+    };
+
+    const rows = activeRows || [];
+    const newRows = rows.map((r) => {
+      const ok = compare(r?.[ifCol]);
+      const thenOut = thenType === 'column' ? (r?.[thenCol] ?? '') : (thenValue ?? '');
+      const elseOut = elseType === 'column' ? (r?.[elseCol] ?? '') : (elseValue ?? '');
+      return { ...r, [ifNewCol]: ok ? thenOut : elseOut };
+    });
+
+    const nextHeaders = [...(activeHeaders || []), ifNewCol];
+    if (hasWorkbook && activeSheetName) {
+      onDataUpdate({
+        ...data,
+        headers: nextHeaders,
+        rows: newRows,
+        workbook: {
+          ...(data.workbook || {}),
+          activeSheet: activeSheetName,
+          sheets: {
+            ...(data.workbook?.sheets || {}),
+            [activeSheetName]: {
+              ...(data.workbook?.sheets?.[activeSheetName] || {}),
+              headers: nextHeaders,
+              rows: newRows,
+            },
+          },
+        },
+      });
+    } else {
+      onDataUpdate({ headers: nextHeaders, rows: newRows });
+    }
+
+    setIfCol('');
+    setIfOp('equals');
+    setIfValue('');
+    setThenType('value');
+    setThenValue('');
+    setThenCol('');
+    setElseType('value');
+    setElseValue('');
+    setElseCol('');
+    setIfNewCol('');
+    setExcelOp('ifelse');
   };
 
   const handleAiTransform = async () => {
@@ -495,42 +600,73 @@ export default function DataTransform({ data, onDataUpdate }) {
             </div>
           )}
 
-          {/* Operation (Mathematics / Lookups / Aggregations) */}
+          {/* Operation */}
           <div className="p-4 bg-slate-800/30 border border-slate-700/50 rounded-lg">
             <label className="text-sm font-semibold text-slate-200 mb-2 block">Operation</label>
-            <Select value={excelOp || operation} onValueChange={(v) => {
-              if (opMeta[v]?.group === 'Mathematics') {
-                setExcelOp('');
-                setOperation(v);
-              } else {
-                setExcelOp(v);
-              }
-            }}>
-              <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                <SelectValue placeholder="Select an operation" className="text-white" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                <SelectItem value="add" className="text-white hover:bg-slate-700">Mathematics: Add (+)</SelectItem>
-                <SelectItem value="subtract" className="text-white hover:bg-slate-700">Mathematics: Subtract (-)</SelectItem>
-                <SelectItem value="multiply" className="text-white hover:bg-slate-700">Mathematics: Multiply (×)</SelectItem>
-                <SelectItem value="divide" className="text-white hover:bg-slate-700">Mathematics: Divide (÷)</SelectItem>
-                <SelectItem value="percentage" className="text-white hover:bg-slate-700">Mathematics: Percentage (%)</SelectItem>
-                {hasWorkbook && sheetNames.length > 1 && (
-                  <>
-                    <SelectItem value="xlookup" className="text-white hover:bg-slate-700">Lookups: XLOOKUP</SelectItem>
-                    <SelectItem value="join" className="text-white hover:bg-slate-700">Lookups: Join Sheets</SelectItem>
-                    <SelectItem value="sumifs" className="text-white hover:bg-slate-700">Aggregations: SUMIFS</SelectItem>
-                    <SelectItem value="countifs" className="text-white hover:bg-slate-700">Counts: COUNTIFS</SelectItem>
-                  </>
-                )}
-              </SelectContent>
-            </Select>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">Mathematics</label>
+                <Select value={mathOp} onValueChange={(v) => {
+                  setMathOp(v);
+                  setLookupOp('');
+                  setConditionalOp('');
+                  setOpCategory('mathematics');
+                  setExcelOp(v);
+                  setOperation(v);
+                }}>
+                  <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                    <SelectValue placeholder="Select math" className="text-white" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    {mathOps.map((k) => (
+                      <SelectItem key={k} value={k} className="text-white hover:bg-slate-700">{opMeta[k]?.label || k}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="mt-2 text-xs text-slate-400">
-              {(opMeta[excelOp || operation]?.meaning) || ''}
+              <div>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">Lookups</label>
+                <Select value={lookupOp} onValueChange={(v) => {
+                  setLookupOp(v);
+                  setConditionalOp('');
+                  setOpCategory('lookups');
+                  setExcelOp(v);
+                }}>
+                  <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                    <SelectValue placeholder={hasWorkbook && sheetNames.length > 1 ? 'Select lookup' : 'Upload Excel with 2+ sheets'} className="text-white" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    {(hasWorkbook && sheetNames.length > 1 ? lookupOps : []).map((k) => (
+                      <SelectItem key={k} value={k} className="text-white hover:bg-slate-700">{opMeta[k]?.label || k}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-slate-300 mb-1 block">Conditional</label>
+                <Select value={conditionalOp} onValueChange={(v) => {
+                  setConditionalOp(v);
+                  setLookupOp('');
+                  setOpCategory('conditional');
+                  setExcelOp(v);
+                }}>
+                  <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                    <SelectValue placeholder="Select conditional" className="text-white" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    {conditionalOps.map((k) => (
+                      <SelectItem key={k} value={k} className="text-white hover:bg-slate-700">{opMeta[k]?.label || k}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            {excelOp === 'xlookup' && (
+            <div className="mt-2 text-xs text-slate-400">{opMeta[excelOp]?.meaning || ''}</div>
+
+            {(excelOp === 'xlookup' || excelOp === 'vlookup' || excelOp === 'hlookup') && (
               <div className="mt-3 space-y-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-300 mb-1 block">Lookup Value Column (in active sheet)</label>
@@ -603,7 +739,7 @@ export default function DataTransform({ data, onDataUpdate }) {
                   className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
                   disabled={!xLookupValueCol || !lookupSheetName || !xLookupKeyCol || !xLookupReturnCol || !xLookupNewCol}
                 >
-                  Apply XLOOKUP
+                  Apply Lookup
                 </Button>
               </div>
             )}
@@ -787,6 +923,158 @@ export default function DataTransform({ data, onDataUpdate }) {
                 </Button>
               </div>
             )}
+
+            {excelOp === 'ifelse' && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">IF column</label>
+                  <Select value={ifCol} onValueChange={setIfCol}>
+                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                      <SelectValue placeholder="Select column" className="text-white" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {allColumns.map((c) => (
+                        <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Condition</label>
+                    <Select value={ifOp} onValueChange={setIfOp}>
+                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                        <SelectValue placeholder="Select condition" className="text-white" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        <SelectItem value="equals" className="text-white hover:bg-slate-700">Equals</SelectItem>
+                        <SelectItem value="not_equals" className="text-white hover:bg-slate-700">Not equals</SelectItem>
+                        <SelectItem value="greater" className="text-white hover:bg-slate-700">Greater than</SelectItem>
+                        <SelectItem value="greater_equal" className="text-white hover:bg-slate-700">Greater or equal</SelectItem>
+                        <SelectItem value="less" className="text-white hover:bg-slate-700">Less than</SelectItem>
+                        <SelectItem value="less_equal" className="text-white hover:bg-slate-700">Less or equal</SelectItem>
+                        <SelectItem value="contains" className="text-white hover:bg-slate-700">Contains</SelectItem>
+                        <SelectItem value="is_blank" className="text-white hover:bg-slate-700">Is blank</SelectItem>
+                        <SelectItem value="is_not_blank" className="text-white hover:bg-slate-700">Is not blank</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Value</label>
+                    <Input
+                      value={ifValue}
+                      onChange={(e) => setIfValue(e.target.value)}
+                      placeholder="e.g. Approved"
+                      className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
+                      disabled={ifOp === 'is_blank' || ifOp === 'is_not_blank'}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-1 block">THEN</label>
+                    <Select value={thenType} onValueChange={setThenType}>
+                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                        <SelectValue placeholder="Choose" className="text-white" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        <SelectItem value="value" className="text-white hover:bg-slate-700">Use a fixed value</SelectItem>
+                        <SelectItem value="column" className="text-white hover:bg-slate-700">Use a column value</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    {thenType === 'value' ? (
+                      <>
+                        <label className="text-xs font-semibold text-slate-300 mb-1 block">THEN value</label>
+                        <Input
+                          value={thenValue}
+                          onChange={(e) => setThenValue(e.target.value)}
+                          placeholder="e.g. Yes"
+                          className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <label className="text-xs font-semibold text-slate-300 mb-1 block">THEN column</label>
+                        <Select value={thenCol} onValueChange={setThenCol}>
+                          <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                            <SelectValue placeholder="Select column" className="text-white" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-800 border-slate-700">
+                            {allColumns.map((c) => (
+                              <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-1 block">ELSE</label>
+                    <Select value={elseType} onValueChange={setElseType}>
+                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                        <SelectValue placeholder="Choose" className="text-white" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        <SelectItem value="value" className="text-white hover:bg-slate-700">Use a fixed value</SelectItem>
+                        <SelectItem value="column" className="text-white hover:bg-slate-700">Use a column value</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    {elseType === 'value' ? (
+                      <>
+                        <label className="text-xs font-semibold text-slate-300 mb-1 block">ELSE value</label>
+                        <Input
+                          value={elseValue}
+                          onChange={(e) => setElseValue(e.target.value)}
+                          placeholder="e.g. No"
+                          className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <label className="text-xs font-semibold text-slate-300 mb-1 block">ELSE column</label>
+                        <Select value={elseCol} onValueChange={setElseCol}>
+                          <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                            <SelectValue placeholder="Select column" className="text-white" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-800 border-slate-700">
+                            {allColumns.map((c) => (
+                              <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">New Column Name</label>
+                  <Input
+                    value={ifNewCol}
+                    onChange={(e) => setIfNewCol(e.target.value)}
+                    placeholder="e.g. IsApproved"
+                    className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
+                  />
+                </div>
+
+                <Button
+                  onClick={handleApplyIfElse}
+                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
+                  disabled={!ifCol || !ifNewCol || (thenType === 'column' && !thenCol) || (elseType === 'column' && !elseCol)}
+                >
+                  Apply IF / THEN / ELSE
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Create with AI */}
@@ -818,7 +1106,7 @@ export default function DataTransform({ data, onDataUpdate }) {
           </div>
 
           {/* Mathematics Inputs */}
-          {excelOp === '' && (
+          {opCategory === 'mathematics' && !['sumifs', 'countifs'].includes(excelOp) && (
             <div>
               <div>
                 <label className="text-sm font-semibold text-slate-200 mb-2 block">

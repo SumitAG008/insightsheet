@@ -2486,6 +2486,25 @@ async def developer_api_proxy(
     if not key.is_active:
         raise HTTPException(status_code=403, detail="API key is inactive")
 
+    if (getattr(key, "plan", "") or "").lower() == "sandbox":
+        allowed = {"pdf-to-doc", "doc-to-pdf", "ppt-to-pdf", "pdf-to-ppt", "zip-clean"}
+        if endpoint in allowed:
+            used = (
+                db.query(func.count(ApiUsage.id))
+                .filter(
+                    ApiUsage.api_key_id == key.id,
+                    ApiUsage.status_code == 200,
+                    ApiUsage.endpoint.in_([f"/v1/{e}" for e in allowed]),
+                )
+                .scalar()
+                or 0
+            )
+            if used >= 1:
+                raise HTTPException(
+                    status_code=429,
+                    detail="Sandbox key limit reached: only 1 successful conversion is allowed. Request a production key for more conversions.",
+                )
+
     ip_address = getattr(getattr(request, "client", None), "host", None)
     user_agent = None
     try:

@@ -992,6 +992,16 @@ async def send_api_key_email(email: str, api_key: str, environment: str, base_ur
     try:
         resend.api_key = resend_api_key
         from_email = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "onboarding@resend.dev"))
+        limit_line = (
+            "<p><strong>Sandbox limit:</strong> Only 1 successful conversion is allowed per sandbox key.</p>"
+            if (environment or "").lower() == "sandbox"
+            else ""
+        )
+        limit_text = (
+            "Sandbox limit: Only 1 successful conversion is allowed per sandbox key.\n\n"
+            if (environment or "").lower() == "sandbox"
+            else ""
+        )
         html_content = f"""
         <!DOCTYPE html>
         <html>
@@ -1000,6 +1010,7 @@ async def send_api_key_email(email: str, api_key: str, environment: str, base_ur
             <p>Base URL: <strong>{base_url}</strong></p>
             <p>Use this header on every request:</p>
             <pre style=\"background:#f6f8fa;padding:12px;border-radius:6px;\">X-API-Key: {api_key}</pre>
+            {limit_line}
             <p><strong>Save this key now.</strong> For security, it may not be shown again.</p>
         </body>
         </html>
@@ -1011,7 +1022,7 @@ Base URL: {base_url}
 Use this header on every request:
 X-API-Key: {api_key}
 
-Save this key now. For security, it may not be shown again.
+{limit_text}Save this key now. For security, it may not be shown again.
 """
 
         resend.Emails.send({

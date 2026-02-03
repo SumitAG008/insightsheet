@@ -95,6 +95,8 @@ export default function DataTransform({ data, onDataUpdate }) {
   const activeHeaders = hasWorkbook && activeSheetTable?.headers?.length ? activeSheetTable.headers : (data.headers || []);
   const activeRows = hasWorkbook && activeSheetTable?.rows?.length ? activeSheetTable.rows : (data.rows || []);
 
+  const allColumns = Array.from(new Set(activeHeaders || [])).filter(Boolean);
+
   const lookupSheetName = xLookupSheet || (sheetNames.find((n) => n !== activeSheetName) || sheetNames[0] || '');
   const lookupSheetTable = hasWorkbook ? workbookSheets[lookupSheetName] : null;
   const lookupColumns = lookupSheetTable?.headers || [];
@@ -603,6 +605,21 @@ export default function DataTransform({ data, onDataUpdate }) {
           {/* Operation */}
           <div className="p-4 bg-slate-800/30 border border-slate-700/50 rounded-lg">
             <label className="text-sm font-semibold text-slate-200 mb-2 block">Operation</label>
+
+            {(!hasWorkbook || sheetNames.length < 2) && (
+              <div className="mb-3 p-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-200 text-xs">
+                Lookups (VLOOKUP/HLOOKUP/XLOOKUP/Join) require an Excel workbook with 2+ sheets.
+              </div>
+            )}
+
+            {(activeRows?.length || 0) > 20000 && (
+              <div className="mb-3 p-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-200 text-xs">
+                This sheet is large ({activeRows.length.toLocaleString()} rows). 
+                Some operations may be slow in the browser. 
+                If you see delays, reduce rows or split the sheet.
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="text-xs font-semibold text-slate-300 mb-1 block">Mathematics</label>

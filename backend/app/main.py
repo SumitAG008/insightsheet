@@ -75,6 +75,18 @@ from app.services.predictive_ml_service import PredictiveMLService
 from PIL import Image
 
 
+def _ascii_safe_filename(name: str) -> str:
+    s = (name or "").strip() or "file"
+    s = re.sub(r"\s+", "_", s)
+    try:
+        s = s.encode("ascii", "ignore").decode("ascii")
+    except Exception:
+        s = re.sub(r"[^A-Za-z0-9._-]+", "_", s)
+    s = re.sub(r"[^A-Za-z0-9._-]+", "_", s)
+    s = re.sub(r"_+", "_", s).strip("._-")
+    return s or "file"
+
+
 class SupportChatRequest(BaseModel):
     message: str
     page: Optional[str] = None

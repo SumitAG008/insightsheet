@@ -3,6 +3,7 @@ Document Converter Service — in-app PDF, DOC, PPT conversions (no external API
 """
 import io
 import logging
+import re
 from typing import Tuple
 
 logger = logging.getLogger(__name__)
@@ -91,6 +92,12 @@ def pdf_to_docx_smart(pdf_bytes: bytes, ocr_lang: str = None) -> Tuple[bytes, st
     if not err and docx_bytes:
         extracted = _docx_to_text(docx_bytes)
         if extracted:
+            # If the converter produced only a tiny amount of text, it is often a sign that
+            # layered/scanned PDFs (forms) were partially converted (missing sections/blocks).
+            # In that case, prefer OCR layout mode for better fidelity.
+            words = [w for w in re.split(r"\s+", extracted.strip()) if w]
+            if len(extracted.strip()) < 200 or len(words) < 40:
+                extracted = ""
             try:
                 if not _looks_garbled_digital_text(extracted):
                     return docx_bytes, ''

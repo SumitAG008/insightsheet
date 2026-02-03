@@ -124,6 +124,15 @@ export default function ApiTestingConsole() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  const getClientTimeoutMs = () => {
+    const raw = String(ocrTimeoutSeconds || '').trim();
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0) {
+      return Math.max(10, n + 30) * 1000;
+    }
+    return 240 * 1000;
+  };
+
   const getFilenameFromHeaders = (headers) => {
     const cd = headers?.get?.('content-disposition') || '';
     const match = cd.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
@@ -223,10 +232,20 @@ export default function ApiTestingConsole() {
         url = PROXY_URL;
       }
 
-      const response = await fetch(url, {
-        method: 'POST',
-        body: formData,
-      });
+      const controller = new AbortController();
+      const timeoutMs = getClientTimeoutMs();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+      let response;
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         const errJson = await response.json().catch(() => null);
@@ -257,13 +276,18 @@ export default function ApiTestingConsole() {
           size: blob.size,
           downloadUrl: blobUrl,
           filename: headerFilename || `${selectedEndpoint.id}_result.${ext}`,
+          requestUrl: url,
         });
       }
     } catch (err) {
-      setError(err.message || 'Request failed');
+      const aborted = err?.name === 'AbortError' || /aborted/i.test(String(err?.message || ''));
+      const msg = aborted
+        ? `Request timed out in the browser. Try increasing Timeout Seconds, or check Railway logs for the underlying OCR timeout.`
+        : (err.message || 'Request failed');
+      setError(msg);
       setResult({
         success: false,
-        error: err.message,
+        error: msg,
       });
     } finally {
       setLoading(false);

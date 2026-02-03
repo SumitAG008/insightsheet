@@ -2290,6 +2290,8 @@ async def developer_api_proxy(
     except Exception:
         user_agent = None
 
+    request_id = str(uuid.uuid4())
+
     started = time.time()
     raw = await file.read()
     status_code = 200
@@ -2472,7 +2474,15 @@ async def developer_api_proxy(
             pass
         raise
     except Exception as e:
-        logger.error(f"Developer API proxy failed: {str(e)}")
+        logger.exception(
+            "Developer API proxy failed",
+            extra={
+                "request_id": request_id,
+                "endpoint": endpoint,
+                "filename": getattr(file, "filename", None),
+                "ip": ip_address,
+            },
+        )
         elapsed_ms = int((time.time() - started) * 1000)
         try:
             track_api_usage(
@@ -2489,7 +2499,10 @@ async def developer_api_proxy(
             )
         except Exception:
             pass
-        raise HTTPException(status_code=500, detail="Developer API proxy failed")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Developer API proxy failed (request_id={request_id})",
+        )
     try:
         subscription = db.query(Subscription).filter(
             Subscription.user_email == current_user["email"]

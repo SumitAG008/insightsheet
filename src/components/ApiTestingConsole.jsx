@@ -116,6 +116,7 @@ export default function ApiTestingConsole() {
   const [prompt, setPrompt] = useState('');
   const [jsonPayload, setJsonPayload] = useState('');
   const [message, setMessage] = useState('');
+  const [pdfDocMode, setPdfDocMode] = useState('auto');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -200,6 +201,9 @@ export default function ApiTestingConsole() {
         }
       } else {
         formData.append('endpoint', selectedEndpoint.id);
+        if (selectedEndpoint.id === 'pdf-to-doc') {
+          formData.append('mode', pdfDocMode);
+        }
         url = PROXY_URL;
       }
 
@@ -307,6 +311,21 @@ export default function ApiTestingConsole() {
                 onChange={(e) => setJsonPayload(e.target.value)}
               />
             </div>
+          </div>
+        )}
+
+        {selectedEndpoint.id === 'pdf-to-doc' && (
+          <div>
+            <label className="text-sm font-medium mb-2 block">Mode</label>
+            <select
+              value={pdfDocMode}
+              onChange={(e) => setPdfDocMode(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+            >
+              <option value="auto">Auto</option>
+              <option value="editable">Editable</option>
+              <option value="exact">Exact</option>
+            </select>
           </div>
         )}
 

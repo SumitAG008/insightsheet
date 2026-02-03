@@ -68,6 +68,33 @@ src/
 - Development: `npm run dev` - http://localhost:5173
 - Production: `npm run build`
 
+## Backend: Ephemeral file processing (no storage)
+
+The backend processes uploaded documents ephemerally and does not persist file contents after conversion.
+
+For conversion engines that require temporary files (for example, Office renderers), the backend writes files to a temporary folder during processing and deletes them immediately after.
+
+As a safety net, the backend also runs a background sweeper that deletes any leftover conversion temp folders older than a configured TTL.
+
+### Environment variables (backend)
+
+- `CONVERSION_TEMP_TTL_SECONDS`
+  - Default: `600` (10 minutes)
+  - Purpose: Delete any leftover conversion temp folders older than this TTL
+  - Minimum/maximum: clamped to `[60, 86400]`
+
+- `CONVERSION_TEMP_DIR_PREFIX`
+  - Default: `meldra_conv_`
+  - Purpose: Only temp folders with this prefix are eligible for sweeping
+
+- `CONVERSION_TEMP_DIR`
+  - Optional
+  - Purpose: Override the base temp directory used for sweeping (defaults to OS temp directory)
+
+### Where to set these
+
+Set these as environment variables on your backend deployment (e.g., Railway project Variables).
+
 ## Support
 
 For issues and support, please visit: https://github.com/SumitAG008/insightsheet

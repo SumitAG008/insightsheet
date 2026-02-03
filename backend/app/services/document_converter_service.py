@@ -4,7 +4,7 @@ Document Converter Service — in-app PDF, DOC, PPT conversions (no external API
 import io
 import logging
 import re
-from typing import Tuple
+from typing import Tuple, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,20 @@ try:
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
+
+try:
+    from docx.shared import Pt
+    DOCX_SHARED_AVAILABLE = True
+except ImportError:
+    Pt = None
+    DOCX_SHARED_AVAILABLE = False
+
+try:
+    import fitz  # PyMuPDF
+    FITZ_AVAILABLE = True
+except Exception:
+    fitz = None
+    FITZ_AVAILABLE = False
 
 try:
     from pptx import Presentation
@@ -87,22 +101,83 @@ def _docx_to_text(docx_bytes: bytes) -> str:
         return ""
 
 
-def pdf_to_docx_smart(pdf_bytes: bytes, ocr_lang: str = None) -> Tuple[bytes, str]:
+def pdf_to_docx_exact(pdf_bytes: bytes, max_pages: int = 25) -> Tuple[bytes, str]:
+    if not DOCX_AVAILABLE or not DOCX_SHARED_AVAILABLE or Pt is None:
+        return b'', "Exact PDF to DOC requires python-docx. Install: pip install python-docx"
+    if not FITZ_AVAILABLE or fitz is None:
+        return b'', "Exact PDF to DOC requires PyMuPDF. Install: pip install PyMuPDF"
+
+    try:
+        doc = Document()
+        if doc.sections:
+            s0 = doc.sections[0]
+            s0.left_margin = s0.right_margin = s0.top_margin = s0.bottom_margin = Pt(10)
+
+        pdf = fitz.open(stream=pdf_bytes, filetype="pdf")
+        try:
+            n_pages = min(len(pdf), max_pages)
+            for i in range(n_pages):
+                page = pdf[i]
+                pix = page.get_pixmap(dpi=200, alpha=False)
+                img_bytes = pix.tobytes("png")
+                page_w, page_h = float(pix.width), float(pix.height)
+                if page_w <= 0 or page_h <= 0:
+                    page_w, page_h = 1000.0, 1400.0
+
+                s = doc.sections[0] if i == 0 else doc.add_section(1)
+                s.left_margin = s.right_margin = s.top_margin = s.bottom_margin = Pt(10)
+                target_w = 612.0
+                scale = target_w / page_w
+                s.page_width = Pt(target_w)
+                s.page_height = Pt(max(792.0, page_h * scale))
+
+                p = doc.add_paragraph()
+                r = p.add_run()
+                r.add_picture(io.BytesIO(img_bytes), width=Pt(target_w - 20))
+        finally:
+            pdf.close()
+
+        buf = io.BytesIO()
+        doc.save(buf)
+        buf.seek(0)
+        return buf.read(), ''
+    except Exception as e:
+        logger.exception("pdf_to_docx_exact failed")
+        return b'', str(e)
+
+
+def pdf_to_docx_smart(pdf_bytes: bytes, ocr_lang: str = None, mode: Optional[str] = None) -> Tuple[bytes, str]:
+    m = (mode or "auto").strip().lower()
+    if m not in ("auto", "editable", "exact"):
+        m = "auto"
+
+    if m == "exact":
+        return pdf_to_docx_exact(pdf_bytes)
+
     docx_bytes, err = pdf_to_docx(pdf_bytes)
+    low_fidelity = False
     if not err and docx_bytes:
         extracted = _docx_to_text(docx_bytes)
         if extracted:
-            # If the converter produced only a tiny amount of text, it is often a sign that
-            # layered/scanned PDFs (forms) were partially converted (missing sections/blocks).
-            # In that case, prefer OCR layout mode for better fidelity.
             words = [w for w in re.split(r"\s+", extracted.strip()) if w]
             if len(extracted.strip()) < 200 or len(words) < 40:
                 extracted = ""
+                low_fidelity = True
             try:
-                if not _looks_garbled_digital_text(extracted):
+                if extracted and (not _looks_garbled_digital_text(extracted)):
                     return docx_bytes, ''
             except Exception:
                 return docx_bytes, ''
+        else:
+            low_fidelity = True
+
+    if m == "editable" and (docx_bytes and not err):
+        return docx_bytes, ''
+
+    if m == "auto" and low_fidelity:
+        exact_bytes, exact_err = pdf_to_docx_exact(pdf_bytes)
+        if not exact_err and exact_bytes:
+            return exact_bytes, ''
 
     if not OCR_SERVICE_AVAILABLE:
         return docx_bytes, err or "PDF to DOC conversion produced unreadable output and OCR fallback is unavailable"

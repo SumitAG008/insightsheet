@@ -32,6 +32,7 @@ import re
 import secrets
 import shutil
 import threading
+import tempfile
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -346,6 +347,51 @@ async def startup_event():
     """Initialize database tables on startup"""
     init_db()
     logger.info("Database initialized")
+
+    try:
+        ttl_raw = os.getenv("CONVERSION_TEMP_TTL_SECONDS", "600").strip()
+        ttl_seconds = int(ttl_raw) if ttl_raw else 600
+    except Exception:
+        ttl_seconds = 600
+    ttl_seconds = max(60, min(ttl_seconds, 24 * 60 * 60))
+
+    tmp_prefix = os.getenv("CONVERSION_TEMP_DIR_PREFIX", "meldra_conv_").strip() or "meldra_conv_"
+
+    def _sweep_once() -> None:
+        base_dir = os.getenv("CONVERSION_TEMP_DIR", "").strip() or tempfile.gettempdir()
+        now = time.time()
+        try:
+            entries = os.listdir(base_dir)
+        except Exception:
+            return
+
+        for name in entries:
+            if not name.startswith(tmp_prefix):
+                continue
+            path = os.path.join(base_dir, name)
+            try:
+                st = os.stat(path)
+            except Exception:
+                continue
+            if not os.path.isdir(path):
+                continue
+            age = now - float(getattr(st, "st_mtime", now))
+            if age < ttl_seconds:
+                continue
+            try:
+                shutil.rmtree(path, ignore_errors=True)
+            except Exception:
+                pass
+
+    def _sweeper_loop() -> None:
+        while True:
+            try:
+                _sweep_once()
+            except Exception:
+                pass
+            time.sleep(min(120, max(30, ttl_seconds // 4)))
+
+    threading.Thread(target=_sweeper_loop, daemon=True).start()
 
     # Background TTL cleanup for session-scoped history
     asyncio.create_task(_background_cleanup_file_processing_history())
@@ -2444,6 +2490,7 @@ async def _convert_endpoint(
 async def convert_pdf_to_doc(
     file: UploadFile = File(...),
     ocr_lang: Optional[str] = Form(None),
+    mode: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -2455,7 +2502,7 @@ async def convert_pdf_to_doc(
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         converter_fn=pdf_to_docx_smart,
         processing_type="pdf_to_doc",
-        converter_kwargs={"ocr_lang": ocr_lang},
+        converter_kwargs={"ocr_lang": ocr_lang, "mode": mode},
     )
     return StreamingResponse(
         io.BytesIO(data),
@@ -2472,6 +2519,7 @@ async def developer_api_proxy(
     file: UploadFile = File(...),
     ocr_lang: Optional[str] = Form(None),
     options: Optional[str] = Form(None),
+    mode: Optional[str] = Form(None),
     db: Session = Depends(get_db),
 ):
     """Proxy browser-based API testing requests.
@@ -2528,7 +2576,7 @@ async def developer_api_proxy(
     try:
         # Dispatch to local converters
         if endpoint == "pdf-to-doc":
-            data, err = pdf_to_docx_smart(raw, ocr_lang=None)
+            data, err = pdf_to_docx_smart(raw, ocr_lang=ocr_lang, mode=mode)
             if err:
                 raise HTTPException(status_code=400, detail=err)
             media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"

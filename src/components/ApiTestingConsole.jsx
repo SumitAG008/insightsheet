@@ -117,6 +117,9 @@ export default function ApiTestingConsole() {
   const [jsonPayload, setJsonPayload] = useState('');
   const [message, setMessage] = useState('');
   const [pdfDocMode, setPdfDocMode] = useState('auto');
+  const [ocrLang, setOcrLang] = useState('eng');
+  const [ocrMaxPages, setOcrMaxPages] = useState('10');
+  const [ocrTimeoutSeconds, setOcrTimeoutSeconds] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -203,6 +206,19 @@ export default function ApiTestingConsole() {
         formData.append('endpoint', selectedEndpoint.id);
         if (selectedEndpoint.id === 'pdf-to-doc') {
           formData.append('mode', pdfDocMode);
+        }
+        if (selectedEndpoint.id === 'ocr-to-doc' || selectedEndpoint.id === 'ocr-to-pdf') {
+          if ((ocrLang || '').trim()) {
+            formData.append('ocr_lang', (ocrLang || '').trim());
+          }
+          const mp = String(ocrMaxPages || '').trim();
+          if (mp) {
+            formData.append('max_pages', mp);
+          }
+          const ts = String(ocrTimeoutSeconds || '').trim();
+          if (ts) {
+            formData.append('timeout_seconds', ts);
+          }
         }
         url = PROXY_URL;
       }
@@ -326,6 +342,42 @@ export default function ApiTestingConsole() {
               <option value="editable">Editable</option>
               <option value="exact">Exact</option>
             </select>
+          </div>
+        )}
+
+        {(selectedEndpoint.id === 'ocr-to-doc' || selectedEndpoint.id === 'ocr-to-pdf') && (
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium mb-2 block">OCR Language (optional)</label>
+              <Input
+                type="text"
+                placeholder="eng"
+                value={ocrLang}
+                onChange={(e) => setOcrLang(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Max Pages (PDF only)</label>
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="10"
+                  value={ocrMaxPages}
+                  onChange={(e) => setOcrMaxPages(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Timeout Seconds (optional)</label>
+                <Input
+                  type="number"
+                  min="10"
+                  placeholder=""
+                  value={ocrTimeoutSeconds}
+                  onChange={(e) => setOcrTimeoutSeconds(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
         )}
 

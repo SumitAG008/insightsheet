@@ -9,6 +9,7 @@ export default function SupportChatWidget({ page, className }) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [file, setFile] = useState(null);
 
   const isAuthed = useMemo(() => {
     try {
@@ -27,8 +28,12 @@ export default function SupportChatWidget({ page, className }) {
     setLoading(true);
 
     try {
-      const res = await backendApi.support.chat(text, { page: page || window?.location?.pathname || '' });
+      const pageCtx = page || window?.location?.pathname || '';
+      const res = file
+        ? await backendApi.support.chatWithFile(text, file, { page: pageCtx })
+        : await backendApi.support.chat(text, { page: pageCtx });
       setMessages(prev => [...prev, { role: 'assistant', content: res?.answer || 'Sorry — no response received.' }]);
+      setFile(null);
     } catch (e) {
       setMessages(prev => [...prev, { role: 'assistant', content: e?.message || 'Sorry — support chat failed.' }]);
     } finally {
@@ -113,6 +118,20 @@ export default function SupportChatWidget({ page, className }) {
                     className="min-h-[70px] bg-white dark:bg-slate-900"
                     disabled={loading}
                   />
+                  <div className="mt-2">
+                    <input
+                      type="file"
+                      accept=".docx,.xlsx,.xls,.pptx,.md,.pdf"
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                      className="block w-full text-xs"
+                      disabled={loading}
+                    />
+                    {file && (
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        Attached: {file.name}
+                      </div>
+                    )}
+                  </div>
                   <div className="mt-2 flex justify-end">
                     <Button onClick={handleSend} disabled={loading || !input.trim()} className="bg-blue-600 hover:bg-blue-700">
                       <Send className="w-4 h-4 mr-2" />

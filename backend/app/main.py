@@ -2,7 +2,17 @@
 FastAPI Backend for InsightSheet-lite
 Privacy-first data analysis platform with ZERO data storage
 """
-from fastapi import FastAPI, HTTPException, Depends, UploadFile, File, Request, status, Form
+from fastapi import (
+    FastAPI,
+    Depends,
+    HTTPException,
+    status,
+    Request,
+    Response,
+    Form,
+    UploadFile,
+    File,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -16,11 +26,10 @@ import io
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-import io
+import json
+import re
 import secrets
-import time
-import threading
-import smtplib
+import shutil
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -49,6 +58,7 @@ from app.services.ocr_service import (
 )
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
+from app.services.ingestion_service import IngestionService, IngestLimits, build_ingestion_prompt_block
 from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email, send_api_key_email
 from app.services.db_connection_service import DatabaseConnectionService
 from app.services.security_ai_service import SecurityAIService
@@ -1063,6 +1073,93 @@ async def support_chat(
         raise HTTPException(status_code=500, detail="Support chat failed")
 
 
+@app.post("/api/support/chat-with-file", response_model=Dict[str, Any])
+async def support_chat_with_file(
+    message: str = Form(...),
+    page: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Support chat with an uploaded file (.docx/.xlsx/.pptx/.md/.pdf) ingested server-side."""
+    msg = (message or "").strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="Message is required")
+
+    if _is_disallowed_support_question(msg):
+        return {
+            "answer": "I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.",
+            "refused": True,
+        }
+
+    try:
+        kb_text = _load_kb_text()
+    except Exception:
+        return {
+            "answer": "I can help with product usage and account/API onboarding, but the knowledge base is currently unavailable. Please contact Meldra support.",
+            "refused": False,
+        }
+
+    _enforce_verified_user(db, current_user["email"])
+    subscription = _get_or_create_subscription(db, current_user["email"])
+    _enforce_ai_quota(subscription)
+
+    max_size_mb = 500 if subscription.plan == "premium" else 10
+    max_bytes = max_size_mb * 1024 * 1024
+    content = await file.read()
+    if len(content) > max_bytes:
+        raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+
+    svc = IngestionService(IngestLimits(max_bytes=max_bytes))
+    try:
+        ingested = svc.ingest(file.filename or "uploaded_file", content)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    picked = _select_relevant_kb_sections(kb_text=kb_text, message=msg, top_k=5)
+    kb_context = "\n\n".join([s["content"] for s in picked])
+    file_context = build_ingestion_prompt_block(ingested)
+
+    prompt = (
+        f"You are Meldra's customer-facing Support Assistant.\n\n"
+        f"RULES:\n"
+        f"- Answer ONLY using the provided Knowledge Base excerpts and the uploaded file context.\n"
+        f"- If the question is outside the KB scope or asks for internal/backend implementation details (database, code, deployment, logs, secrets), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"
+        f"- If you are unsure, ask 1 clarifying question or recommend contacting support.\n"
+        f"- Provide step-by-step guidance with short headings.\n\n"
+        f"USER CONTEXT:\n"
+        f"- User email: {current_user.get('email')}\n"
+        f"- Page: {page or ''}\n\n"
+        f"KNOWLEDGE BASE EXCERPTS:\n"
+        f"{kb_context}\n\n"
+        f"{file_context}\n\n"
+        f"USER QUESTION:\n"
+        f"{msg}\n"
+    )
+
+    try:
+        answer = await invoke_llm(
+            prompt=prompt,
+            add_context=False,
+            model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4-turbo-preview"),
+            max_tokens=900,
+        )
+        if not answer:
+            raise Exception("Empty response")
+
+        _consume_ai_quota(db, subscription)
+        return {
+            "answer": answer,
+            "refused": False,
+            "ingestion": {"filename": ingested.get("filename"), "type": ingested.get("type"), "meta": ingested.get("meta")},
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Support chat-with-file error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Support chat failed")
+
+
 # ============================================================================
 # API KEY MANAGEMENT (developer.meldra.ai)
 # ============================================================================
@@ -1662,6 +1759,81 @@ async def invoke_llm_endpoint(
         raise
     except Exception as e:
         logger.error(f"LLM invocation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/integrations/llm/invoke-with-file")
+async def invoke_llm_with_file_endpoint(
+    prompt: str = Form(...),
+    add_context_from_internet: bool = Form(False),
+    response_json_schema: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Invoke LLM with an uploaded file (.docx/.xlsx/.pptx/.md/.pdf) ingested server-side."""
+    try:
+        _enforce_verified_user(db, current_user["email"])
+        subscription = _get_or_create_subscription(db, current_user["email"])
+        _enforce_ai_quota(subscription)
+
+        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        content = await file.read()
+        if len(content) > max_bytes:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File size exceeds {max_size_mb}MB limit",
+            )
+
+        svc = IngestionService(IngestLimits(max_bytes=max_bytes))
+        try:
+            ingested = svc.ingest(file.filename or "uploaded_file", content)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        prompt_block = build_ingestion_prompt_block(ingested)
+        combined_prompt = f"{prompt}\n\n{prompt_block}" if prompt_block else prompt
+
+        schema_obj = None
+        if response_json_schema:
+            try:
+                schema_obj = json.loads(response_json_schema)
+            except Exception:
+                raise HTTPException(status_code=400, detail="response_json_schema must be valid JSON")
+
+        try:
+            response = await invoke_llm(
+                prompt=combined_prompt,
+                add_context=add_context_from_internet,
+                response_schema=schema_obj,
+            )
+        except Exception as llm_error:
+            logger.error(f"LLM invocation failed: {str(llm_error)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"AI service error: {str(llm_error)}",
+            )
+
+        _consume_ai_quota(db, subscription)
+
+        activity = UserActivity(
+            user_email=current_user["email"],
+            activity_type="ai_query",
+            page_name="llm_invoke_with_file",
+        )
+        db.add(activity)
+        db.commit()
+
+        return {
+            "response": response,
+            "ingestion": {"filename": ingested.get("filename"), "type": ingested.get("type"), "meta": ingested.get("meta")},
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"LLM invoke-with-file error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -2432,6 +2604,392 @@ async def developer_api_proxy(
         raise HTTPException(status_code=500, detail="Developer API proxy failed")
 
 
+@app.post("/api/developer/ai/invoke-with-file")
+async def developer_invoke_llm_with_file(
+    request: Request,
+    api_key: str = Form(...),
+    prompt: str = Form(...),
+    add_context_from_internet: bool = Form(False),
+    response_json_schema: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Developer API: invoke LLM with an uploaded file (API-key auth)."""
+    if not api_key or not api_key.strip():
+        raise HTTPException(status_code=400, detail="API key is required")
+
+    key = get_api_key_by_header(api_key.strip(), db)
+    if not key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    if not key.is_active:
+        raise HTTPException(status_code=403, detail="API key is inactive")
+
+    ip_address = getattr(getattr(request, "client", None), "host", None)
+    user_agent = None
+    try:
+        user_agent = request.headers.get("user-agent")
+    except Exception:
+        user_agent = None
+
+    started = time.time()
+    raw = await file.read()
+    response_size = None
+
+    try:
+        max_size_mb = 500 if (key.plan or "").lower() in ("premium", "enterprise") else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        if len(raw) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+
+        svc = IngestionService(IngestLimits(max_bytes=max_bytes))
+        try:
+            ingested = svc.ingest(file.filename or "uploaded_file", raw)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        prompt_block = build_ingestion_prompt_block(ingested)
+        combined_prompt = f"{prompt}\n\n{prompt_block}" if prompt_block else prompt
+
+        schema_obj = None
+        if response_json_schema:
+            try:
+                schema_obj = json.loads(response_json_schema)
+            except Exception:
+                raise HTTPException(status_code=400, detail="response_json_schema must be valid JSON")
+
+        response = await invoke_llm(
+            prompt=combined_prompt,
+            add_context=add_context_from_internet,
+            response_schema=schema_obj,
+        )
+
+        response_size = len(response.encode("utf-8", errors="ignore")) if isinstance(response, str) else None
+        elapsed_ms = int((time.time() - started) * 1000)
+        track_api_usage(
+            db=db,
+            api_key=key,
+            endpoint="/v1/ai/invoke-with-file",
+            method="POST",
+            status_code=200,
+            request_size_bytes=len(raw),
+            response_size_bytes=response_size,
+            processing_time_ms=elapsed_ms,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+        return {
+            "response": response,
+            "ingestion": {"filename": ingested.get("filename"), "type": ingested.get("type"), "meta": ingested.get("meta")},
+        }
+    except HTTPException as e:
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/ai/invoke-with-file",
+                method="POST",
+                status_code=e.status_code,
+                request_size_bytes=len(raw) if raw is not None else None,
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise
+    except Exception as e:
+        logger.error(f"Developer invoke-with-file failed: {str(e)}")
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/ai/invoke-with-file",
+                method="POST",
+                status_code=500,
+                request_size_bytes=len(raw) if raw is not None else None,
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Developer AI request failed")
+
+
+@app.post("/api/developer/files/generate-pl-with-file")
+async def developer_generate_pl_with_file(
+    request: Request,
+    api_key: str = Form(...),
+    prompt: str = Form(...),
+    context_json: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Developer API: generate P&L (xlsx) from prompt + uploaded file context (API-key auth)."""
+    if not api_key or not api_key.strip():
+        raise HTTPException(status_code=400, detail="API key is required")
+
+    key = get_api_key_by_header(api_key.strip(), db)
+    if not key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    if not key.is_active:
+        raise HTTPException(status_code=403, detail="API key is inactive")
+
+    ip_address = getattr(getattr(request, "client", None), "host", None)
+    user_agent = None
+    try:
+        user_agent = request.headers.get("user-agent")
+    except Exception:
+        user_agent = None
+
+    started = time.time()
+    raw = await file.read()
+    response_size = None
+
+    try:
+        if not (prompt or "").strip():
+            raise HTTPException(status_code=400, detail="Prompt is required")
+
+        max_size_mb = 500 if (key.plan or "").lower() in ("premium", "enterprise") else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        if len(raw) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+
+        context = {}
+        if context_json:
+            try:
+                context = json.loads(context_json) or {}
+            except Exception:
+                raise HTTPException(status_code=400, detail="context_json must be valid JSON")
+
+        svc = IngestionService(IngestLimits(max_bytes=max_bytes))
+        try:
+            ingested = svc.ingest(file.filename or "uploaded_file", raw)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        prompt_block = build_ingestion_prompt_block(ingested)
+        combined_prompt = f"{prompt}\n\n{prompt_block}" if prompt_block else prompt
+
+        pl_service = PLBuilderService()
+        excel_data = await pl_service.generate_pl_from_natural_language(combined_prompt, context)
+        response_size = len(excel_data) if excel_data is not None else None
+
+        elapsed_ms = int((time.time() - started) * 1000)
+        track_api_usage(
+            db=db,
+            api_key=key,
+            endpoint="/v1/files/generate-pl-with-file",
+            method="POST",
+            status_code=200,
+            request_size_bytes=len(raw),
+            response_size_bytes=response_size,
+            processing_time_ms=elapsed_ms,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+        return StreamingResponse(
+            io.BytesIO(excel_data),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="Profit_Loss_{datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]}.xlsx"'
+            },
+        )
+    except HTTPException as e:
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/files/generate-pl-with-file",
+                method="POST",
+                status_code=e.status_code,
+                request_size_bytes=len(raw) if raw is not None else None,
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise
+    except Exception as e:
+        logger.error(f"Developer generate-pl-with-file failed: {str(e)}")
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/files/generate-pl-with-file",
+                method="POST",
+                status_code=500,
+                request_size_bytes=len(raw) if raw is not None else None,
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Developer P&L generation failed")
+
+
+@app.post("/api/developer/support/chat-with-file")
+async def developer_support_chat_with_file(
+    request: Request,
+    api_key: str = Form(...),
+    message: str = Form(...),
+    page: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    """Developer API: support assistant (KB-grounded) with uploaded file context (API-key auth)."""
+    if not api_key or not api_key.strip():
+        raise HTTPException(status_code=400, detail="API key is required")
+
+    key = get_api_key_by_header(api_key.strip(), db)
+    if not key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    if not key.is_active:
+        raise HTTPException(status_code=403, detail="API key is inactive")
+
+    msg = (message or "").strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="Message is required")
+
+    if _is_disallowed_support_question(msg):
+        return {
+            "answer": "I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.",
+            "refused": True,
+        }
+
+    try:
+        kb_text = _load_kb_text()
+    except Exception:
+        return {
+            "answer": "I can help with product usage and account/API onboarding, but the knowledge base is currently unavailable. Please contact Meldra support.",
+            "refused": False,
+        }
+
+    ip_address = getattr(getattr(request, "client", None), "host", None)
+    user_agent = None
+    try:
+        user_agent = request.headers.get("user-agent")
+    except Exception:
+        user_agent = None
+
+    started = time.time()
+    raw = await file.read()
+    response_size = None
+
+    try:
+        max_size_mb = 500 if (key.plan or "").lower() in ("premium", "enterprise") else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        if len(raw) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+
+        svc = IngestionService(IngestLimits(max_bytes=max_bytes))
+        try:
+            ingested = svc.ingest(file.filename or "uploaded_file", raw)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        picked = _select_relevant_kb_sections(kb_text=kb_text, message=msg, top_k=5)
+        kb_context = "\n\n".join([s["content"] for s in picked])
+        file_context = build_ingestion_prompt_block(ingested)
+
+        prompt = (
+            f"You are Meldra's customer-facing Support Assistant.\n\n"
+            f"RULES:\n"
+            f"- Answer ONLY using the provided Knowledge Base excerpts and the uploaded file context.\n"
+            f"- If the question is outside the KB scope or asks for internal/backend implementation details (database, code, deployment, logs, secrets), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"
+            f"- If you are unsure, ask 1 clarifying question or recommend contacting support.\n"
+            f"- Provide step-by-step guidance with short headings.\n\n"
+            f"USER CONTEXT:\n"
+            f"- API key prefix: {getattr(key, 'key_prefix', '')}\n"
+            f"- Page: {page or ''}\n\n"
+            f"KNOWLEDGE BASE EXCERPTS:\n"
+            f"{kb_context}\n\n"
+            f"{file_context}\n\n"
+            f"USER QUESTION:\n"
+            f"{msg}\n"
+        )
+
+        answer = await invoke_llm(
+            prompt=prompt,
+            add_context=False,
+            model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4-turbo-preview"),
+            max_tokens=900,
+        )
+
+        if not answer:
+            raise Exception("Empty response")
+
+        response_size = len(answer.encode("utf-8", errors="ignore"))
+        elapsed_ms = int((time.time() - started) * 1000)
+        track_api_usage(
+            db=db,
+            api_key=key,
+            endpoint="/v1/support/chat-with-file",
+            method="POST",
+            status_code=200,
+            request_size_bytes=len(raw),
+            response_size_bytes=response_size,
+            processing_time_ms=elapsed_ms,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+        return {
+            "answer": answer,
+            "refused": False,
+            "ingestion": {"filename": ingested.get("filename"), "type": ingested.get("type"), "meta": ingested.get("meta")},
+        }
+    except HTTPException as e:
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/support/chat-with-file",
+                method="POST",
+                status_code=e.status_code,
+                request_size_bytes=len(raw) if raw is not None else None,
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise
+    except Exception as e:
+        logger.error(f"Developer support chat-with-file failed: {str(e)}")
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/support/chat-with-file",
+                method="POST",
+                status_code=500,
+                request_size_bytes=len(raw) if raw is not None else None,
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Developer support request failed")
+
+
 @app.post("/api/convert/doc-to-pdf")
 async def convert_doc_to_pdf(
     file: UploadFile = File(...),
@@ -2698,6 +3256,64 @@ async def generate_pl(
         raise
     except Exception as e:
         logger.error(f"P&L generation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"P&L generation failed: {str(e)}")
+
+
+@app.post("/api/files/generate-pl-with-file")
+async def generate_pl_with_file(
+    prompt: str = Form(...),
+    context_json: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate a P&L Excel file from natural language + uploaded file context."""
+    try:
+        if not (prompt or "").strip():
+            raise HTTPException(status_code=400, detail="Prompt is required")
+
+        _enforce_verified_user(db, current_user["email"])
+        subscription = _get_or_create_subscription(db, current_user["email"])
+        _enforce_ai_quota(subscription)
+
+        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        content = await file.read()
+        if len(content) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+
+        context = {}
+        if context_json:
+            try:
+                context = json.loads(context_json) or {}
+            except Exception:
+                raise HTTPException(status_code=400, detail="context_json must be valid JSON")
+
+        svc = IngestionService(IngestLimits(max_bytes=max_bytes))
+        try:
+            ingested = svc.ingest(file.filename or "uploaded_file", content)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        file_context = build_ingestion_prompt_block(ingested)
+        combined_prompt = f"{prompt}\n\n{file_context}" if file_context else prompt
+
+        pl_service = PLBuilderService()
+        excel_data = await pl_service.generate_pl_from_natural_language(combined_prompt, context)
+
+        _consume_ai_quota(db, subscription)
+
+        return StreamingResponse(
+            io.BytesIO(excel_data),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="Profit_Loss_{datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]}.xlsx"'
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"P&L generate-with-file error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"P&L generation failed: {str(e)}")
 
 

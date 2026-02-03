@@ -12,6 +12,7 @@ export default function PLBuilder() {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [file, setFile] = useState(null);
   const [context, setContext] = useState({
     company_name: '',
     currency: 'USD',
@@ -35,7 +36,9 @@ export default function PLBuilder() {
     setError(null);
 
     try {
-      const blob = await backendApi.files.generatePL(prompt, context);
+      const blob = file
+        ? await backendApi.files.generatePLWithFile(prompt, context, file, { timeoutMs: 120000 })
+        : await backendApi.files.generatePL(prompt, context);
       
       // Create download link
       const url = window.URL.createObjectURL(blob);
@@ -49,6 +52,7 @@ export default function PLBuilder() {
 
       toast.success('P&L statement generated and downloaded!');
       setPrompt('');
+      setFile(null);
     } catch (err) {
       setError(err.message);
       toast.error(err.message || 'Failed to generate P&L statement');
@@ -125,6 +129,23 @@ export default function PLBuilder() {
               rows={4}
               className="mt-2"
             />
+          </div>
+
+          <div>
+            <Label htmlFor="pl-file">Optional: attach a source document</Label>
+            <input
+              id="pl-file"
+              type="file"
+              accept=".docx,.xlsx,.xls,.pptx,.md,.pdf"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="w-full mt-2"
+              disabled={loading}
+            />
+            {file && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Attached: {file.name}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

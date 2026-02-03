@@ -59,12 +59,45 @@ const ENDPOINTS = [
     description: 'Clean ZIP file names',
     acceptFile: '.zip',
   },
+  {
+    id: 'ai-invoke-with-file',
+    name: 'AI: Invoke with File',
+    method: 'POST',
+    path: '/v1/ai/invoke-with-file',
+    icon: FileText,
+    description: 'Run AI analysis with uploaded file context (JSON response)',
+    acceptFile: '.pdf,.docx,.pptx,.md,.xlsx,.xls',
+    responseType: 'json',
+  },
+  {
+    id: 'pl-generate-with-file',
+    name: 'AI: Generate P&L with File',
+    method: 'POST',
+    path: '/v1/files/generate-pl-with-file',
+    icon: FileText,
+    description: 'Generate P&L XLSX with uploaded file context (binary)',
+    acceptFile: '.pdf,.docx,.pptx,.md,.xlsx,.xls',
+    responseType: 'blob',
+  },
+  {
+    id: 'support-chat-with-file',
+    name: 'Support: Chat with File',
+    method: 'POST',
+    path: '/v1/support/chat-with-file',
+    icon: FileText,
+    description: 'KB-grounded support assistant with uploaded file context (JSON response)',
+    acceptFile: '.pdf,.docx,.pptx,.md,.xlsx,.xls',
+    responseType: 'json',
+  },
 ];
 
 export default function ApiTestingConsole() {
   const [apiKey, setApiKey] = useState('');
   const [selectedEndpoint, setSelectedEndpoint] = useState(ENDPOINTS[0]);
   const [file, setFile] = useState(null);
+  const [prompt, setPrompt] = useState('');
+  const [jsonPayload, setJsonPayload] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
@@ -100,17 +133,59 @@ export default function ApiTestingConsole() {
       return;
     }
 
+    if (selectedEndpoint.id === 'ai-invoke-with-file' && !prompt.trim()) {
+      setError('Prompt is required for AI Invoke');
+      return;
+    }
+
+    if (selectedEndpoint.id === 'support-chat-with-file' && !message.trim()) {
+      setError('Message is required for Support Chat');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
 
     try {
       const formData = new FormData();
-      formData.append('endpoint', selectedEndpoint.id);
       formData.append('api_key', apiKey.trim());
       formData.append('file', file);
 
-      const response = await fetch(PROXY_URL, {
+      let url = PROXY_URL;
+      if (selectedEndpoint.id === 'ai-invoke-with-file') {
+        url = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
+          ? `${import.meta.env.VITE_API_URL}/api/developer/ai/invoke-with-file`
+          : '/api/developer/ai/invoke-with-file';
+        formData.append('prompt', prompt);
+        if (jsonPayload.trim()) {
+          // jsonPayload is expected to be a JSON schema string
+          formData.append('response_json_schema', jsonPayload.trim());
+        }
+      } else if (selectedEndpoint.id === 'pl-generate-with-file') {
+        url = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
+          ? `${import.meta.env.VITE_API_URL}/api/developer/files/generate-pl-with-file`
+          : '/api/developer/files/generate-pl-with-file';
+        formData.append('prompt', prompt || 'Generate a P&L');
+        if (jsonPayload.trim()) {
+          // jsonPayload is expected to be a context JSON string
+          formData.append('context_json', jsonPayload.trim());
+        }
+      } else if (selectedEndpoint.id === 'support-chat-with-file') {
+        url = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
+          ? `${import.meta.env.VITE_API_URL}/api/developer/support/chat-with-file`
+          : '/api/developer/support/chat-with-file';
+        formData.append('message', message);
+        if (jsonPayload.trim()) {
+          // jsonPayload is expected to be a page string or JSON; we pass as page if it's not JSON.
+          formData.append('page', jsonPayload.trim());
+        }
+      } else {
+        formData.append('endpoint', selectedEndpoint.id);
+        url = PROXY_URL;
+      }
+
+      const response = await fetch(url, {
         method: 'POST',
         body: formData,
       });
@@ -121,20 +196,31 @@ export default function ApiTestingConsole() {
         throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
       }
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
       const contentType = response.headers.get('content-type') || '';
-      const headerFilename = getFilenameFromHeaders(response.headers);
-      const ext = getExtension(contentType, selectedEndpoint.id);
-      
-      setResult({
-        success: true,
-        status: response.status,
-        contentType,
-        size: blob.size,
-        downloadUrl: url,
-        filename: headerFilename || `${selectedEndpoint.id}_result.${ext}`,
-      });
+
+      if (selectedEndpoint.responseType === 'json') {
+        const data = await response.json().catch(() => null);
+        setResult({
+          success: true,
+          status: response.status,
+          contentType,
+          json: data,
+        });
+      } else {
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const headerFilename = getFilenameFromHeaders(response.headers);
+        const ext = getExtension(contentType, selectedEndpoint.id);
+
+        setResult({
+          success: true,
+          status: response.status,
+          contentType,
+          size: blob.size,
+          downloadUrl: blobUrl,
+          filename: headerFilename || `${selectedEndpoint.id}_result.${ext}`,
+        });
+      }
     } catch (err) {
       setError(err.message || 'Request failed');
       setResult({
@@ -180,6 +266,54 @@ export default function ApiTestingConsole() {
             Get your API key from <a href="mailto:support@meldra.ai" className="text-blue-600 hover:underline">support@meldra.ai</a>
           </p>
         </div>
+
+        {(selectedEndpoint.id === 'ai-invoke-with-file' || selectedEndpoint.id === 'pl-generate-with-file') && (
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Prompt</label>
+              <Input
+                type="text"
+                placeholder={selectedEndpoint.id === 'pl-generate-with-file' ? 'Generate a P&L from this context...' : 'Ask the AI to analyze the uploaded file...'}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                {selectedEndpoint.id === 'ai-invoke-with-file' ? 'Response JSON Schema (optional)' : 'Context JSON (optional)'}
+              </label>
+              <Input
+                type="text"
+                placeholder={selectedEndpoint.id === 'ai-invoke-with-file' ? '{"type":"object",...}' : '{"company_name":"..."}'}
+                value={jsonPayload}
+                onChange={(e) => setJsonPayload(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
+        {selectedEndpoint.id === 'support-chat-with-file' && (
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Message</label>
+              <Input
+                type="text"
+                placeholder="Ask about onboarding, API keys, limits, troubleshooting..."
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Page (optional)</label>
+              <Input
+                type="text"
+                placeholder="/developers"
+                value={jsonPayload}
+                onChange={(e) => setJsonPayload(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Endpoint Selection */}
         <div>
@@ -263,11 +397,18 @@ export default function ApiTestingConsole() {
                 <div className="text-sm space-y-1">
                   <p>Status: {result.status}</p>
                   <p>Content-Type: {result.contentType}</p>
-                  <p>Size: {(result.size / 1024).toFixed(2)} KB</p>
+                  {typeof result.size === 'number' && <p>Size: {(result.size / 1024).toFixed(2)} KB</p>}
                 </div>
-                <Button onClick={handleDownload} size="sm" className="mt-2">
-                  Download Result
-                </Button>
+                {result.downloadUrl && (
+                  <Button onClick={handleDownload} size="sm" className="mt-2">
+                    Download Result
+                  </Button>
+                )}
+                {result.json && (
+                  <pre className="text-xs bg-white border border-green-200 rounded p-2 overflow-auto max-h-56 whitespace-pre-wrap">
+                    {JSON.stringify(result.json, null, 2)}
+                  </pre>
+                )}
               </div>
             </AlertDescription>
           </Alert>
@@ -278,7 +419,13 @@ export default function ApiTestingConsole() {
           <div className="bg-slate-50 p-3 rounded-lg text-xs font-mono">
             <div className="text-slate-600 mb-1">Request:</div>
             <div className="text-blue-700">
-              POST {PROXY_URL} (endpoint={selectedEndpoint.id})
+              {selectedEndpoint.id === 'ai-invoke-with-file'
+                ? `POST ${PROXY_URL.replace('/api/developer/proxy', '/api/developer/ai/invoke-with-file')}`
+                : selectedEndpoint.id === 'pl-generate-with-file'
+                ? `POST ${PROXY_URL.replace('/api/developer/proxy', '/api/developer/files/generate-pl-with-file')}`
+                : selectedEndpoint.id === 'support-chat-with-file'
+                ? `POST ${PROXY_URL.replace('/api/developer/proxy', '/api/developer/support/chat-with-file')}`
+                : `POST ${PROXY_URL} (endpoint=${selectedEndpoint.id})`}
             </div>
             <div className="text-slate-600 mt-2">Headers:</div>
             <div className="text-blue-700">X-API-Key: (sent in form body)</div>

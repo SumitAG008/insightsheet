@@ -19,11 +19,15 @@ export default function AgenticAI() {
   const [thinking, setThinking] = useState(false);
   const [history, setHistory] = useState([]);
   const [data, setData] = useState(null);
+  const [docFile, setDocFile] = useState(null);
 
   useEffect(() => {
     // Load CSV data from session
     const csvData = JSON.parse(sessionStorage.getItem('insightsheet_data') || 'null');
     setData(csvData);
+
+    // Load last uploaded doc (name only; file object cannot be restored)
+    setDocFile(null);
 
     // Load history from localStorage
     const saved = JSON.parse(localStorage.getItem('agent_history') || '[]');
@@ -48,8 +52,8 @@ export default function AgenticAI() {
       return;
     }
 
-    if (!data) {
-      alert('Please upload a CSV file first');
+    if (!data && !docFile) {
+      alert('Please upload a file first');
       return;
     }
 
@@ -57,6 +61,44 @@ export default function AgenticAI() {
     setAgent(null);
 
     try {
+      // Document mode: for .docx/.pptx/.md/.pdf we ingest server-side and produce a report.
+      if (!data && docFile) {
+        const reportPrompt = `You are an autonomous AI agent.
+
+Task: "${task}"
+
+Using the uploaded file context, produce:
+1) A clear summary of the document
+2) Key insights
+3) Risks / anomalies (if any)
+4) Recommended next actions
+
+Respond in markdown with short headings.`;
+
+        const resp = await backendApi.llm.invokeWithFile(reportPrompt, docFile, {
+          addContext: false,
+          timeoutMs: 120000,
+        });
+
+        const execution = {
+          id: Date.now(),
+          timestamp: new Date().toISOString(),
+          task,
+          plan: { task_understood: 'Document analysis', steps: [{ step: 1, action: 'report', description: 'Analyze uploaded document', reasoning: 'Use extracted file context' }], estimated_time: 'N/A', confidence: resp?.ingestion ? 0.9 : 0.7 },
+          results: [{ step: 1, action: 'report', description: 'Analyze uploaded document', success: true, output: resp?.response || resp?.answer || 'Completed' }],
+          finalReport: resp?.response || resp?.answer || 'No response received.',
+          status: 'completed',
+        };
+
+        setAgent({ phase: 'completed', ...execution });
+
+        const newHistory = [execution, ...history].slice(0, 10);
+        setHistory(newHistory);
+        localStorage.setItem('agent_history', JSON.stringify(newHistory));
+        setThinking(false);
+        return;
+      }
+
       // STEP 1: Agent plans the task
       const planPrompt = `You are an autonomous AI agent for data analysis.
 
@@ -360,38 +402,19 @@ Create a clear, business-ready summary.`;
         </Alert>
 
         {/* File Upload Section */}
-        {!data ? (
-          <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-              <Upload className="w-5 h-5 text-[#4169E1]" />
-              Upload Your Data File
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400 mb-4">
-              Upload a CSV or Excel file to get started with the AI Assistant. Your data stays private and is processed in your browser.
-            </p>
-            <FileUploadZone
-              onFileUpload={(file, uploadedData) => {
-                setData(uploadedData);
-                sessionStorage.setItem('insightsheet_data', JSON.stringify(uploadedData));
-                sessionStorage.setItem('insightsheet_filename', file.name);
-              }}
-              acceptedFormats={['.csv', '.xlsx', '.xls']}
-            />
-            <div className="mt-4 text-base text-slate-600 dark:text-slate-400">
-              <p className="flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                <span>Your file is processed locally and never stored on our servers</span>
-              </p>
-            </div>
-          </div>
-        ) : (
+        {data ? (
           <Alert className="mb-8 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800">
             <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             <AlertDescription className="text-slate-700 dark:text-slate-300">
               <div className="flex items-center justify-between">
                 <div>
-                  <strong className="text-emerald-600 dark:text-emerald-400">Data Loaded:</strong> {sessionStorage.getItem('insightsheet_filename') || 'File'} 
-                  <span className="text-sm text-slate-500 dark:text-slate-400 ml-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <strong className="text-emerald-600 dark:text-emerald-400">Data Loaded:</strong> {sessionStorage.getItem('insightsheet_filename') || 'File'}
+                    <Badge className="bg-slate-900/5 dark:bg-white/10 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700">
+                      Local tabular
+                    </Badge>
+                  </div>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
                     ({data.rows.length} rows, {data.headers.length} columns)
                   </span>
                 </div>
@@ -400,6 +423,7 @@ Create a clear, business-ready summary.`;
                   size="sm"
                   onClick={() => {
                     setData(null);
+                    setDocFile(null);
                     sessionStorage.removeItem('insightsheet_data');
                     sessionStorage.removeItem('insightsheet_filename');
                   }}
@@ -411,6 +435,73 @@ Create a clear, business-ready summary.`;
               </div>
             </AlertDescription>
           </Alert>
+        ) : docFile ? (
+          <Alert className="mb-8 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800">
+            <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <AlertDescription className="text-slate-700 dark:text-slate-300">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <strong className="text-emerald-600 dark:text-emerald-400">Document Loaded:</strong> {sessionStorage.getItem('insightsheet_filename') || docFile.name}
+                    <Badge className="bg-slate-900/5 dark:bg-white/10 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700">
+                      Server-ingested document
+                    </Badge>
+                  </div>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                    ({(docFile.size / 1024).toFixed(2)} KB)
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setData(null);
+                    setDocFile(null);
+                    sessionStorage.removeItem('insightsheet_data');
+                    sessionStorage.removeItem('insightsheet_filename');
+                  }}
+                  className="border-slate-300 dark:border-slate-600"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Remove File
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        ) : (
+          <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-sm">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <Upload className="w-5 h-5 text-[#4169E1]" />
+              Upload Your Data File
+            </h2>
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              Upload CSV/Excel for local analysis, or upload PDF/Word/PPT/Markdown for server-side AI ingestion.
+            </p>
+            <FileUploadZone
+              onFileUpload={(file, uploadedData) => {
+                const ext = (file?.name || '').split('.').pop()?.toLowerCase();
+                const isTabular = ext === 'csv' || ext === 'xlsx' || ext === 'xls';
+                if (isTabular) {
+                  setDocFile(null);
+                  setData(uploadedData);
+                  sessionStorage.setItem('insightsheet_data', JSON.stringify(uploadedData));
+                  sessionStorage.setItem('insightsheet_filename', file.name);
+                } else {
+                  setData(null);
+                  setDocFile(file);
+                  sessionStorage.removeItem('insightsheet_data');
+                  sessionStorage.setItem('insightsheet_filename', file.name);
+                }
+              }}
+              acceptedFormats={['.csv', '.xlsx', '.xls', '.docx', '.pptx', '.md', '.pdf']}
+            />
+            <div className="mt-4 text-base text-slate-600 dark:text-slate-400">
+              <p className="flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                <span>CSV/Excel is processed locally. Documents are sent for AI ingestion and not stored.</span>
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Task Input */}

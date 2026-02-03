@@ -4,12 +4,16 @@ import { Upload, FileSpreadsheet, Loader2, CheckCircle, Info, AlertCircle } from
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { meldraAi } from '@/api/meldraClient';
 
-export default function FileUploadZone({ onFileUpload, isProcessing }) {
+export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFormats }) {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [processingStatus, setProcessingStatus] = useState('');
   const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
+
+  const formats = Array.isArray(acceptedFormats) && acceptedFormats.length
+    ? acceptedFormats
+    : ['.csv', '.xlsx', '.xls'];
 
   useEffect(() => {
     loadUserAndSubscription();
@@ -207,7 +211,10 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
         setProcessingStatus('Parsing Excel...');
         data = await parseExcel(file);
       } else {
-        throw new Error('Unsupported file format');
+        // Non-tabular formats are handled by server-side ingestion in the calling page.
+        setProcessingStatus('');
+        onFileUpload(file, null);
+        return;
       }
       
       if (data && data.rows.length > 0) {
@@ -231,26 +238,28 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
     const file = e.dataTransfer.files[0];
     if (file) {
       const ext = file.name.split('.').pop().toLowerCase();
-      if (['csv', 'xlsx', 'xls'].includes(ext)) {
+      const allowed = formats.map((f) => String(f || '').replace('.', '').toLowerCase());
+      if (allowed.includes(ext)) {
         processFile(file);
       } else {
-        alert('Please upload CSV or Excel files only (.csv, .xlsx, .xls)');
+        alert(`Please upload supported files only (${formats.join(', ')})`);
       }
     }
-  }, [processFile]);
+  }, [processFile, formats]);
 
   const handleFileInput = useCallback((e) => {
     const file = e.target.files[0];
     if (file) {
       const ext = file.name.split('.').pop().toLowerCase();
-      if (['csv', 'xlsx', 'xls'].includes(ext)) {
+      const allowed = formats.map((f) => String(f || '').replace('.', '').toLowerCase());
+      if (allowed.includes(ext)) {
         processFile(file);
       } else {
-        alert('Please upload CSV or Excel files only (.csv, .xlsx, .xls)');
+        alert(`Please upload supported files only (${formats.join(', ')})`);
         e.target.value = '';
       }
     }
-  }, [processFile]);
+  }, [processFile, formats]);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
@@ -299,7 +308,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
         }`}>
           <input
             type="file"
-            accept=".csv,.xlsx,.xls"
+            accept={formats.join(',')}
             onChange={handleFileInput}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             disabled={isProcessing || !!processingStatus}
@@ -343,7 +352,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing }) {
                 
                 <div className="flex flex-wrap justify-center gap-3 text-base mb-6">
                   <span className="px-6 py-3 bg-[#4169E1] border border-[#4169E1] rounded-lg text-white font-bold">
-                    .CSV • .XLSX • .XLS
+                    {formats.map((f) => String(f || '').toUpperCase()).join(' • ')}
                   </span>
                 </div>
                 

@@ -291,6 +291,30 @@ export const backendApi = {
       return data.response || data;
     },
 
+    invokeWithFile: async (prompt, file, options = {}) => {
+      const formData = new FormData();
+      formData.append('prompt', prompt || '');
+      formData.append('add_context_from_internet', String(!!options.addContext));
+      if (options.responseSchema) {
+        formData.append('response_json_schema', JSON.stringify(options.responseSchema));
+      }
+      formData.append('file', file);
+
+      const response = await apiCall('/api/integrations/llm/invoke-with-file', {
+        method: 'POST',
+        body: formData,
+        timeoutMs: options.timeoutMs || 90000,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `LLM invoke-with-file failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    },
+
     generateImage: async (options = {}) => {
       const response = await apiCall('/api/integrations/image/generate', {
         method: 'POST',
@@ -369,6 +393,25 @@ export const backendApi = {
       }
       return response.json();
     },
+
+    chatWithFile: async (message, file, options = {}) => {
+      const formData = new FormData();
+      formData.append('message', message || '');
+      if (options.page) formData.append('page', options.page);
+      formData.append('file', file);
+
+      const response = await apiCall('/api/support/chat-with-file', {
+        method: 'POST',
+        body: formData,
+        timeoutMs: options.timeoutMs || 90000,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Support chat-with-file failed: ${response.status}`);
+      }
+      return response.json();
+    },
   },
 
   // File Processing
@@ -400,6 +443,38 @@ export const backendApi = {
         throw new Error(error.detail || 'Conversion failed');
       }
 
+      return response.blob();
+    },
+
+    generatePL: async (prompt, context) => {
+      const response = await apiCall('/api/files/generate-pl', {
+        method: 'POST',
+        body: { prompt, context: context || {} },
+        timeoutMs: 90000,
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `P&L generation failed: ${response.status}`);
+      }
+      return response.blob();
+    },
+
+    generatePLWithFile: async (prompt, context, file, options = {}) => {
+      const formData = new FormData();
+      formData.append('prompt', prompt || '');
+      if (context) formData.append('context_json', JSON.stringify(context));
+      formData.append('file', file);
+
+      const response = await apiCall('/api/files/generate-pl-with-file', {
+        method: 'POST',
+        body: formData,
+        timeoutMs: options.timeoutMs || 90000,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `P&L generate-with-file failed: ${response.status}`);
+      }
       return response.blob();
     },
 

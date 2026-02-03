@@ -2487,8 +2487,13 @@ async def developer_api_proxy(
         raise HTTPException(status_code=403, detail="API key is inactive")
 
     if (getattr(key, "plan", "") or "").lower() == "sandbox":
+        bypass_raw = os.getenv("SANDBOX_QUOTA_BYPASS_EMAILS", "")
+        bypass_emails = {e.strip().lower() for e in bypass_raw.split(",") if e.strip()}
+        key_owner_email = (getattr(key, "user_email", "") or "").strip().lower()
+        bypass_for_owner = bool(key_owner_email) and key_owner_email in bypass_emails
+
         allowed = {"pdf-to-doc", "doc-to-pdf", "ppt-to-pdf", "pdf-to-ppt", "zip-clean"}
-        if endpoint in allowed:
+        if (not bypass_for_owner) and endpoint in allowed:
             used = (
                 db.query(func.count(ApiUsage.id))
                 .filter(

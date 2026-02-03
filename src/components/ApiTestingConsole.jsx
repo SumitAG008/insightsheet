@@ -69,6 +69,27 @@ export default function ApiTestingConsole() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  const getFilenameFromHeaders = (headers) => {
+    const cd = headers?.get?.('content-disposition') || '';
+    const match = cd.match(/filename\*=UTF-8''([^;]+)|filename="?([^";]+)"?/i);
+    const raw = decodeURIComponent((match?.[1] || match?.[2] || '').trim());
+    return raw || null;
+  };
+
+  const getExtension = (contentType, endpointId) => {
+    const ct = (contentType || '').toLowerCase();
+    if (ct.includes('application/pdf')) return 'pdf';
+    if (ct.includes('application/zip')) return 'zip';
+    if (ct.includes('wordprocessingml.document')) return 'docx';
+    if (ct.includes('presentationml.presentation')) return 'pptx';
+    // Fallback by endpoint (more reliable than blob.type)
+    if (endpointId === 'pdf-to-doc') return 'docx';
+    if (endpointId === 'pdf-to-ppt') return 'pptx';
+    if (endpointId === 'doc-to-pdf' || endpointId === 'ppt-to-pdf') return 'pdf';
+    if (endpointId === 'zip-clean') return 'zip';
+    return 'bin';
+  };
+
   const handleTest = async () => {
     if (!apiKey.trim()) {
       setError('API key is required');
@@ -102,14 +123,17 @@ export default function ApiTestingConsole() {
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
+      const contentType = response.headers.get('content-type') || '';
+      const headerFilename = getFilenameFromHeaders(response.headers);
+      const ext = getExtension(contentType, selectedEndpoint.id);
       
       setResult({
         success: true,
         status: response.status,
-        contentType: response.headers.get('content-type'),
+        contentType,
         size: blob.size,
         downloadUrl: url,
-        filename: `${selectedEndpoint.id}_result.${blob.type.includes('pdf') ? 'pdf' : blob.type.includes('docx') ? 'docx' : blob.type.includes('pptx') ? 'pptx' : 'zip'}`,
+        filename: headerFilename || `${selectedEndpoint.id}_result.${ext}`,
       });
     } catch (err) {
       setError(err.message || 'Request failed');

@@ -207,6 +207,7 @@ def pdf_to_pptx(pdf_bytes: bytes) -> Tuple[bytes, str]:
         if len(doc) == 0:
             doc.close()
             return b'', "PDF has no pages."
+
         prs = Presentation()
         # EMU: 914400 per inch (OOXML)
         EMU_PER_INCH = 914400
@@ -214,22 +215,51 @@ def pdf_to_pptx(pdf_bytes: bytes) -> Tuple[bytes, str]:
         slide_h_inch = prs.slide_height / EMU_PER_INCH
         from pptx.util import Inches
 
+        pictures_added = 0
+        # Use a matrix-based render (more reliable across PyMuPDF versions than dpi=...)
+        render_scale = 2.0  # ~144dpi equivalent depending on page size
+        matrix = fitz.Matrix(render_scale, render_scale)
+
         for i in range(len(doc)):
             page = doc[i]
             blank = prs.slide_layouts[6]  # Blank
             slide = prs.slides.add_slide(blank)
-            pix = page.get_pixmap(dpi=150, alpha=False)
+
+            pix = page.get_pixmap(matrix=matrix, alpha=False)
+            # Normalize colorspace to RGB to avoid some viewers showing blank images
+            try:
+                if pix.colorspace is None or pix.colorspace.n != 3:
+                    pix = fitz.Pixmap(fitz.csRGB, pix)
+            except Exception:
+                pass
+
             img_bytes = pix.tobytes("png")
+            if not img_bytes:
+                continue
+
             stream = io.BytesIO(img_bytes)
-            img_w_inch = pix.width / 150.0
-            img_h_inch = pix.height / 150.0
+            stream.seek(0)
+
+            # Infer physical size relative to slide
+            # Default slide is 10 x 7.5 inches; compute scaling from rendered pixel dimensions.
+            # 96 PPI is a pragmatic baseline; exact PPI isn't critical because we fit-to-slide.
+            ppi = 96.0
+            img_w_inch = pix.width / ppi
+            img_h_inch = pix.height / ppi
             scale = min(slide_w_inch / img_w_inch, slide_h_inch / img_h_inch) if img_w_inch and img_h_inch else 1.0
             w = img_w_inch * scale
             h = img_h_inch * scale
-            left = (slide_w_inch - w) / 2.0
-            top = (slide_h_inch - h) / 2.0
+            left = max((slide_w_inch - w) / 2.0, 0.0)
+            top = max((slide_h_inch - h) / 2.0, 0.0)
+
             slide.shapes.add_picture(stream, Inches(left), Inches(top), width=Inches(w), height=Inches(h))
+            pictures_added += 1
+
         doc.close()
+
+        if pictures_added == 0:
+            return b'', "PDF to PPT produced no renderable pages (no images added)."
+
         buf = io.BytesIO()
         prs.save(buf)
         buf.seek(0)

@@ -2071,6 +2071,8 @@ class OCRExportRequest(BaseModel):
 async def ocr_extract(
     file: UploadFile = File(...),
     ocr_lang: Optional[str] = Form(None),
+    max_pages: Optional[int] = Form(None),
+    timeout_seconds: Optional[float] = Form(None),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -2107,12 +2109,34 @@ async def ocr_extract(
         api_key = (os.getenv("OCR_SPACE_API_KEY") or "").strip()
 
         # PDF: always use PyMuPDF path (digital extraction or OCR per page).
+        try:
+            ocr_pdf_timeout = float(os.getenv("OCR_TIMEOUT_PDF_SECONDS", "180").strip() or "180")
+        except Exception:
+            ocr_pdf_timeout = 180.0
+        try:
+            ocr_img_timeout = float(os.getenv("OCR_TIMEOUT_IMAGE_SECONDS", "120").strip() or "120")
+        except Exception:
+            ocr_img_timeout = 120.0
+        try:
+            ocr_default_max_pages = int(os.getenv("OCR_MAX_PAGES_DEFAULT", "25").strip() or "25")
+        except Exception:
+            ocr_default_max_pages = 25
+        ocr_default_max_pages = max(1, min(ocr_default_max_pages, 200))
+        ocr_pdf_timeout = max(10.0, min(ocr_pdf_timeout, 900.0))
+        ocr_img_timeout = max(10.0, min(ocr_img_timeout, 900.0))
+
+        if isinstance(max_pages, int):
+            max_pages = max(1, min(max_pages, 200))
+        if isinstance(timeout_seconds, (int, float)):
+            timeout_seconds = float(timeout_seconds)
+            timeout_seconds = max(10.0, min(timeout_seconds, 900.0))
+
         if ext in OCRService.ALLOWED_PDF_EXTENSIONS:
             ocr = OCRService()
             try:
                 out = await asyncio.wait_for(
-                    asyncio.to_thread(ocr.extract_pdf_with_layout, file_content, 25, ocr_lang),
-                    90.0
+                    asyncio.to_thread(ocr.extract_pdf_with_layout, file_content, max_pages or ocr_default_max_pages, ocr_lang),
+                    timeout_seconds or ocr_pdf_timeout,
                 )
             except asyncio.TimeoutError:
                 raise HTTPException(status_code=503, detail="PDF OCR is taking too long. Try a smaller PDF or fewer pages.")
@@ -2155,7 +2179,7 @@ async def ocr_extract(
             try:
                 out = await asyncio.wait_for(
                     asyncio.to_thread(ocr.extract_with_layout, io.BytesIO(file_content), ocr_lang),
-                    55.0
+                    timeout_seconds or ocr_img_timeout,
                 )
             except asyncio.TimeoutError:
                 msg = "OCR is taking too long. Try a smaller or simpler image, or try again later."
@@ -2207,310 +2231,6 @@ async def ocr_extract(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/api/files/ocr-export")
-async def ocr_export(
-    body: OCRExportRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Export edited OCR text to editable DOC or PDF. Generic for any form or document. Call after ocr-extract.
-    """
-    try:
-        if body.format not in ("doc", "pdf"):
-            raise HTTPException(status_code=400, detail="format must be 'doc' or 'pdf'")
-
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
-        _enforce_conversion_quota(
-            db,
-            current_user["email"],
-            "ocr_to_doc" if body.format == "doc" else "ocr_to_pdf",
-            subscription,
-        )
-
-        # Exact copy: original image as full PDF page (looks exactly like the scan)
-        if body.format == "pdf" and body.preserve_image and body.image_base64:
-            try:
-                image_bytes = base64.b64decode(body.image_base64)
-            except Exception as e:
-                raise HTTPException(status_code=400, detail="Invalid image_base64 for preserve_image.")
-            data = pdf_from_image(image_bytes)
-            filename = f"ocr_exact_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
-            processing_history = FileProcessingHistory(
-                user_email=current_user["email"],
-                processing_type="ocr_to_pdf",
-                original_filename=filename,
-                file_size_mb=len(data) / (1024 * 1024),
-                status="success"
-            )
-            db.add(processing_history)
-            db.commit()
-            logger.info(f"OCR export pdf (preserve_image): {current_user['email']}")
-            return StreamingResponse(
-                io.BytesIO(data),
-                media_type="application/pdf",
-                headers={"Content-Disposition": f"attachment; filename={filename}"}
-            )
-
-        ocr = OCRService()
-        title = (body.title or "OCR Document").strip() or "OCR Document"
-
-        # Multi-page layout export (for PDFs). If pages are provided, ignore single-page layout fields.
-        if (body.mode or "form") == "layout" and body.pages and isinstance(body.pages, list) and len(body.pages) > 0:
-            pages_to_use = body.pages
-            # Merge user-edited body.text into page layouts sequentially so DOC/PDF reflect textarea edits.
-            if body.text is not None:
-                edited_lines = [ln.rstrip() for ln in (body.text or "").splitlines()]
-                pages_copy = []
-                cursor = 0
-                for p in (body.pages or []):
-                    pp = dict(p or {})
-                    layout_src = pp.get("layout") or []
-                    layout_copy = [dict(ln) for ln in layout_src]
-                    for i in range(len(layout_copy)):
-                        if cursor < len(edited_lines):
-                            layout_copy[i]["text"] = edited_lines[cursor]
-                            cursor += 1
-                    pp["layout"] = layout_copy
-                    pages_copy.append(pp)
-                pages_to_use = pages_copy
-
-            if body.format == "doc":
-                data = ocr.text_to_docx_layout_pages(pages_to_use, title=title)
-                media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                filename = f"ocr_export_{datetime.utcnow().strftime('%Y%m%d_%H%m%S')}.docx"
-            else:
-                data = ocr.text_to_pdf_layout_pages(pages_to_use, title=title)
-                media = "application/pdf"
-                filename = f"ocr_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
-
-            processing_history = FileProcessingHistory(
-                user_email=current_user["email"],
-                processing_type="ocr_to_doc" if body.format == "doc" else "ocr_to_pdf",
-                original_filename=filename,
-                file_size_mb=len(data) / (1024 * 1024),
-                status="success"
-            )
-            db.add(processing_history)
-            db.commit()
-            logger.info(f"OCR export {body.format} (pages): {current_user['email']}")
-
-            return StreamingResponse(
-                io.BytesIO(data),
-                media_type=media,
-                headers={"Content-Disposition": f"attachment; filename={filename}"}
-            )
-
-        # Use layout only when we have lines or tables to place; else fall back to form (text) so fields are not lost
-        use_layout = (
-            (body.mode or "form") == "layout"
-            and body.layout is not None
-            and (body.image_width or 0) > 0
-            and (body.image_height or 0) > 0
-            and (len(body.layout or []) > 0 or (body.tables and len(body.tables) > 0))
-        )
-
-        # Layout: merge user-edited body.text into layout so DOC/PDF reflect textarea edits.
-        layout_to_use = body.layout
-        if use_layout and body.layout and body.text is not None:
-            edited_lines = [ln.rstrip() for ln in (body.text or "").splitlines()]
-            layout_copy = [dict(ln) for ln in body.layout]
-            for i in range(len(layout_copy)):
-                if i < len(edited_lines):
-                    layout_copy[i]["text"] = edited_lines[i]
-            layout_to_use = layout_copy
-
-        if body.format == "doc":
-            if use_layout:
-                data = ocr.text_to_docx_layout(
-                    layout_to_use, body.image_width, body.image_height, title=title, tables=body.tables
-                )
-            else:
-                data = ocr.text_to_docx(body.text, title=title)
-            media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            filename = f"ocr_export_{datetime.utcnow().strftime('%Y%m%d_%H%m%S')}.docx"
-        else:
-            if use_layout:
-                data = ocr.text_to_pdf_layout(
-                    layout_to_use, body.image_width, body.image_height, title=title, tables=body.tables
-                )
-            else:
-                data = ocr.text_to_pdf(body.text, title=title)
-            media = "application/pdf"
-            filename = f"ocr_export_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.pdf"
-
-        processing_history = FileProcessingHistory(
-            user_email=current_user["email"],
-            processing_type="ocr_to_doc" if body.format == "doc" else "ocr_to_pdf",
-            original_filename=filename,
-            file_size_mb=len(data) / (1024 * 1024),
-            status="success"
-        )
-        db.add(processing_history)
-        db.commit()
-        logger.info(f"OCR export {body.format}: {current_user['email']}")
-
-        return StreamingResponse(
-            io.BytesIO(data),
-            media_type=media,
-            headers={"Content-Disposition": f"attachment; filename={filename}"}
-        )
-    except HTTPException:
-        raise
-    except RuntimeError as e:
-        if "not installed" in str(e).lower():
-            raise HTTPException(status_code=503, detail=str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-    except Exception as e:
-        logger.error(f"OCR export error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============================================================================
-# DOCUMENT CONVERTER (in-app, no API key): PDF↔DOC, DOC↔PDF, PPT↔PDF, PDF↔PPT
-# ============================================================================
-_MAX_CONVERT_MB = 25  # max file size for convert endpoints (free); premium uses 100
-
-
-def _is_subscribed_for_conversions(subscription: Optional[Subscription]) -> bool:
-    if not subscription:
-        return False
-    if (subscription.plan or "").lower() != "premium":
-        return False
-    if (subscription.status or "").lower() != "active":
-        return False
-    return True
-
-
-def _enforce_conversion_quota(
-    db: Session,
-    user_email: str,
-    processing_type: str,
-    subscription: Optional[Subscription],
-):
-    """Enforce per-email quotas for conversion endpoints.
-
-    Free: 1 successful conversion per processing_type per email (lifetime)
-    Subscribed (premium+active): 100 successful conversions per day per processing_type per email
-    """
-    subscribed = _is_subscribed_for_conversions(subscription)
-
-    q = db.query(func.count(FileProcessingHistory.id)).filter(
-        FileProcessingHistory.user_email == user_email,
-        FileProcessingHistory.processing_type == processing_type,
-        FileProcessingHistory.status == "success",
-    )
-
-    if subscribed:
-        start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        end = start + timedelta(days=1)
-        used = q.filter(
-            FileProcessingHistory.created_date >= start,
-            FileProcessingHistory.created_date < end,
-        ).scalar() or 0
-        if used >= 100:
-            raise HTTPException(
-                status_code=429,
-                detail=f"Daily limit reached for {processing_type}. Limit is 100/day for your plan.",
-            )
-        return
-
-    used = q.scalar() or 0
-    if used >= 1:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Free limit reached for {processing_type}. Free tier includes 1 conversion per type per email.",
-        )
-
-
-def _ascii_safe_filename(s: str) -> str:
-    """Make a string safe for Content-Disposition filename= (HTTP headers must be latin-1)."""
-    if not s or not s.strip():
-        return "file"
-    for old, new in (
-        ("\u2013", "-"), ("\u2014", "-"), ("\u2011", "-"), ("\u00A0", " "),
-        ("\u2018", "'"), ("\u2019", "'"), ("\u201C", '"'), ("\u201D", '"'),
-    ):
-        s = s.replace(old, new)
-    return "".join(c if ord(c) < 128 else "_" for c in s)
-
-
-async def _convert_endpoint(
-    file: UploadFile,
-    current_user: dict,
-    db: Session,
-    in_ext: list,
-    out_ext: str,
-    media_type: str,
-    converter_fn,
-    processing_type: str,
-    converter_kwargs: Optional[dict] = None,
-):
-    """Shared logic for /api/convert/* endpoints. Returns (data_bytes, out_filename) or raises HTTPException."""
-    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
-    _enforce_conversion_quota(db, current_user["email"], processing_type, subscription)
-    max_mb = 100 if (subscription and subscription.plan == "premium") else _MAX_CONVERT_MB
-    max_bytes = max_mb * 1024 * 1024
-
-    raw = await file.read()
-    size_mb = len(raw) / (1024 * 1024)
-    if len(raw) > max_bytes:
-        raise HTTPException(status_code=413, detail=f"File size ({size_mb:.1f}MB) exceeds {max_mb}MB limit")
-
-    ext = (os.path.splitext(file.filename or "")[1] or "").lower()
-    if ext not in in_ext:
-        raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {', '.join(in_ext)}")
-
-    if converter_kwargs:
-        data, err = converter_fn(raw, **converter_kwargs)
-    else:
-        data, err = converter_fn(raw)
-    if err:
-        raise HTTPException(status_code=400, detail=err)
-
-    base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
-    base = _ascii_safe_filename(base)
-    out_name = f"{base}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}{out_ext}"
-    rec = FileProcessingHistory(
-        user_email=current_user["email"],
-        processing_type=processing_type,
-        original_filename=file.filename,
-        file_size_mb=size_mb,
-        status="success",
-    )
-    db.add(rec)
-    db.commit()
-    logger.info(f"Convert {processing_type}: {file.filename} by {current_user['email']}")
-    return data, out_name, media_type
-
-
-@app.post("/api/convert/pdf-to-doc")
-async def convert_pdf_to_doc(
-    file: UploadFile = File(...),
-    ocr_lang: Optional[str] = Form(None),
-    mode: Optional[str] = Form(None),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Convert PDF to DOCX. In-app, no API key. File not stored."""
-    data, out_name, media = await _convert_endpoint(
-        file, current_user, db,
-        in_ext=[".pdf"],
-        out_ext=".docx",
-        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        converter_fn=pdf_to_docx_smart,
-        processing_type="pdf_to_doc",
-        converter_kwargs={"ocr_lang": ocr_lang, "mode": mode},
-    )
-    return StreamingResponse(
-        io.BytesIO(data),
-        media_type=media,
-        headers={"Content-Disposition": f"attachment; filename={out_name}"},
-    )
-
-
 @app.post("/api/developer/proxy")
 async def developer_api_proxy(
     request: Request,
@@ -2520,6 +2240,8 @@ async def developer_api_proxy(
     ocr_lang: Optional[str] = Form(None),
     options: Optional[str] = Form(None),
     mode: Optional[str] = Form(None),
+    max_pages: Optional[int] = Form(None),
+    timeout_seconds: Optional[float] = Form(None),
     db: Session = Depends(get_db),
 ):
     """Proxy browser-based API testing requests.
@@ -2652,39 +2374,58 @@ async def developer_api_proxy(
             lang = ocr_lang
 
             try:
-                if ext in OCRService.ALLOWED_PDF_EXTENSIONS:
-                    extracted = await asyncio.wait_for(
-                        asyncio.to_thread(ocr.extract_pdf_with_layout, raw, 25, lang),
-                        90.0,
+                ocr_pdf_timeout = float(os.getenv("OCR_TIMEOUT_PDF_SECONDS", "180").strip() or "180")
+            except Exception:
+                ocr_pdf_timeout = 180.0
+            try:
+                ocr_img_timeout = float(os.getenv("OCR_TIMEOUT_IMAGE_SECONDS", "120").strip() or "120")
+            except Exception:
+                ocr_img_timeout = 120.0
+            try:
+                ocr_default_max_pages = int(os.getenv("OCR_MAX_PAGES_DEFAULT", "25").strip() or "25")
+            except Exception:
+                ocr_default_max_pages = 25
+            ocr_default_max_pages = max(1, min(ocr_default_max_pages, 200))
+            ocr_pdf_timeout = max(10.0, min(ocr_pdf_timeout, 900.0))
+            ocr_img_timeout = max(10.0, min(ocr_img_timeout, 900.0))
+
+            if ext in OCRService.ALLOWED_PDF_EXTENSIONS:
+                try:
+                    out = await asyncio.wait_for(
+                        asyncio.to_thread(ocr.extract_pdf_with_layout, raw, max_pages or ocr_default_max_pages, lang),
+                        timeout_seconds or ocr_pdf_timeout,
                     )
-                    pages = extracted.get("pages") or []
-                    if endpoint == "ocr-to-doc":
-                        data = ocr.text_to_docx_layout_pages(pages, title="OCR Document")
-                        media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        out_ext = ".docx"
-                    else:
-                        data = ocr.text_to_pdf_layout_pages(pages, title="OCR Document")
-                        media = "application/pdf"
-                        out_ext = ".pdf"
+                except asyncio.TimeoutError:
+                    raise HTTPException(status_code=503, detail="PDF OCR is taking too long. Try a smaller PDF or fewer pages.")
+                pages = out.get("pages") or []
+                if endpoint == "ocr-to-doc":
+                    data = ocr.text_to_docx_layout_pages(pages, title="OCR Document")
+                    media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    out_ext = ".docx"
                 else:
-                    extracted = await asyncio.wait_for(
+                    data = ocr.text_to_pdf_layout_pages(pages, title="OCR Document")
+                    media = "application/pdf"
+                    out_ext = ".pdf"
+            else:
+                try:
+                    out = await asyncio.wait_for(
                         asyncio.to_thread(ocr.extract_with_layout, io.BytesIO(raw), lang),
-                        55.0,
+                        timeout_seconds or ocr_img_timeout,
                     )
-                    layout = extracted.get("layout") or []
-                    iw = int(extracted.get("image_width") or 0)
-                    ih = int(extracted.get("image_height") or 0)
-                    tables = extracted.get("tables") or []
-                    if endpoint == "ocr-to-doc":
-                        data = ocr.text_to_docx_layout(layout, iw, ih, title="OCR Document", tables=tables)
-                        media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        out_ext = ".docx"
-                    else:
-                        data = ocr.text_to_pdf_layout(layout, iw, ih, title="OCR Document", tables=tables)
-                        media = "application/pdf"
-                        out_ext = ".pdf"
-            except asyncio.TimeoutError:
-                raise HTTPException(status_code=503, detail="OCR is taking too long. Try a smaller file or fewer pages.")
+                except asyncio.TimeoutError:
+                    raise HTTPException(status_code=503, detail="OCR is taking too long. Try a smaller or simpler image, or try again later.")
+                layout = out.get("layout") or []
+                iw = int(out.get("image_width") or 0)
+                ih = int(out.get("image_height") or 0)
+                tables = out.get("tables") or []
+                if endpoint == "ocr-to-doc":
+                    data = ocr.text_to_docx_layout(layout, iw, ih, title="OCR Document", tables=tables)
+                    media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    out_ext = ".docx"
+                else:
+                    data = ocr.text_to_pdf_layout(layout, iw, ih, title="OCR Document", tables=tables)
+                    media = "application/pdf"
+                    out_ext = ".pdf"
         else:
             raise HTTPException(status_code=400, detail="Unknown endpoint")
 
@@ -2749,471 +2490,6 @@ async def developer_api_proxy(
         except Exception:
             pass
         raise HTTPException(status_code=500, detail="Developer API proxy failed")
-
-
-@app.post("/api/developer/ai/invoke-with-file")
-async def developer_invoke_llm_with_file(
-    request: Request,
-    api_key: str = Form(...),
-    prompt: str = Form(...),
-    add_context_from_internet: bool = Form(False),
-    response_json_schema: Optional[str] = Form(None),
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-):
-    """Developer API: invoke LLM with an uploaded file (API-key auth)."""
-    if not api_key or not api_key.strip():
-        raise HTTPException(status_code=400, detail="API key is required")
-
-    key = get_api_key_by_header(api_key.strip(), db)
-    if not key:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    if not key.is_active:
-        raise HTTPException(status_code=403, detail="API key is inactive")
-
-    ip_address = getattr(getattr(request, "client", None), "host", None)
-    user_agent = None
-    try:
-        user_agent = request.headers.get("user-agent")
-    except Exception:
-        user_agent = None
-
-    started = time.time()
-    raw = await file.read()
-    response_size = None
-
-    try:
-        max_size_mb = 500 if (key.plan or "").lower() in ("premium", "enterprise") else 10
-        max_bytes = max_size_mb * 1024 * 1024
-        if len(raw) > max_bytes:
-            raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
-
-        svc = IngestionService(IngestLimits(max_bytes=max_bytes))
-        try:
-            ingested = svc.ingest(file.filename or "uploaded_file", raw)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-
-        prompt_block = build_ingestion_prompt_block(ingested)
-        combined_prompt = f"{prompt}\n\n{prompt_block}" if prompt_block else prompt
-
-        schema_obj = None
-        if response_json_schema:
-            try:
-                schema_obj = json.loads(response_json_schema)
-            except Exception:
-                raise HTTPException(status_code=400, detail="response_json_schema must be valid JSON")
-
-        response = await invoke_llm(
-            prompt=combined_prompt,
-            add_context=add_context_from_internet,
-            response_schema=schema_obj,
-        )
-
-        response_size = len(response.encode("utf-8", errors="ignore")) if isinstance(response, str) else None
-        elapsed_ms = int((time.time() - started) * 1000)
-        track_api_usage(
-            db=db,
-            api_key=key,
-            endpoint="/v1/ai/invoke-with-file",
-            method="POST",
-            status_code=200,
-            request_size_bytes=len(raw),
-            response_size_bytes=response_size,
-            processing_time_ms=elapsed_ms,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-
-        return {
-            "response": response,
-            "ingestion": {"filename": ingested.get("filename"), "type": ingested.get("type"), "meta": ingested.get("meta")},
-        }
-    except HTTPException as e:
-        elapsed_ms = int((time.time() - started) * 1000)
-        try:
-            track_api_usage(
-                db=db,
-                api_key=key,
-                endpoint="/v1/ai/invoke-with-file",
-                method="POST",
-                status_code=e.status_code,
-                request_size_bytes=len(raw) if raw is not None else None,
-                response_size_bytes=response_size,
-                processing_time_ms=elapsed_ms,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
-        except Exception:
-            pass
-        raise
-    except Exception as e:
-        logger.error(f"Developer invoke-with-file failed: {str(e)}")
-        elapsed_ms = int((time.time() - started) * 1000)
-        try:
-            track_api_usage(
-                db=db,
-                api_key=key,
-                endpoint="/v1/ai/invoke-with-file",
-                method="POST",
-                status_code=500,
-                request_size_bytes=len(raw) if raw is not None else None,
-                response_size_bytes=response_size,
-                processing_time_ms=elapsed_ms,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
-        except Exception:
-            pass
-        raise HTTPException(status_code=500, detail="Developer AI request failed")
-
-
-@app.post("/api/developer/files/generate-pl-with-file")
-async def developer_generate_pl_with_file(
-    request: Request,
-    api_key: str = Form(...),
-    prompt: str = Form(...),
-    context_json: Optional[str] = Form(None),
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-):
-    """Developer API: generate P&L (xlsx) from prompt + uploaded file context (API-key auth)."""
-    if not api_key or not api_key.strip():
-        raise HTTPException(status_code=400, detail="API key is required")
-
-    key = get_api_key_by_header(api_key.strip(), db)
-    if not key:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    if not key.is_active:
-        raise HTTPException(status_code=403, detail="API key is inactive")
-
-    ip_address = getattr(getattr(request, "client", None), "host", None)
-    user_agent = None
-    try:
-        user_agent = request.headers.get("user-agent")
-    except Exception:
-        user_agent = None
-
-    started = time.time()
-    raw = await file.read()
-    response_size = None
-
-    try:
-        if not (prompt or "").strip():
-            raise HTTPException(status_code=400, detail="Prompt is required")
-
-        max_size_mb = 500 if (key.plan or "").lower() in ("premium", "enterprise") else 10
-        max_bytes = max_size_mb * 1024 * 1024
-        if len(raw) > max_bytes:
-            raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
-
-        context = {}
-        if context_json:
-            try:
-                context = json.loads(context_json) or {}
-            except Exception:
-                raise HTTPException(status_code=400, detail="context_json must be valid JSON")
-
-        svc = IngestionService(IngestLimits(max_bytes=max_bytes))
-        try:
-            ingested = svc.ingest(file.filename or "uploaded_file", raw)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-
-        prompt_block = build_ingestion_prompt_block(ingested)
-        combined_prompt = f"{prompt}\n\n{prompt_block}" if prompt_block else prompt
-
-        pl_service = PLBuilderService()
-        excel_data = await pl_service.generate_pl_from_natural_language(combined_prompt, context)
-        response_size = len(excel_data) if excel_data is not None else None
-
-        elapsed_ms = int((time.time() - started) * 1000)
-        track_api_usage(
-            db=db,
-            api_key=key,
-            endpoint="/v1/files/generate-pl-with-file",
-            method="POST",
-            status_code=200,
-            request_size_bytes=len(raw),
-            response_size_bytes=response_size,
-            processing_time_ms=elapsed_ms,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-
-        return StreamingResponse(
-            io.BytesIO(excel_data),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={
-                "Content-Disposition": f'attachment; filename="Profit_Loss_{datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]}.xlsx"'
-            },
-        )
-    except HTTPException as e:
-        elapsed_ms = int((time.time() - started) * 1000)
-        try:
-            track_api_usage(
-                db=db,
-                api_key=key,
-                endpoint="/v1/files/generate-pl-with-file",
-                method="POST",
-                status_code=e.status_code,
-                request_size_bytes=len(raw) if raw is not None else None,
-                response_size_bytes=response_size,
-                processing_time_ms=elapsed_ms,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
-        except Exception:
-            pass
-        raise
-    except Exception as e:
-        logger.error(f"Developer generate-pl-with-file failed: {str(e)}")
-        elapsed_ms = int((time.time() - started) * 1000)
-        try:
-            track_api_usage(
-                db=db,
-                api_key=key,
-                endpoint="/v1/files/generate-pl-with-file",
-                method="POST",
-                status_code=500,
-                request_size_bytes=len(raw) if raw is not None else None,
-                response_size_bytes=response_size,
-                processing_time_ms=elapsed_ms,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
-        except Exception:
-            pass
-        raise HTTPException(status_code=500, detail="Developer P&L generation failed")
-
-
-@app.post("/api/developer/support/chat-with-file")
-async def developer_support_chat_with_file(
-    request: Request,
-    api_key: str = Form(...),
-    message: str = Form(...),
-    page: Optional[str] = Form(None),
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-):
-    """Developer API: support assistant (KB-grounded) with uploaded file context (API-key auth)."""
-    if not api_key or not api_key.strip():
-        raise HTTPException(status_code=400, detail="API key is required")
-
-    key = get_api_key_by_header(api_key.strip(), db)
-    if not key:
-        raise HTTPException(status_code=401, detail="Invalid API key")
-    if not key.is_active:
-        raise HTTPException(status_code=403, detail="API key is inactive")
-
-    msg = (message or "").strip()
-    if not msg:
-        raise HTTPException(status_code=400, detail="Message is required")
-
-    if _is_disallowed_support_question(msg):
-        return {
-            "answer": "I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.",
-            "refused": True,
-        }
-
-    try:
-        kb_text = _load_kb_text()
-    except Exception:
-        return {
-            "answer": "I can help with product usage and account/API onboarding, but the knowledge base is currently unavailable. Please contact Meldra support.",
-            "refused": False,
-        }
-
-    ip_address = getattr(getattr(request, "client", None), "host", None)
-    user_agent = None
-    try:
-        user_agent = request.headers.get("user-agent")
-    except Exception:
-        user_agent = None
-
-    started = time.time()
-    raw = await file.read()
-    response_size = None
-
-    try:
-        max_size_mb = 500 if (key.plan or "").lower() in ("premium", "enterprise") else 10
-        max_bytes = max_size_mb * 1024 * 1024
-        if len(raw) > max_bytes:
-            raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
-
-        svc = IngestionService(IngestLimits(max_bytes=max_bytes))
-        try:
-            ingested = svc.ingest(file.filename or "uploaded_file", raw)
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
-
-        picked = _select_relevant_kb_sections(kb_text=kb_text, message=msg, top_k=5)
-        kb_context = "\n\n".join([s["content"] for s in picked])
-        file_context = build_ingestion_prompt_block(ingested)
-
-        prompt = (
-            f"You are Meldra's customer-facing Support Assistant.\n\n"
-            f"RULES:\n"
-            f"- Answer ONLY using the provided Knowledge Base excerpts and the uploaded file context.\n"
-            f"- If the question is outside the KB scope or asks for internal/backend implementation details (database, code, deployment, logs, secrets), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"
-            f"- If you are unsure, ask 1 clarifying question or recommend contacting support.\n"
-            f"- Formatting: do NOT use Markdown headings (no '#', '##', '###'). Use short label lines like 'Step 1:', 'Next:', 'Note:' instead.\n"
-            f"- If the user asks about pricing, subscription, limits, quotas, or missing access, ask what plan/environment they are on (Free/Standard/Premium, Sandbox vs Production), then give the next steps from the KB.\n\n"
-            f"USER CONTEXT:\n"
-            f"- API key prefix: {getattr(key, 'key_prefix', '')}\n"
-            f"- Page: {page or ''}\n\n"
-            f"KNOWLEDGE BASE EXCERPTS:\n"
-            f"{kb_context}\n\n"
-            f"{file_context}\n\n"
-            f"USER QUESTION:\n"
-            f"{msg}\n"
-        )
-
-        answer = await invoke_llm(
-            prompt=prompt,
-            add_context=False,
-            model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4-turbo-preview"),
-            max_tokens=900,
-        )
-
-        if not answer:
-            raise Exception("Empty response")
-
-        response_size = len(answer.encode("utf-8", errors="ignore"))
-        elapsed_ms = int((time.time() - started) * 1000)
-        track_api_usage(
-            db=db,
-            api_key=key,
-            endpoint="/v1/support/chat-with-file",
-            method="POST",
-            status_code=200,
-            request_size_bytes=len(raw),
-            response_size_bytes=response_size,
-            processing_time_ms=elapsed_ms,
-            ip_address=ip_address,
-            user_agent=user_agent,
-        )
-
-        return {
-            "answer": answer,
-            "refused": False,
-            "ingestion": {"filename": ingested.get("filename"), "type": ingested.get("type"), "meta": ingested.get("meta")},
-        }
-    except HTTPException as e:
-        elapsed_ms = int((time.time() - started) * 1000)
-        try:
-            track_api_usage(
-                db=db,
-                api_key=key,
-                endpoint="/v1/support/chat-with-file",
-                method="POST",
-                status_code=e.status_code,
-                request_size_bytes=len(raw) if raw is not None else None,
-                response_size_bytes=response_size,
-                processing_time_ms=elapsed_ms,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
-        except Exception:
-            pass
-        raise
-    except Exception as e:
-        logger.error(f"Developer support chat-with-file failed: {str(e)}")
-        elapsed_ms = int((time.time() - started) * 1000)
-        try:
-            track_api_usage(
-                db=db,
-                api_key=key,
-                endpoint="/v1/support/chat-with-file",
-                method="POST",
-                status_code=500,
-                request_size_bytes=len(raw) if raw is not None else None,
-                response_size_bytes=response_size,
-                processing_time_ms=elapsed_ms,
-                ip_address=ip_address,
-                user_agent=user_agent,
-            )
-        except Exception:
-            pass
-        raise HTTPException(status_code=500, detail="Developer support request failed")
-
-
-@app.post("/api/convert/doc-to-pdf")
-async def convert_doc_to_pdf(
-    file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Convert DOCX to PDF. In-app, no API key. File not stored."""
-    data, out_name, media = await _convert_endpoint(
-        file, current_user, db,
-        in_ext=[".docx"],
-        out_ext=".pdf",
-        media_type="application/pdf",
-        converter_fn=docx_to_pdf,
-        processing_type="doc_to_pdf",
-    )
-    return StreamingResponse(
-        io.BytesIO(data),
-        media_type=media,
-        headers={"Content-Disposition": f"attachment; filename={out_name}"},
-    )
-
-
-@app.post("/api/convert/ppt-to-pdf")
-async def convert_ppt_to_pdf(
-    file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Convert PPTX to PDF. In-app, no API key. File not stored."""
-    data, out_name, media = await _convert_endpoint(
-        file, current_user, db,
-        in_ext=[".pptx"],
-        out_ext=".pdf",
-        media_type="application/pdf",
-        converter_fn=pptx_to_pdf,
-        processing_type="ppt_to_pdf",
-    )
-    return StreamingResponse(
-        io.BytesIO(data),
-        media_type=media,
-        headers={"Content-Disposition": f"attachment; filename={out_name}"},
-    )
-
-
-@app.post("/api/convert/pdf-to-ppt")
-async def convert_pdf_to_ppt(
-    file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Convert PDF to PPTX (one slide per page as image). In-app, no API key. File not stored."""
-    data, out_name, media = await _convert_endpoint(
-        file, current_user, db,
-        in_ext=[".pdf"],
-        out_ext=".pptx",
-        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        converter_fn=pdf_to_pptx,
-        processing_type="pdf_to_ppt",
-    )
-    return StreamingResponse(
-        io.BytesIO(data),
-        media_type=media,
-        headers={"Content-Disposition": f"attachment; filename={out_name}"},
-    )
-
-
-@app.post("/api/files/excel-to-ppt")
-async def excel_to_ppt(
-    file: UploadFile = File(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Convert Excel file to PowerPoint
-    ZERO STORAGE: File content NOT stored, only processing history
-    """
     try:
         subscription = db.query(Subscription).filter(
             Subscription.user_email == current_user["email"]

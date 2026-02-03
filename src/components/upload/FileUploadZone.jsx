@@ -104,77 +104,96 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
 
           const data = new Uint8Array(e.target.result);
           const workbook = window.XLSX.read(data, { type: 'array' });
-          
-          // Use first sheet
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          
-          // Convert to JSON (header: 1 = array of arrays; works with .xls and .xlsx)
-          const jsonData = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-          
-          if (jsonData.length === 0) {
+
+          const parseSheet = (worksheet) => {
+            const jsonData = window.XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+            if (!jsonData || jsonData.length === 0) {
+              return { headers: [], rows: [], raw: jsonData || [] };
+            }
+
+            let headerRow = 0;
+            for (let r = 0; r < Math.min(20, jsonData.length); r++) {
+              const row = jsonData[r] || [];
+              const nonEmpty = row.filter(c => c != null && c !== '' && String(c).trim() !== '').length;
+              if (nonEmpty >= 2) {
+                headerRow = r;
+                break;
+              }
+            }
+
+            const headerRowRaw = jsonData[headerRow] || [];
+            const dataRows = jsonData.slice(headerRow + 1);
+            const maxDataCols = dataRows.length
+              ? Math.max(...dataRows.map(r => (r || []).length))
+              : 0;
+            const numCols = Math.max(headerRowRaw.length, maxDataCols, 1);
+
+            const headers = [];
+            const seen = new Set();
+            for (let i = 0; i < numCols; i++) {
+              const h = headerRowRaw[i];
+              const val = (h != null && h !== '') ? String(h).trim() : '';
+              let name = val || `Column_${i + 1}`;
+              if (seen.has(name)) {
+                let n = 1;
+                while (seen.has(`${name}_${n}`)) n++;
+                name = `${name}_${n}`;
+              }
+              seen.add(name);
+              headers.push(name);
+            }
+
+            const rows = dataRows
+              .filter(row => (row || []).some(cell => cell !== '' && cell !== null && cell !== undefined))
+              .map(row => {
+                const obj = {};
+                headers.forEach((header, idx) => {
+                  const value = row && row[idx];
+                  if (value !== null && value !== undefined && value !== '') {
+                    if (typeof value === 'number') {
+                      obj[header] = value;
+                    } else if (typeof value === 'string' && !isNaN(parseFloat(value)) && value.trim() !== '') {
+                      const n = parseFloat(value);
+                      obj[header] = Number.isInteger(n) ? n : Math.round(n * 100) / 100;
+                    } else {
+                      obj[header] = value;
+                    }
+                  } else {
+                    obj[header] = '';
+                  }
+                });
+                return obj;
+              });
+
+            return { headers, rows, raw: jsonData };
+          };
+
+          const sheetNames = workbook.SheetNames || [];
+          const sheets = {};
+          sheetNames.forEach((name) => {
+            const ws = workbook.Sheets[name];
+            if (!ws) return;
+            sheets[name] = parseSheet(ws);
+          });
+
+          const firstSheetName = sheetNames[0];
+          const first = sheets[firstSheetName];
+          if (!first || !first.rows || first.rows.length === 0) {
             reject(new Error('Excel file is empty'));
             return;
           }
-          
-          // Auto-detect header row: many files have title/empty rows, then headers (e.g. row 4–5), then data.
-          // Use the first row with at least 2 non-empty cells in the first 20 rows.
-          let headerRow = 0;
-          for (let r = 0; r < Math.min(20, jsonData.length); r++) {
-            const row = jsonData[r] || [];
-            const nonEmpty = row.filter(c => c != null && c !== '' && String(c).trim() !== '').length;
-            if (nonEmpty >= 2) {
-              headerRow = r;
-              break;
-            }
-          }
-          
-          const headerRowRaw = jsonData[headerRow] || [];
-          const dataRows = jsonData.slice(headerRow + 1);
-          const maxDataCols = dataRows.length
-            ? Math.max(...dataRows.map(r => (r || []).length))
-            : 0;
-          const numCols = Math.max(headerRowRaw.length, maxDataCols, 1);
-          
-          // Build headers: use "Column_N" for empty (merged cells or blank headers)
-          const headers = [];
-          const seen = new Set();
-          for (let i = 0; i < numCols; i++) {
-            const h = headerRowRaw[i];
-            const val = (h != null && h !== '') ? String(h).trim() : '';
-            let name = val || `Column_${i + 1}`;
-            if (seen.has(name)) {
-              let n = 1;
-              while (seen.has(`${name}_${n}`)) n++;
-              name = `${name}_${n}`;
-            }
-            seen.add(name);
-            headers.push(name);
-          }
-          
-          const rows = dataRows
-            .filter(row => (row || []).some(cell => cell !== '' && cell !== null && cell !== undefined))
-            .map(row => {
-              const obj = {};
-              headers.forEach((header, idx) => {
-                const value = row && row[idx];
-                if (value !== null && value !== undefined && value !== '') {
-                  if (typeof value === 'number') {
-                    obj[header] = value;
-                  } else if (typeof value === 'string' && !isNaN(parseFloat(value)) && value.trim() !== '') {
-                    const n = parseFloat(value);
-                    obj[header] = Number.isInteger(n) ? n : Math.round(n * 100) / 100;
-                  } else {
-                    obj[header] = value;
-                  }
-                } else {
-                  obj[header] = '';
-                }
-              });
-              return obj;
-            });
-          
-          resolve({ headers, rows, raw: jsonData });
+
+          resolve({
+            headers: first.headers,
+            rows: first.rows,
+            raw: first.raw,
+            workbook: {
+              sheetNames,
+              sheets,
+              activeSheet: firstSheetName,
+            },
+          });
         } catch (err) {
           reject(new Error('Failed to parse Excel file: ' + err.message));
         }

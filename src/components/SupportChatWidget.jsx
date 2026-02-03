@@ -11,6 +11,16 @@ export default function SupportChatWidget({ page, className }) {
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState(null);
 
+  const normalizeAssistantText = (text) => {
+    const raw = String(text || '');
+    return raw
+      .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+      .replace(/```[\s\S]*?```/g, (block) => block.replace(/```[a-zA-Z0-9_-]*\n?/, '').replace(/```\s*$/, ''))
+      .replace(/^\s*>\s?/gm, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  };
+
   const isAuthed = useMemo(() => {
     try {
       return !!meldraAi?.auth?.isAuthenticated?.();
@@ -32,10 +42,10 @@ export default function SupportChatWidget({ page, className }) {
       const res = file
         ? await backendApi.support.chatWithFile(text, file, { page: pageCtx })
         : await backendApi.support.chat(text, { page: pageCtx });
-      setMessages(prev => [...prev, { role: 'assistant', content: res?.answer || 'Sorry — no response received.' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: normalizeAssistantText(res?.answer || 'Sorry — no response received.') }]);
       setFile(null);
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'assistant', content: e?.message || 'Sorry — support chat failed.' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: normalizeAssistantText(e?.message || 'Sorry — support chat failed.') }]);
     } finally {
       setLoading(false);
     }

@@ -36,6 +36,10 @@ export default function DataTransform({ data, onDataUpdate }) {
   const [sumifsCriteriaCol2, setSumifsCriteriaCol2] = useState('');
   const [sumifsNewCol, setSumifsNewCol] = useState('');
 
+  const [countifsCriteriaCol1, setCountifsCriteriaCol1] = useState('');
+  const [countifsCriteriaCol2, setCountifsCriteriaCol2] = useState('');
+  const [countifsNewCol, setCountifsNewCol] = useState('');
+
   const numericColumns = data.headers.filter(header => {
     return data.rows.some(row => {
       const val = row[header];
@@ -50,6 +54,18 @@ export default function DataTransform({ data, onDataUpdate }) {
     { id: 'divide', name: 'Divide (÷)', icon: Divide, example: 'A ÷ B' },
     { id: 'percentage', name: 'Percentage (%)', icon: Percent, example: '(A / B) × 100' }
   ];
+
+  const opMeta = {
+    add: { group: 'Mathematics', label: 'Add (+)', meaning: 'Creates a new column by adding Column 1 + Column 2.' },
+    subtract: { group: 'Mathematics', label: 'Subtract (-)', meaning: 'Creates a new column by subtracting Column 1 - Column 2.' },
+    multiply: { group: 'Mathematics', label: 'Multiply (×)', meaning: 'Creates a new column by multiplying Column 1 × Column 2.' },
+    divide: { group: 'Mathematics', label: 'Divide (÷)', meaning: 'Creates a new column by dividing Column 1 ÷ Column 2.' },
+    percentage: { group: 'Mathematics', label: 'Percentage (%)', meaning: 'Creates a new column as (Column 1 / Column 2) × 100.' },
+    xlookup: { group: 'Lookups', label: 'XLOOKUP', meaning: 'Adds a new column to the active sheet by looking up a value in another sheet.' },
+    join: { group: 'Lookups', label: 'Join Sheets', meaning: 'Brings columns from another sheet into the active sheet by matching a key column.' },
+    sumifs: { group: 'Aggregations', label: 'SUMIFS', meaning: 'Adds a new column containing the group total of a numeric column by one or two criteria columns.' },
+    countifs: { group: 'Counts', label: 'COUNTIFS', meaning: 'Adds a new column containing the count of rows in the same group (by one or two criteria columns).' },
+  };
 
   const sheetNames = data?.workbook?.sheetNames || [];
   const workbookSheets = data?.workbook?.sheets || {};
@@ -298,6 +314,67 @@ export default function DataTransform({ data, onDataUpdate }) {
     setSumifsNewCol('');
   };
 
+  const handleApplyCountifs = () => {
+    if (!hasWorkbook) {
+      alert('COUNTIFS requires an Excel workbook.');
+      return;
+    }
+    if (!countifsCriteriaCol1 || !countifsNewCol) {
+      alert('Please select at least one Criteria column and enter a new column name');
+      return;
+    }
+    if ((activeHeaders || []).includes(countifsNewCol)) {
+      alert('A column with this name already exists');
+      return;
+    }
+
+    const rows = activeRows || [];
+    const makeKey = (r) => {
+      const v1 = r?.[countifsCriteriaCol1];
+      const k1 = v1 === null || v1 === undefined ? '' : String(v1).trim();
+      if (!countifsCriteriaCol2) return k1;
+      const v2 = r?.[countifsCriteriaCol2];
+      const k2 = v2 === null || v2 === undefined ? '' : String(v2).trim();
+      return `${k1}||${k2}`;
+    };
+
+    const counts = new Map();
+    for (const r of rows) {
+      const key = makeKey(r);
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+
+    const newRows = rows.map((r) => {
+      const key = makeKey(r);
+      const total = counts.get(key) || 0;
+      return { ...r, [countifsNewCol]: total };
+    });
+
+    const nextHeaders = [...(activeHeaders || []), countifsNewCol];
+    onDataUpdate({
+      ...data,
+      headers: nextHeaders,
+      rows: newRows,
+      workbook: {
+        ...(data.workbook || {}),
+        activeSheet: activeSheetName,
+        sheets: {
+          ...(data.workbook?.sheets || {}),
+          [activeSheetName]: {
+            ...(data.workbook?.sheets?.[activeSheetName] || {}),
+            headers: nextHeaders,
+            rows: newRows,
+          },
+        },
+      },
+    });
+
+    setExcelOp('');
+    setCountifsCriteriaCol1('');
+    setCountifsCriteriaCol2('');
+    setCountifsNewCol('');
+  };
+
   const handleAiTransform = async () => {
     if (!aiInstruction.trim()) return;
     setAiError('');
@@ -400,6 +477,7 @@ export default function DataTransform({ data, onDataUpdate }) {
         </div>
 
         <div className="space-y-4">
+
           {/* Sheet Selection (Excel Workbooks) */}
           {hasWorkbook && sheetNames.length > 1 && (
             <div className="p-4 bg-slate-800/30 border border-slate-700/50 rounded-lg">
@@ -410,238 +488,306 @@ export default function DataTransform({ data, onDataUpdate }) {
                 </SelectTrigger>
                 <SelectContent className="bg-slate-800 border-slate-700">
                   {sheetNames.map((s) => (
-                    <SelectItem key={s} value={s} className="text-white hover:bg-slate-700">
-                      {s}
-                    </SelectItem>
+                    <SelectItem key={s} value={s} className="text-white hover:bg-slate-700">{s}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           )}
 
-          {/* Excel Operations */}
-          {hasWorkbook && sheetNames.length > 1 && (
-            <div className="p-4 bg-slate-800/30 border border-slate-700/50 rounded-lg">
-              <label className="text-sm font-semibold text-slate-200 mb-2 block">Excel Operations</label>
-              <Select value={excelOp} onValueChange={setExcelOp}>
-                <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                  <SelectValue placeholder="Select an Excel operation" className="text-white" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  <SelectItem value="xlookup" className="text-white hover:bg-slate-700">XLOOKUP (from another sheet)</SelectItem>
-                  <SelectItem value="join" className="text-white hover:bg-slate-700">Join Sheets (bring columns)</SelectItem>
-                  <SelectItem value="sumifs" className="text-white hover:bg-slate-700">SUMIFS (group totals)</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Operation (Mathematics / Lookups / Aggregations) */}
+          <div className="p-4 bg-slate-800/30 border border-slate-700/50 rounded-lg">
+            <label className="text-sm font-semibold text-slate-200 mb-2 block">Operation</label>
+            <Select value={excelOp || operation} onValueChange={(v) => {
+              if (opMeta[v]?.group === 'Mathematics') {
+                setExcelOp('');
+                setOperation(v);
+              } else {
+                setExcelOp(v);
+              }
+            }}>
+              <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                <SelectValue placeholder="Select an operation" className="text-white" />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectItem value="add" className="text-white hover:bg-slate-700">Mathematics: Add (+)</SelectItem>
+                <SelectItem value="subtract" className="text-white hover:bg-slate-700">Mathematics: Subtract (-)</SelectItem>
+                <SelectItem value="multiply" className="text-white hover:bg-slate-700">Mathematics: Multiply (×)</SelectItem>
+                <SelectItem value="divide" className="text-white hover:bg-slate-700">Mathematics: Divide (÷)</SelectItem>
+                <SelectItem value="percentage" className="text-white hover:bg-slate-700">Mathematics: Percentage (%)</SelectItem>
+                {hasWorkbook && sheetNames.length > 1 && (
+                  <>
+                    <SelectItem value="xlookup" className="text-white hover:bg-slate-700">Lookups: XLOOKUP</SelectItem>
+                    <SelectItem value="join" className="text-white hover:bg-slate-700">Lookups: Join Sheets</SelectItem>
+                    <SelectItem value="sumifs" className="text-white hover:bg-slate-700">Aggregations: SUMIFS</SelectItem>
+                    <SelectItem value="countifs" className="text-white hover:bg-slate-700">Counts: COUNTIFS</SelectItem>
+                  </>
+                )}
+              </SelectContent>
+            </Select>
 
-              {excelOp === 'xlookup' && (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Lookup Value Column (in active sheet)</label>
-                    <Select value={xLookupValueCol} onValueChange={setXLookupValueCol}>
-                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                        <SelectValue placeholder="Select column" className="text-white" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        {allColumns.map((c) => (
-                          <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Lookup Sheet</label>
-                    <Select value={lookupSheetName} onValueChange={setXLookupSheet}>
-                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                        <SelectValue placeholder="Select sheet" className="text-white" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        {sheetNames.filter((s) => s !== activeSheetName).map((s) => (
-                          <SelectItem key={s} value={s} className="text-white hover:bg-slate-700">{s}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Lookup Key Column (in lookup sheet)</label>
-                    <Select value={xLookupKeyCol} onValueChange={setXLookupKeyCol}>
-                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                        <SelectValue placeholder="Select key" className="text-white" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        {lookupColumns.map((c) => (
-                          <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Return Column (in lookup sheet)</label>
-                    <Select value={xLookupReturnCol} onValueChange={setXLookupReturnCol}>
-                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                        <SelectValue placeholder="Select return" className="text-white" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        {lookupColumns.map((c) => (
-                          <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 mb-1 block">New Column Name</label>
-                    <Input
-                      value={xLookupNewCol}
-                      onChange={(e) => setXLookupNewCol(e.target.value)}
-                      placeholder="e.g. CustomerName"
-                      className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
-                    />
-                  </div>
-
-                  <Button
-                    onClick={handleApplyXLookup}
-                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
-                    disabled={!xLookupValueCol || !lookupSheetName || !xLookupKeyCol || !xLookupReturnCol || !xLookupNewCol}
-                  >
-                    Apply XLOOKUP
-                  </Button>
-                </div>
-              )}
-
-              {excelOp === 'join' && (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Active Sheet Key Column</label>
-                    <Select value={joinLeftKeyCol} onValueChange={setJoinLeftKeyCol}>
-                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                        <SelectValue placeholder="Select key" className="text-white" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        {allColumns.map((c) => (
-                          <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Join Sheet</label>
-                    <Select value={joinSheetName} onValueChange={setJoinSheet}>
-                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                        <SelectValue placeholder="Select sheet" className="text-white" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        {sheetNames.filter((s) => s !== activeSheetName).map((s) => (
-                          <SelectItem key={s} value={s} className="text-white hover:bg-slate-700">{s}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Join Sheet Key Column</label>
-                    <Select value={joinRightKeyCol} onValueChange={setJoinRightKeyCol}>
-                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                        <SelectValue placeholder="Select key" className="text-white" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        {joinRightColumns.map((c) => (
-                          <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Columns to Bring Over (comma-separated)</label>
-                    <Input
-                      value={joinBringColsCsv}
-                      onChange={(e) => setJoinBringColsCsv(e.target.value)}
-                      placeholder="e.g. CustomerName, Segment, Region"
-                      className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
-                    />
-                  </div>
-
-                  <Button
-                    onClick={handleApplyJoin}
-                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
-                    disabled={!joinLeftKeyCol || !joinSheetName || !joinRightKeyCol || !joinBringColsCsv.trim()}
-                  >
-                    Apply Join
-                  </Button>
-                </div>
-              )}
-
-              {excelOp === 'sumifs' && (
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Sum Column (numeric)</label>
-                    <Select value={sumifsSumCol} onValueChange={setSumifsSumCol}>
-                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                        <SelectValue placeholder="Select sum column" className="text-white" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-slate-700">
-                        {allColumns.map((c) => (
-                          <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-semibold text-slate-300 mb-1 block">Criteria Column 1</label>
-                      <Select value={sumifsCriteriaCol1} onValueChange={setSumifsCriteriaCol1}>
-                        <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                          <SelectValue placeholder="Select criteria" className="text-white" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-700">
-                          {allColumns.map((c) => (
-                            <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-slate-300 mb-1 block">Criteria Column 2 (optional)</label>
-                      <Select value={sumifsCriteriaCol2} onValueChange={setSumifsCriteriaCol2}>
-                        <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                          <SelectValue placeholder="(optional)" className="text-white" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-slate-800 border-slate-700">
-                          {allColumns.map((c) => (
-                            <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 mb-1 block">New Column Name</label>
-                    <Input
-                      value={sumifsNewCol}
-                      onChange={(e) => setSumifsNewCol(e.target.value)}
-                      placeholder="e.g. TotalSalesByCustomer"
-                      className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
-                    />
-                  </div>
-
-                  <Button
-                    onClick={handleApplySumifs}
-                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
-                    disabled={!sumifsSumCol || !sumifsCriteriaCol1 || !sumifsNewCol}
-                  >
-                    Apply SUMIFS
-                  </Button>
-                </div>
-              )}
+            <div className="mt-2 text-xs text-slate-400">
+              {(opMeta[excelOp || operation]?.meaning) || ''}
             </div>
-          )}
+
+            {excelOp === 'xlookup' && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">Lookup Value Column (in active sheet)</label>
+                  <Select value={xLookupValueCol} onValueChange={setXLookupValueCol}>
+                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                      <SelectValue placeholder="Select column" className="text-white" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {allColumns.map((c) => (
+                        <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">Lookup Sheet</label>
+                  <Select value={lookupSheetName} onValueChange={setXLookupSheet}>
+                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                      <SelectValue placeholder="Select sheet" className="text-white" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {sheetNames.filter((s) => s !== activeSheetName).map((s) => (
+                        <SelectItem key={s} value={s} className="text-white hover:bg-slate-700">{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">Lookup Key Column (in lookup sheet)</label>
+                  <Select value={xLookupKeyCol} onValueChange={setXLookupKeyCol}>
+                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                      <SelectValue placeholder="Select key" className="text-white" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {lookupColumns.map((c) => (
+                        <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">Return Column (in lookup sheet)</label>
+                  <Select value={xLookupReturnCol} onValueChange={setXLookupReturnCol}>
+                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                      <SelectValue placeholder="Select return" className="text-white" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {lookupColumns.map((c) => (
+                        <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">New Column Name</label>
+                  <Input
+                    value={xLookupNewCol}
+                    onChange={(e) => setXLookupNewCol(e.target.value)}
+                    placeholder="e.g. CustomerName"
+                    className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
+                  />
+                </div>
+
+                <Button
+                  onClick={handleApplyXLookup}
+                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
+                  disabled={!xLookupValueCol || !lookupSheetName || !xLookupKeyCol || !xLookupReturnCol || !xLookupNewCol}
+                >
+                  Apply XLOOKUP
+                </Button>
+              </div>
+            )}
+
+            {excelOp === 'join' && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">Active Sheet Key Column</label>
+                  <Select value={joinLeftKeyCol} onValueChange={setJoinLeftKeyCol}>
+                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                      <SelectValue placeholder="Select key" className="text-white" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {allColumns.map((c) => (
+                        <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">Join Sheet</label>
+                  <Select value={joinSheetName} onValueChange={setJoinSheet}>
+                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                      <SelectValue placeholder="Select sheet" className="text-white" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {sheetNames.filter((s) => s !== activeSheetName).map((s) => (
+                        <SelectItem key={s} value={s} className="text-white hover:bg-slate-700">{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">Join Sheet Key Column</label>
+                  <Select value={joinRightKeyCol} onValueChange={setJoinRightKeyCol}>
+                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                      <SelectValue placeholder="Select key" className="text-white" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {joinRightColumns.map((c) => (
+                        <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">Columns to Bring Over (comma-separated)</label>
+                  <Input
+                    value={joinBringColsCsv}
+                    onChange={(e) => setJoinBringColsCsv(e.target.value)}
+                    placeholder="e.g. CustomerName, Segment, Region"
+                    className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
+                  />
+                </div>
+
+                <Button
+                  onClick={handleApplyJoin}
+                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
+                  disabled={!joinLeftKeyCol || !joinSheetName || !joinRightKeyCol || !joinBringColsCsv.trim()}
+                >
+                  Apply Join
+                </Button>
+              </div>
+            )}
+
+            {excelOp === 'sumifs' && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">Sum Column (numeric)</label>
+                  <Select value={sumifsSumCol} onValueChange={setSumifsSumCol}>
+                    <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                      <SelectValue placeholder="Select sum column" className="text-white" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700">
+                      {allColumns.map((c) => (
+                        <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Criteria Column 1</label>
+                    <Select value={sumifsCriteriaCol1} onValueChange={setSumifsCriteriaCol1}>
+                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                        <SelectValue placeholder="Select criteria" className="text-white" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        {allColumns.map((c) => (
+                          <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Criteria Column 2 (optional)</label>
+                    <Select value={sumifsCriteriaCol2} onValueChange={setSumifsCriteriaCol2}>
+                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                        <SelectValue placeholder="(optional)" className="text-white" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        {allColumns.map((c) => (
+                          <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">New Column Name</label>
+                  <Input
+                    value={sumifsNewCol}
+                    onChange={(e) => setSumifsNewCol(e.target.value)}
+                    placeholder="e.g. TotalSalesByCustomer"
+                    className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
+                  />
+                </div>
+
+                <Button
+                  onClick={handleApplySumifs}
+                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
+                  disabled={!sumifsSumCol || !sumifsCriteriaCol1 || !sumifsNewCol}
+                >
+                  Apply SUMIFS
+                </Button>
+              </div>
+            )}
+
+            {excelOp === 'countifs' && (
+              <div className="mt-3 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Criteria Column 1</label>
+                    <Select value={countifsCriteriaCol1} onValueChange={setCountifsCriteriaCol1}>
+                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                        <SelectValue placeholder="Select criteria" className="text-white" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        {allColumns.map((c) => (
+                          <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 mb-1 block">Criteria Column 2 (optional)</label>
+                    <Select value={countifsCriteriaCol2} onValueChange={setCountifsCriteriaCol2}>
+                      <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                        <SelectValue placeholder="(optional)" className="text-white" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-800 border-slate-700">
+                        {allColumns.map((c) => (
+                          <SelectItem key={c} value={c} className="text-white hover:bg-slate-700">{c}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-300 mb-1 block">New Column Name</label>
+                  <Input
+                    value={countifsNewCol}
+                    onChange={(e) => setCountifsNewCol(e.target.value)}
+                    placeholder="e.g. RowsInGroup"
+                    className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
+                  />
+                </div>
+
+                <Button
+                  onClick={handleApplyCountifs}
+                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
+                  disabled={!countifsCriteriaCol1 || !countifsNewCol}
+                >
+                  Apply COUNTIFS
+                </Button>
+              </div>
+            )}
+          </div>
 
           {/* Create with AI */}
           <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
@@ -671,116 +817,90 @@ export default function DataTransform({ data, onDataUpdate }) {
             {aiError && <p className="text-red-400 text-sm mt-1">{aiError}</p>}
           </div>
 
-          {/* Operation Selection */}
-          <div>
-            <label className="text-sm font-semibold text-slate-200 mb-3 block">
-              Operation
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {operations.map((op) => (
-                <Button
-                  key={op.id}
-                  onClick={() => setOperation(op.id)}
-                  variant="outline"
-                  className={`justify-start h-auto py-3 ${
-                    operation === op.id
-                      ? 'bg-blue-600 text-white border-blue-500'
-                      : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-700/50 hover:text-white'
-                  }`}
-                >
-                  <op.icon className="w-4 h-4 mr-2" />
-                  <div className="text-left">
-                    <div className="font-semibold">{op.name}</div>
-                    <div className="text-xs opacity-75">{op.example}</div>
-                  </div>
-                </Button>
-              ))}
+          {/* Mathematics Inputs */}
+          {excelOp === '' && (
+            <div>
+              <div>
+                <label className="text-sm font-semibold text-slate-200 mb-2 block">
+                  Column 1
+                </label>
+                <Select value={column1} onValueChange={setColumn1}>
+                  <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                    <SelectValue placeholder="Select first column" className="text-white" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    {numericColumns.map(col => (
+                      <SelectItem key={col} value={col} className="text-white hover:bg-slate-700">
+                        {col}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-slate-200 mb-2 block">
+                  Column 2
+                </label>
+                <Select value={column2} onValueChange={setColumn2}>
+                  <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                    <SelectValue placeholder="Select second column" className="text-white" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    {numericColumns.map(col => (
+                      <SelectItem key={col} value={col} className="text-white hover:bg-slate-700">
+                        {col}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-semibold text-slate-200 mb-2 block">
+                  New Column Name
+                </label>
+                <Input
+                  placeholder="Enter name for new column"
+                  value={newColumnName}
+                  onChange={(e) => setNewColumnName(e.target.value)}
+                  className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
+                />
+              </div>
+
+              <Button
+                onClick={handleTransform}
+                disabled={transforming || !column1 || !column2 || !newColumnName}
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
+              >
+                {transforming ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Applying...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Apply Transformation
+                  </>
+                )}
+              </Button>
             </div>
-          </div>
+          )}
 
-          {/* Column 1 Selection */}
-          <div>
-            <label className="text-sm font-semibold text-slate-200 mb-2 block">
-              Column 1
-            </label>
-            <Select value={column1} onValueChange={setColumn1}>
-              <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                <SelectValue placeholder="Select first column" className="text-white" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                {numericColumns.map(col => (
-                  <SelectItem key={col} value={col} className="text-white hover:bg-slate-700">
-                    {col}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Column 2 Selection */}
-          <div>
-            <label className="text-sm font-semibold text-slate-200 mb-2 block">
-              Column 2
-            </label>
-            <Select value={column2} onValueChange={setColumn2}>
-              <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
-                <SelectValue placeholder="Select second column" className="text-white" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                {numericColumns.map(col => (
-                  <SelectItem key={col} value={col} className="text-white hover:bg-slate-700">
-                    {col}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* New Column Name */}
-          <div>
-            <label className="text-sm font-semibold text-slate-200 mb-2 block">
-              New Column Name
-            </label>
-            <Input
-              placeholder="Enter name for new column"
-              value={newColumnName}
-              onChange={(e) => setNewColumnName(e.target.value)}
-              className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400"
-            />
-          </div>
-
-          {/* Apply Button */}
-          <Button
-            onClick={handleTransform}
-            disabled={transforming || !column1 || !column2 || !newColumnName}
-            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold"
-          >
-            {transforming ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                Applying...
-              </>
-            ) : (
-              <>
-                <Wand2 className="w-4 h-4 mr-2" />
-                Apply Transformation
-              </>
-            )}
-          </Button>
+          {/* Preview */}
+          {column1 && column2 && operation && (
+            <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+              <p className="text-sm text-blue-300 font-semibold mb-1">Preview:</p>
+              <p className="text-slate-200">
+                <span className="text-blue-300">{newColumnName || 'NewColumn'}</span> = 
+                <span className="text-emerald-300"> {column1}</span> 
+                <span className="text-slate-400"> {operations.find(o => o.id === operation)?.name.split(' ')[0]}</span> 
+                <span className="text-emerald-300"> {column2}</span>
+              </p>
+            </div>
+          )}
         </div>
-
-        {/* Preview */}
-        {column1 && column2 && operation && (
-          <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-            <p className="text-sm text-blue-300 font-semibold mb-1">Preview:</p>
-            <p className="text-slate-200">
-              <span className="text-blue-300">{newColumnName || 'NewColumn'}</span> = 
-              <span className="text-emerald-300"> {column1}</span> 
-              <span className="text-slate-400"> {operations.find(o => o.id === operation)?.name.split(' ')[0]}</span> 
-              <span className="text-emerald-300"> {column2}</span>
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

@@ -2421,13 +2421,37 @@ async def developer_api_proxy(
                     media = "application/pdf"
                     out_ext = ".pdf"
             else:
-                try:
-                    out = await asyncio.wait_for(
-                        asyncio.to_thread(ocr.extract_with_layout, io.BytesIO(raw), lang),
-                        timeout_seconds or ocr_img_timeout,
-                    )
-                except asyncio.TimeoutError:
-                    raise HTTPException(status_code=503, detail="OCR is taking too long. Try a smaller or simpler image, or try again later.")
+                out = None
+                ocr_space_key = (os.getenv("OCR_SPACE_API_KEY") or "").strip()
+                if ocr_space_key and len(raw) <= OCR_SPACE_MAX_BYTES:
+                    try:
+                        with Image.open(io.BytesIO(raw)) as img:
+                            iw, ih = img.size
+                        out = await asyncio.wait_for(
+                            extract_with_layout_ocrspace(
+                                ocr_space_key,
+                                raw,
+                                iw,
+                                ih,
+                                file.filename or "image.png",
+                                lang,
+                            ),
+                            min(timeout_seconds or ocr_img_timeout, 45.0),
+                        )
+                        logger.info(f"Developer OCR via OCR.space: {file.filename}")
+                    except asyncio.TimeoutError:
+                        out = None
+                    except Exception:
+                        out = None
+
+                if out is None:
+                    try:
+                        out = await asyncio.wait_for(
+                            asyncio.to_thread(ocr.extract_with_layout, io.BytesIO(raw), lang),
+                            timeout_seconds or ocr_img_timeout,
+                        )
+                    except asyncio.TimeoutError:
+                        raise HTTPException(status_code=503, detail="OCR is taking too long. Try a smaller or simpler image, or try again later.")
                 layout = out.get("layout") or []
                 iw = int(out.get("image_width") or 0)
                 ih = int(out.get("image_height") or 0)

@@ -2422,6 +2422,7 @@ async def developer_api_proxy(
                     out_ext = ".pdf"
             else:
                 out = None
+                ocr_space_error = None
                 ocr_space_key = (os.getenv("OCR_SPACE_API_KEY") or "").strip()
                 if ocr_space_key and len(raw) <= OCR_SPACE_MAX_BYTES:
                     try:
@@ -2440,8 +2441,11 @@ async def developer_api_proxy(
                         )
                         logger.info(f"Developer OCR via OCR.space: {file.filename}")
                     except asyncio.TimeoutError:
+                        ocr_space_error = "OCR.space timed out"
                         out = None
-                    except Exception:
+                    except Exception as e:
+                        ocr_space_error = str(e)
+                        logger.warning(f"Developer OCR via OCR.space failed: {ocr_space_error}")
                         out = None
 
                 if out is None:
@@ -2451,7 +2455,10 @@ async def developer_api_proxy(
                             timeout_seconds or ocr_img_timeout,
                         )
                     except asyncio.TimeoutError:
-                        raise HTTPException(status_code=503, detail="OCR is taking too long. Try a smaller or simpler image, or try again later.")
+                        detail = "OCR is taking too long. Try a smaller or simpler image, or try again later."
+                        if ocr_space_error:
+                            detail += f" (OCR.space had failed: {ocr_space_error})"
+                        raise HTTPException(status_code=503, detail=detail)
                 layout = out.get("layout") or []
                 iw = int(out.get("image_width") or 0)
                 ih = int(out.get("image_height") or 0)

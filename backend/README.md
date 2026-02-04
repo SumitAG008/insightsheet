@@ -1,118 +1,8 @@
-<<<<<<< HEAD
-# InsightSheet-lite Backend 🚀
-
-Privacy-first data analysis platform backend with AI-powered insights and ZERO data storage.
-
-## 🌟 Features
-
-### Core Capabilities
-- ✅ **AI/LLM Integration** - GPT-4 powered data analysis, formula generation, and insights
-- ✅ **Excel to PowerPoint** - Convert Excel spreadsheets to professional presentations
-- ✅ **ZIP File Processor** - Clean and rename files in ZIP archives with Unicode support
-- ✅ **User Authentication** - JWT-based secure authentication
-- ✅ **Subscription Management** - Free and Premium tiers with usage tracking
-- ✅ **Activity Logging** - Track user activity without storing sensitive data
-- ✅ **Zero Data Storage** - Files and AI prompts/responses are ephemeral
-
-### Privacy & Security
-- 🔒 **ZERO FILE STORAGE** - All files processed in-memory, never saved
-- 🔒 **ZERO AI DATA STORAGE** - Prompts and responses not stored locally
-- 🔒 **JWT Authentication** - Secure token-based auth
-- 🔒 **bcrypt Password Hashing** - Industry-standard password protection
-- 🔒 **CORS Protection** - Configured for meldra.ai domain
-- 🔒 **ZIP Bomb Protection** - Prevents malicious ZIP files
-- 🔒 **File Type Validation** - Magic number verification
-
-## 📋 Prerequisites
-
-- Python 3.11+
-- PostgreSQL 15+ (or SQLite for development)
-- OpenAI API Key
-- Docker & Docker Compose (optional)
-
-## 🚀 Quick Start
-
-### Option 1: Local Development (SQLite)
-
-```bash
-# 1. Clone the repository
-cd backend
-
-# 2. Create virtual environment
-python -m venv venv
-
-# For Windows:
-venv\Scripts\activate
-
-# For macOS/Linux:
-source venv/bin/activate
-
-# 3. Install dependencies
-pip install -r requirements.txt
-
-# 4. Set up environment variables
-cp .env.example .env
-
-# Edit .env and add your OpenAI API key:
-# OPENAI_API_KEY=sk-your-key-here
-# DATABASE_URL=sqlite:///./insightsheet.db
-
-# 5. Initialize database
-python -c "from app.database import init_db; init_db()"
-
-# 6. Run the server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-The API will be available at:
-- **API**: http://localhost:8000
-- **Docs**: http://localhost:8000/docs
-- **Health**: http://localhost:8000/health
-
-### Option 2: Docker Compose (PostgreSQL)
-
-```bash
-# 1. Set up environment variables
-cp .env.example .env
-
-# Edit .env with your settings:
-# OPENAI_API_KEY=sk-your-key-here
-# JWT_SECRET_KEY=your-secret-key
-
-# 2. Start services
-docker-compose up -d
-
-# 3. View logs
-docker-compose logs -f backend
-
-# 4. Stop services
-docker-compose down
-```
-
-### Option 3: Docker Only
-
-```bash
-# Build image
-docker build -t insightsheet-backend .
-
-# Run container
-docker run -d \
-  -p 8000:8000 \
-  -e DATABASE_URL=sqlite:///./insightsheet.db \
-  -e OPENAI_API_KEY=sk-your-key \
-  -e JWT_SECRET_KEY=your-secret \
-  --name insightsheet-backend \
-  insightsheet-backend
-
-# View logs
-docker logs -f insightsheet-backend
-```
-=======
 # InsightSheet Backend (Meldra AI)
 
-FastAPI + PostgreSQL Backend for InsightSheet-lite
+FastAPI backend for InsightSheet-lite.
 
-## 🚀 Quick Start (3 Steps)
+## Quick Start (3 Steps)
 
 ### 1. Install PostgreSQL
 
@@ -169,32 +59,22 @@ python setup_database.py
 uvicorn main:app --reload --port 8000
 ```
 
-Visit: http://localhost:8000/docs for API documentation
->>>>>>> 58194c7fbb5d6cfa982aaf3d15ce3ba47988e1ba
+Visit: <http://localhost:8000/docs> for API documentation
 
 ## 📁 Project Structure
 
 ```
 backend/
-<<<<<<< HEAD
+
 ├── app/
 │   ├── __init__.py
-│   ├── main.py                 # FastAPI application
-│   ├── database.py             # Database models & config
-│   ├── services/
-│   │   ├── ai_service.py       # AI/LLM integration
-│   │   ├── zip_processor.py    # ZIP file processing
-│   │   └── excel_to_ppt.py     # Excel to PowerPoint
-│   ├── utils/
-│   │   └── auth.py             # Authentication utilities
-│   ├── models/                 # (Future: Pydantic models)
-│   └── routes/                 # (Future: Route modules)
-├── logs/                       # Application logs
-├── requirements.txt            # Python dependencies
-├── Dockerfile                  # Docker configuration
-├── docker-compose.yml          # Docker Compose setup
-├── .env.example                # Environment template
-└── README.md                   # This file
+│   ├── main.py
+│   ├── database.py
+│   └── services/
+├── requirements.txt
+├── Dockerfile
+├── .env.example
+└── README.md
 ```
 
 ## 🔧 Configuration
@@ -223,6 +103,13 @@ ENVIRONMENT=development
 
 # CORS (comma-separated)
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://meldra.ai,https://*.meldra.ai
+
+# OCR (optional)
+# OCR_TIMEOUT_IMAGE_SECONDS=120
+# OCR_TIMEOUT_PDF_SECONDS=180
+# OCR_MAX_PAGES_DEFAULT=25
+# TESSERACT_TIMEOUT_SECONDS=20
+# OCR_SPACE_API_KEY=...
 
 # File Upload
 MAX_UPLOAD_SIZE=524288000  # 500MB
@@ -397,6 +284,24 @@ options: {
 
 Response: Processed ZIP file download
 ```
+
+#### OCR via Developer Proxy
+
+The Developer Portal uses `POST /api/developer/proxy` for conversions.
+
+- **OCR to PDF**: `endpoint=ocr-to-pdf`
+- **OCR to DOCX**: `endpoint=ocr-to-doc`
+
+Common form fields:
+
+- `file`: image or PDF
+- `ocr_lang` (optional)
+- `max_pages` (optional, PDF only)
+- `timeout_seconds` (optional)
+
+OCR to PDF additional field:
+
+- `mode=exact` (optional): image-based PDF that preserves visuals exactly
 
 ### Subscriptions
 
@@ -718,223 +623,4 @@ Proprietary - InsightSheet-lite
 
 ---
 
-**Made with ❤️ for Privacy-First Data Analysis**
-=======
-├── main.py              # FastAPI application
-├── database.py          # SQLAlchemy models
-├── setup_database.py    # Database initialization
-├── requirements.txt     # Python dependencies
-├── .env                 # Environment variables
-└── README.md           # This file
-```
-
-## 🗄️ Database Schema
-
-### Tables
-
-1. **users** - User accounts
-   - id, email, full_name, hashed_password
-   - role (user/admin), is_active, is_verified
-   - created_date, updated_date, last_login
-
-2. **subscriptions** - User subscriptions
-   - id, user_email, plan (free/premium)
-   - status, trial dates, subscription dates
-   - ai_queries_used, ai_queries_limit
-   - stripe_customer_id, stripe_subscription_id
-
-3. **login_history** - Login tracking
-   - id, user_email, event_type
-   - ip_address, location, browser, device, os
-   - session_duration, created_date
-
-4. **user_activities** - Activity logs (metadata only!)
-   - id, user_email, activity_type
-   - page_name, details (JSON)
-   - created_date
-
-## 🔑 Default Admin Account
-
-After running `setup_database.py`:
-
-- **Email:** sumitagaria@gmail.com
-- **Password:** admin123
-- **Plan:** Premium (unlimited)
-
-⚠️ **IMPORTANT:** Change this password after first login!
-
-## 🌐 API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `GET /api/auth/me` - Get current user
-- `PUT /api/auth/me` - Update current user
-
-### Subscriptions
-- `GET /api/subscriptions/me` - Get my subscription
-- `POST /api/subscriptions/upgrade` - Upgrade to premium
-
-### Activity
-- `POST /api/activity/log` - Log activity
-- `GET /api/activity/history` - Get activity history
-
-### Admin
-- `GET /api/admin/users` - Get all users (admin only)
-- `GET /api/admin/subscriptions` - Get all subscriptions (admin only)
-
-### AI/LLM (Placeholder)
-- `POST /api/integrations/llm/invoke` - Invoke LLM
-- `POST /api/integrations/image/generate` - Generate image
-
-## 🔧 Environment Variables
-
-Create `.env` file with:
-
-```bash
-# Database
-DATABASE_URL=postgresql://postgres:password@localhost:5432/insightsheet
-
-# JWT Secret
-JWT_SECRET_KEY=your-secret-key-change-in-production
-
-# OpenAI
-OPENAI_API_KEY=sk-your-openai-key
-
-# SendGrid (Email)
-SENDGRID_API_KEY=your-sendgrid-key
-
-# Stripe (Payments)
-STRIPE_SECRET_KEY=sk_test_your-key
-STRIPE_PUBLISHABLE_KEY=pk_test_your-key
-```
-
-## 🐳 Docker Setup (Alternative)
-
-```bash
-# Start PostgreSQL
-docker-compose up -d
-
-# Setup database
-python setup_database.py
-
-# Start backend
-uvicorn main:app --reload --port 8000
-```
-
-## 🧪 Testing
-
-```bash
-# Test database connection
-python -c "from database import test_connection; test_connection()"
-
-# Test API health
-curl http://localhost:8000/health
-
-# Test login
-curl -X POST http://localhost:8000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"sumitagaria@gmail.com","password":"admin123"}'
-```
-
-## 📊 PostgreSQL Commands
-
-```bash
-# Connect to database
-psql postgresql://postgres:password@localhost:5432/insightsheet
-
-# List tables
-\dt
-
-# View users
-SELECT email, role, is_active FROM users;
-
-# View subscriptions
-SELECT user_email, plan, status FROM subscriptions;
-
-# Exit
-\q
-```
-
-## 🌍 Cloud PostgreSQL (Free Options)
-
-### 1. Heroku PostgreSQL (Free)
-```bash
-heroku addons:create heroku-postgresql:hobby-dev
-heroku config:get DATABASE_URL
-```
-
-### 2. Railway (Free)
-1. Go to [railway.app](https://railway.app)
-2. New Project → Add PostgreSQL
-3. Copy connection URL
-
-### 3. Supabase (Free)
-1. Go to [supabase.com](https://supabase.com)
-2. New Project
-3. Settings → Database → Connection String
-
-### 4. ElephantSQL (Free 20MB)
-1. Go to [elephantsql.com](https://elephantsql.com)
-2. Create instance
-3. Copy connection URL
-
-## 🚨 Troubleshooting
-
-### "psql: command not found"
-```bash
-# Add to PATH (macOS)
-export PATH="/usr/local/opt/postgresql@15/bin:$PATH"
-```
-
-### "connection refused"
-```bash
-# Check if PostgreSQL is running
-pg_isready
-
-# Start PostgreSQL
-brew services start postgresql@15  # macOS
-sudo systemctl start postgresql    # Linux
-docker start postgres              # Docker
-```
-
-### "database does not exist"
-```bash
-createdb insightsheet
-```
-
-### "password authentication failed"
-```bash
-# Reset password
-psql postgres -c "ALTER USER postgres PASSWORD 'newpassword';"
-```
-
-## 📝 Production Deployment
-
-1. **Set secure JWT_SECRET_KEY**
-2. **Use strong database password**
-3. **Enable SSL for database**
-4. **Set up proper CORS origins**
-5. **Use environment variables**
-6. **Enable database backups**
-7. **Monitor database performance**
-
-## 📚 Resources
-
-- [FastAPI Docs](https://fastapi.tiangolo.com/)
-- [PostgreSQL Docs](https://www.postgresql.org/docs/)
-- [SQLAlchemy Docs](https://docs.sqlalchemy.org/)
-- [Pydantic Docs](https://docs.pydantic.dev/)
-
-## 📞 Support
-
-For issues:
-1. Check backend logs
-2. Verify DATABASE_URL in .env
-3. Test database connection
-4. Check API docs at /docs
-
----
-
-**Meldra AI** - Built with ❤️ using FastAPI + PostgreSQL
->>>>>>> 58194c7fbb5d6cfa982aaf3d15ce3ba47988e1ba
+## Meldra AI

@@ -189,6 +189,38 @@ RUN apt-get update && apt-get install -y \
 | `/api/files/ocr-extract` | POST | Bearer | `file` (image) | `{ "text": "..." }` |
 | `/api/files/ocr-export` | POST | Bearer | `{ "text", "format": "doc"\|"pdf", "title"? }` | .docx or .pdf binary |
 
+### Developer Portal / API Key Proxy
+
+The Developer Portal Test Console uses the API-key-based proxy:
+
+- `POST /api/developer/proxy`
+
+This endpoint accepts `multipart/form-data`:
+
+- `api_key`: your API key
+- `endpoint`: conversion id (examples below)
+- `file`: upload file
+
+OCR conversions:
+
+- `endpoint=ocr-to-doc`
+- `endpoint=ocr-to-pdf`
+
+Optional OCR fields:
+
+- `ocr_lang`: OCR language (example: `eng`)
+- `max_pages`: for PDF OCR only (example: `1`)
+- `timeout_seconds`: override backend OCR timeout for this request
+
+OCR to PDF additional field:
+
+- `mode=exact`: image-based PDF that preserves the original image/diagram exactly
+
+Notes:
+
+- `mode=exact` is intended for diagrams/forms/screenshots where "Searchable" layout reconstruction loses shapes, colors, and alignment.
+- The default (no `mode`) produces a searchable PDF generated from OCR text.
+
 ---
 
 ## Dependencies
@@ -245,6 +277,15 @@ If Tesseract is missing, `ocr-extract` returns **503** with a message that Tesse
 | **OCR returns empty or poor text** | Improve image (resolution, contrast, orientation). Tesseract uses `--psm 6`; for forms, `--psm 3` can be tried in `ocr_service.extract_text` (edit `config`). |
 | **Export fails (500)** | Backend logs: `OCR export error`. Confirm `python-docx` and `reportlab` are installed. |
 | **“OCR extraction failed” in UI** | Network/backend reachable? `VITE_API_URL` correct? 401/403? Check browser Network tab and backend logs. |
+| **OCR to PDF output is blank in Exact mode** | Ensure backend is deployed to a commit that includes the hardened `pdf_from_image` implementation (it decodes image with Pillow, re-encodes as PNG, and embeds it into a same-size PDF page). |
+
+### Relevant Environment Variables (OCR)
+
+- `OCR_TIMEOUT_IMAGE_SECONDS`: default image OCR timeout
+- `OCR_TIMEOUT_PDF_SECONDS`: default PDF OCR timeout
+- `OCR_MAX_PAGES_DEFAULT`: default max pages for PDF OCR
+- `TESSERACT_TIMEOUT_SECONDS`: internal Tesseract timeout
+- `OCR_SPACE_API_KEY`: enable OCR.space fallback (where configured)
 
 ---
 

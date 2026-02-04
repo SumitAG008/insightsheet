@@ -8,5 +8,8 @@ export function getApiBase() {
   if (typeof window !== 'undefined' && window.location?.hostname === 'localhost') {
     return 'http://localhost:8001';
   }
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
   return '';
 }

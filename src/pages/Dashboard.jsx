@@ -413,6 +413,10 @@ export default function Dashboard() {
             </div>
           </div>
 
+          <div className="max-w-4xl mx-auto mb-8">
+            <SuggestionsPanel page="dashboard" />
+          </div>
+
           {/* Upload Zone */}
           <div className="max-w-4xl mx-auto">
             <FileUploadZone onFileUpload={handleFileUpload} isProcessing={isProcessing} />

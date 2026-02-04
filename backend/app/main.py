@@ -74,6 +74,12 @@ from app.services.compliance_ai_service import ComplianceAIService
 from app.services.predictive_ml_service import PredictiveMLService
 from app.services.excel_ops_service import ExcelOpsService
 from app.services.xlsx_chart_service import XlsxChartService
+from app.services.watermark_service import (
+    should_apply_watermark,
+    watermark_pdf_bytes,
+    watermark_pptx_bytes,
+    watermark_xlsx_bytes,
+)
 from PIL import Image
 
 
@@ -1173,10 +1179,89 @@ async def convert_document(
     else:
         raise HTTPException(status_code=404, detail="Unknown conversion")
 
+    if should_apply_watermark(getattr(subscription, "plan", None)):
+        if out_ext == ".pdf":
+            data = watermark_pdf_bytes(data)
+        elif out_ext == ".pptx":
+            data = watermark_pptx_bytes(data)
+
     base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
     base = _ascii_safe_filename(base)
     headers = {"Content-Disposition": f"attachment; filename={base}{out_ext}"}
     return StreamingResponse(io.BytesIO(data), media_type=media, headers=headers)
+
+
+@app.get("/api/suggestions", response_model=Dict[str, Any])
+async def get_suggestions(
+    page: Optional[str] = None,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Rule-based 'next best actions' suggestions.
+
+    MVP: deterministic suggestions based on page context.
+    Later: rank/personalize using UserActivity + model.
+    """
+
+    subscription = _get_or_create_subscription(db, current_user["email"])
+    plan = (getattr(subscription, "plan", "free") or "free").strip().lower()
+    page_norm = (page or "").strip().lower()
+
+    suggestions = []
+
+    if page_norm in ("dashboard", "analysis", "data") or not page_norm:
+        suggestions.extend(
+            [
+                {
+                    "id": "s_cleaning",
+                    "title": "Clean your data",
+                    "reason": "Fix blanks, duplicates, and mixed data types for better analysis.",
+                    "action": {"type": "ui", "target": "dashboard_analysis"},
+                },
+                {
+                    "id": "s_chart",
+                    "title": "Create a chart",
+                    "reason": "Visualize trends and outliers quickly.",
+                    "action": {"type": "ui", "target": "dashboard_charts"},
+                },
+                {
+                    "id": "s_ai_ops",
+                    "title": "Try AI-powered operations",
+                    "reason": "Describe transformations in English and apply them instantly.",
+                    "action": {"type": "ui", "target": "dashboard_ai"},
+                },
+            ]
+        )
+
+    if page_norm in ("converter", "document-converter", "pdfdocconverter"):
+        suggestions.extend(
+            [
+                {
+                    "id": "s_pdf2ppt",
+                    "title": "Convert PDF to PPT",
+                    "reason": "Turn documents into slides for editing and sharing.",
+                    "action": {"type": "navigate", "url": "/pdfdocconverter?mode=pdf2ppt"},
+                },
+                {
+                    "id": "s_ocr",
+                    "title": "If scanned, run OCR first",
+                    "reason": "Scanned PDFs may convert better after OCR.",
+                    "action": {"type": "navigate", "url": "/pdfdocconverter?mode=pdf2doc"},
+                },
+            ]
+        )
+
+    if plan != "premium":
+        suggestions.append(
+            {
+                "id": "s_upgrade_watermark",
+                "title": "Remove watermark by upgrading",
+                "reason": "Free plan exports include a meldra.ai watermark.",
+                "action": {"type": "navigate", "url": "/pricing"},
+            }
+        )
+
+    return {"suggestions": suggestions, "plan": plan}
 
 
 @app.post("/api/support/chat", response_model=Dict[str, Any])
@@ -2963,6 +3048,9 @@ async def developer_generate_pl_with_file(
 
         pl_service = PLBuilderService()
         excel_data = await pl_service.generate_pl_from_natural_language(combined_prompt, context)
+
+        if should_apply_watermark(getattr(subscription, "plan", None)):
+            excel_data = watermark_xlsx_bytes(excel_data)
         response_size = len(excel_data) if excel_data is not None else None
 
         elapsed_ms = int((time.time() - started) * 1000)
@@ -3060,6 +3148,9 @@ async def excel_to_ppt(
             io.BytesIO(file_content),
             file.filename,
         )
+
+        if should_apply_watermark(getattr(subscription, "plan", None)):
+            ppt_data = watermark_pptx_bytes(ppt_data)
 
         # Log processing history (NO file content)
         processing_history = FileProcessingHistory(
@@ -3194,6 +3285,9 @@ async def generate_pl(
             prompt,
             context
         )
+
+        if should_apply_watermark(getattr(subscription, "plan", None)):
+            excel_data = watermark_xlsx_bytes(excel_data)
 
         _consume_ai_quota(db, subscription)
 

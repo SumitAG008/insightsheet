@@ -9,14 +9,15 @@ import DataGrid from '../components/dashboard/DataGrid';
 import CleaningTools from '../components/dashboard/CleaningTools';
 import AIInsights from '../components/dashboard/AIInsights';
 import ChartPanel from '../components/dashboard/ChartPanel';
-import EnhancedChartPanel from '../components/dashboard/EnhancedChartPanel';
+import EnhancedChartPanel from '@/components/charts/EnhancedChartPanel';
+import SuggestionsPanel from '@/components/SuggestionsPanel';
 import AIAssistant from '../components/dashboard/AIAssistant';
+import TemplateSelector from '../components/dashboard/TemplateSelector';
 import DataTransform from '../components/dashboard/DataTransform';
 import SmartFormula from '../components/dashboard/SmartFormula';
 import DataValidator from '../components/dashboard/DataValidator';
 import AdvancedFilter from '../components/dashboard/AdvancedFilter';
 import FileUploadZone from '../components/upload/FileUploadZone';
-import TemplateSelector from '../components/dashboard/TemplateSelector';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -667,6 +668,7 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-6">
+                <SuggestionsPanel page="dashboard" />
                 <AIInsights data={displayData || data} />
                 <EnhancedChartPanel data={displayData || data} />
               </div>

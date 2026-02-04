@@ -347,6 +347,7 @@ logger.info(f"Allowed origins: {ALLOWED_ORIGINS}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"^https://([a-z0-9-]+\.)*meldra\.ai$",
     allow_credentials=True,  # Required for cookies/auth
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],

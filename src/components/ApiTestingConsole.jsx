@@ -120,6 +120,16 @@ const ENDPOINTS = [
     description: 'Execute Excel-like operation plan (preview JSON or download CSV)',
     acceptFile: '.xlsx,.xls,.csv,.tsv',
   },
+  {
+    id: 'excel-ops-charts',
+    name: 'Excel Ops: Charts (XLSX)',
+    method: 'POST',
+    path: '/v1/excel-ops/charts',
+    icon: FileText,
+    description: 'Run ops plan then generate downloadable XLSX with native Excel charts (chart_json)',
+    acceptFile: '.xlsx,.xls,.csv,.tsv',
+    responseType: 'blob',
+  },
 ];
 
 export default function ApiTestingConsole() {
@@ -131,6 +141,7 @@ export default function ApiTestingConsole() {
   const [message, setMessage] = useState('');
   const [excelOpsReturnMode, setExcelOpsReturnMode] = useState('preview');
   const [excelOpsPreviewLimit, setExcelOpsPreviewLimit] = useState('50');
+  const [excelOpsChartJson, setExcelOpsChartJson] = useState('');
   const [pdfDocMode, setPdfDocMode] = useState('auto');
   const [ocrLangPreset, setOcrLangPreset] = useState('eng');
   const [ocrLangCustom, setOcrLangCustom] = useState('');
@@ -241,6 +252,20 @@ export default function ApiTestingConsole() {
           formData.append('preview_limit', plim);
         }
         formData.append('return_mode', (excelOpsReturnMode || 'preview').trim());
+      } else if (selectedEndpoint.id === 'excel-ops-charts') {
+        url = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
+          ? `${import.meta.env.VITE_API_URL}/api/developer/files/excel-ops/charts`
+          : '/api/developer/files/excel-ops/charts';
+        const plan = (jsonPayload || '').trim();
+        if (!plan) {
+          throw new Error('Plan JSON is required for Excel Ops Charts');
+        }
+        const cjson = (excelOpsChartJson || '').trim();
+        if (!cjson) {
+          throw new Error('chart_json is required for Excel Ops Charts');
+        }
+        formData.append('plan_json', plan);
+        formData.append('chart_json', cjson);
       } else {
         formData.append('endpoint', selectedEndpoint.id);
         if (selectedEndpoint.id === 'pdf-to-doc') {
@@ -421,6 +446,30 @@ export default function ApiTestingConsole() {
                 placeholder='{"inputs":[{"name":"main"}],"steps":[...]}'
                 value={jsonPayload}
                 onChange={(e) => setJsonPayload(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
+        {selectedEndpoint.id === 'excel-ops-charts' && (
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Plan JSON</label>
+              <Input
+                type="text"
+                placeholder='{"inputs":[{"name":"main"}],"steps":[...]}'
+                value={jsonPayload}
+                onChange={(e) => setJsonPayload(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Chart JSON</label>
+              <Input
+                type="text"
+                placeholder='{"dashboard_sheet":"Dashboard","charts":[{"type":"bar","title":"Top 10","category_col":"Category","y_col":"Amount","top_n":10,"position":"B2"}]}'
+                value={excelOpsChartJson}
+                onChange={(e) => setExcelOpsChartJson(e.target.value)}
               />
             </div>
           </div>

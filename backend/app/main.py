@@ -73,6 +73,7 @@ from app.services.document_converter_service import pdf_to_docx, pdf_to_docx_sma
 from app.services.compliance_ai_service import ComplianceAIService
 from app.services.predictive_ml_service import PredictiveMLService
 from app.services.excel_ops_service import ExcelOpsService
+from app.services.xlsx_chart_service import XlsxChartService
 from PIL import Image
 
 
@@ -2729,6 +2730,121 @@ async def developer_excel_ops_execute(
         except Exception:
             pass
         raise HTTPException(status_code=500, detail="Excel ops execution failed")
+
+
+@app.post("/api/developer/files/excel-ops/charts")
+async def developer_excel_ops_charts(
+    request: Request,
+    api_key: str = Form(...),
+    file: UploadFile = File(...),
+    plan_json: str = Form(...),
+    chart_json: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    if not api_key or not api_key.strip():
+        raise HTTPException(status_code=400, detail="API key is required")
+
+    key = get_api_key_by_header(api_key.strip(), db)
+    if not key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    if not key.is_active:
+        raise HTTPException(status_code=403, detail="API key is inactive")
+
+    ip_address = getattr(getattr(request, "client", None), "host", None)
+    user_agent = None
+    try:
+        user_agent = request.headers.get("user-agent")
+    except Exception:
+        user_agent = None
+
+    started = time.time()
+    raw = await file.read()
+    status_code = 200
+    response_size = None
+
+    try:
+        ext = (os.path.splitext(file.filename or "")[1] or "").lower()
+        if ext not in (".xlsx", ".xls", ".csv", ".tsv"):
+            raise HTTPException(status_code=400, detail="Invalid file type. Only .xlsx, .xls, .csv, .tsv are supported.")
+
+        if not (plan_json or "").strip():
+            raise HTTPException(status_code=400, detail="plan_json is required")
+        if not (chart_json or "").strip():
+            raise HTTPException(status_code=400, detail="chart_json is required")
+
+        svc = ExcelOpsService()
+        plan = json.loads(plan_json)
+        result, con = svc.execute_plan(filename=file.filename or "uploaded_file", content=raw, plan=plan, preview_limit=50)
+
+        # final view is v{len(steps)}
+        steps = plan.get("steps") or []
+        view_name = f"v{len(steps)}"
+        df = con.execute(f"SELECT * FROM {view_name}").df()
+
+        chart_svc = XlsxChartService()
+        built = chart_svc.build_workbook_from_dataframe(df=df, chart_plan_json=chart_json)
+        xlsx_bytes = built.xlsx_bytes
+        response_size = len(xlsx_bytes) if xlsx_bytes is not None else None
+
+        elapsed_ms = int((time.time() - started) * 1000)
+        track_api_usage(
+            db=db,
+            api_key=key,
+            endpoint="/v1/excel-ops/charts",
+            method="POST",
+            status_code=200,
+            request_size_bytes=(len(raw) if raw is not None else None),
+            response_size_bytes=response_size,
+            processing_time_ms=elapsed_ms,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+        base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
+        base = _ascii_safe_filename(base)
+        headers = {"Content-Disposition": f"attachment; filename={base}_charts.xlsx"}
+        return StreamingResponse(
+            io.BytesIO(xlsx_bytes),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers=headers,
+        )
+    except HTTPException as e:
+        status_code = e.status_code
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/excel-ops/charts",
+                method="POST",
+                status_code=status_code,
+                request_size_bytes=(len(raw) if raw is not None else None),
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise
+    except Exception:
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/excel-ops/charts",
+                method="POST",
+                status_code=500,
+                request_size_bytes=(len(raw) if raw is not None else None),
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Excel charts generation failed")
 
 
 @app.post("/api/developer/files/generate-pl-with-file")

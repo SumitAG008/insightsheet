@@ -33,6 +33,7 @@ export default function Dashboard() {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [displayData, setDisplayData] = useState(null);
+  const [activeSheet, setActiveSheet] = useState('');
   
   // Undo/Redo functionality
   const [history, setHistory] = useState([]);
@@ -48,6 +49,7 @@ export default function Dashboard() {
       setData(parsedData);
       setDisplayData(parsedData);
       setFilename(storedFilename || 'spreadsheet.csv');
+      setActiveSheet(parsedData?.workbook?.activeSheet || (parsedData?.workbook?.sheetNames || [])[0] || '');
       // Initialize history with initial data
       historyRef.current.history = [parsedData];
       historyRef.current.index = 0;
@@ -59,8 +61,36 @@ export default function Dashboard() {
   useEffect(() => {
     if (data) {
       setDisplayData(data);
+      setActiveSheet(data?.workbook?.activeSheet || (data?.workbook?.sheetNames || [])[0] || '');
     }
   }, [data]);
+
+  const sheetNames = data?.workbook?.sheetNames || [];
+  const workbookSheets = data?.workbook?.sheets || {};
+  const hasWorkbook = sheetNames.length > 0 && Object.keys(workbookSheets).length > 0;
+
+  const handleSheetSelect = (sheet) => {
+    if (!sheet) return;
+    if (!hasWorkbook) return;
+    const tbl = workbookSheets?.[sheet];
+    if (!tbl) return;
+
+    const next = {
+      ...data,
+      headers: tbl.headers,
+      rows: tbl.rows,
+      raw: tbl.raw,
+      workbook: {
+        ...(data.workbook || {}),
+        activeSheet: sheet,
+      },
+    };
+
+    setActiveSheet(sheet);
+    setData(next);
+    sessionStorage.setItem('insightsheet_data', JSON.stringify(next));
+    addToHistory(next);
+  };
 
   // Add to history when data changes
   const addToHistory = useCallback((newData) => {
@@ -145,6 +175,7 @@ export default function Dashboard() {
       setIsProcessing(false);
       setData(uploadedData);
       setFilename(file.name);
+      setActiveSheet(uploadedData?.workbook?.activeSheet || (uploadedData?.workbook?.sheetNames || [])[0] || '');
       addToHistory(uploadedData);
     }, 1000);
   }, [addToHistory]);
@@ -160,6 +191,7 @@ export default function Dashboard() {
       setIsProcessing(false);
       setData(templateData);
       setFilename(templateFilename);
+      setActiveSheet(templateData?.workbook?.activeSheet || (templateData?.workbook?.sheetNames || [])[0] || '');
       addToHistory(templateData);
     }, 500);
   }, [addToHistory]);
@@ -469,10 +501,10 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Analysis Dashboard</h1>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{filename || 'Analysis Dashboard'}</h1>
             <p className="text-slate-600 dark:text-slate-400 flex items-center gap-2 flex-wrap">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              {filename} • {(displayData || data).rows.length} rows • {(displayData || data).headers.length} columns
+              Analysis Dashboard • {(displayData || data).rows.length} rows • {(displayData || data).headers.length} columns
               {displayData && displayData.rows.length !== data.rows.length && (
                 <span className="ml-2 px-2 py-1 bg-[#4169E1]/20 text-[#4169E1] text-sm rounded-full">
                   Filtered: {data.rows.length - displayData.rows.length} hidden
@@ -484,6 +516,27 @@ export default function Dashboard() {
                 </span>
               )}
             </p>
+
+            {hasWorkbook && sheetNames.length > 1 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {sheetNames.map((sn) => {
+                  const isActive = (activeSheet || data?.workbook?.activeSheet || sheetNames[0]) === sn;
+                  return (
+                    <Button
+                      key={sn}
+                      type="button"
+                      size="sm"
+                      variant={isActive ? 'default' : 'outline'}
+                      className={isActive ? 'bg-[#4169E1] hover:bg-[#3659c7] text-white' : 'border-slate-300 dark:border-slate-700'}
+                      onClick={() => handleSheetSelect(sn)}
+                      title={sn}
+                    >
+                      {sn}
+                    </Button>
+                  );
+                })}
+              </div>
+            )}
           </div>
           
           <div className="flex gap-3 flex-wrap">

@@ -72,6 +72,7 @@ from app.services.api_key_service import (
 from app.services.document_converter_service import pdf_to_docx, pdf_to_docx_smart, docx_to_pdf, pptx_to_pdf, pdf_to_pptx
 from app.services.compliance_ai_service import ComplianceAIService
 from app.services.predictive_ml_service import PredictiveMLService
+from app.services.excel_ops_service import ExcelOpsService
 from PIL import Image
 
 
@@ -401,6 +402,7 @@ async def startup_event():
             try:
                 _sweep_once()
             except Exception:
+                # Never crash server due to cleanup task
                 pass
             time.sleep(min(120, max(30, ttl_seconds // 4)))
 
@@ -2272,30 +2274,6 @@ async def developer_api_proxy(
     if not key.is_active:
         raise HTTPException(status_code=403, detail="API key is inactive")
 
-    if (getattr(key, "plan", "") or "").lower() == "sandbox":
-        bypass_raw = os.getenv("SANDBOX_QUOTA_BYPASS_EMAILS", "")
-        bypass_emails = {e.strip().lower() for e in bypass_raw.split(",") if e.strip()}
-        key_owner_email = (getattr(key, "user_email", "") or "").strip().lower()
-        bypass_for_owner = bool(key_owner_email) and key_owner_email in bypass_emails
-
-        allowed = {"pdf-to-doc", "doc-to-pdf", "ppt-to-pdf", "pdf-to-ppt", "zip-clean", "ocr-to-doc", "ocr-to-pdf"}
-        if (not bypass_for_owner) and endpoint in allowed:
-            used = (
-                db.query(func.count(ApiUsage.id))
-                .filter(
-                    ApiUsage.api_key_id == key.id,
-                    ApiUsage.status_code == 200,
-                    ApiUsage.endpoint.in_([f"/v1/{e}" for e in allowed]),
-                )
-                .scalar()
-                or 0
-            )
-            if used >= 1:
-                raise HTTPException(
-                    status_code=429,
-                    detail="Sandbox key limit reached: only 1 successful conversion is allowed. Request a production key for more conversions.",
-                )
-
     ip_address = getattr(getattr(request, "client", None), "host", None)
     user_agent = None
     try:
@@ -2497,11 +2475,27 @@ async def developer_api_proxy(
 
         base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
         base = _ascii_safe_filename(base)
-        out_name = f"{base}{out_ext}"
+
+        ocr_mode_header = None
+        if endpoint == "ocr-to-pdf":
+            mode_norm = (mode or "").strip().lower()
+            if mode_norm in ("exact", "image", "render"):
+                out_name = f"{base}_exact{out_ext}"
+                ocr_mode_header = "exact"
+            else:
+                out_name = f"{base}_searchable{out_ext}"
+                ocr_mode_header = "searchable"
+        else:
+            out_name = f"{base}{out_ext}"
+
+        headers = {"Content-Disposition": f"attachment; filename={out_name}"}
+        if ocr_mode_header:
+            headers["X-Meldra-OCR-Mode"] = ocr_mode_header
+
         return StreamingResponse(
             io.BytesIO(data),
             media_type=media,
-            headers={"Content-Disposition": f"attachment; filename={out_name}"},
+            headers=headers,
         )
     except HTTPException as e:
         status_code = e.status_code
@@ -2552,6 +2546,133 @@ async def developer_api_proxy(
             status_code=500,
             detail=f"Developer API proxy failed (request_id={request_id})",
         )
+
+
+@app.post("/api/developer/files/excel-ops/execute")
+async def developer_excel_ops_execute(
+    request: Request,
+    api_key: str = Form(...),
+    file: UploadFile = File(...),
+    plan_json: str = Form(...),
+    preview_limit: Optional[int] = Form(None),
+    return_mode: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    if not api_key or not api_key.strip():
+        raise HTTPException(status_code=400, detail="API key is required")
+
+    key = get_api_key_by_header(api_key.strip(), db)
+    if not key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    if not key.is_active:
+        raise HTTPException(status_code=403, detail="API key is inactive")
+
+    ip_address = getattr(getattr(request, "client", None), "host", None)
+    user_agent = None
+    try:
+        user_agent = request.headers.get("user-agent")
+    except Exception:
+        user_agent = None
+
+    started = time.time()
+    raw = await file.read()
+    status_code = 200
+    response_size = None
+
+    try:
+        ext = (os.path.splitext(file.filename or "")[1] or "").lower()
+        if ext not in (".xlsx", ".xls", ".csv", ".tsv"):
+            raise HTTPException(status_code=400, detail="Invalid file type. Only .xlsx, .xls, .csv, .tsv are supported.")
+
+        try:
+            plim = int(preview_limit) if preview_limit is not None else 50
+        except Exception:
+            plim = 50
+        plim = max(1, min(plim, 500))
+
+        mode = (return_mode or "preview").strip().lower()
+        if mode not in ("preview", "csv"):
+            raise HTTPException(status_code=400, detail="return_mode must be preview|csv")
+
+        svc = ExcelOpsService()
+        result, csv_bytes = svc.execute_plan_and_export_csv(
+            filename=file.filename or "uploaded_file",
+            content=raw,
+            plan_json=plan_json,
+            preview_limit=plim,
+        )
+
+        response_size = len(csv_bytes) if csv_bytes is not None else None
+        elapsed_ms = int((time.time() - started) * 1000)
+        track_api_usage(
+            db=db,
+            api_key=key,
+            endpoint="/v1/excel-ops/execute",
+            method="POST",
+            status_code=200,
+            request_size_bytes=(len(raw) if raw is not None else None),
+            response_size_bytes=response_size,
+            processing_time_ms=elapsed_ms,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+        if mode == "csv":
+            base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
+            base = _ascii_safe_filename(base)
+            headers = {"Content-Disposition": f"attachment; filename={base}_excel_ops.csv"}
+            return StreamingResponse(io.BytesIO(csv_bytes), media_type="text/csv", headers=headers)
+
+        return {
+            "preview": result.preview_rows,
+            "row_count": result.row_count,
+            "elapsed_ms": result.elapsed_ms,
+        }
+    except HTTPException as e:
+        status_code = e.status_code
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/excel-ops/execute",
+                method="POST",
+                status_code=status_code,
+                request_size_bytes=(len(raw) if raw is not None else None),
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise
+    except Exception:
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/excel-ops/execute",
+                method="POST",
+                status_code=500,
+                request_size_bytes=(len(raw) if raw is not None else None),
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Excel ops execution failed")  # Indentation fixed here
+
+
+@app.post("/api/files/excel-to-ppt")
+async def excel_to_ppt(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     try:
         subscription = db.query(Subscription).filter(
             Subscription.user_email == current_user["email"]
@@ -2573,14 +2694,14 @@ async def developer_api_proxy(
             )
 
         # Validate file type
-        if not file.filename.endswith(('.xlsx', '.xls', '.csv')):
+        if not file.filename.endswith((".xlsx", ".xls", ".csv")):
             raise HTTPException(status_code=400, detail="Invalid file type")
 
         # Convert to PPT
         ppt_service = ExcelToPPTService()
         ppt_data = await ppt_service.convert_excel_to_ppt(
             io.BytesIO(file_content),
-            file.filename
+            file.filename,
         )
 
         # Log processing history (NO file content)
@@ -2589,7 +2710,7 @@ async def developer_api_proxy(
             processing_type="excel_to_ppt",
             original_filename=file.filename,
             file_size_mb=file_size_mb,
-            status="success"
+            status="success",
         )
         db.add(processing_history)
         db.commit()
@@ -2603,7 +2724,7 @@ async def developer_api_proxy(
             media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
             headers={
                 "Content-Disposition": f"attachment; filename={base}_presentation.pptx"
-            }
+            },
         )
 
     except HTTPException:
@@ -2618,7 +2739,7 @@ async def developer_api_proxy(
             original_filename=file.filename,
             file_size_mb=file_size_mb if 'file_size_mb' in locals() else 0,
             status="failed",
-            error_message=str(e)
+            error_message=str(e),
         )
         db.add(processing_history)
         db.commit()

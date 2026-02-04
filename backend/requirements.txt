@@ -29,6 +29,7 @@ openai==1.54.5
 openpyxl==3.1.2
 xlrd==2.0.1
 pandas==2.1.4
+duckdb==0.10.3
 python-pptx==0.6.23
 Pillow==10.2.0
 

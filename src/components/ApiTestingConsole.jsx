@@ -13,6 +13,10 @@ const PROXY_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_A
   ? `${import.meta.env.VITE_API_URL}/api/developer/proxy`
   : '/api/developer/proxy';
 
+const EXCEL_OPS_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL)
+  ? `${import.meta.env.VITE_API_URL}/api/developer/files/excel-ops/execute`
+  : '/api/developer/files/excel-ops/execute';
+
 const ENDPOINTS = [
   {
     id: 'pdf-to-doc',
@@ -107,6 +111,15 @@ const ENDPOINTS = [
     acceptFile: '.pdf,.docx,.pptx,.md,.xlsx,.xls',
     responseType: 'json',
   },
+  {
+    id: 'excel-ops-execute',
+    name: 'Excel Ops: Execute Plan',
+    method: 'POST',
+    path: '/v1/excel-ops/execute',
+    icon: FileText,
+    description: 'Execute Excel-like operation plan (preview JSON or download CSV)',
+    acceptFile: '.xlsx,.xls,.csv,.tsv',
+  },
 ];
 
 export default function ApiTestingConsole() {
@@ -116,6 +129,8 @@ export default function ApiTestingConsole() {
   const [prompt, setPrompt] = useState('');
   const [jsonPayload, setJsonPayload] = useState('');
   const [message, setMessage] = useState('');
+  const [excelOpsReturnMode, setExcelOpsReturnMode] = useState('preview');
+  const [excelOpsPreviewLimit, setExcelOpsPreviewLimit] = useState('50');
   const [pdfDocMode, setPdfDocMode] = useState('auto');
   const [ocrLang, setOcrLang] = useState('eng');
   const [ocrPdfMode, setOcrPdfMode] = useState('searchable');
@@ -212,6 +227,18 @@ export default function ApiTestingConsole() {
           // jsonPayload is expected to be a page string or JSON; we pass as page if it's not JSON.
           formData.append('page', jsonPayload.trim());
         }
+      } else if (selectedEndpoint.id === 'excel-ops-execute') {
+        url = EXCEL_OPS_URL;
+        const plan = (jsonPayload || '').trim();
+        if (!plan) {
+          throw new Error('Plan JSON is required for Excel Ops');
+        }
+        formData.append('plan_json', plan);
+        const plim = String(excelOpsPreviewLimit || '').trim();
+        if (plim) {
+          formData.append('preview_limit', plim);
+        }
+        formData.append('return_mode', (excelOpsReturnMode || 'preview').trim());
       } else {
         formData.append('endpoint', selectedEndpoint.id);
         if (selectedEndpoint.id === 'pdf-to-doc') {
@@ -259,7 +286,10 @@ export default function ApiTestingConsole() {
 
       const contentType = response.headers.get('content-type') || '';
 
-      if (selectedEndpoint.responseType === 'json') {
+      const shouldReadJson = selectedEndpoint.responseType === 'json'
+        || (selectedEndpoint.id === 'excel-ops-execute' && (excelOpsReturnMode || 'preview') === 'preview');
+
+      if (shouldReadJson) {
         const data = await response.json().catch(() => null);
         setResult({
           success: true,
@@ -351,6 +381,42 @@ export default function ApiTestingConsole() {
               <Input
                 type="text"
                 placeholder={selectedEndpoint.id === 'ai-invoke-with-file' ? '{"type":"object",...}' : '{"company_name":"..."}'}
+                value={jsonPayload}
+                onChange={(e) => setJsonPayload(e.target.value)}
+              />
+            </div>
+          </div>
+        )}
+
+        {selectedEndpoint.id === 'excel-ops-execute' && (
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Return Mode</label>
+              <select
+                value={excelOpsReturnMode}
+                onChange={(e) => setExcelOpsReturnMode(e.target.value)}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+              >
+                <option value="preview">Preview (JSON)</option>
+                <option value="csv">Download CSV</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Preview Limit</label>
+              <Input
+                type="number"
+                min="1"
+                max="500"
+                placeholder="50"
+                value={excelOpsPreviewLimit}
+                onChange={(e) => setExcelOpsPreviewLimit(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Plan JSON</label>
+              <Input
+                type="text"
+                placeholder='{"inputs":[{"name":"main"}],"steps":[...]}'
                 value={jsonPayload}
                 onChange={(e) => setJsonPayload(e.target.value)}
               />

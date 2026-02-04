@@ -1216,19 +1216,19 @@ async def get_suggestions(
                     "id": "s_cleaning",
                     "title": "Clean your data",
                     "reason": "Fix blanks, duplicates, and mixed data types for better analysis.",
-                    "action": {"type": "ui", "target": "dashboard_analysis"},
+                    "action": {"type": "navigate", "url": "/dashboard?tab=analysis#cleaning"},
                 },
                 {
                     "id": "s_chart",
                     "title": "Create a chart",
                     "reason": "Visualize trends and outliers quickly.",
-                    "action": {"type": "ui", "target": "dashboard_charts"},
+                    "action": {"type": "navigate", "url": "/dashboard?tab=analysis#charts"},
                 },
                 {
                     "id": "s_ai_ops",
                     "title": "Try AI-powered operations",
                     "reason": "Describe transformations in English and apply them instantly.",
-                    "action": {"type": "ui", "target": "dashboard_ai"},
+                    "action": {"type": "navigate", "url": "/dashboard?tab=ai"},
                 },
             ]
         )

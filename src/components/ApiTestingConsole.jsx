@@ -132,6 +132,8 @@ export default function ApiTestingConsole() {
   const [excelOpsReturnMode, setExcelOpsReturnMode] = useState('preview');
   const [excelOpsPreviewLimit, setExcelOpsPreviewLimit] = useState('50');
   const [pdfDocMode, setPdfDocMode] = useState('auto');
+  const [ocrLangPreset, setOcrLangPreset] = useState('eng');
+  const [ocrLangCustom, setOcrLangCustom] = useState('');
   const [ocrLang, setOcrLang] = useState('eng');
   const [ocrPdfMode, setOcrPdfMode] = useState('searchable');
   const [ocrMaxPages, setOcrMaxPages] = useState('10');
@@ -441,14 +443,52 @@ export default function ApiTestingConsole() {
 
         {(selectedEndpoint.id === 'ocr-to-doc' || selectedEndpoint.id === 'ocr-to-pdf') && (
           <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium mb-2 block">OCR Language (optional)</label>
-              <Input
-                type="text"
-                placeholder="eng"
-                value={ocrLang}
-                onChange={(e) => setOcrLang(e.target.value)}
-              />
+            <div className="rounded-md border border-input bg-transparent p-3">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-sm font-medium">OCR Language</label>
+                <span className="text-xs text-muted-foreground">Optional</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Use a 3-letter language code (e.g. <span className="font-mono">eng</span>, <span className="font-mono">spa</span>). For mixed-language documents, leave blank.
+              </p>
+              <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                <select
+                  value={ocrLangPreset}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setOcrLangPreset(v);
+                    if (v === 'custom') {
+                      setOcrLang('');
+                    } else {
+                      setOcrLang(v);
+                    }
+                  }}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                >
+                  <option value="">Auto / Blank</option>
+                  <option value="eng">English (eng)</option>
+                  <option value="spa">Spanish (spa)</option>
+                  <option value="fra">French (fra)</option>
+                  <option value="deu">German (deu)</option>
+                  <option value="ita">Italian (ita)</option>
+                  <option value="por">Portuguese (por)</option>
+                  <option value="nld">Dutch (nld)</option>
+                  <option value="custom">Custom code…</option>
+                </select>
+                <Input
+                  type="text"
+                  placeholder="custom (e.g. hin)"
+                  value={ocrLangCustom}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setOcrLangCustom(v);
+                    if ((ocrLangPreset || '') === 'custom') {
+                      setOcrLang(v);
+                    }
+                  }}
+                  disabled={(ocrLangPreset || '') !== 'custom'}
+                />
+              </div>
             </div>
             {selectedEndpoint.id === 'ocr-to-pdf' && (
               <div>

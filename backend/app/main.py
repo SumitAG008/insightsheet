@@ -96,10 +96,10 @@ class SupportChatRequest(BaseModel):
 def _is_disallowed_support_question(message: str) -> bool:
     m = (message or "").lower()
     disallowed_markers = [
-        "database", "schema", "table", "migration", "sqlalchemy",
+        "migration", "sqlalchemy",
         "deploy", "deployment", "railway", "docker", "kubernetes",
         "log", "logs", "traceback", "stack trace",
-        "env", "environment variable", "openai_api_key", "api key secret",
+        "openai_api_key", "api key secret", "environment variable",
         "source code", "codebase", "github", "commit",
     ]
     return any(s in m for s in disallowed_markers)
@@ -1187,11 +1187,13 @@ async def support_chat_with_file(
     prompt = (
         f"You are Meldra's customer-facing Support Assistant.\n\n"
         f"RULES:\n"
-        f"- Answer ONLY using the provided Knowledge Base excerpts and the uploaded file context.\n"
-        f"- If the question is outside the KB scope or asks for internal/backend implementation details (database, code, deployment, logs, secrets), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"
-        f"- If you are unsure, ask 1 clarifying question or recommend contacting support.\n"
+        f"- Primary goal: help users succeed with the product (API usage, onboarding, endpoints, parameters, error messages, limits) and explain workflows step-by-step.\n"
+        f"- You MAY answer general spreadsheet questions (Excel/Google Sheets) like VLOOKUP/XLOOKUP/INDEX-MATCH, joins/merges, data cleaning, and how to express them in this product.\n"
+        f"- Use the provided Knowledge Base excerpts and uploaded file context when relevant, but do NOT refuse just because the KB doesn't mention something.\n"
+        f"- If the user asks for sensitive internal implementation details (source code, repos, secrets, deployment, logs, environment variables, database credentials), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"
+        f"- If you are unsure, ask 1 clarifying question.\n"
         f"- Formatting: do NOT use Markdown headings (no '#', '##', '###'). Use short label lines like 'Step 1:', 'Next:', 'Note:' instead.\n"
-        f"- If the user asks about pricing, subscription, limits, quotas, or missing access, ask what plan/environment they are on (Free/Standard/Premium, Sandbox vs Production) and whether their email is verified, then give the next steps from the KB.\n\n"
+        f"- If the user asks about pricing, subscription, limits, quotas, or missing access, ask what plan/environment they are on (Free/Standard/Premium, Sandbox vs Production) and whether their email is verified; then give the next steps.\n\n"
         f"USER CONTEXT:\n"
         f"- User email: {current_user.get('email')}\n"
         f"- Page: {page or ''}\n\n"

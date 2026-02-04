@@ -9,7 +9,7 @@ import DataGrid from '../components/dashboard/DataGrid';
 import CleaningTools from '../components/dashboard/CleaningTools';
 import AIInsights from '../components/dashboard/AIInsights';
 import ChartPanel from '../components/dashboard/ChartPanel';
-import EnhancedChartPanel from '@/components/charts/EnhancedChartPanel';
+import EnhancedChartPanel from '../components/dashboard/EnhancedChartPanel';
 import SuggestionsPanel from '@/components/SuggestionsPanel';
 import AIAssistant from '../components/dashboard/AIAssistant';
 import TemplateSelector from '../components/dashboard/TemplateSelector';

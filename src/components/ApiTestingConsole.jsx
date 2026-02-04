@@ -98,7 +98,7 @@ const ENDPOINTS = [
     path: '/v1/files/generate-pl-with-file',
     icon: FileText,
     description: 'Generate P&L XLSX with uploaded file context (binary)',
-    acceptFile: '.pdf,.docx,.pptx,.md,.xlsx,.xls',
+    acceptFile: '.pdf,.docx,.pptx,.md,.xlsx,.xls,.csv,.tsv',
     responseType: 'blob',
   },
   {

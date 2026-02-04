@@ -2728,7 +2728,127 @@ async def developer_excel_ops_execute(
             )
         except Exception:
             pass
-        raise HTTPException(status_code=500, detail="Excel ops execution failed")  # Indentation fixed here
+        raise HTTPException(status_code=500, detail="Excel ops execution failed")
+
+
+@app.post("/api/developer/files/generate-pl-with-file")
+async def developer_generate_pl_with_file(
+    request: Request,
+    api_key: str = Form(...),
+    prompt: str = Form(...),
+    context_json: Optional[str] = Form(None),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    if not api_key or not api_key.strip():
+        raise HTTPException(status_code=400, detail="API key is required")
+
+    key = get_api_key_by_header(api_key.strip(), db)
+    if not key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    if not key.is_active:
+        raise HTTPException(status_code=403, detail="API key is inactive")
+
+    ip_address = getattr(getattr(request, "client", None), "host", None)
+    user_agent = None
+    try:
+        user_agent = request.headers.get("user-agent")
+    except Exception:
+        user_agent = None
+
+    started = time.time()
+    response_size = None
+    raw = b""
+
+    try:
+        if not (prompt or "").strip():
+            raise HTTPException(status_code=400, detail="Prompt is required")
+
+        raw = await file.read()
+
+        plan = (getattr(key, "plan", "") or "").strip().lower()
+        max_size_mb = 500 if plan == "premium" else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        if len(raw) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+
+        context = {}
+        if context_json:
+            try:
+                context = json.loads(context_json) or {}
+            except Exception:
+                raise HTTPException(status_code=400, detail="context_json must be valid JSON")
+
+        svc = IngestionService(IngestLimits(max_bytes=max_bytes))
+        try:
+            ingested = svc.ingest(file.filename or "uploaded_file", raw)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        file_context = build_ingestion_prompt_block(ingested)
+        combined_prompt = f"{prompt}\n\n{file_context}" if file_context else prompt
+
+        pl_service = PLBuilderService()
+        excel_data = await pl_service.generate_pl_from_natural_language(combined_prompt, context)
+        response_size = len(excel_data) if excel_data is not None else None
+
+        elapsed_ms = int((time.time() - started) * 1000)
+        track_api_usage(
+            db=db,
+            api_key=key,
+            endpoint="/v1/files/generate-pl-with-file",
+            method="POST",
+            status_code=200,
+            request_size_bytes=(len(raw) if raw is not None else None),
+            response_size_bytes=response_size,
+            processing_time_ms=elapsed_ms,
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+        return StreamingResponse(
+            io.BytesIO(excel_data),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="Profit_Loss_{datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]}.xlsx"'
+            },
+        )
+    except HTTPException as e:
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/files/generate-pl-with-file",
+                method="POST",
+                status_code=e.status_code,
+                request_size_bytes=(len(raw) if raw is not None else None),
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise
+    except Exception:
+        elapsed_ms = int((time.time() - started) * 1000)
+        try:
+            track_api_usage(
+                db=db,
+                api_key=key,
+                endpoint="/v1/files/generate-pl-with-file",
+                method="POST",
+                status_code=500,
+                request_size_bytes=(len(raw) if raw is not None else None),
+                response_size_bytes=response_size,
+                processing_time_ms=elapsed_ms,
+                ip_address=ip_address,
+                user_agent=user_agent,
+            )
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="P&L generation failed")
 
 
 @app.post("/api/files/excel-to-ppt")

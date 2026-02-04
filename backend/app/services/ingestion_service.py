@@ -50,6 +50,8 @@ class IngestionService:
             return self._ingest_markdown(filename, content)
         if ext == "docx":
             return self._ingest_docx(filename, content)
+        if ext in ("csv", "tsv"):
+            return self._ingest_csv(filename, content, ext)
         if ext in ("xlsx", "xls"):
             return self._ingest_excel(filename, content, ext)
         if ext == "pptx":
@@ -58,6 +60,36 @@ class IngestionService:
             return self._ingest_pdf(filename, content)
 
         raise ValueError(f"Unsupported file type: .{ext}")
+
+    def _ingest_csv(self, filename: str, content: bytes, ext: str) -> Dict[str, Any]:
+        try:
+            import pandas as pd
+        except Exception as e:
+            raise ValueError("pandas is not available") from e
+
+        try:
+            sep = "\t" if ext == "tsv" else ","
+            df = pd.read_csv(io.BytesIO(content), sep=sep)
+        except Exception as e:
+            raise ValueError(f"Failed to parse {ext.upper()} file") from e
+
+        preview_rows = min(len(df), 10)
+        preview = df.head(preview_rows).fillna("")
+        preview_csv = preview.to_csv(index=False)
+        text = f"# File: {filename}\nRows: {len(df)} Cols: {len(df.columns)}\n\n{preview_csv}".strip()
+        text = _clip(text, self.limits.max_chars)
+
+        return {
+            "filename": filename,
+            "type": "csv" if ext == "csv" else "tsv",
+            "extracted_text": text,
+            "meta": {
+                "rows": int(len(df)),
+                "cols": int(len(df.columns)),
+                "preview_csv": preview_csv,
+                "chars": len(text),
+            },
+        }
 
     def _ingest_markdown(self, filename: str, content: bytes) -> Dict[str, Any]:
         text = content.decode("utf-8", errors="replace")

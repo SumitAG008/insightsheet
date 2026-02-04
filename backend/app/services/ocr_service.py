@@ -744,11 +744,31 @@ def pdf_from_image(image_bytes: bytes) -> bytes:
     """
     if not FITZ_AVAILABLE or fitz is None:
         raise RuntimeError("PyMuPDF is not installed. Install: pip install PyMuPDF")
+
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            if img.mode not in ("RGB", "L"):
+                img = img.convert("RGB")
+            w_px, h_px = img.size
+            png_buf = io.BytesIO()
+            img.save(png_buf, format="PNG")
+            png_bytes = png_buf.getvalue()
+    except Exception as e:
+        raise RuntimeError(f"Invalid image for PDF export: {e}") from e
+
+    # Use 1px == 1pt to preserve aspect and avoid unexpected blank pages.
+    w_pt = max(1, float(w_px))
+    h_pt = max(1, float(h_px))
+
     doc = fitz.open()
-    page = doc.new_page()  # A4
-    page.insert_image(page.rect, stream=image_bytes)
+    page = doc.new_page(width=w_pt, height=h_pt)
+    xref = page.insert_image(page.rect, stream=png_bytes)
+    if not xref:
+        doc.close()
+        raise RuntimeError("Failed to embed image into PDF")
+
     buf = io.BytesIO()
-    doc.save(buf, deflate=False)
+    doc.save(buf, deflate=True)
     doc.close()
     return buf.getvalue()
 

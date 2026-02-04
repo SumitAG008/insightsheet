@@ -38,6 +38,8 @@ async function convertViaBackend(file, slug, options = {}) {
     try { const j = JSON.parse(t); msg = j.detail || t; } catch (_) {}
     // 401 = session expired or invalid: no API key is involved; user must log in again.
     if (res.status === 401) msg = 'SESSION_EXPIRED';
+    if (res.status === 413) msg = 'FILE_TOO_LARGE';
+    if (res.status === 404) msg = 'CONVERTER_NOT_AVAILABLE';
     throw new Error(msg || `HTTP ${res.status}`);
   }
   return res.blob();
@@ -54,11 +56,16 @@ export default function PdfDocConverter() {
   const [converting, setConverting] = useState(false);
   const [error, setError] = useState('');
   const [ocrLang, setOcrLang] = useState('eng');
+  const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getToken()));
 
   useEffect(() => {
     const m = MODES.find((x) => x.id === modeParam);
     setMode(m ? m.id : 'pdf2doc');
   }, [modeParam]);
+
+  useEffect(() => {
+    setIsLoggedIn(Boolean(getToken()));
+  }, []);
 
   const current = MODES.find((m) => m.id === mode) || MODES[0];
   const accept = current.accept;
@@ -77,6 +84,11 @@ export default function PdfDocConverter() {
       setError('Backend not configured. Set VITE_API_URL.');
       return;
     }
+    if (!getToken()) {
+      setIsLoggedIn(false);
+      setError('You are not logged in. Please log in to use Document Converter.');
+      return;
+    }
     setConverting(true);
     setError('');
     try {
@@ -88,6 +100,8 @@ export default function PdfDocConverter() {
       const m = err.message || '';
       if (m === 'NOT_LOGGED_IN') setError('You are not logged in. Please log in to use Document Converter.');
       else if (m === 'SESSION_EXPIRED') setError('Your session may have expired. Please log in again.');
+      else if (m === 'FILE_TOO_LARGE') setError('File is too large for your plan. Free: 10MB. Premium: 500MB.');
+      else if (m === 'CONVERTER_NOT_AVAILABLE') setError('Converter is temporarily unavailable. Please refresh and try again.');
       else setError(m || 'Conversion failed.');
     } finally {
       setConverting(false);
@@ -145,6 +159,10 @@ export default function PdfDocConverter() {
             {file && <p className="text-blue-300 text-sm mt-2 font-medium">{file.name}</p>}
           </label>
 
+          <p className="text-slate-400 text-sm mt-4">
+            File limits: Free 10MB, Premium 500MB.
+          </p>
+
           {mode === 'pdf2doc' && (
             <div className="mt-6">
               <div className="flex flex-wrap items-center gap-3">
@@ -168,7 +186,7 @@ export default function PdfDocConverter() {
           {file && (
             <Button
               onClick={handleConvert}
-              disabled={converting}
+              disabled={converting || !isLoggedIn}
               className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white font-bold"
             >
               {converting ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Converting…</> : <>Convert & Download</>}
@@ -194,6 +212,16 @@ export default function PdfDocConverter() {
             Conversions run on our servers. Your file is not stored. Uses your Meldra login only; <strong>no API key required</strong>.
           </AlertDescription>
         </Alert>
+
+        {!isLoggedIn && (
+          <Alert className="mt-4 bg-amber-500/10 border-amber-500/30">
+            <AlertCircle className="h-4 w-4 text-amber-500" />
+            <AlertDescription className="text-slate-700 dark:text-slate-300 flex flex-wrap items-center gap-x-2">
+              <span>Please log in to use Document Converter.</span>
+              <Link to="/login" className="underline font-semibold">Log in</Link>
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
     </div>
   );

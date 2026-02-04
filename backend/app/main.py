@@ -1122,6 +1122,63 @@ async def get_me(current_user: dict = Depends(get_current_user), db: Session = D
     }
 
 
+@app.post("/api/convert/{endpoint}")
+async def convert_document(
+    endpoint: str,
+    file: UploadFile = File(...),
+    ocr_lang: Optional[str] = Form(None),
+    mode: Optional[str] = Form(None),
+    max_pages: Optional[int] = Form(None),
+    timeout_seconds: Optional[float] = Form(None),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """In-app Document Converter (JWT auth): PDF/DOC/PPT conversions.
+
+    Frontend calls: POST /api/convert/{slug} with Authorization: Bearer <jwt>.
+    """
+
+    subscription = _get_or_create_subscription(db, current_user["email"])
+    max_size_mb = 500 if subscription.plan == "premium" else 10
+    max_bytes = max_size_mb * 1024 * 1024
+
+    raw = await file.read()
+    if len(raw) > max_bytes:
+        raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+
+    if endpoint == "pdf-to-doc":
+        data, err = pdf_to_docx_smart(raw, ocr_lang=ocr_lang, mode=mode)
+        if err:
+            raise HTTPException(status_code=400, detail=err)
+        media = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        out_ext = ".docx"
+    elif endpoint == "doc-to-pdf":
+        data, err = docx_to_pdf(raw)
+        if err:
+            raise HTTPException(status_code=400, detail=err)
+        media = "application/pdf"
+        out_ext = ".pdf"
+    elif endpoint == "ppt-to-pdf":
+        data, err = pptx_to_pdf(raw)
+        if err:
+            raise HTTPException(status_code=400, detail=err)
+        media = "application/pdf"
+        out_ext = ".pdf"
+    elif endpoint == "pdf-to-ppt":
+        data, err = pdf_to_pptx(raw)
+        if err:
+            raise HTTPException(status_code=400, detail=err)
+        media = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        out_ext = ".pptx"
+    else:
+        raise HTTPException(status_code=404, detail="Unknown conversion")
+
+    base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
+    base = _ascii_safe_filename(base)
+    headers = {"Content-Disposition": f"attachment; filename={base}{out_ext}"}
+    return StreamingResponse(io.BytesIO(data), media_type=media, headers=headers)
+
+
 @app.post("/api/support/chat", response_model=Dict[str, Any])
 async def support_chat(
     payload: SupportChatRequest,

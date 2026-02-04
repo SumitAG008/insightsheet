@@ -118,6 +118,7 @@ export default function ApiTestingConsole() {
   const [message, setMessage] = useState('');
   const [pdfDocMode, setPdfDocMode] = useState('auto');
   const [ocrLang, setOcrLang] = useState('eng');
+  const [ocrPdfMode, setOcrPdfMode] = useState('searchable');
   const [ocrMaxPages, setOcrMaxPages] = useState('10');
   const [ocrTimeoutSeconds, setOcrTimeoutSeconds] = useState('');
   const [loading, setLoading] = useState(false);
@@ -219,6 +220,9 @@ export default function ApiTestingConsole() {
         if (selectedEndpoint.id === 'ocr-to-doc' || selectedEndpoint.id === 'ocr-to-pdf') {
           if ((ocrLang || '').trim()) {
             formData.append('ocr_lang', (ocrLang || '').trim());
+          }
+          if (selectedEndpoint.id === 'ocr-to-pdf' && (ocrPdfMode || '').trim() === 'exact') {
+            formData.append('mode', 'exact');
           }
           const mp = String(ocrMaxPages || '').trim();
           if (mp) {
@@ -380,6 +384,19 @@ export default function ApiTestingConsole() {
                 onChange={(e) => setOcrLang(e.target.value)}
               />
             </div>
+            {selectedEndpoint.id === 'ocr-to-pdf' && (
+              <div>
+                <label className="text-sm font-medium mb-2 block">PDF Output Mode</label>
+                <select
+                  value={ocrPdfMode}
+                  onChange={(e) => setOcrPdfMode(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                >
+                  <option value="searchable">Searchable (OCR layout)</option>
+                  <option value="exact">Exact (image-based)</option>
+                </select>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               <div>
                 <label className="text-sm font-medium mb-2 block">Max Pages (PDF only)</label>

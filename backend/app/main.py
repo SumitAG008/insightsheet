@@ -93,6 +93,58 @@ class SupportChatRequest(BaseModel):
     page: Optional[str] = None
 
 
+def _support_keyword_answer(message: str) -> Optional[str]:
+    m = (message or "").strip().lower()
+    if not m:
+        return None
+    if len(m) > 40 and " " in m:
+        return None
+
+    aliases = {
+        "vlookup": "vlookup",
+        "vloookup": "vlookup",
+        "xlookup": "xlookup",
+        "lookup": "lookup",
+        "join": "join",
+        "merge": "join",
+    }
+    key = aliases.get(m)
+    if not key:
+        return None
+
+    if key in ("vlookup", "xlookup", "lookup"):
+        return (
+            "Here are the fastest ways to do a VLOOKUP/XLOOKUP-style task in Meldra. Pick one:\n\n"
+            "Option A (Recommended): Excel Ops (server-side transformation)\n"
+            "- Use a lookup join between your main sheet and a lookup sheet.\n"
+            "- Best when you want a clean output file (CSV) + preview rows.\n"
+            "Next: reply with the column names you want to match (left key, right key) and which columns you want to bring in.\n\n"
+            "Option B: Excel formulas (in Excel/Sheets)\n"
+            "- If you want the result inside Excel, use XLOOKUP/VLOOKUP in the spreadsheet.\n\n"
+            "If you want Option A, tell me:\n"
+            "1) Main sheet name (or say 'first sheet')\n"
+            "2) Lookup sheet name\n"
+            "3) Match columns (e.g. CustomerId -> CustomerId)\n"
+            "4) Columns to return (e.g. CustomerName, Segment)\n"
+            "Then I will generate the exact Excel Ops plan JSON for you."
+        )
+
+    if key == "join":
+        return (
+            "Join/Merge in Meldra (quick guide):\n\n"
+            "Option A: Excel Ops join (Recommended)\n"
+            "- Left join / inner join between two inputs (two sheets or two files).\n"
+            "- Use it for lookups, enriching data, and combining datasets.\n\n"
+            "To generate the exact plan JSON, reply with:\n"
+            "- left sheet name + right sheet name\n"
+            "- join keys (e.g. OrderId = OrderId)\n"
+            "- join type (left/inner)\n"
+            "- which right-side columns you want to bring in."
+        )
+
+    return None
+
+
 def _is_disallowed_support_question(message: str) -> bool:
     m = (message or "").lower()
     disallowed_markers = [
@@ -1080,6 +1132,10 @@ async def support_chat(
     if not message:
         raise HTTPException(status_code=400, detail="Message is required")
 
+    kw = _support_keyword_answer(message)
+    if kw:
+        return {"answer": kw, "refused": False}
+
     if _is_disallowed_support_question(message):
         return {
             "answer": "I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.",
@@ -1100,11 +1156,13 @@ async def support_chat(
     prompt = (
         f"You are Meldra's customer-facing Support Assistant.\n\n"
         f"RULES:\n"
-        f"- Answer ONLY using the provided Knowledge Base excerpts.\n"
-        f"- If the question is outside the KB scope or asks for internal/backend implementation details (database, code, deployment, logs, secrets), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"
-        f"- If you are unsure, ask 1 clarifying question or recommend contacting support.\n"
+        f"- Primary goal: help users succeed with the product (API usage, onboarding, endpoints, parameters, error messages, limits) and explain workflows step-by-step.\n"
+        f"- You MAY answer general spreadsheet questions (Excel/Google Sheets) like VLOOKUP/XLOOKUP/INDEX-MATCH, joins/merges, data cleaning, and how to express them in this product.\n"
+        f"- Use the provided Knowledge Base excerpts when relevant, but do NOT refuse just because the KB doesn't mention something.\n"
+        f"- If the user asks for sensitive internal implementation details (source code, repos, secrets, deployment, logs, environment variables, database credentials), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"
+        f"- If you are unsure, ask 1 clarifying question.\n"
         f"- Formatting: do NOT use Markdown headings (no '#', '##', '###'). Use short label lines like 'Step 1:', 'Next:', 'Note:' instead.\n"
-        f"- If the user asks about pricing, subscription, limits, quotas, or missing access, ask what plan/environment they are on (Free/Standard/Premium, Sandbox vs Production) and whether their email is verified, then give the next steps from the KB.\n\n"
+        f"- If the user asks about pricing, subscription, limits, quotas, or missing access, ask what plan/environment they are on (Free/Standard/Premium, Sandbox vs Production) and whether their email is verified; then give the next steps.\n\n"
         f"USER CONTEXT:\n"
         f"- User email: {current_user.get('email')}\n"
         f"- Page: {payload.page or ''}\n\n"
@@ -1149,6 +1207,10 @@ async def support_chat_with_file(
     msg = (message or "").strip()
     if not msg:
         raise HTTPException(status_code=400, detail="Message is required")
+
+    kw = _support_keyword_answer(msg)
+    if kw:
+        return {"answer": kw, "refused": False}
 
     if _is_disallowed_support_question(msg):
         return {

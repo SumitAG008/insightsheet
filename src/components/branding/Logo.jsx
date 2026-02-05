@@ -5,8 +5,8 @@ const DEFAULT_TAGLINE = 'DATA MADE SIMPLE';
 
 export default function Logo({ className = "", size = "medium", showText = true, style = {}, lowercaseM = false, tagline }) {
   const sizes = {
-    small: { container: "w-10 h-10", text: "text-lg", tagline: "text-[10px]" },
-    medium: { container: "w-12 h-12", text: "text-2xl", tagline: "text-xs" },
+    small: { container: "w-10 h-10", text: "text-lg", tagline: "text-[11px]" },
+    medium: { container: "w-12 h-12", text: "text-2xl", tagline: "text-sm" },
     large: { container: "w-24 h-24", text: "text-4xl", tagline: "text-sm" }
   };
 
@@ -54,11 +54,11 @@ export default function Logo({ className = "", size = "medium", showText = true,
             className={`${currentSize.tagline} font-medium ${taglineText === DEFAULT_TAGLINE ? 'tracking-widest uppercase' : ''}`} 
             style={{ 
               color: 'inherit', 
-              opacity: 0.9,
+              opacity: taglineText === DEFAULT_TAGLINE ? 1 : 0.9,
               fontFamily: "'Inter', sans-serif",
               letterSpacing: taglineText === DEFAULT_TAGLINE ? '0.08em' : '0',
               lineHeight: '1.4',
-              fontWeight: 500
+              fontWeight: taglineText === DEFAULT_TAGLINE ? 800 : 500
             }}
           >
             {taglineText}

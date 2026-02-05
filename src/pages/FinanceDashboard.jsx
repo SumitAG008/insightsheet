@@ -13,6 +13,7 @@ import { decryptJsonFromLocalStorage, encryptJsonToLocalStorage, clearEncryptedL
 const STORAGE_KEYS = {
   mappingProfile: (userEmail) => `finance:mapping:${userEmail || 'anon'}`,
   categorizationRules: (userEmail) => `finance:rules:${userEmail || 'anon'}`,
+  coaMapping: (userEmail) => `finance:coa:${userEmail || 'anon'}`,
   connections: (userEmail) => `finance:connections_enc:${userEmail || 'anon'}`,
 };
 
@@ -149,6 +150,63 @@ function computeMonthlyPL(transactions) {
   return rows;
 }
 
+const PL_LINES = [
+  'Revenue',
+  'COGS',
+  'Opex',
+  'Other Income',
+  'Other Expense',
+  'Unmapped',
+];
+
+function computeFullPL(transactions, coaMapping) {
+  const map = new Map();
+  for (const m of coaMapping || []) {
+    const cat = (m?.category && String(m.category).trim()) ? String(m.category).trim() : '';
+    const line = (m?.line && String(m.line).trim()) ? String(m.line).trim() : '';
+    if (!cat || !line) continue;
+    map.set(cat, line);
+  }
+
+  const byMonth = new Map();
+  for (const t of transactions || []) {
+    const month = t.month || 'Unknown';
+    const cat = (t.category && String(t.category).trim()) ? String(t.category).trim() : 'Uncategorized';
+    const line = map.get(cat) || 'Unmapped';
+    const amt = typeof t.amount === 'number' ? t.amount : 0;
+
+    const isExpenseLine = line === 'COGS' || line === 'Opex' || line === 'Other Expense';
+    const normalized = isExpenseLine ? (amt < 0 ? -amt : amt) : amt;
+
+    const key = `${month}::${line}`;
+    byMonth.set(key, (byMonth.get(key) || 0) + normalized);
+  }
+
+  const months = Array.from(new Set((transactions || []).map((t) => t.month || 'Unknown'))).sort();
+  const rows = months.map((month) => {
+    const get = (line) => byMonth.get(`${month}::${line}`) || 0;
+    const revenue = get('Revenue');
+    const cogs = get('COGS');
+    const opex = get('Opex');
+    const otherIncome = get('Other Income');
+    const otherExpense = get('Other Expense');
+    const unmapped = get('Unmapped');
+    const netProfit = revenue + otherIncome - cogs - opex - otherExpense - unmapped;
+    return {
+      month,
+      revenue,
+      cogs,
+      opex,
+      otherIncome,
+      otherExpense,
+      unmapped,
+      netProfit,
+    };
+  });
+
+  return rows;
+}
+
 function computeMonthlyByCategory(transactions) {
   const out = new Map();
   for (const t of transactions) {
@@ -253,12 +311,50 @@ export default function FinanceDashboard() {
   const [ruleAccount, setRuleAccount] = useState('');
   const [rulesStatus, setRulesStatus] = useState('');
 
+  const [coaMapping, setCoaMapping] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.coaMapping(userEmail));
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [coaStatus, setCoaStatus] = useState('');
+
+  const saveCoaMapping = (next) => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.coaMapping(userEmail), JSON.stringify(next || []));
+    } catch {
+      // ignore
+    }
+  };
+
+  const upsertCoaLine = (category, line) => {
+    const cat = String(category || '').trim();
+    const ln = String(line || '').trim();
+    if (!cat) return;
+    const next = [...coaMapping.filter((m) => String(m?.category || '').trim() !== cat), { category: cat, line: ln || 'Unmapped' }];
+    setCoaMapping(next);
+    saveCoaMapping(next);
+  };
+
   const headers = rawData?.headers || [];
   const sampleRows = (rawData?.rows || []).slice(0, 30);
 
   const monthlyPL = useMemo(() => computeMonthlyPL(transactions), [transactions]);
   const monthlyByCategory = useMemo(() => computeMonthlyByCategory(transactions), [transactions]);
   const uncategorizedCount = useMemo(() => transactions.filter((t) => !(t.category && String(t.category).trim())).length, [transactions]);
+  const fullPL = useMemo(() => computeFullPL(transactions, coaMapping), [transactions, coaMapping]);
+  const workbookCategories = useMemo(() => {
+    const set = new Set();
+    for (const t of transactions) {
+      const cat = (t.category && String(t.category).trim()) ? String(t.category).trim() : 'Uncategorized';
+      set.add(cat);
+    }
+    return Array.from(set).sort();
+  }, [transactions]);
 
   const loadSavedMapping = () => {
     try {
@@ -392,6 +488,7 @@ export default function FinanceDashboard() {
             <TabsTrigger value="mapping" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />Mapping</TabsTrigger>
             <TabsTrigger value="workbook" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />Workbook</TabsTrigger>
             <TabsTrigger value="rules" className="font-semibold"><RefreshCw className="w-4 h-4 mr-2" />Rules</TabsTrigger>
+            <TabsTrigger value="coa" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />COA Mapping</TabsTrigger>
             <TabsTrigger value="pl" className="font-semibold"><RefreshCw className="w-4 h-4 mr-2" />Monthly P&L</TabsTrigger>
             <TabsTrigger value="connections" className="font-semibold"><Lock className="w-4 h-4 mr-2" />Connections</TabsTrigger>
           </TabsList>
@@ -412,6 +509,92 @@ export default function FinanceDashboard() {
                   <span className="text-sm text-slate-600 dark:text-slate-400">{rawData.rows.length} rows • {rawData.headers.length} columns</span>
                 </div>
               ) : null}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="coa" className="space-y-4">
+            <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">COA Mapping</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">Map Categories to P&L statement lines (Revenue/COGS/Opex/etc.). This mapping is saved locally.</p>
+
+              {!transactions.length ? (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertDescription className="text-amber-700">Load transactions first (Upload → Mapping → Apply Mapping).</AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <div className="flex gap-3 flex-wrap">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCoaStatus('');
+                        const next = workbookCategories.map((c) => {
+                          const existing = coaMapping.find((m) => String(m?.category || '').trim() === c);
+                          return existing || { category: c, line: c === 'Uncategorized' ? 'Unmapped' : 'Unmapped' };
+                        });
+                        setCoaMapping(next);
+                        saveCoaMapping(next);
+                        setCoaStatus('Initialized mapping from workbook categories.');
+                      }}
+                    >
+                      Build From Workbook Categories
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCoaMapping([]);
+                        saveCoaMapping([]);
+                        setCoaStatus('Cleared COA mapping.');
+                      }}
+                      disabled={!coaMapping.length}
+                    >
+                      Clear Mapping
+                    </Button>
+                  </div>
+
+                  {coaStatus ? (
+                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{coaStatus}</p>
+                  ) : null}
+
+                  <div className="mt-6 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-100 dark:bg-slate-800/80">
+                          <TableHead className="font-semibold">Category</TableHead>
+                          <TableHead className="font-semibold">P&L Line</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {workbookCategories.map((cat) => {
+                          const existing = coaMapping.find((m) => String(m?.category || '').trim() === cat);
+                          const value = existing?.line || 'Unmapped';
+                          return (
+                            <TableRow key={cat}>
+                              <TableCell className="font-medium">{cat}</TableCell>
+                              <TableCell>
+                                <Select value={value} onValueChange={(v) => upsertCoaLine(cat, v)}>
+                                  <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700">
+                                    <SelectValue placeholder="Select line" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {PL_LINES.map((l) => (
+                                      <SelectItem key={l} value={l}>{l}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <div className="mt-4 flex gap-3">
+                    <Button variant="outline" onClick={() => setActiveTab('pl')}>View Full P&L</Button>
+                  </div>
+                </>
+              )}
             </div>
           </TabsContent>
 
@@ -751,6 +934,44 @@ export default function FinanceDashboard() {
                 </Alert>
               ) : (
                 <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Full P&L Statement</p>
+                      <Button variant="outline" onClick={() => setActiveTab('coa')}>Edit COA Mapping</Button>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-100 dark:bg-slate-800/80">
+                            <TableHead className="font-semibold">Month</TableHead>
+                            <TableHead className="font-semibold text-right">Revenue</TableHead>
+                            <TableHead className="font-semibold text-right">COGS</TableHead>
+                            <TableHead className="font-semibold text-right">Opex</TableHead>
+                            <TableHead className="font-semibold text-right">Other Income</TableHead>
+                            <TableHead className="font-semibold text-right">Other Expense</TableHead>
+                            <TableHead className="font-semibold text-right">Unmapped</TableHead>
+                            <TableHead className="font-semibold text-right">Net Profit</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {fullPL.map((r) => (
+                            <TableRow key={r.month}>
+                              <TableCell>{r.month}</TableCell>
+                              <TableCell className="text-right font-mono">{Number(r.revenue).toFixed(2)}</TableCell>
+                              <TableCell className="text-right font-mono">{Number(r.cogs).toFixed(2)}</TableCell>
+                              <TableCell className="text-right font-mono">{Number(r.opex).toFixed(2)}</TableCell>
+                              <TableCell className="text-right font-mono">{Number(r.otherIncome).toFixed(2)}</TableCell>
+                              <TableCell className="text-right font-mono">{Number(r.otherExpense).toFixed(2)}</TableCell>
+                              <TableCell className="text-right font-mono">{Number(r.unmapped).toFixed(2)}</TableCell>
+                              <TableCell className="text-right font-mono font-semibold">{Number(r.netProfit).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Expenses are normalized to positive values when amounts are negative. Use COA Mapping to reduce Unmapped.</p>
+                  </div>
+
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">By Category</p>

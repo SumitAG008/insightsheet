@@ -10,6 +10,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
   const [processingStatus, setProcessingStatus] = useState('');
   const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
+  const [planLoaded, setPlanLoaded] = useState(false);
 
   const formats = Array.isArray(acceptedFormats) && acceptedFormats.length
     ? acceptedFormats
@@ -28,6 +29,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
   }, []);
 
   const loadUserAndSubscription = async () => {
+    setPlanLoaded(false);
     try {
       const currentUser = await meldraAi.auth.me();
       setUser(currentUser);
@@ -38,6 +40,10 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
       }
     } catch (error) {
       console.error('Error loading user:', error);
+      setSubscription(null);
+      setUser(null);
+    } finally {
+      setPlanLoaded(true);
     }
   };
 
@@ -209,6 +215,12 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
     setProcessingStatus('Checking file size...');
     
     try {
+      if (!planLoaded) {
+        setProcessingStatus('Loading plan...');
+        await loadUserAndSubscription();
+        setProcessingStatus('Checking file size...');
+      }
+
       // Check file size limit
       const fileSizeMB = file.size / (1024 * 1024);
       const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
@@ -248,7 +260,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
       setUploadedFileName('');
       setProcessingStatus('');
     }
-  }, [onFileUpload, subscription]);
+  }, [onFileUpload, subscription, planLoaded]);
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
@@ -295,20 +307,29 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
   return (
     <div>
       {/* File size limit notice - royal blue for premium, strong contrast */}
-      <Alert className={`mb-6 ${subscription?.plan === 'premium' ? 'bg-[#4169E1]/10 border-[#4169E1]/40' : 'bg-amber-500/10 border-amber-500/30'}`}>
-        <Info className={`h-4 w-4 ${subscription?.plan === 'premium' ? 'text-[#4169E1]' : 'text-amber-600 dark:text-amber-400'}`} />
-        <AlertDescription className={subscription?.plan === 'premium' ? 'text-slate-900 dark:text-slate-200' : 'text-slate-700 dark:text-slate-300'}>
-          <strong className={`font-bold text-base ${subscription?.plan === 'premium' ? 'text-slate-900 dark:text-slate-100' : 'text-amber-700 dark:text-amber-300'}`}>
-            {subscription?.plan === 'premium' ? '✨ Premium: Unlimited file size!' : `⚠️ File Size Limit: ${maxSize}MB`}
-          </strong>
-          <br />
-          <span className={`text-base font-semibold ${subscription?.plan === 'premium' ? 'text-slate-800 dark:text-slate-300' : ''}`}>
-            {subscription?.plan === 'premium' 
-              ? 'You can upload files up to 500MB with your Premium plan.'
-              : 'Free plan limited to 10MB. Upgrade to Premium for unlimited size!'}
-          </span>
-        </AlertDescription>
-      </Alert>
+      {!planLoaded ? (
+        <Alert className="mb-6 bg-slate-100 border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+          <Info className="h-4 w-4 text-slate-500" />
+          <AlertDescription className="text-slate-700 dark:text-slate-300">
+            <strong className="font-bold text-base">Checking your plan…</strong>
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <Alert className={`mb-6 ${subscription?.plan === 'premium' ? 'bg-[#4169E1]/10 border-[#4169E1]/40' : 'bg-amber-500/10 border-amber-500/30'}`}>
+          <Info className={`h-4 w-4 ${subscription?.plan === 'premium' ? 'text-[#4169E1]' : 'text-amber-600 dark:text-amber-400'}`} />
+          <AlertDescription className={subscription?.plan === 'premium' ? 'text-slate-900 dark:text-slate-200' : 'text-slate-700 dark:text-slate-300'}>
+            <strong className={`font-bold text-base ${subscription?.plan === 'premium' ? 'text-slate-900 dark:text-slate-100' : 'text-amber-700 dark:text-amber-300'}`}>
+              {subscription?.plan === 'premium' ? '✨ Premium: Unlimited file size!' : `⚠️ File Size Limit: ${maxSize}MB`}
+            </strong>
+            <br />
+            <span className={`text-base font-semibold ${subscription?.plan === 'premium' ? 'text-slate-800 dark:text-slate-300' : ''}`}>
+              {subscription?.plan === 'premium' 
+                ? 'You can upload files up to 500MB with your Premium plan.'
+                : 'Free plan limited to 10MB. Upgrade to Premium for unlimited size!'}
+            </span>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div
         onDrop={handleDrop}
@@ -330,7 +351,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
             accept={formats.join(',')}
             onChange={handleFileInput}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            disabled={isProcessing || !!processingStatus}
+            disabled={isProcessing || !!processingStatus || !planLoaded}
           />
           
           <div className="flex flex-col items-center justify-center text-center">
@@ -378,9 +399,11 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
                 <p className="text-slate-300 font-medium text-sm mb-2">
                   100% browser-based • No server upload • Instant processing
                 </p>
-                <p className="text-slate-200 font-semibold text-base">
-                  Max {maxSize}MB {subscription?.plan !== 'premium' && '(Free Plan)'}
-                </p>
+                {planLoaded ? (
+                  <p className="text-slate-200 font-semibold text-base">
+                    Max {maxSize}MB {subscription?.plan !== 'premium' && '(Free Plan)'}
+                  </p>
+                ) : null}
               </>
             )}
           </div>

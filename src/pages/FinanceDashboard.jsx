@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { decryptJsonFromLocalStorage, encryptJsonToLocalStorage, clearEncryptedLocalStorage } from '@/lib/secureLocalStore';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const STORAGE_KEYS = {
   mappingProfile: (userEmail) => `finance:mapping:${userEmail || 'anon'}`,
@@ -148,6 +150,13 @@ function computeMonthlyPL(transactions) {
 
   rows.sort((a, b) => (a.month > b.month ? 1 : -1) || (a.bucket > b.bucket ? 1 : -1));
   return rows;
+}
+
+function formatDateForExport(d) {
+  if (!d) return '';
+  const dt = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(dt.getTime())) return '';
+  return dt.toISOString().slice(0, 10);
 }
 
 const PL_LINES = [
@@ -433,6 +442,61 @@ export default function FinanceDashboard() {
 
   const setTxnField = (id, patch) => {
     setTransactions((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+  };
+
+  const exportWorkbookToXlsx = () => {
+    const rows = (transactions || []).map((t) => ({
+      Date: formatDateForExport(t.date),
+      Month: t.month || '',
+      Vendor: t.vendor || '',
+      Description: t.description || '',
+      Amount: typeof t.amount === 'number' ? t.amount : 0,
+      Currency: t.currency || '',
+      Category: t.category || '',
+      Account: t.account || '',
+      Notes: t.notes || '',
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Workbook');
+    const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'finance_workbook.xlsx');
+  };
+
+  const exportWorkbookToCsv = () => {
+    const rows = (transactions || []).map((t) => ({
+      Date: formatDateForExport(t.date),
+      Month: t.month || '',
+      Vendor: t.vendor || '',
+      Description: t.description || '',
+      Amount: typeof t.amount === 'number' ? t.amount : 0,
+      Currency: t.currency || '',
+      Category: t.category || '',
+      Account: t.account || '',
+      Notes: t.notes || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const csv = XLSX.utils.sheet_to_csv(ws);
+    saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8' }), 'finance_workbook.csv');
+  };
+
+  const exportFullPlToXlsx = () => {
+    const rows = (fullPL || []).map((r) => ({
+      Month: r.month,
+      Revenue: Number(r.revenue || 0),
+      COGS: Number(r.cogs || 0),
+      Opex: Number(r.opex || 0),
+      'Other Income': Number(r.otherIncome || 0),
+      'Other Expense': Number(r.otherExpense || 0),
+      Unmapped: Number(r.unmapped || 0),
+      'Net Profit': Number(r.netProfit || 0),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Full_PL');
+    const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), 'finance_full_pl.xlsx');
   };
 
   const saveConnection = async () => {
@@ -777,6 +841,8 @@ export default function FinanceDashboard() {
                     <Badge className={uncategorizedCount ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}>
                       Uncategorized: {uncategorizedCount}
                     </Badge>
+                    <Button variant="outline" onClick={exportWorkbookToCsv}>Export CSV</Button>
+                    <Button variant="outline" onClick={exportWorkbookToXlsx}>Export XLSX</Button>
                     <Button variant="outline" onClick={() => setActiveTab('rules')}>Rules</Button>
                     <Button variant="outline" onClick={() => setActiveTab('pl')}>Go to Monthly P&L</Button>
                   </div>
@@ -937,7 +1003,10 @@ export default function FinanceDashboard() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Full P&L Statement</p>
-                      <Button variant="outline" onClick={() => setActiveTab('coa')}>Edit COA Mapping</Button>
+                      <div className="flex gap-2">
+                        <Button variant="outline" onClick={exportFullPlToXlsx}>Export XLSX</Button>
+                        <Button variant="outline" onClick={() => setActiveTab('coa')}>Edit COA Mapping</Button>
+                      </div>
                     </div>
                     <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
                       <Table>

@@ -149,6 +149,25 @@ function computeMonthlyPL(transactions) {
   return rows;
 }
 
+function computeMonthlyByCategory(transactions) {
+  const out = new Map();
+  for (const t of transactions) {
+    const month = t.month || 'Unknown';
+    const cat = (t.category && String(t.category).trim()) ? String(t.category).trim() : 'Uncategorized';
+    const amt = typeof t.amount === 'number' ? t.amount : 0;
+    const key = `${month}::${cat}`;
+    out.set(key, (out.get(key) || 0) + amt);
+  }
+
+  const rows = [];
+  for (const [k, total] of out.entries()) {
+    const [month, category] = k.split('::');
+    rows.push({ month, category, total });
+  }
+  rows.sort((a, b) => (a.month > b.month ? 1 : -1) || (a.category > b.category ? 1 : -1));
+  return rows;
+}
+
 export default function FinanceDashboard() {
   const userEmail = useMemo(() => {
     try {
@@ -169,11 +188,14 @@ export default function FinanceDashboard() {
   const [mapping, setMapping] = useState({ date: null, amount: null, description: null, vendor: null, currency: null });
   const [mappingStatus, setMappingStatus] = useState('');
   const [transactions, setTransactions] = useState([]);
+  const [activeTab, setActiveTab] = useState('upload');
 
   const headers = rawData?.headers || [];
   const sampleRows = (rawData?.rows || []).slice(0, 30);
 
   const monthlyPL = useMemo(() => computeMonthlyPL(transactions), [transactions]);
+  const monthlyByCategory = useMemo(() => computeMonthlyByCategory(transactions), [transactions]);
+  const uncategorizedCount = useMemo(() => transactions.filter((t) => !(t.category && String(t.category).trim())).length, [transactions]);
 
   const loadSavedMapping = () => {
     try {
@@ -209,6 +231,9 @@ export default function FinanceDashboard() {
         description: desc,
         vendor,
         currency: ccy,
+        category: '',
+        account: '',
+        notes: '',
         sourceRow: r,
       };
     });
@@ -231,6 +256,7 @@ export default function FinanceDashboard() {
     setMapping(next);
     setMappingStatus('');
     setTransactions([]);
+    setActiveTab('mapping');
   };
 
   const applyMapping = () => {
@@ -241,6 +267,11 @@ export default function FinanceDashboard() {
     saveMapping(mapping);
     buildTransactions(mapping);
     setMappingStatus('Mapping applied. Transactions loaded in-memory.');
+    setActiveTab('workbook');
+  };
+
+  const setTxnField = (id, patch) => {
+    setTransactions((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
   };
 
   const saveConnection = async () => {
@@ -290,10 +321,11 @@ export default function FinanceDashboard() {
           </AlertDescription>
         </Alert>
 
-        <Tabs defaultValue="upload" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="bg-slate-100 border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
             <TabsTrigger value="upload" className="font-semibold"><Upload className="w-4 h-4 mr-2" />Upload</TabsTrigger>
             <TabsTrigger value="mapping" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />Mapping</TabsTrigger>
+            <TabsTrigger value="workbook" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />Workbook</TabsTrigger>
             <TabsTrigger value="pl" className="font-semibold"><RefreshCw className="w-4 h-4 mr-2" />Monthly P&L</TabsTrigger>
             <TabsTrigger value="connections" className="font-semibold"><Lock className="w-4 h-4 mr-2" />Connections</TabsTrigger>
           </TabsList>
@@ -314,6 +346,98 @@ export default function FinanceDashboard() {
                   <span className="text-sm text-slate-600 dark:text-slate-400">{rawData.rows.length} rows • {rawData.headers.length} columns</span>
                 </div>
               ) : null}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="workbook" className="space-y-4">
+            <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Workbook</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">
+                This is your working spreadsheet. Review transactions, add Category/Account, and then open Monthly P&L.
+              </p>
+
+              {!transactions.length ? (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertDescription className="text-amber-700">Upload and apply mapping first to load transactions.</AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 flex-wrap mb-4">
+                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Loaded</Badge>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{transactions.length} transactions</span>
+                    <Badge className={uncategorizedCount ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}>
+                      Uncategorized: {uncategorizedCount}
+                    </Badge>
+                    <Button variant="outline" onClick={() => setActiveTab('pl')}>Go to Monthly P&L</Button>
+                  </div>
+
+                  {uncategorizedCount ? (
+                    <Alert className="mb-4 bg-amber-50 border-amber-200">
+                      <AlertDescription className="text-amber-800">
+                        Add Categories to reduce Uncategorized. Next step: we will add Rules + AI suggestions to categorize automatically.
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
+
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-100 dark:bg-slate-800/80">
+                          <TableHead className="font-semibold">Date</TableHead>
+                          <TableHead className="font-semibold">Vendor</TableHead>
+                          <TableHead className="font-semibold">Description</TableHead>
+                          <TableHead className="font-semibold text-right">Amount</TableHead>
+                          <TableHead className="font-semibold">Category</TableHead>
+                          <TableHead className="font-semibold">Account</TableHead>
+                          <TableHead className="font-semibold">Notes</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {transactions.slice(0, 200).map((t) => (
+                          <TableRow key={t.id}>
+                            <TableCell className="whitespace-nowrap">
+                              {t.date ? new Date(t.date).toLocaleDateString() : ''}
+                            </TableCell>
+                            <TableCell className="max-w-[180px] truncate">{t.vendor}</TableCell>
+                            <TableCell className="max-w-[260px] truncate">{t.description}</TableCell>
+                            <TableCell className="text-right font-mono">{Number(t.amount || 0).toFixed(2)}</TableCell>
+                            <TableCell>
+                              <Input
+                                value={t.category || ''}
+                                onChange={(e) => setTxnField(t.id, { category: e.target.value })}
+                                placeholder="e.g., Travel"
+                                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={t.account || ''}
+                                onChange={(e) => setTxnField(t.id, { account: e.target.value })}
+                                placeholder="e.g., OPEX"
+                                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                value={t.notes || ''}
+                                onChange={(e) => setTxnField(t.id, { notes: e.target.value })}
+                                placeholder="Optional"
+                                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
+                              />
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {transactions.length > 200 ? (
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                      Showing first 200 rows for now. Next iteration adds virtualization for large files.
+                    </p>
+                  ) : null}
+                </>
+              )}
             </div>
           </TabsContent>
 
@@ -392,32 +516,64 @@ export default function FinanceDashboard() {
           <TabsContent value="pl" className="space-y-4">
             <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Monthly P&L (MVP)</h2>
-              <p className="text-slate-600 dark:text-slate-400 mb-4">This MVP shows totals by month split into Income vs Expense based on sign. Next step adds categorization rules + COA mapping.</p>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">Totals by month and category. Add Categories in Workbook to get a clean P&L.</p>
 
               {!transactions.length ? (
                 <Alert className="bg-amber-50 border-amber-200">
                   <AlertDescription className="text-amber-700">Apply mapping first to load transactions.</AlertDescription>
                 </Alert>
               ) : (
-                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-slate-100 dark:bg-slate-800/80">
-                        <TableHead className="font-semibold">Month</TableHead>
-                        <TableHead className="font-semibold">Bucket</TableHead>
-                        <TableHead className="font-semibold text-right">Total</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {monthlyPL.map((r, idx) => (
-                        <TableRow key={idx}>
-                          <TableCell>{r.month}</TableCell>
-                          <TableCell>{r.bucket}</TableCell>
-                          <TableCell className="text-right font-mono">{Number(r.total).toFixed(2)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">By Category</p>
+                      <Button variant="outline" onClick={() => setActiveTab('workbook')}>Edit in Workbook</Button>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-100 dark:bg-slate-800/80">
+                            <TableHead className="font-semibold">Month</TableHead>
+                            <TableHead className="font-semibold">Category</TableHead>
+                            <TableHead className="font-semibold text-right">Total</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {monthlyByCategory.map((r, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell>{r.month}</TableCell>
+                              <TableCell>{r.category}</TableCell>
+                              <TableCell className="text-right font-mono">{Number(r.total).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Income vs Expense (sign-based)</p>
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-100 dark:bg-slate-800/80">
+                            <TableHead className="font-semibold">Month</TableHead>
+                            <TableHead className="font-semibold">Bucket</TableHead>
+                            <TableHead className="font-semibold text-right">Total</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {monthlyPL.map((r, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell>{r.month}</TableCell>
+                              <TableCell>{r.bucket}</TableCell>
+                              <TableCell className="text-right font-mono">{Number(r.total).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

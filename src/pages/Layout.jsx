@@ -245,7 +245,7 @@ export default function Layout({ children, currentPageName }) {
                       <button
                         type="button"
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                          [createPageUrl('Dashboard'), '/finance', '/Finance', createPageUrl('FinanceDashboard')].some(p => isActive(p))
+                          [createPageUrl('Dashboard')].some(p => isActive(p))
                             ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
                             : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
                         }`}
@@ -261,12 +261,6 @@ export default function Layout({ children, currentPageName }) {
                         <Link to={createPageUrl('Dashboard')} className="flex items-center gap-2 cursor-pointer">
                           <LayoutDashboard className="w-4 h-4" />
                           Overview
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/finance" className="flex items-center gap-2 cursor-pointer">
-                          <DollarSign className="w-4 h-4" />
-                          Finance
                         </Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -547,10 +541,6 @@ export default function Layout({ children, currentPageName }) {
                   >
                     <LayoutDashboard className="w-4 h-4" />
                     <span>Dashboard</span>
-                  </Link>
-
-                  <Link to="/finance" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/finance') || isActive('/Finance') || isActive(createPageUrl('FinanceDashboard')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <DollarSign className="w-4 h-4" /> <span>Finance</span>
                   </Link>
 
                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">File Analysis</p>

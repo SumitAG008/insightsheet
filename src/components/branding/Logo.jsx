@@ -22,7 +22,7 @@ export default function Logo({ className = "", size = "medium", showText = true,
         <img 
           src="/meldra.png" 
           alt="Meldra" 
-          className="w-full h-full object-contain contrast-125 saturate-125"
+          className="w-full h-full object-cover object-left contrast-125 saturate-125"
           onError={(e) => {
             e.target.style.display = 'none';
             const parent = e.target.parentElement;

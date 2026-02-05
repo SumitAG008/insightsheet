@@ -303,7 +303,7 @@ export default function FinanceDashboard() {
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
                 <Upload className="w-5 h-5 text-blue-600" /> Upload Transactions
               </h2>
-              <p className="text-slate-600 dark:text-slate-400 mb-4">Upload CSV/XLSX. We will infer your columns (even if headers are in another language) and let you confirm mapping.</p>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">Upload CSV/XLSX. We will infer your columns and let you confirm mapping.</p>
               <FileUploadZone
                 onFileUpload={handleFileUpload}
                 acceptedFormats={['.csv', '.xlsx', '.xls']}
@@ -331,12 +331,17 @@ export default function FinanceDashboard() {
                   {CANON_FIELDS.map((f) => (
                     <div key={f.key}>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{f.label}</label>
-                      <Select value={mapping[f.key] || ''} onValueChange={(v) => setMapping((m) => ({ ...m, [f.key]: v || null }))}>
+                      <Select
+                        value={mapping[f.key] || '__NONE__'}
+                        onValueChange={(v) =>
+                          setMapping((m) => ({ ...m, [f.key]: v === '__NONE__' ? null : v }))
+                        }
+                      >
                         <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700">
                           <SelectValue placeholder="Select a column" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">(Not mapped)</SelectItem>
+                          <SelectItem value="__NONE__">(Not mapped)</SelectItem>
                           {headers.map((h) => (
                             <SelectItem key={h} value={h}>{h}</SelectItem>
                           ))}

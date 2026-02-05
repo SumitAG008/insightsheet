@@ -4,13 +4,14 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
 import Logo from '@/components/branding/Logo';
@@ -218,18 +219,38 @@ export default function Layout({ children, currentPageName }) {
               {/* Show menu items only when user is logged in */}
               {user && user.email ? (
                 <>
-                  {/* Dashboard — standalone */}
-                  <Link 
-                    to={createPageUrl('Dashboard')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                      isActive(createPageUrl('Dashboard'))
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
-                    }`}
-                  >
-                    <LayoutDashboard className={`w-4 h-4 ${isActive(createPageUrl('Dashboard')) ? 'text-white' : ''}`} />
-                    <span>Dashboard</span>
-                  </Link>
+                  {/* Dashboard — group */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                          [createPageUrl('Dashboard'), '/finance', '/Finance', createPageUrl('FinanceDashboard')].some(p => isActive(p))
+                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                            : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
+                        }`}
+                      >
+                        <LayoutDashboard className="w-4 h-4" />
+                        <span>Dashboard</span>
+                        <ChevronDown className="w-4 h-4 opacity-70" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-[220px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
+                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Dashboard</DropdownMenuLabel>
+                      <DropdownMenuItem asChild>
+                        <Link to={createPageUrl('Dashboard')} className="flex items-center gap-2 cursor-pointer">
+                          <LayoutDashboard className="w-4 h-4" />
+                          Overview
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/finance" className="flex items-center gap-2 cursor-pointer">
+                          <DollarSign className="w-4 h-4" />
+                          Finance
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
 
                   {/* File Analysis — group */}
                   <DropdownMenu>
@@ -275,19 +296,6 @@ export default function Layout({ children, currentPageName }) {
                   >
                     <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : 'text-blue-500'}`} />
                     <span>AI Assistant</span>
-                  </Link>
-
-                  {/* Finance Dashboard — standalone */}
-                  <Link
-                    to="/finance"
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                      isActive('/finance') || isActive('/Finance') || isActive(createPageUrl('FinanceDashboard'))
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400'
-                    }`}
-                  >
-                    <DollarSign className="w-4 h-4" />
-                    <span>Finance</span>
                   </Link>
 
                   {/* Data & Schema — group */}
@@ -450,20 +458,38 @@ export default function Layout({ children, currentPageName }) {
 
               {user && user.email ? (
                 <div className="ml-4 flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
-                  <span className="text-sm text-slate-700 dark:text-slate-300 font-medium hidden sm:inline max-w-[150px] truncate">{user.email}</span>
-                  <Link
-                    to={createPageUrl('Security')}
-                    className="px-3 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all font-medium"
-                    title="Security Settings"
-                  >
-                    <Shield className="w-4 h-4" />
-                  </Link>
-                  <button
-                    onClick={handleLogoutClick}
-                    className="px-4 py-2 text-sm text-white bg-[#059669] hover:bg-[#047857] rounded-lg transition-all font-semibold shadow-md hover:shadow-lg"
-                  >
-                    Logout
-                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                        title="Account"
+                      >
+                        <span className="text-sm text-slate-700 dark:text-slate-300 font-medium hidden sm:inline max-w-[180px] truncate">{user.email}</span>
+                        <ChevronDown className="w-4 h-4 opacity-70" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-[220px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
+                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Account</DropdownMenuLabel>
+                      <DropdownMenuItem asChild>
+                        <Link to={createPageUrl('Settings')} className="flex items-center gap-2 cursor-pointer">
+                          <SettingsIcon className="w-4 h-4" />
+                          Settings
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={createPageUrl('Security')} className="flex items-center gap-2 cursor-pointer">
+                          <Shield className="w-4 h-4" />
+                          Security
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={handleLogoutClick} className="flex items-center gap-2 cursor-pointer">
+                        <LogOut className="w-4 h-4" />
+                        Logout
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               ) : (
                 <Link
@@ -489,6 +515,7 @@ export default function Layout({ children, currentPageName }) {
             <div className="md:hidden border-t border-slate-200 dark:border-slate-800 py-4 space-y-1">
               {user && user.email ? (
                 <>
+                  <p className="px-4 pt-1 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dashboard</p>
                   <Link 
                     to={createPageUrl('Dashboard')}
                     onClick={() => setMobileMenuOpen(false)}
@@ -502,6 +529,10 @@ export default function Layout({ children, currentPageName }) {
                     <span>Dashboard</span>
                   </Link>
 
+                  <Link to="/finance" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/finance') || isActive('/Finance') || isActive(createPageUrl('FinanceDashboard')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    <DollarSign className="w-4 h-4" /> <span>Finance</span>
+                  </Link>
+
                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">File Analysis</p>
                   <Link to={createPageUrl('FileAnalyzer')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FileAnalyzer')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <BarChart3 className="w-4 h-4" /> <span>Analyzer</span>
@@ -512,10 +543,6 @@ export default function Layout({ children, currentPageName }) {
 
                   <Link to={createPageUrl('AgenticAI')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-semibold text-sm ${isActive(createPageUrl('AgenticAI')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg' : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : 'text-blue-500'}`} /> <span>AI Assistant</span>
-                  </Link>
-
-                  <Link to="/finance" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/finance') || isActive('/Finance') || isActive(createPageUrl('FinanceDashboard')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <DollarSign className="w-4 h-4" /> <span>Finance</span>
                   </Link>
 
                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data & Schema</p>
@@ -543,6 +570,14 @@ export default function Layout({ children, currentPageName }) {
                     <Code className="w-4 h-4" /> <span>Developers</span>
                   </Link>
                   <div className="pt-2 border-t border-slate-200 dark:border-slate-800 mt-2 space-y-2">
+                    <Link
+                      to={createPageUrl('Settings')}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm"
+                    >
+                      <SettingsIcon className="w-4 h-4" />
+                      <span>Settings</span>
+                    </Link>
                     <Link
                       to={createPageUrl('Security')}
                       onClick={() => setMobileMenuOpen(false)}

@@ -46,6 +46,7 @@ import FileAnalyzer from "./FileAnalyzer";
 import Reviews from "./Reviews";
 import DatabaseConnection from "./DatabaseConnection";
 import FinanceDashboard from "./FinanceDashboard";
+import Settings from "./Settings";
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
 
@@ -96,6 +97,8 @@ const PAGES = {
     DatabaseConnection: DatabaseConnection,
 
     FinanceDashboard: FinanceDashboard,
+
+    Settings: Settings,
 
 }
 
@@ -242,6 +245,9 @@ function PagesContent() {
                 <Route path="/finance" element={<ProtectedRoute><FinanceDashboard /></ProtectedRoute>} />
                 <Route path="/FinanceDashboard" element={<ProtectedRoute><FinanceDashboard /></ProtectedRoute>} />
                 <Route path="/financedashboard" element={<ProtectedRoute><FinanceDashboard /></ProtectedRoute>} />
+
+                <Route path="/Settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
             </Routes>
         </Layout>

@@ -11,11 +11,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { decryptJsonFromLocalStorage, encryptJsonToLocalStorage, clearEncryptedLocalStorage } from '@/lib/secureLocalStore';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { evaluateFormula, getAllowedFormulaFunctions, getAllowedFormulaIdentifiers } from '@/lib/formulaEngine';
 
 const STORAGE_KEYS = {
   mappingProfile: (userEmail) => `finance:mapping:${userEmail || 'anon'}`,
   categorizationRules: (userEmail) => `finance:rules:${userEmail || 'anon'}`,
   coaMapping: (userEmail) => `finance:coa:${userEmail || 'anon'}`,
+  computedColumns: (userEmail) => `finance:computed_cols:${userEmail || 'anon'}`,
   connections: (userEmail) => `finance:connections_enc:${userEmail || 'anon'}`,
 };
 
@@ -332,6 +334,20 @@ export default function FinanceDashboard() {
   });
   const [coaStatus, setCoaStatus] = useState('');
 
+  const [computedColumns, setComputedColumns] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.computedColumns(userEmail));
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [computedName, setComputedName] = useState('');
+  const [computedFormula, setComputedFormula] = useState('');
+  const [computedStatus, setComputedStatus] = useState('');
+
   const saveCoaMapping = (next) => {
     try {
       localStorage.setItem(STORAGE_KEYS.coaMapping(userEmail), JSON.stringify(next || []));
@@ -364,6 +380,32 @@ export default function FinanceDashboard() {
     }
     return Array.from(set).sort();
   }, [transactions]);
+
+  const saveComputedColumns = (next) => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.computedColumns(userEmail), JSON.stringify(next || []));
+    } catch {
+      // ignore
+    }
+  };
+
+  const computedColumnDefs = useMemo(() => {
+    return (computedColumns || []).filter((c) => c && c.enabled !== false && c.name && c.formula);
+  }, [computedColumns]);
+
+  const viewTransactions = useMemo(() => {
+    if (!computedColumnDefs.length) return transactions;
+    return transactions.map((t) => {
+      const computed = {};
+      for (const c of computedColumnDefs) {
+        const key = String(c.name || '').trim();
+        if (!key) continue;
+        const { value } = evaluateFormula(c.formula, t);
+        computed[key] = value;
+      }
+      return { ...t, computed };
+    });
+  }, [transactions, computedColumnDefs]);
 
   const loadSavedMapping = () => {
     try {
@@ -445,7 +487,9 @@ export default function FinanceDashboard() {
   };
 
   const exportWorkbookToXlsx = () => {
-    const rows = (transactions || []).map((t) => ({
+    const computedKeys = computedColumnDefs.map((c) => String(c.name || '').trim()).filter(Boolean);
+    const rows = (viewTransactions || []).map((t) => {
+      const base = {
       Date: formatDateForExport(t.date),
       Month: t.month || '',
       Vendor: t.vendor || '',
@@ -455,7 +499,12 @@ export default function FinanceDashboard() {
       Category: t.category || '',
       Account: t.account || '',
       Notes: t.notes || '',
-    }));
+      };
+      for (const k of computedKeys) {
+        base[k] = t?.computed ? (t.computed[k] ?? '') : '';
+      }
+      return base;
+    });
 
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -465,7 +514,9 @@ export default function FinanceDashboard() {
   };
 
   const exportWorkbookToCsv = () => {
-    const rows = (transactions || []).map((t) => ({
+    const computedKeys = computedColumnDefs.map((c) => String(c.name || '').trim()).filter(Boolean);
+    const rows = (viewTransactions || []).map((t) => {
+      const base = {
       Date: formatDateForExport(t.date),
       Month: t.month || '',
       Vendor: t.vendor || '',
@@ -475,7 +526,12 @@ export default function FinanceDashboard() {
       Category: t.category || '',
       Account: t.account || '',
       Notes: t.notes || '',
-    }));
+      };
+      for (const k of computedKeys) {
+        base[k] = t?.computed ? (t.computed[k] ?? '') : '';
+      }
+      return base;
+    });
     const ws = XLSX.utils.json_to_sheet(rows);
     const csv = XLSX.utils.sheet_to_csv(ws);
     saveAs(new Blob([csv], { type: 'text/csv;charset=utf-8' }), 'finance_workbook.csv');
@@ -551,6 +607,7 @@ export default function FinanceDashboard() {
             <TabsTrigger value="upload" className="font-semibold"><Upload className="w-4 h-4 mr-2" />Upload</TabsTrigger>
             <TabsTrigger value="mapping" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />Mapping</TabsTrigger>
             <TabsTrigger value="workbook" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />Workbook</TabsTrigger>
+            <TabsTrigger value="calc" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />Calculated Columns</TabsTrigger>
             <TabsTrigger value="rules" className="font-semibold"><RefreshCw className="w-4 h-4 mr-2" />Rules</TabsTrigger>
             <TabsTrigger value="coa" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />COA Mapping</TabsTrigger>
             <TabsTrigger value="pl" className="font-semibold"><RefreshCw className="w-4 h-4 mr-2" />Monthly P&L</TabsTrigger>
@@ -656,6 +713,164 @@ export default function FinanceDashboard() {
 
                   <div className="mt-4 flex gap-3">
                     <Button variant="outline" onClick={() => setActiveTab('pl')}>View Full P&L</Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="calc" className="space-y-4">
+            <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Calculated Columns</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">Add Excel-like formulas as computed columns for your transaction table. These do not overwrite your raw data.</p>
+
+              {!transactions.length ? (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertDescription className="text-amber-700">Load transactions first (Upload → Mapping → Apply Mapping).</AlertDescription>
+                </Alert>
+              ) : (
+                <>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Column Name</label>
+                      <Input value={computedName} onChange={(e) => setComputedName(e.target.value)} placeholder="e.g., Type" className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Formula</label>
+                      <Input value={computedFormula} onChange={(e) => setComputedFormula(e.target.value)} placeholder='e.g., IF(amount<0,"Expense","Income")' className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex gap-3 flex-wrap">
+                    <Button
+                      onClick={() => {
+                        setComputedStatus('');
+                        const name = String(computedName || '').trim();
+                        const formula = String(computedFormula || '').trim();
+                        if (!name) {
+                          setComputedStatus('Column name is required.');
+                          return;
+                        }
+                        if (!formula) {
+                          setComputedStatus('Formula is required.');
+                          return;
+                        }
+                        const next = [
+                          ...computedColumns,
+                          {
+                            id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                            name,
+                            formula,
+                            enabled: true,
+                          },
+                        ];
+                        setComputedColumns(next);
+                        saveComputedColumns(next);
+                        setComputedName('');
+                        setComputedFormula('');
+                        setComputedStatus('Saved.');
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Add Computed Column
+                    </Button>
+                    <Button variant="outline" onClick={() => setActiveTab('workbook')}>Back to Workbook</Button>
+                  </div>
+
+                  {computedStatus ? (
+                    <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{computedStatus}</p>
+                  ) : null}
+
+                  <div className="mt-6">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Preview</p>
+                    <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-slate-100 dark:bg-slate-800/80">
+                            <TableHead className="font-semibold">Vendor</TableHead>
+                            <TableHead className="font-semibold">Description</TableHead>
+                            <TableHead className="font-semibold text-right">Amount</TableHead>
+                            <TableHead className="font-semibold">Result</TableHead>
+                            <TableHead className="font-semibold">Error</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {transactions.slice(0, 20).map((t) => {
+                            const { value, error } = evaluateFormula(computedFormula, t);
+                            return (
+                              <TableRow key={`preview-${t.id}`}>
+                                <TableCell className="max-w-[180px] truncate">{t.vendor}</TableCell>
+                                <TableCell className="max-w-[260px] truncate">{t.description}</TableCell>
+                                <TableCell className="text-right font-mono">{Number(t.amount || 0).toFixed(2)}</TableCell>
+                                <TableCell className="font-mono">{typeof value === 'number' ? value.toFixed(2) : String(value ?? '')}</TableCell>
+                                <TableCell className="text-xs text-slate-500 dark:text-slate-400">{error || ''}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                      Allowed fields: {getAllowedFormulaIdentifiers().join(', ')}
+                      <br />
+                      Allowed functions: {getAllowedFormulaFunctions().join(', ')}
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Saved Computed Columns</p>
+                    {!computedColumns.length ? (
+                      <Alert className="bg-slate-50 border-slate-200">
+                        <AlertDescription className="text-slate-700">No computed columns yet.</AlertDescription>
+                      </Alert>
+                    ) : (
+                      <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="bg-slate-100 dark:bg-slate-800/80">
+                              <TableHead className="font-semibold">Enabled</TableHead>
+                              <TableHead className="font-semibold">Name</TableHead>
+                              <TableHead className="font-semibold">Formula</TableHead>
+                              <TableHead className="font-semibold">Action</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {computedColumns.map((c) => (
+                              <TableRow key={c.id || c.name}>
+                                <TableCell>
+                                  <input
+                                    type="checkbox"
+                                    checked={c.enabled !== false}
+                                    onChange={(e) => {
+                                      const next = computedColumns.map((x) => (x.id === c.id ? { ...x, enabled: e.target.checked } : x));
+                                      setComputedColumns(next);
+                                      saveComputedColumns(next);
+                                    }}
+                                  />
+                                </TableCell>
+                                <TableCell className="font-medium">{c.name}</TableCell>
+                                <TableCell className="font-mono max-w-[520px] truncate">{c.formula}</TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const next = computedColumns.filter((x) => x.id !== c.id);
+                                      setComputedColumns(next);
+                                      saveComputedColumns(next);
+                                      setComputedStatus('Deleted computed column.');
+                                    }}
+                                  >
+                                    Delete
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
                   </div>
                 </>
               )}
@@ -837,12 +1052,13 @@ export default function FinanceDashboard() {
                 <>
                   <div className="flex items-center gap-2 flex-wrap mb-4">
                     <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Loaded</Badge>
-                    <span className="text-sm text-slate-600 dark:text-slate-400">{transactions.length} transactions</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{viewTransactions.length} transactions</span>
                     <Badge className={uncategorizedCount ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}>
                       Uncategorized: {uncategorizedCount}
                     </Badge>
                     <Button variant="outline" onClick={exportWorkbookToCsv}>Export CSV</Button>
                     <Button variant="outline" onClick={exportWorkbookToXlsx}>Export XLSX</Button>
+                    <Button variant="outline" onClick={() => setActiveTab('calc')}>Calculated Columns</Button>
                     <Button variant="outline" onClick={() => setActiveTab('rules')}>Rules</Button>
                     <Button variant="outline" onClick={() => setActiveTab('pl')}>Go to Monthly P&L</Button>
                   </div>
@@ -866,10 +1082,13 @@ export default function FinanceDashboard() {
                           <TableHead className="font-semibold">Category</TableHead>
                           <TableHead className="font-semibold">Account</TableHead>
                           <TableHead className="font-semibold">Notes</TableHead>
+                          {computedColumnDefs.map((c) => (
+                            <TableHead key={c.id || c.name} className="font-semibold">{c.name}</TableHead>
+                          ))}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {transactions.slice(0, 200).map((t) => (
+                        {viewTransactions.slice(0, 200).map((t) => (
                           <TableRow key={t.id}>
                             <TableCell className="whitespace-nowrap">
                               {t.date ? new Date(t.date).toLocaleDateString() : ''}
@@ -901,6 +1120,15 @@ export default function FinanceDashboard() {
                                 className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700"
                               />
                             </TableCell>
+                            {computedColumnDefs.map((c) => {
+                              const key = String(c.name || '').trim();
+                              const v = t?.computed ? (t.computed[key] ?? '') : '';
+                              return (
+                                <TableCell key={`${t.id}-${c.id || key}`} className="max-w-[220px] truncate font-mono">
+                                  {typeof v === 'number' ? v.toFixed(2) : String(v ?? '')}
+                                </TableCell>
+                              );
+                            })}
                           </TableRow>
                         ))}
                       </TableBody>

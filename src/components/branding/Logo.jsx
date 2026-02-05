@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 
 const DEFAULT_TAGLINE = 'DATA MADE SIMPLE';
 
-export default function Logo({ className = "", size = "medium", showText = true, style = {}, lowercaseM = false, tagline }) {
+export default function Logo({ className = "", size = "medium", showText = true, style = {}, lowercaseM = false, tagline, brandName: brandNameProp, logoUrl: logoUrlProp }) {
   const sizes = {
     small: { container: "w-12 h-12 md:w-10 md:h-10", text: "text-lg", tagline: "text-[11px]" },
     medium: { container: "w-14 h-14 md:w-12 md:h-12", text: "text-2xl", tagline: "text-sm" },
@@ -11,7 +11,8 @@ export default function Logo({ className = "", size = "medium", showText = true,
   };
 
   const currentSize = sizes[size];
-  const brandName = lowercaseM ? 'meldra' : 'Meldra';
+  const fallbackName = lowercaseM ? 'meldra' : 'Meldra';
+  const brandName = (brandNameProp && String(brandNameProp).trim()) ? String(brandNameProp).trim() : fallbackName;
   const taglineText = tagline != null ? tagline : DEFAULT_TAGLINE;
   const isPrimaryTagline = taglineText === DEFAULT_TAGLINE || String(taglineText).trim().toLowerCase() === 'for developers';
 
@@ -20,7 +21,7 @@ export default function Logo({ className = "", size = "medium", showText = true,
       {/* Meldra Logo — public/meldra.png */}
       <div className={`${currentSize.container} flex items-center justify-center flex-shrink-0 min-w-0 p-1 rounded-xl bg-slate-900/[0.03] border border-slate-200 shadow-sm dark:bg-slate-100/[0.04] dark:border-slate-800`}>
         <img 
-          src="/meldra.png" 
+          src={logoUrlProp && String(logoUrlProp).trim() ? String(logoUrlProp).trim() : "/meldra.png"} 
           alt="Meldra" 
           className="w-full h-full object-cover object-left contrast-125 saturate-125"
           onError={(e) => {
@@ -77,4 +78,6 @@ Logo.propTypes = {
   style: PropTypes.object,
   lowercaseM: PropTypes.bool,
   tagline: PropTypes.string,
+  brandName: PropTypes.string,
+  logoUrl: PropTypes.string,
 };

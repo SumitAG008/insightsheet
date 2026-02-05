@@ -23,12 +23,14 @@ import LogoutWarningModal from '@/components/common/LogoutWarningModal';
 import CookieConsent from '@/components/CookieConsent';
 import SupportChatWidget from '@/components/SupportChatWidget';
 import OnboardingAssistantModal from '@/components/onboarding/OnboardingAssistantModal';
+import { applyPreferences, getUserPreferences } from '@/lib/userPreferences';
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
   const isHome = currentPageName === 'Dashboard';
   const navigate = useNavigate();
   const [user, setUser] = React.useState(null);
+  const [brandPrefs, setBrandPrefs] = React.useState({ brandName: null, logoUrl: null });
   const [loginTime, setLoginTime] = React.useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [showLogoutWarning, setShowLogoutWarning] = React.useState(false);
@@ -49,6 +51,18 @@ export default function Layout({ children, currentPageName }) {
       // Only set user if we got valid user data
       if (currentUser && currentUser.email) {
         setUser(currentUser);
+
+        try {
+          const prefs = applyPreferences(currentUser.email);
+          setBrandPrefs({ brandName: prefs.brandName || null, logoUrl: prefs.logoUrl || null });
+        } catch {
+          try {
+            const prefs = getUserPreferences(currentUser.email);
+            setBrandPrefs({ brandName: prefs.brandName || null, logoUrl: prefs.logoUrl || null });
+          } catch {
+            setBrandPrefs({ brandName: null, logoUrl: null });
+          }
+        }
         
         const loginTimestamp = Date.now();
         setLoginTime(loginTimestamp);
@@ -212,7 +226,13 @@ export default function Layout({ children, currentPageName }) {
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link to={user && user.email ? createPageUrl('Dashboard') : '/pricing'} className="group">
-              <Logo size="medium" className="group-hover:opacity-80 transition-opacity" lowercaseM />
+              <Logo
+                size="medium"
+                className="group-hover:opacity-80 transition-opacity"
+                lowercaseM
+                brandName={brandPrefs.brandName}
+                logoUrl={brandPrefs.logoUrl}
+              />
             </Link>
 
             <div className="hidden md:flex items-center gap-2">

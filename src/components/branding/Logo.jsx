@@ -13,6 +13,7 @@ export default function Logo({ className = "", size = "medium", showText = true,
   const currentSize = sizes[size];
   const brandName = lowercaseM ? 'meldra' : 'Meldra';
   const taglineText = tagline != null ? tagline : DEFAULT_TAGLINE;
+  const isPrimaryTagline = taglineText === DEFAULT_TAGLINE || String(taglineText).trim().toLowerCase() === 'for developers';
 
   return (
     <div className={`flex items-center gap-5 ${className}`} style={style}>
@@ -54,11 +55,11 @@ export default function Logo({ className = "", size = "medium", showText = true,
             className={`${currentSize.tagline} font-medium ${taglineText === DEFAULT_TAGLINE ? 'tracking-widest uppercase' : ''}`} 
             style={{ 
               color: 'inherit', 
-              opacity: taglineText === DEFAULT_TAGLINE ? 1 : 0.9,
+              opacity: isPrimaryTagline ? 1 : 0.9,
               fontFamily: "'Inter', sans-serif",
               letterSpacing: taglineText === DEFAULT_TAGLINE ? '0.08em' : '0',
               lineHeight: '1.4',
-              fontWeight: taglineText === DEFAULT_TAGLINE ? 800 : 500
+              fontWeight: isPrimaryTagline ? 800 : 500
             }}
           >
             {taglineText}

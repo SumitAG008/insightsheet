@@ -178,6 +178,53 @@ export default function FinanceDashboard() {
     }
   }, []);
 
+  const saveRules = (nextRules) => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.categorizationRules(userEmail), JSON.stringify(nextRules || []));
+    } catch {
+      // ignore
+    }
+  };
+
+  const normalizeText = (v) => String(v || '').toLowerCase();
+
+  const applyRulesToTransactions = (tx, activeRules) => {
+    const rs = (activeRules || []).filter((r) => r && r.enabled !== false);
+    if (!rs.length) return { next: tx, updated: 0 };
+
+    let updated = 0;
+    const next = tx.map((t) => {
+      let changed = false;
+      let category = t.category || '';
+      let account = t.account || '';
+
+      const vendor = normalizeText(t.vendor);
+      const desc = normalizeText(t.description);
+
+      for (const r of rs) {
+        const q = normalizeText(r.query);
+        if (!q) continue;
+        const fieldVal = r.field === 'description' ? desc : vendor;
+        if (!fieldVal.includes(q)) continue;
+
+        if (r.category && !String(category).trim()) {
+          category = r.category;
+          changed = true;
+        }
+        if (r.account && !String(account).trim()) {
+          account = r.account;
+          changed = true;
+        }
+      }
+
+      if (!changed) return t;
+      updated += 1;
+      return { ...t, category, account };
+    });
+
+    return { next, updated };
+  };
+
   const [passphrase, setPassphrase] = useState('');
   const [connectionName, setConnectionName] = useState('');
   const [connectionUrl, setConnectionUrl] = useState('');
@@ -189,6 +236,22 @@ export default function FinanceDashboard() {
   const [mappingStatus, setMappingStatus] = useState('');
   const [transactions, setTransactions] = useState([]);
   const [activeTab, setActiveTab] = useState('upload');
+
+  const [rules, setRules] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.categorizationRules(userEmail));
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+  const [ruleField, setRuleField] = useState('vendor');
+  const [ruleQuery, setRuleQuery] = useState('');
+  const [ruleCategory, setRuleCategory] = useState('');
+  const [ruleAccount, setRuleAccount] = useState('');
+  const [rulesStatus, setRulesStatus] = useState('');
 
   const headers = rawData?.headers || [];
   const sampleRows = (rawData?.rows || []).slice(0, 30);
@@ -265,7 +328,9 @@ export default function FinanceDashboard() {
       return;
     }
     saveMapping(mapping);
-    buildTransactions(mapping);
+    const tx = buildTransactions(mapping);
+    const applied = applyRulesToTransactions(tx, rules);
+    if (applied.updated) setTransactions(applied.next);
     setMappingStatus('Mapping applied. Transactions loaded in-memory.');
     setActiveTab('workbook');
   };
@@ -326,6 +391,7 @@ export default function FinanceDashboard() {
             <TabsTrigger value="upload" className="font-semibold"><Upload className="w-4 h-4 mr-2" />Upload</TabsTrigger>
             <TabsTrigger value="mapping" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />Mapping</TabsTrigger>
             <TabsTrigger value="workbook" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />Workbook</TabsTrigger>
+            <TabsTrigger value="rules" className="font-semibold"><RefreshCw className="w-4 h-4 mr-2" />Rules</TabsTrigger>
             <TabsTrigger value="pl" className="font-semibold"><RefreshCw className="w-4 h-4 mr-2" />Monthly P&L</TabsTrigger>
             <TabsTrigger value="connections" className="font-semibold"><Lock className="w-4 h-4 mr-2" />Connections</TabsTrigger>
           </TabsList>
@@ -349,6 +415,166 @@ export default function FinanceDashboard() {
             </div>
           </TabsContent>
 
+          <TabsContent value="rules" className="space-y-4">
+            <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Rules</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">Create rules to auto-fill Category/Account based on Vendor or Description.</p>
+
+              <div className="grid md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Field</label>
+                  <Select value={ruleField} onValueChange={setRuleField}>
+                    <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700">
+                      <SelectValue placeholder="Select field" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="vendor">Vendor</SelectItem>
+                      <SelectItem value="description">Description</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Contains</label>
+                  <Input value={ruleQuery} onChange={(e) => setRuleQuery(e.target.value)} placeholder="e.g., amazon" className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Set Category</label>
+                  <Input value={ruleCategory} onChange={(e) => setRuleCategory(e.target.value)} placeholder="e.g., Office Supplies" className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Set Account (optional)</label>
+                  <Input value={ruleAccount} onChange={(e) => setRuleAccount(e.target.value)} placeholder="e.g., OPEX" className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" />
+                </div>
+              </div>
+
+              <div className="mt-4 flex gap-3 flex-wrap">
+                <Button
+                  onClick={() => {
+                    setRulesStatus('');
+                    const q = String(ruleQuery || '').trim();
+                    const cat = String(ruleCategory || '').trim();
+                    const acc = String(ruleAccount || '').trim();
+                    if (!q) {
+                      setRulesStatus('Rule text is required.');
+                      return;
+                    }
+                    if (!cat && !acc) {
+                      setRulesStatus('Set Category and/or Account.');
+                      return;
+                    }
+                    const next = [
+                      ...rules,
+                      {
+                        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                        field: ruleField,
+                        query: q,
+                        category: cat || null,
+                        account: acc || null,
+                        enabled: true,
+                      },
+                    ];
+                    setRules(next);
+                    saveRules(next);
+                    setRuleQuery('');
+                    setRuleCategory('');
+                    setRuleAccount('');
+                    setRulesStatus('Saved.');
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Add Rule
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const applied = applyRulesToTransactions(transactions, rules);
+                    setTransactions(applied.next);
+                    setRulesStatus(`Applied rules to workbook. Updated ${applied.updated} rows.`);
+                  }}
+                  disabled={!transactions.length || !rules.length}
+                >
+                  Apply to Workbook
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setRules([]);
+                    saveRules([]);
+                    setRulesStatus('Cleared all rules.');
+                  }}
+                  disabled={!rules.length}
+                >
+                  Clear Rules
+                </Button>
+              </div>
+
+              {rulesStatus ? (
+                <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{rulesStatus}</p>
+              ) : null}
+
+              <div className="mt-6">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Saved Rules</p>
+                {!rules.length ? (
+                  <Alert className="bg-slate-50 border-slate-200">
+                    <AlertDescription className="text-slate-700">No rules yet. Add a rule above.</AlertDescription>
+                  </Alert>
+                ) : (
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-100 dark:bg-slate-800/80">
+                          <TableHead className="font-semibold">Enabled</TableHead>
+                          <TableHead className="font-semibold">Field</TableHead>
+                          <TableHead className="font-semibold">Contains</TableHead>
+                          <TableHead className="font-semibold">Category</TableHead>
+                          <TableHead className="font-semibold">Account</TableHead>
+                          <TableHead className="font-semibold">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {rules.map((r) => (
+                          <TableRow key={r.id}>
+                            <TableCell>
+                              <input
+                                type="checkbox"
+                                checked={r.enabled !== false}
+                                onChange={(e) => {
+                                  const next = rules.map((x) => (x.id === r.id ? { ...x, enabled: e.target.checked } : x));
+                                  setRules(next);
+                                  saveRules(next);
+                                }}
+                              />
+                            </TableCell>
+                            <TableCell>{r.field === 'description' ? 'Description' : 'Vendor'}</TableCell>
+                            <TableCell>{r.query}</TableCell>
+                            <TableCell>{r.category || ''}</TableCell>
+                            <TableCell>{r.account || ''}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const next = rules.filter((x) => x.id !== r.id);
+                                  setRules(next);
+                                  saveRules(next);
+                                  setRulesStatus('Deleted rule.');
+                                }}
+                              >
+                                Delete
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
           <TabsContent value="workbook" className="space-y-4">
             <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
               <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Workbook</h2>
@@ -368,6 +594,7 @@ export default function FinanceDashboard() {
                     <Badge className={uncategorizedCount ? 'bg-amber-100 text-amber-800 border-amber-200' : 'bg-emerald-100 text-emerald-700 border-emerald-200'}>
                       Uncategorized: {uncategorizedCount}
                     </Badge>
+                    <Button variant="outline" onClick={() => setActiveTab('rules')}>Rules</Button>
                     <Button variant="outline" onClick={() => setActiveTab('pl')}>Go to Monthly P&L</Button>
                   </div>
 

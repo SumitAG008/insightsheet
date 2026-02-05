@@ -16,10 +16,10 @@ export default function Logo({ className = "", size = "medium", showText = true,
 
   return (
     <div className={`flex items-center gap-5 ${className}`} style={style}>
-      {/* Meldra Logo — public/meldra-ai.png */}
+      {/* Meldra Logo — public/meldra-ai-enhanced.png */}
       <div className={`${currentSize.container} flex items-center justify-center flex-shrink-0 min-w-0`}>
         <img 
-          src="/meldra-ai.png" 
+          src="/meldra-ai-enhanced.png" 
           alt="Meldra" 
           className="w-full h-full object-contain"
           onError={(e) => {

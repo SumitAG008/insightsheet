@@ -2,7 +2,7 @@
 // pages/Dashboard.js - Enhanced dashboard with upload functionality integrated
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { Shield, Zap, TrendingUp, Brain, Lock, Gauge, FileText, Download, Trash2, AlertCircle, Sparkles, FileDown, Undo2, Redo2, Save } from 'lucide-react';
+import { Shield, Zap, TrendingUp, Brain, Lock, Gauge, FileText, Download, Trash2, AlertCircle, Sparkles, FileDown, Undo2, Redo2, Save, Info } from 'lucide-react';
 // Dynamic import for jspdf to avoid build issues
 // import { jsPDF } from 'jspdf';
 // import 'jspdf-autotable';
@@ -21,6 +21,7 @@ import AdvancedFilter from '../components/dashboard/AdvancedFilter';
 import FileUploadZone from '../components/upload/FileUploadZone';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -654,27 +655,35 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Privacy Notice */}
-        <div className="mb-6 bg-[#4169E1]/10 dark:bg-slate-900/50 border border-[#4169E1]/40 dark:border-slate-800 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-[#4169E1] flex-shrink-0 mt-0.5" />
-            <div className="text-base text-slate-900 dark:text-slate-300">
-              <strong className="text-slate-900 dark:text-slate-100">Privacy Mode Active:</strong> All data is processed locally in your browser.
-              Nothing is stored on servers. Close this tab to permanently delete all data.
-            </div>
-          </div>
-        </div>
+        <TooltipProvider>
+          <div className="mb-6 flex flex-wrap items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#4169E1]/30 bg-[#4169E1]/10 px-3 py-1 text-sm text-slate-900 dark:text-slate-100 cursor-help">
+                  <AlertCircle className="w-4 h-4 text-[#4169E1]" />
+                  <span className="font-semibold">Privacy Mode</span>
+                  <Info className="w-3.5 h-3.5 text-slate-500" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-sm">
+                All data is processed locally in your browser. Nothing is stored on servers. Close this tab to permanently delete all data.
+              </TooltipContent>
+            </Tooltip>
 
-        {/* AI Assistant Banner */}
-        <div className="mb-6 bg-[#4169E1]/10 dark:bg-slate-900/50 border border-[#4169E1]/40 dark:border-slate-800 rounded-lg p-4">
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6 text-[#4169E1]" />
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">New: AI-Powered Operations</h3>
-              <p className="text-base text-slate-800 dark:text-slate-400">Describe any operation in plain English - AI will execute it for you!</p>
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#4169E1]/30 bg-[#4169E1]/10 px-3 py-1 text-sm text-slate-900 dark:text-slate-100 cursor-help">
+                  <Sparkles className="w-4 h-4 text-[#4169E1]" />
+                  <span className="font-semibold">AI Ops</span>
+                  <Info className="w-3.5 h-3.5 text-slate-500" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-sm">
+                Describe any operation in plain English and AI will execute it for you.
+              </TooltipContent>
+            </Tooltip>
           </div>
-        </div>
+        </TooltipProvider>
 
         {/* Tabs for Different Sections */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">

@@ -18,7 +18,7 @@ export default function Logo({ className = "", size = "medium", showText = true,
   return (
     <div className={`flex items-center gap-5 ${className}`} style={style}>
       {/* Meldra Logo — public/meldra.png */}
-      <div className={`${currentSize.container} flex items-center justify-center flex-shrink-0 min-w-0`}>
+      <div className={`${currentSize.container} flex items-center justify-center flex-shrink-0 min-w-0 p-1 rounded-xl bg-slate-900/[0.03] border border-slate-200 shadow-sm dark:bg-slate-100/[0.04] dark:border-slate-800`}>
         <img 
           src="/meldra.png" 
           alt="Meldra" 

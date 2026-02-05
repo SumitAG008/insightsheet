@@ -1,6 +1,7 @@
 
 // pages/Dashboard.js - Enhanced dashboard with upload functionality integrated
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Shield, Zap, TrendingUp, Brain, Lock, Gauge, FileText, Download, Trash2, AlertCircle, Sparkles, FileDown, Undo2, Redo2, Save } from 'lucide-react';
 // Dynamic import for jspdf to avoid build issues
 // import { jsPDF } from 'jspdf';
@@ -28,6 +29,8 @@ import {
 } from '../components/ui/dropdown-menu';
 
 export default function Dashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const [data, setData] = useState(null);
   const [filename, setFilename] = useState('');
   const [cleanedRowCount, setCleanedRowCount] = useState(0);
@@ -35,6 +38,10 @@ export default function Dashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [displayData, setDisplayData] = useState(null);
   const [activeSheet, setActiveSheet] = useState('');
+  const [activeTab, setActiveTab] = useState(() => {
+    const t = (searchParams.get('tab') || '').trim();
+    return t === 'transform' || t === 'ai' || t === 'analysis' ? t : 'analysis';
+  });
   
   // Undo/Redo functionality
   const [history, setHistory] = useState([]);
@@ -58,6 +65,31 @@ export default function Dashboard() {
       setHistoryIndex(0);
     }
   }, []);
+
+  useEffect(() => {
+    const t = (searchParams.get('tab') || '').trim();
+    const next = t === 'transform' || t === 'ai' || t === 'analysis' ? t : 'analysis';
+    setActiveTab(next);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const hash = (location.hash || '').replace('#', '').trim();
+    if (!hash) return;
+    const el = document.getElementById(hash);
+    if (!el) return;
+    setTimeout(() => {
+      try {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (_) {}
+    }, 50);
+  }, [location.hash, activeTab]);
+
+  const handleTabChange = (v) => {
+    setActiveTab(v);
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', v);
+    setSearchParams(next, { replace: true });
+  };
 
   useEffect(() => {
     if (data) {
@@ -645,7 +677,7 @@ export default function Dashboard() {
         </div>
 
         {/* Tabs for Different Sections */}
-        <Tabs defaultValue="analysis" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-1">
             <TabsTrigger value="analysis" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
               Analysis & Cleaning
@@ -662,11 +694,13 @@ export default function Dashboard() {
             <div className="grid lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
                 <AdvancedFilter data={data} onFilteredData={setDisplayData} />
-                <CleaningTools 
-                  data={displayData || data} 
-                  onDataUpdate={handleDataUpdate}
-                  onCleanedCount={setCleanedRowCount}
-                />
+                <div id="cleaning">
+                  <CleaningTools 
+                    data={displayData || data} 
+                    onDataUpdate={handleDataUpdate}
+                    onCleanedCount={setCleanedRowCount}
+                  />
+                </div>
                 <DataValidator data={displayData || data} onDataUpdate={handleDataUpdate} />
                 <DataGrid data={displayData || data} />
               </div>
@@ -674,7 +708,9 @@ export default function Dashboard() {
               <div className="space-y-6">
                 <SuggestionsPanel page="dashboard" />
                 <AIInsights data={displayData || data} />
-                <EnhancedChartPanel data={displayData || data} />
+                <div id="charts">
+                  <EnhancedChartPanel data={displayData || data} />
+                </div>
               </div>
             </div>
           </TabsContent>
@@ -688,7 +724,9 @@ export default function Dashboard() {
           </TabsContent>
 
           <TabsContent value="ai" className="space-y-6">
-            <AIAssistant data={displayData || data} onDataUpdate={handleDataUpdate} />
+            <div id="ai">
+              <AIAssistant data={displayData || data} onDataUpdate={handleDataUpdate} />
+            </div>
             <DataGrid data={displayData || data} />
           </TabsContent>
         </Tabs>

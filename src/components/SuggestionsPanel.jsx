@@ -10,6 +10,7 @@ export default function SuggestionsPanel({ page = 'dashboard' }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState(null);
+  const [expanded, setExpanded] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -59,6 +60,10 @@ export default function SuggestionsPanel({ page = 'dashboard' }) {
     }
   };
 
+  const toggleExpanded = (id) => {
+    setExpanded((prev) => ({ ...prev, [id]: !prev?.[id] }));
+  };
+
   const api = getApiBase();
   const token = getToken();
   const canLoad = Boolean(api && token);
@@ -71,6 +76,12 @@ export default function SuggestionsPanel({ page = 'dashboard' }) {
           <span className="text-xs px-2 py-1 rounded-full bg-amber-500/15 text-amber-500 font-semibold">Free</span>
         )}
       </div>
+
+      {plan && plan !== 'premium' && (
+        <div className="text-xs text-slate-600 dark:text-slate-300 mb-3">
+          Free plan exports include a <span className="font-semibold">meldra.ai</span> watermark. Upgrade for watermark-free exports.
+        </div>
+      )}
 
       {!canLoad && (
         <Alert className="bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800">
@@ -102,16 +113,29 @@ export default function SuggestionsPanel({ page = 'dashboard' }) {
               <div className="text-sm font-semibold text-slate-900 dark:text-white">{s.title}</div>
               {s.reason && <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">{s.reason}</div>}
               <div className="mt-3 flex gap-2 flex-wrap">
-                {s.action?.type === 'navigate' ? (
+                {s.action?.type === 'navigate' && s.action?.url ? (
                   <Button size="sm" className="bg-[#4169E1] hover:bg-[#3659c7] text-white" onClick={() => handleAction(s)}>
                     Open
                   </Button>
-                ) : (
-                  <Button size="sm" variant="outline" disabled>
-                    Coming soon
+                ) : Array.isArray(s.manual_steps) && s.manual_steps.length > 0 ? (
+                  <Button size="sm" variant="outline" onClick={() => toggleExpanded(s.id)}>
+                    {expanded?.[s.id] ? 'Hide steps' : 'Learn how'}
                   </Button>
+                ) : (
+                  <span className="text-xs text-slate-500 dark:text-slate-400">No action available</span>
                 )}
               </div>
+
+              {expanded?.[s.id] && Array.isArray(s.manual_steps) && s.manual_steps.length > 0 && (
+                <div className="mt-3 text-xs text-slate-700 dark:text-slate-200">
+                  <div className="font-semibold mb-1">Steps:</div>
+                  <div className="space-y-1">
+                    {s.manual_steps.map((st, idx) => (
+                      <div key={`${s.id}_${idx}`}>{idx + 1}. {st}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

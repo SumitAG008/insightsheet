@@ -100,6 +100,90 @@ class SupportChatRequest(BaseModel):
     page: Optional[str] = None
 
 
+def _finance_fast_answer(message: str) -> Optional[str]:
+    m = (message or "").strip().lower()
+    if not m:
+        return None
+
+    def has_any(*terms: str) -> bool:
+        return any(t in m for t in terms)
+
+    # Forecasting / SaaS finance
+    if has_any("arr", "mrr", "churn", "run rate", "runrate", "forecast", "projection", "budget"):
+        return (
+            "Quick finance answer (SaaS / forecasting):\n\n"
+            "Formulas:\n"
+            "- MRR = SUM(Recurring_Revenue_Month)\n"
+            "- ARR = MRR * 12\n"
+            "- Gross Margin % = (Revenue - COGS) / Revenue\n"
+            "- Net Revenue Retention (NRR) = (StartMRR + Expansion - Churn - Contraction) / StartMRR\n"
+            "- Churn % (logo) = Lost_Customers / Start_Customers\n"
+            "- Churn % (revenue) = Lost_MRR / Start_MRR\n\n"
+            "In Meldra (fast workflow):\n"
+            "Step 1: Upload your sheet (monthly revenue, customers, COGS).\n"
+            "Step 2: Transform Data → create derived columns (ARR, GrossMargin).\n"
+            "Step 3: Analysis & Cleaning → Charts → line chart by Month.\n"
+            "Step 4: If you want a forecast column, tell me your time column + metric column + forecast horizon (e.g. 6 months)."
+        )
+
+    # Dividend / stocks
+    if has_any("dividend", "dividends", "div yield", "yield") and has_any("stock", "share", "price", "ticker", "equity"):
+        return (
+            "Quick finance answer (dividends):\n\n"
+            "Formulas:\n"
+            "- Dividend Yield = Annual_Dividends_Per_Share / Current_Price\n"
+            "- Payout Ratio = Dividends / Net_Income\n\n"
+            "In Meldra:\n"
+            "Step 1: Upload a table with Price, Dividend (annual or per period).\n"
+            "Step 2: Transform Data → create column dividend_yield.\n"
+            "Step 3: Charts → plot yield by date or by ticker."
+        )
+
+    # CAGR / returns
+    if has_any("cagr", "compound annual", "annualized", "return", "returns"):
+        return (
+            "Quick finance answer (returns / CAGR):\n\n"
+            "Formulas:\n"
+            "- Total Return = (End_Value - Start_Value + Cash_Flows) / Start_Value\n"
+            "- CAGR = (End_Value / Start_Value)^(1/Years) - 1\n"
+            "- Annualized Volatility (approx) = STDEV(Daily_Returns) * SQRT(252)\n\n"
+            "In Meldra:\n"
+            "Step 1: Upload values by date.\n"
+            "Step 2: Transform Data → create daily_return = (value/lag(value)) - 1 (tell me your column names and I will give exact steps).\n"
+            "Step 3: Charts → line chart for value, histogram for returns."
+        )
+
+    # NPV / IRR
+    if has_any("npv", "irr", "discount rate", "discount"):
+        return (
+            "Quick finance answer (NPV / IRR):\n\n"
+            "Excel/Sheets formulas:\n"
+            "- NPV = NPV(discount_rate, cashflows_range) + initial_investment\n"
+            "- IRR = IRR(cashflows_range)\n\n"
+            "Notes:\n"
+            "- Cashflows typically include the initial investment as a negative number, followed by inflows/outflows by period.\n\n"
+            "In Meldra:\n"
+            "Step 1: Upload a cashflow table (Period, Cashflow).\n"
+            "Step 2: If you want a computed NPV column, tell me your discount rate and cashflow column; I will generate an operation plan for you."
+        )
+
+    # Crypto PnL
+    if has_any("crypto", "btc", "eth", "pnl", "p&l", "wallet", "average cost", "avg cost", "cost basis"):
+        return (
+            "Quick finance answer (crypto P&L / cost basis):\n\n"
+            "Common calculations:\n"
+            "- Average Cost Basis = Total_Cost / Total_Units\n"
+            "- Unrealized P&L = (Current_Price - Avg_Cost) * Units\n"
+            "- ROI % = (Current_Value - Total_Cost) / Total_Cost\n\n"
+            "In Meldra:\n"
+            "Step 1: Upload trades with Date, Asset, Side, Units, Price, Fees.\n"
+            "Step 2: Transform Data → compute Cost = Units*Price + Fees and group by Asset.\n"
+            "Step 3: If you share your column names, I’ll provide an exact step plan to compute average cost and P&L."
+        )
+
+    return None
+
+
 def _support_keyword_answer(message: str) -> Optional[str]:
     m = (message or "").strip().lower()
     if not m:
@@ -1217,18 +1301,33 @@ async def get_suggestions(
                     "title": "Clean your data",
                     "reason": "Fix blanks, duplicates, and mixed data types for better analysis.",
                     "action": {"type": "navigate", "url": "/dashboard?tab=analysis#cleaning"},
+                    "manual_steps": [
+                        "Go to Dashboard → Analysis & Cleaning.",
+                        "Use Smart Cleaning Tools (Remove Duplicates / Trim Space / Fix Types).",
+                        "Validate results in the Data Preview grid.",
+                    ],
                 },
                 {
                     "id": "s_chart",
                     "title": "Create a chart",
                     "reason": "Visualize trends and outliers quickly.",
                     "action": {"type": "navigate", "url": "/dashboard?tab=analysis#charts"},
+                    "manual_steps": [
+                        "Go to Dashboard → Analysis & Cleaning.",
+                        "Open the Enhanced Charts panel.",
+                        "Pick X-axis and Y-axis columns, then click Generate Chart.",
+                    ],
                 },
                 {
                     "id": "s_ai_ops",
                     "title": "Try AI-powered operations",
                     "reason": "Describe transformations in English and apply them instantly.",
                     "action": {"type": "navigate", "url": "/dashboard?tab=ai"},
+                    "manual_steps": [
+                        "Go to Dashboard → AI Tools.",
+                        "Describe the operation (e.g., 'remove duplicates', 'filter rows', 'create Profit = Revenue - Cost').",
+                        "Review the output and export if needed.",
+                    ],
                 },
             ]
         )
@@ -1275,15 +1374,21 @@ async def support_chat(
     if not message:
         raise HTTPException(status_code=400, detail="Message is required")
 
-    kw = _support_keyword_answer(message)
-    if kw:
-        return {"answer": kw, "refused": False}
-
     if _is_disallowed_support_question(message):
         return {
             "answer": "I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.",
             "refused": True,
         }
+
+    fin = _finance_fast_answer(message)
+    if fin:
+        return {"answer": fin, "refused": False}
+
+    kw = _support_keyword_answer(message)
+    if kw:
+        return {"answer": kw, "refused": False}
+
+    # remaining generic keyword shortcuts
 
     try:
         kb_text = _load_kb_text()
@@ -1300,6 +1405,7 @@ async def support_chat(
         f"You are Meldra's customer-facing Support Assistant.\n\n"
         f"RULES:\n"
         f"- Primary goal: help users succeed with the product (API usage, onboarding, endpoints, parameters, error messages, limits) and explain workflows step-by-step.\n"
+        f"- When the user asks about finance, forecasting, FP&A, CFO/CFA topics, stocks, dividends, or crypto calculations: prioritize spreadsheet-ready formulas and short step-by-step workflows inside Meldra.\n"
         f"- You MAY answer general spreadsheet questions (Excel/Google Sheets) like VLOOKUP/XLOOKUP/INDEX-MATCH, joins/merges, data cleaning, and how to express them in this product.\n"
         f"- Use the provided Knowledge Base excerpts when relevant, but do NOT refuse just because the KB doesn't mention something.\n"
         f"- If the user asks for sensitive internal implementation details (source code, repos, secrets, deployment, logs, environment variables, database credentials), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"
@@ -1351,15 +1457,21 @@ async def support_chat_with_file(
     if not msg:
         raise HTTPException(status_code=400, detail="Message is required")
 
-    kw = _support_keyword_answer(msg)
-    if kw:
-        return {"answer": kw, "refused": False}
-
     if _is_disallowed_support_question(msg):
         return {
             "answer": "I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.",
             "refused": True,
         }
+
+    fin = _finance_fast_answer(msg)
+    if fin:
+        return {"answer": fin, "refused": False}
+
+    kw = _support_keyword_answer(msg)
+    if kw:
+        return {"answer": kw, "refused": False}
+
+    # remaining generic keyword shortcuts
 
     try:
         kb_text = _load_kb_text()
@@ -1393,6 +1505,7 @@ async def support_chat_with_file(
         f"You are Meldra's customer-facing Support Assistant.\n\n"
         f"RULES:\n"
         f"- Primary goal: help users succeed with the product (API usage, onboarding, endpoints, parameters, error messages, limits) and explain workflows step-by-step.\n"
+        f"- When the user asks about finance, forecasting, FP&A, CFO/CFA topics, stocks, dividends, or crypto calculations: prioritize spreadsheet-ready formulas and short step-by-step workflows inside Meldra.\n"
         f"- You MAY answer general spreadsheet questions (Excel/Google Sheets) like VLOOKUP/XLOOKUP/INDEX-MATCH, joins/merges, data cleaning, and how to express them in this product.\n"
         f"- Use the provided Knowledge Base excerpts and uploaded file context when relevant, but do NOT refuse just because the KB doesn't mention something.\n"
         f"- If the user asks for sensitive internal implementation details (source code, repos, secrets, deployment, logs, environment variables, database credentials), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"

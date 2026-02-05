@@ -277,6 +277,19 @@ export default function Layout({ children, currentPageName }) {
                     <span>AI Assistant</span>
                   </Link>
 
+                  {/* Finance Dashboard — standalone */}
+                  <Link
+                    to="/finance"
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                      isActive('/finance') || isActive('/Finance') || isActive(createPageUrl('FinanceDashboard'))
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400'
+                    }`}
+                  >
+                    <DollarSign className="w-4 h-4" />
+                    <span>Finance</span>
+                  </Link>
+
                   {/* Data & Schema — group */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -499,6 +512,10 @@ export default function Layout({ children, currentPageName }) {
 
                   <Link to={createPageUrl('AgenticAI')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-semibold text-sm ${isActive(createPageUrl('AgenticAI')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg' : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : 'text-blue-500'}`} /> <span>AI Assistant</span>
+                  </Link>
+
+                  <Link to="/finance" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/finance') || isActive('/Finance') || isActive(createPageUrl('FinanceDashboard')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    <DollarSign className="w-4 h-4" /> <span>Finance</span>
                   </Link>
 
                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data & Schema</p>

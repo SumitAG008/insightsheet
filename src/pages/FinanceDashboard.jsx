@@ -1,0 +1,467 @@
+import React, { useMemo, useState } from 'react';
+import { Shield, Upload, RefreshCw, Lock, KeyRound, Table as TableIcon } from 'lucide-react';
+import FileUploadZone from '@/components/upload/FileUploadZone';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { decryptJsonFromLocalStorage, encryptJsonToLocalStorage, clearEncryptedLocalStorage } from '@/lib/secureLocalStore';
+
+const STORAGE_KEYS = {
+  mappingProfile: (userEmail) => `finance:mapping:${userEmail || 'anon'}`,
+  categorizationRules: (userEmail) => `finance:rules:${userEmail || 'anon'}`,
+  connections: (userEmail) => `finance:connections_enc:${userEmail || 'anon'}`,
+};
+
+const CANON_FIELDS = [
+  { key: 'date', label: 'Date' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'description', label: 'Description / Memo' },
+  { key: 'vendor', label: 'Vendor / Counterparty' },
+  { key: 'currency', label: 'Currency (optional)' },
+];
+
+function toMonthKey(d) {
+  const dt = d instanceof Date ? d : new Date(d);
+  if (Number.isNaN(dt.getTime())) return 'Unknown';
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
+
+function tryParseDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  if (typeof v === 'number') {
+    // Excel serial date heuristic (SheetJS may already convert but just in case)
+    const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+    const dt = new Date(excelEpoch.getTime() + v * 86400000);
+    if (!Number.isNaN(dt.getTime())) return dt;
+  }
+  const s = String(v).trim();
+  if (!s) return null;
+  const dt = new Date(s);
+  if (!Number.isNaN(dt.getTime())) return dt;
+  // dd/mm/yyyy heuristic
+  const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if (m) {
+    const dd = Number(m[1]);
+    const mm = Number(m[2]);
+    const yy = Number(m[3].length === 2 ? `20${m[3]}` : m[3]);
+    const dt2 = new Date(yy, mm - 1, dd);
+    if (!Number.isNaN(dt2.getTime())) return dt2;
+  }
+  return null;
+}
+
+function normalizeNumber(v) {
+  if (v == null) return null;
+  if (typeof v === 'number') return v;
+  const s = String(v).trim();
+  if (!s) return null;
+  const cleaned = s
+    .replace(/\s+/g, '')
+    .replace(/,/g, '')
+    .replace(/\(([^)]+)\)/g, '-$1');
+  const n = parseFloat(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function guessMapping(headers, sampleRows) {
+  const lower = (s) => String(s || '').toLowerCase();
+
+  const headerScores = (predicates) => {
+    const scores = {};
+    for (const h of headers) {
+      const hl = lower(h);
+      let sc = 0;
+      for (const p of predicates) {
+        if (p.test(hl)) sc += 1;
+      }
+      scores[h] = sc;
+    }
+    return scores;
+  };
+
+  const pickBest = (scores) => {
+    let best = null;
+    let bestScore = -1;
+    for (const h of headers) {
+      const sc = scores[h] || 0;
+      if (sc > bestScore) {
+        bestScore = sc;
+        best = h;
+      }
+    }
+    return bestScore > 0 ? best : null;
+  };
+
+  const dateHeader = pickBest(headerScores([/date/, /fecha/, /datum/, /data/, /transaction\s*date/, /posting\s*date/, /value\s*date/, /txn/ ]));
+  const amountHeader = pickBest(headerScores([/amount/, /amt/, /importe/, /montant/, /valor/, /value/, /debit/, /credit/, /net/ ]));
+  const descHeader = pickBest(headerScores([/description/, /desc/, /memo/, /narration/, /detalle/, /concept/, /details/ ]));
+  const vendorHeader = pickBest(headerScores([/vendor/, /payee/, /merchant/, /beneficiary/, /counterparty/, /proveedor/, /fournisseur/, /cliente/, /customer/ ]));
+  const currencyHeader = pickBest(headerScores([/currency/, /curr/, /moneda/, /devise/, /ccy/ ]));
+
+  const mapping = {
+    date: dateHeader,
+    amount: amountHeader,
+    description: descHeader,
+    vendor: vendorHeader,
+    currency: currencyHeader,
+  };
+
+  // Type heuristics fallback
+  if (!mapping.date) {
+    const candidate = headers.find((h) => sampleRows.some((r) => tryParseDate(r[h])));
+    mapping.date = candidate || null;
+  }
+  if (!mapping.amount) {
+    const candidate = headers.find((h) => {
+      const nums = sampleRows.map((r) => normalizeNumber(r[h])).filter((n) => typeof n === 'number');
+      return nums.length >= Math.max(2, Math.floor(sampleRows.length * 0.3));
+    });
+    mapping.amount = candidate || null;
+  }
+
+  return mapping;
+}
+
+function computeMonthlyPL(transactions) {
+  const out = new Map();
+  for (const t of transactions) {
+    const month = t.month || 'Unknown';
+    const amt = typeof t.amount === 'number' ? t.amount : 0;
+    const bucket = amt >= 0 ? 'Income' : 'Expense';
+    const key = `${month}::${bucket}`;
+    out.set(key, (out.get(key) || 0) + amt);
+  }
+
+  const rows = [];
+  for (const [k, total] of out.entries()) {
+    const [month, bucket] = k.split('::');
+    rows.push({ month, bucket, total });
+  }
+
+  rows.sort((a, b) => (a.month > b.month ? 1 : -1) || (a.bucket > b.bucket ? 1 : -1));
+  return rows;
+}
+
+export default function FinanceDashboard() {
+  const userEmail = useMemo(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem('user') || 'null');
+      return u?.email || '';
+    } catch {
+      return '';
+    }
+  }, []);
+
+  const [passphrase, setPassphrase] = useState('');
+  const [connectionName, setConnectionName] = useState('');
+  const [connectionUrl, setConnectionUrl] = useState('');
+  const [connectionToken, setConnectionToken] = useState('');
+  const [connectionStatus, setConnectionStatus] = useState('');
+
+  const [rawData, setRawData] = useState(null);
+  const [mapping, setMapping] = useState({ date: null, amount: null, description: null, vendor: null, currency: null });
+  const [mappingStatus, setMappingStatus] = useState('');
+  const [transactions, setTransactions] = useState([]);
+
+  const headers = rawData?.headers || [];
+  const sampleRows = (rawData?.rows || []).slice(0, 30);
+
+  const monthlyPL = useMemo(() => computeMonthlyPL(transactions), [transactions]);
+
+  const loadSavedMapping = () => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.mappingProfile(userEmail));
+      if (!raw) return null;
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
+  const saveMapping = (m) => {
+    try {
+      localStorage.setItem(STORAGE_KEYS.mappingProfile(userEmail), JSON.stringify(m));
+    } catch {
+      // ignore
+    }
+  };
+
+  const buildTransactions = (m) => {
+    const rows = rawData?.rows || [];
+    const tx = rows.map((r, idx) => {
+      const dt = m.date ? tryParseDate(r[m.date]) : null;
+      const amt = m.amount ? normalizeNumber(r[m.amount]) : null;
+      const desc = m.description ? String(r[m.description] ?? '').trim() : '';
+      const vendor = m.vendor ? String(r[m.vendor] ?? '').trim() : '';
+      const ccy = m.currency ? String(r[m.currency] ?? '').trim() : '';
+      return {
+        id: idx + 1,
+        date: dt,
+        month: dt ? toMonthKey(dt) : 'Unknown',
+        amount: typeof amt === 'number' ? amt : 0,
+        description: desc,
+        vendor,
+        currency: ccy,
+        sourceRow: r,
+      };
+    });
+
+    setTransactions(tx);
+    return tx;
+  };
+
+  const handleFileUpload = (file, uploadedData) => {
+    setRawData(uploadedData);
+    const saved = loadSavedMapping();
+    const guessed = guessMapping(uploadedData.headers || [], (uploadedData.rows || []).slice(0, 40));
+    const next = {
+      date: saved?.date || guessed.date,
+      amount: saved?.amount || guessed.amount,
+      description: saved?.description || guessed.description,
+      vendor: saved?.vendor || guessed.vendor,
+      currency: saved?.currency || guessed.currency,
+    };
+    setMapping(next);
+    setMappingStatus('');
+    setTransactions([]);
+  };
+
+  const applyMapping = () => {
+    if (!mapping.date || !mapping.amount) {
+      setMappingStatus('Please map at least Date and Amount.');
+      return;
+    }
+    saveMapping(mapping);
+    buildTransactions(mapping);
+    setMappingStatus('Mapping applied. Transactions loaded in-memory.');
+  };
+
+  const saveConnection = async () => {
+    setConnectionStatus('');
+    try {
+      const key = STORAGE_KEYS.connections(userEmail);
+      const existing = (await decryptJsonFromLocalStorage(key, passphrase)) || { connections: [] };
+      const next = {
+        connections: [
+          ...(existing.connections || []).filter((c) => c?.name !== connectionName),
+          {
+            name: connectionName,
+            url: connectionUrl,
+            token: connectionToken,
+            savedAt: new Date().toISOString(),
+          },
+        ],
+      };
+      await encryptJsonToLocalStorage(key, next, passphrase);
+      setConnectionToken('');
+      setConnectionStatus('Saved encrypted connection settings locally.');
+    } catch (e) {
+      setConnectionStatus(e?.message || 'Failed to save connection');
+    }
+  };
+
+  const clearConnections = () => {
+    clearEncryptedLocalStorage(STORAGE_KEYS.connections(userEmail));
+    setConnectionStatus('Cleared saved encrypted connections.');
+  };
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-slate-950 py-8">
+      <div className="container mx-auto px-4 max-w-7xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-3">
+            <DollarIcon />
+            Finance Dashboard
+          </h1>
+          <p className="text-slate-600 dark:text-slate-400">Zero data storage. Processing happens in your browser. Only connection settings and rules can be saved locally (encrypted).</p>
+        </div>
+
+        <Alert className="mb-6 bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-800">
+          <Shield className="h-5 w-5 text-blue-600" />
+          <AlertDescription className="text-slate-700 dark:text-slate-300">
+            <strong className="text-blue-700 dark:text-blue-300">Privacy:</strong> uploaded data and computed outputs are not stored on the server. If you choose to save API settings, they are encrypted in your browser storage.
+          </AlertDescription>
+        </Alert>
+
+        <Tabs defaultValue="upload" className="space-y-6">
+          <TabsList className="bg-slate-100 border border-slate-200 dark:bg-slate-900 dark:border-slate-800">
+            <TabsTrigger value="upload" className="font-semibold"><Upload className="w-4 h-4 mr-2" />Upload</TabsTrigger>
+            <TabsTrigger value="mapping" className="font-semibold"><TableIcon className="w-4 h-4 mr-2" />Mapping</TabsTrigger>
+            <TabsTrigger value="pl" className="font-semibold"><RefreshCw className="w-4 h-4 mr-2" />Monthly P&L</TabsTrigger>
+            <TabsTrigger value="connections" className="font-semibold"><Lock className="w-4 h-4 mr-2" />Connections</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="upload" className="space-y-4">
+            <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                <Upload className="w-5 h-5 text-blue-600" /> Upload Transactions
+              </h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">Upload CSV/XLSX. We will infer your columns (even if headers are in another language) and let you confirm mapping.</p>
+              <FileUploadZone
+                onFileUpload={handleFileUpload}
+                acceptedFormats={['.csv', '.xlsx', '.xls']}
+              />
+              {rawData?.rows?.length ? (
+                <div className="mt-4 flex items-center gap-2 flex-wrap">
+                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">Loaded</Badge>
+                  <span className="text-sm text-slate-600 dark:text-slate-400">{rawData.rows.length} rows • {rawData.headers.length} columns</span>
+                </div>
+              ) : null}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="mapping" className="space-y-4">
+            <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Column Mapping</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">Confirm how your file maps to the canonical transactions schema. Only the mapping is saved (locally).</p>
+
+              {!headers.length ? (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertDescription className="text-amber-700">Upload a CSV/XLSX first.</AlertDescription>
+                </Alert>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {CANON_FIELDS.map((f) => (
+                    <div key={f.key}>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{f.label}</label>
+                      <Select value={mapping[f.key] || ''} onValueChange={(v) => setMapping((m) => ({ ...m, [f.key]: v || null }))}>
+                        <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700">
+                          <SelectValue placeholder="Select a column" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">(Not mapped)</SelectItem>
+                          {headers.map((h) => (
+                            <SelectItem key={h} value={h}>{h}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-6 flex gap-3">
+                <Button onClick={applyMapping} className="bg-blue-600 hover:bg-blue-700">Apply Mapping</Button>
+                <Button variant="outline" onClick={() => { setTransactions([]); setMappingStatus(''); }}>Clear Output</Button>
+              </div>
+
+              {mappingStatus ? (
+                <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{mappingStatus}</p>
+              ) : null}
+
+              {sampleRows.length ? (
+                <div className="mt-6">
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">Preview (first rows)</p>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-100 dark:bg-slate-800/80">
+                          {headers.slice(0, 6).map((h) => (
+                            <TableHead key={h} className="font-semibold">{h}</TableHead>
+                          ))}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sampleRows.slice(0, 5).map((r, idx) => (
+                          <TableRow key={idx}>
+                            {headers.slice(0, 6).map((h) => (
+                              <TableCell key={h}>{String(r[h] ?? '')}</TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="pl" className="space-y-4">
+            <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Monthly P&L (MVP)</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">This MVP shows totals by month split into Income vs Expense based on sign. Next step adds categorization rules + COA mapping.</p>
+
+              {!transactions.length ? (
+                <Alert className="bg-amber-50 border-amber-200">
+                  <AlertDescription className="text-amber-700">Apply mapping first to load transactions.</AlertDescription>
+                </Alert>
+              ) : (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-100 dark:bg-slate-800/80">
+                        <TableHead className="font-semibold">Month</TableHead>
+                        <TableHead className="font-semibold">Bucket</TableHead>
+                        <TableHead className="font-semibold text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {monthlyPL.map((r, idx) => (
+                        <TableRow key={idx}>
+                          <TableCell>{r.month}</TableCell>
+                          <TableCell>{r.bucket}</TableCell>
+                          <TableCell className="text-right font-mono">{Number(r.total).toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="connections" className="space-y-4">
+            <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">API Connections (Encrypted local settings)</h2>
+              <p className="text-slate-600 dark:text-slate-400 mb-4">Save API settings locally for convenience. No transaction data is stored. Some APIs require CORS/proxy support (roadmap).</p>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Passphrase</label>
+                  <Input value={passphrase} onChange={(e) => setPassphrase(e.target.value)} type="password" placeholder="Enter passphrase to encrypt/decrypt" className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Connection name</label>
+                  <Input value={connectionName} onChange={(e) => setConnectionName(e.target.value)} placeholder="e.g., My ERP API" className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Base URL</label>
+                  <Input value={connectionUrl} onChange={(e) => setConnectionUrl(e.target.value)} placeholder="https://api.example.com" className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Token</label>
+                  <Input value={connectionToken} onChange={(e) => setConnectionToken(e.target.value)} type="password" placeholder="Bearer token / API key" className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" />
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-3">
+                <Button onClick={saveConnection} className="bg-blue-600 hover:bg-blue-700" disabled={!passphrase || !connectionName || !connectionUrl || !connectionToken}>
+                  <KeyRound className="w-4 h-4 mr-2" /> Save Encrypted
+                </Button>
+                <Button variant="outline" onClick={clearConnections}>
+                  Clear Saved
+                </Button>
+              </div>
+
+              {connectionStatus ? (
+                <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">{connectionStatus}</p>
+              ) : null}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
+
+function DollarIcon() {
+  return <span className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-blue-600 text-white font-bold">$</span>;
+}

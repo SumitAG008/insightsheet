@@ -45,6 +45,7 @@ import PLBuilder from "./PLBuilder";
 import FileAnalyzer from "./FileAnalyzer";
 import Reviews from "./Reviews";
 import DatabaseConnection from "./DatabaseConnection";
+import FinanceDashboard from "./FinanceDashboard";
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
 
@@ -93,6 +94,8 @@ const PAGES = {
     Reviews: Reviews,
 
     DatabaseConnection: DatabaseConnection,
+
+    FinanceDashboard: FinanceDashboard,
 
 }
 
@@ -234,6 +237,11 @@ function PagesContent() {
 
                 <Route path="/DatabaseConnection" element={<ProtectedRoute><DatabaseConnection /></ProtectedRoute>} />
                 <Route path="/databaseconnection" element={<ProtectedRoute><DatabaseConnection /></ProtectedRoute>} />
+
+                <Route path="/Finance" element={<ProtectedRoute><FinanceDashboard /></ProtectedRoute>} />
+                <Route path="/finance" element={<ProtectedRoute><FinanceDashboard /></ProtectedRoute>} />
+                <Route path="/FinanceDashboard" element={<ProtectedRoute><FinanceDashboard /></ProtectedRoute>} />
+                <Route path="/financedashboard" element={<ProtectedRoute><FinanceDashboard /></ProtectedRoute>} />
 
             </Routes>
         </Layout>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meldra-pwa-v1';
+const CACHE_NAME = 'meldra-pwa-v2';
 
 // Cache only same-origin GET requests. Do not cache API responses.
 const SHOULD_CACHE = (req) => {
@@ -8,6 +8,14 @@ const SHOULD_CACHE = (req) => {
     if (url.origin !== self.location.origin) return false;
     if (url.pathname.startsWith('/api/')) return false;
     return true;
+  } catch (_) {
+    return false;
+  }
+};
+
+const IS_NAVIGATION = (req) => {
+  try {
+    return req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html');
   } catch (_) {
     return false;
   }
@@ -42,23 +50,32 @@ self.addEventListener('fetch', (event) => {
     (async () => {
       const cache = await caches.open(CACHE_NAME);
 
-      // Cache-first for static assets.
+      // For navigations/HTML: network-first to avoid stale UI.
+      if (IS_NAVIGATION(req)) {
+        try {
+          const res = await fetch(req);
+          if (res && res.ok && res.type === 'basic') {
+            cache.put(req, res.clone());
+          }
+          return res;
+        } catch (e) {
+          const cached = await cache.match(req);
+          if (cached) return cached;
+          const fallback = await cache.match('/');
+          if (fallback) return fallback;
+          throw e;
+        }
+      }
+
+      // For static assets: cache-first.
       const cached = await cache.match(req);
       if (cached) return cached;
 
-      try {
-        const res = await fetch(req);
-        // Only cache successful basic responses.
-        if (res && res.ok && res.type === 'basic') {
-          cache.put(req, res.clone());
-        }
-        return res;
-      } catch (e) {
-        // Offline fallback: return cached '/' if available.
-        const fallback = await cache.match('/');
-        if (fallback) return fallback;
-        throw e;
+      const res = await fetch(req);
+      if (res && res.ok && res.type === 'basic') {
+        cache.put(req, res.clone());
       }
+      return res;
     })()
   );
 });

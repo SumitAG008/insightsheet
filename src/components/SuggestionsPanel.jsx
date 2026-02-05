@@ -1,17 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { getApiBase } from '@/utils/apiConfig';
 
 const getToken = () => (typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null) || '';
 
-export default function SuggestionsPanel({ page = 'dashboard' }) {
+export default function SuggestionsPanel({ page = 'dashboard', hasData = false, activeTab = '' }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState(null);
   const [expanded, setExpanded] = useState({});
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const api = getApiBase();
@@ -23,7 +24,11 @@ export default function SuggestionsPanel({ page = 'dashboard' }) {
       setLoading(true);
       setError('');
       try {
-        const res = await fetch(`${api}/api/suggestions?page=${encodeURIComponent(page)}`, {
+        const qs = new URLSearchParams();
+        qs.set('page', page);
+        qs.set('has_data', hasData ? '1' : '0');
+        if (activeTab) qs.set('tab', String(activeTab));
+        const res = await fetch(`${api}/api/suggestions?${qs.toString()}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const t = await res.text();
@@ -47,7 +52,7 @@ export default function SuggestionsPanel({ page = 'dashboard' }) {
     return () => {
       alive = false;
     };
-  }, [page]);
+  }, [page, hasData, activeTab]);
 
   const suggestions = data?.suggestions || [];
   const plan = data?.plan || '';
@@ -56,7 +61,33 @@ export default function SuggestionsPanel({ page = 'dashboard' }) {
     const a = s?.action;
     if (!a) return;
     if (a.type === 'navigate' && a.url) {
-      navigate(a.url);
+      try {
+        const u = new URL(a.url, window.location.origin);
+        const currentPath = `${location.pathname}${location.search}${location.hash || ''}`;
+        const nextPath = `${u.pathname}${u.search}${u.hash || ''}`;
+
+        // If it's effectively the same URL, React Router may no-op.
+        if (currentPath === nextPath) {
+          const hash = (u.hash || '').replace('#', '').trim();
+          if (hash) {
+            if (window.location.hash !== u.hash) window.location.hash = u.hash;
+            const el = document.getElementById(hash);
+            if (el) {
+              setTimeout(() => {
+                try {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } catch (_) {}
+              }, 50);
+            }
+          }
+          return;
+        }
+
+        // Force a new navigation when target differs.
+        navigate(`${u.pathname}${u.search}${u.hash}`, { replace: false });
+      } catch (_) {
+        navigate(a.url);
+      }
     }
   };
 

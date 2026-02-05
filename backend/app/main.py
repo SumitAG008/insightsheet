@@ -1278,6 +1278,8 @@ async def convert_document(
 @app.get("/api/suggestions", response_model=Dict[str, Any])
 async def get_suggestions(
     page: Optional[str] = None,
+    has_data: Optional[int] = None,
+    tab: Optional[str] = None,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1290,47 +1292,77 @@ async def get_suggestions(
     subscription = _get_or_create_subscription(db, current_user["email"])
     plan = (getattr(subscription, "plan", "free") or "free").strip().lower()
     page_norm = (page or "").strip().lower()
+    has_data_norm = bool(int(has_data)) if has_data is not None else None
+    tab_norm = (tab or "").strip().lower()
 
     suggestions = []
 
     if page_norm in ("dashboard", "analysis", "data") or not page_norm:
-        suggestions.extend(
-            [
-                {
-                    "id": "s_cleaning",
-                    "title": "Clean your data",
-                    "reason": "Fix blanks, duplicates, and mixed data types for better analysis.",
-                    "action": {"type": "navigate", "url": "/dashboard?tab=analysis#cleaning"},
-                    "manual_steps": [
-                        "Go to Dashboard → Analysis & Cleaning.",
-                        "Use Smart Cleaning Tools (Remove Duplicates / Trim Space / Fix Types).",
-                        "Validate results in the Data Preview grid.",
-                    ],
-                },
-                {
-                    "id": "s_chart",
-                    "title": "Create a chart",
-                    "reason": "Visualize trends and outliers quickly.",
-                    "action": {"type": "navigate", "url": "/dashboard?tab=analysis#charts"},
-                    "manual_steps": [
-                        "Go to Dashboard → Analysis & Cleaning.",
-                        "Open the Enhanced Charts panel.",
-                        "Pick X-axis and Y-axis columns, then click Generate Chart.",
-                    ],
-                },
-                {
-                    "id": "s_ai_ops",
-                    "title": "Try AI-powered operations",
-                    "reason": "Describe transformations in English and apply them instantly.",
-                    "action": {"type": "navigate", "url": "/dashboard?tab=ai"},
-                    "manual_steps": [
-                        "Go to Dashboard → AI Tools.",
-                        "Describe the operation (e.g., 'remove duplicates', 'filter rows', 'create Profit = Revenue - Cost').",
-                        "Review the output and export if needed.",
-                    ],
-                },
-            ]
-        )
+        # If the UI tells us there is no uploaded data yet, prioritize 'start' suggestions.
+        if has_data_norm is False:
+            suggestions.extend(
+                [
+                    {
+                        "id": "s_upload",
+                        "title": "Upload a spreadsheet",
+                        "reason": "Upload CSV/XLSX to start cleaning, transforming, and charting.",
+                        "action": {"type": "navigate", "url": "/dashboard"},
+                        "manual_steps": [
+                            "Go to Dashboard.",
+                            "Drag and drop your CSV/XLSX into the upload area.",
+                            "After upload, use Analysis & Cleaning and AI Tools.",
+                        ],
+                    },
+                    {
+                        "id": "s_templates",
+                        "title": "Start from a template",
+                        "reason": "Use a Finance/CFO-friendly template to move faster.",
+                        "action": {"type": "navigate", "url": "/dashboard"},
+                        "manual_steps": [
+                            "On Dashboard, choose a template (Finance / Sales / HR).",
+                            "Edit inputs, then export.",
+                        ],
+                    },
+                ]
+            )
+        else:
+            suggestions.extend(
+                [
+                    {
+                        "id": "s_cleaning",
+                        "title": "Clean your data",
+                        "reason": "Fix blanks, duplicates, and mixed data types for better analysis.",
+                        "action": {"type": "navigate", "url": "/dashboard?tab=analysis#cleaning"},
+                        "manual_steps": [
+                            "Go to Dashboard → Analysis & Cleaning.",
+                            "Use Smart Cleaning Tools (Remove Duplicates / Trim Space / Fix Types).",
+                            "Validate results in the Data Preview grid.",
+                        ],
+                    },
+                    {
+                        "id": "s_chart",
+                        "title": "Create a chart",
+                        "reason": "Visualize trends and outliers quickly.",
+                        "action": {"type": "navigate", "url": "/dashboard?tab=analysis#charts"},
+                        "manual_steps": [
+                            "Go to Dashboard → Analysis & Cleaning.",
+                            "Open the Enhanced Charts panel.",
+                            "Pick X-axis and Y-axis columns, then click Generate Chart.",
+                        ],
+                    },
+                    {
+                        "id": "s_ai_ops",
+                        "title": "Try AI-powered operations",
+                        "reason": "Describe transformations in English and apply them instantly.",
+                        "action": {"type": "navigate", "url": "/dashboard?tab=ai"},
+                        "manual_steps": [
+                            "Go to Dashboard → AI Tools.",
+                            "Describe the operation (e.g., 'remove duplicates', 'filter rows', 'create Profit = Revenue - Cost').",
+                            "Review the output and export if needed.",
+                        ],
+                    },
+                ]
+            )
 
     if page_norm in ("converter", "document-converter", "pdfdocconverter"):
         suggestions.extend(

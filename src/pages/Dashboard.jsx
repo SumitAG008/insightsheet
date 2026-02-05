@@ -706,7 +706,7 @@ export default function Dashboard() {
               </div>
 
               <div className="space-y-6">
-                <SuggestionsPanel page="dashboard" />
+                <SuggestionsPanel page="dashboard" hasData={Boolean(data)} activeTab={activeTab} />
                 <AIInsights data={displayData || data} />
                 <div id="charts">
                   <EnhancedChartPanel data={displayData || data} />

@@ -302,19 +302,6 @@ export default function Layout({ children, currentPageName }) {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  {/* Reviews — standalone */}
-                  <Link
-                    to={createPageUrl('Reviews')}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                      isActive(createPageUrl('Reviews'))
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
-                    }`}
-                  >
-                    <MessageSquare className={`w-4 h-4 ${isActive(createPageUrl('Reviews')) ? 'text-white' : ''}`} />
-                    <span>Reviews</span>
-                  </Link>
-
                   {/* Developers (developer.meldra.ai / API docs) — opens /developers on same host */}
                   <Link
                     to="/developers"
@@ -481,10 +468,6 @@ export default function Layout({ children, currentPageName }) {
                   </Link>
                   <Link to={createPageUrl('FilenameCleaner')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FilenameCleaner')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <FileArchive className="w-4 h-4" /> <span>ZIP Cleaner</span>
-                  </Link>
-
-                  <Link to={createPageUrl('Reviews')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('Reviews')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <MessageSquare className="w-4 h-4" /> <span>Reviews</span>
                   </Link>
                   <Link to="/developers" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
                     <Code className="w-4 h-4" /> <span>Developers</span>

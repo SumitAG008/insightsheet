@@ -21,6 +21,38 @@ export default function AgenticAI() {
   const [data, setData] = useState(null);
   const [docFile, setDocFile] = useState(null);
 
+  const inferDocConversion = (prompt, fileName) => {
+    const p = (prompt || '').toLowerCase();
+    const ext = (fileName || '').split('.').pop()?.toLowerCase();
+
+    const wantsPdf = /\bpdf\b/.test(p) || /to\s+pdf/.test(p);
+    const wantsDoc = /\b(docx|word)\b/.test(p) || /to\s+docx/.test(p) || /to\s+word/.test(p);
+    const wantsPpt = /\b(pptx|ppt|powerpoint|deck|slides)\b/.test(p) || /to\s+ppt/.test(p);
+    const wantsXls = /\b(xlsx|xls|excel|spreadsheet)\b/.test(p) || /to\s+excel/.test(p);
+
+    const looksLikeConversion = /\bconvert\b|\bexport\b|\bsave as\b|\bdownload\b|\bmake\s+(a|an)\b/.test(p);
+    if (!looksLikeConversion) return null;
+
+    // Only support specific safe conversions in MVP.
+    if (ext === 'pdf') {
+      if (wantsDoc) return { endpoint: 'pdf-to-doc', outLabel: 'DOCX' };
+      if (wantsPpt) return { endpoint: 'pdf-to-ppt', outLabel: 'PPTX' };
+      if (wantsXls) return { endpoint: 'pdf-to-xls', outLabel: 'XLSX' };
+      return null;
+    }
+    if (ext === 'docx') {
+      if (wantsPdf) return { endpoint: 'doc-to-pdf', outLabel: 'PDF' };
+      if (wantsXls) return { endpoint: 'doc-to-xls', outLabel: 'XLSX' };
+      return null;
+    }
+    if (ext === 'pptx') {
+      if (wantsPdf) return { endpoint: 'ppt-to-pdf', outLabel: 'PDF' };
+      if (wantsXls) return { endpoint: 'ppt-to-xls', outLabel: 'XLSX' };
+      return null;
+    }
+    return null;
+  };
+
   useEffect(() => {
     // Load CSV data from session
     const csvData = JSON.parse(sessionStorage.getItem('insightsheet_data') || 'null');
@@ -63,6 +95,37 @@ export default function AgenticAI() {
     try {
       // Document mode: for .docx/.pptx/.md/.pdf we ingest server-side and produce a report.
       if (!data && docFile) {
+        const conv = inferDocConversion(task, docFile?.name);
+        if (conv) {
+          const out = await backendApi.convert.convertFile(conv.endpoint, docFile, {
+            timeoutMs: 240000,
+          });
+
+          const url = URL.createObjectURL(out.blob);
+          const execution = {
+            id: Date.now(),
+            timestamp: new Date().toISOString(),
+            task,
+            plan: {
+              task_understood: `Document conversion to ${conv.outLabel}`,
+              steps: [{ step: 1, action: 'convert', description: `Convert uploaded document → ${conv.outLabel}`, reasoning: 'Use in-app converter with strict no-content-loss defaults' }],
+              estimated_time: 'N/A',
+              confidence: 0.9,
+            },
+            results: [{ step: 1, action: 'convert', description: `Convert uploaded document → ${conv.outLabel}`, success: true, output: `Conversion completed. Output: ${out.filename}` }],
+            finalReport: `Conversion completed. Click “Download Output” to save your file.`,
+            status: 'completed',
+            download: { url, filename: out.filename },
+          };
+
+          setAgent({ phase: 'completed', ...execution });
+          const newHistory = [execution, ...history].slice(0, 10);
+          setHistory(newHistory);
+          localStorage.setItem('agent_history', JSON.stringify(newHistory));
+          setThinking(false);
+          return;
+        }
+
         const reportPrompt = `You are an autonomous AI agent.
 
 Task: "${task}"
@@ -539,7 +602,7 @@ Create a clear, business-ready summary.`;
 
           <Button
             onClick={runAgent}
-            disabled={thinking || !task.trim() || !data}
+            disabled={thinking || !task.trim() || (!data && !docFile)}
             className="w-full bg-[#4169E1] hover:bg-[#3659c7] text-white font-bold py-4 text-lg"
           >
             {thinking ? (
@@ -555,7 +618,7 @@ Create a clear, business-ready summary.`;
             )}
           </Button>
 
-          {!data && (
+          {!data && !docFile && (
             <p className="text-amber-600 dark:text-amber-400 text-base mt-3 text-center">
               ⚠️ Please upload a CSV file first to use the AI agent
             </p>
@@ -712,6 +775,20 @@ Create a clear, business-ready summary.`;
                   </div>
 
                   <div className="flex gap-3 mt-6">
+                    {agent.download?.url && (
+                      <Button
+                        className="flex-1 bg-slate-900 hover:bg-slate-800 text-white"
+                        onClick={() => {
+                          const a = document.createElement('a');
+                          a.href = agent.download.url;
+                          a.download = agent.download.filename || `converted-${Date.now()}`;
+                          a.click();
+                        }}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Output
+                      </Button>
+                    )}
                     <Button
                       className="flex-1 bg-[#4169E1] hover:bg-[#3659c7] text-white"
                       onClick={() => {

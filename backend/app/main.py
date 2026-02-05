@@ -69,7 +69,16 @@ from app.services.api_key_service import (
     generate_api_key, verify_api_key, get_api_key_by_header, track_api_usage,
     get_usage_stats, get_monthly_billing, update_monthly_billing
 )
-from app.services.document_converter_service import pdf_to_docx, pdf_to_docx_smart, docx_to_pdf, pptx_to_pdf, pdf_to_pptx
+from app.services.document_converter_service import (
+    pdf_to_docx,
+    pdf_to_docx_smart,
+    docx_to_pdf,
+    pptx_to_pdf,
+    pdf_to_pptx,
+    docx_to_xlsx_structured,
+    pdf_to_xlsx_structured,
+    pptx_to_xlsx_structured,
+)
 from app.services.compliance_ai_service import ComplianceAIService
 from app.services.predictive_ml_service import PredictiveMLService
 from app.services.excel_ops_service import ExcelOpsService
@@ -1260,6 +1269,24 @@ async def convert_document(
             raise HTTPException(status_code=400, detail=err)
         media = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
         out_ext = ".pptx"
+    elif endpoint == "doc-to-xls":
+        data, err = docx_to_xlsx_structured(raw, source_filename=file.filename or "")
+        if err:
+            raise HTTPException(status_code=400, detail=err)
+        media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        out_ext = ".xlsx"
+    elif endpoint == "pdf-to-xls":
+        data, err = pdf_to_xlsx_structured(raw, source_filename=file.filename or "")
+        if err:
+            raise HTTPException(status_code=400, detail=err)
+        media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        out_ext = ".xlsx"
+    elif endpoint == "ppt-to-xls":
+        data, err = pptx_to_xlsx_structured(raw, source_filename=file.filename or "")
+        if err:
+            raise HTTPException(status_code=400, detail=err)
+        media = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        out_ext = ".xlsx"
     else:
         raise HTTPException(status_code=404, detail="Unknown conversion")
 
@@ -1268,6 +1295,8 @@ async def convert_document(
             data = watermark_pdf_bytes(data)
         elif out_ext == ".pptx":
             data = watermark_pptx_bytes(data)
+        elif out_ext == ".xlsx":
+            data = watermark_xlsx_bytes(data)
 
     base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
     base = _ascii_safe_filename(base)

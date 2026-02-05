@@ -24,6 +24,37 @@ export const meldraAi = {
       UploadPrivateFile: null,
     }
   },
+
+  convert: {
+    convertFile: async (endpoint, file, options = {}) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (options.ocrLang) formData.append('ocr_lang', options.ocrLang);
+      if (options.mode) formData.append('mode', options.mode);
+      if (options.maxPages != null) formData.append('max_pages', String(options.maxPages));
+      if (options.timeoutSeconds != null) formData.append('timeout_seconds', String(options.timeoutSeconds));
+
+      const response = await apiCall(`/api/convert/${endpoint}`, {
+        method: 'POST',
+        body: formData,
+        timeoutMs: options.timeoutMs || 240000,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Conversion failed: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const cd = response.headers.get('content-disposition') || '';
+      let filename = options.filename || 'converted-file';
+      const m = cd.match(/filename=([^;]+)/i);
+      if (m && m[1]) {
+        filename = m[1].trim().replace(/^"|"$/g, '');
+      }
+      return { blob, filename };
+    },
+  },
   entities: {
     Subscription: null,
     LoginHistory: null,

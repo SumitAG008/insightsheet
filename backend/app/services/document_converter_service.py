@@ -4,6 +4,7 @@ Document Converter Service — in-app PDF, DOC, PPT conversions (no external API
 import io
 import logging
 import re
+from datetime import datetime
 from typing import Tuple, Optional
 
 logger = logging.getLogger(__name__)
@@ -52,6 +53,18 @@ except ImportError:
 
 
 try:
+    import openpyxl
+    from openpyxl.styles import Font, Alignment, PatternFill
+    OPENPYXL_AVAILABLE = True
+except Exception:
+    openpyxl = None
+    Font = None
+    Alignment = None
+    PatternFill = None
+    OPENPYXL_AVAILABLE = False
+
+
+try:
     from .ocr_service import OCRService, _looks_garbled_digital_text
     OCR_SERVICE_AVAILABLE = True
 except Exception:
@@ -78,6 +91,227 @@ def pdf_to_docx(pdf_bytes: bytes) -> Tuple[bytes, str]:
     except Exception as e:
         logger.exception("pdf_to_docx failed")
         return b'', str(e)
+
+
+def _xlsx_autofit(ws) -> None:
+    try:
+        for column_cells in ws.columns:
+            max_len = 0
+            col_letter = None
+            for cell in column_cells:
+                col_letter = cell.column_letter
+                v = cell.value
+                if v is None:
+                    continue
+                s = str(v)
+                if len(s) > max_len:
+                    max_len = len(s)
+            if col_letter:
+                ws.column_dimensions[col_letter].width = min(max(10, max_len + 2), 60)
+    except Exception:
+        return
+
+
+def _xlsx_add_title(ws, title: str) -> int:
+    r = 1
+    ws.cell(row=r, column=1, value=title)
+    try:
+        ws.cell(row=r, column=1).font = Font(bold=True, size=16)
+    except Exception:
+        pass
+    r += 2
+    return r
+
+
+def _xlsx_add_kv(ws, row: int, key: str, val: str) -> int:
+    ws.cell(row=row, column=1, value=key)
+    ws.cell(row=row, column=2, value=val)
+    try:
+        ws.cell(row=row, column=1).font = Font(bold=True)
+    except Exception:
+        pass
+    return row + 1
+
+
+def _build_structured_workbook_xlsx(
+    source_filename: str,
+    source_type: str,
+    narrative_text: str,
+    tables: Optional[list] = None,
+) -> Tuple[bytes, str]:
+    if not OPENPYXL_AVAILABLE:
+        return b"", "Excel export requires openpyxl. Install: pip install openpyxl"
+
+    try:
+        wb = openpyxl.Workbook()
+        ws_summary = wb.active
+        ws_summary.title = "Summary"
+
+        row = _xlsx_add_title(ws_summary, "Converted Workbook")
+        row = _xlsx_add_kv(ws_summary, row, "Source file", source_filename or "file")
+        row = _xlsx_add_kv(ws_summary, row, "Source type", source_type or "unknown")
+        row = _xlsx_add_kv(ws_summary, row, "Generated", datetime.utcnow().isoformat() + "Z")
+
+        row += 1
+        ws_summary.cell(row=row, column=1, value="Sheets")
+        try:
+            ws_summary.cell(row=row, column=1).font = Font(bold=True)
+        except Exception:
+            pass
+        row += 1
+        ws_summary.cell(row=row, column=1, value="Narrative")
+        ws_summary.cell(row=row, column=2, value="All extracted text preserved")
+        row += 1
+
+        ws_narr = wb.create_sheet("Narrative")
+        ws_narr.append(["Section", "Subsection", "Paragraph", "Text", "Source"])
+        try:
+            for c in range(1, 6):
+                ws_narr.cell(row=1, column=c).font = Font(bold=True)
+                ws_narr.cell(row=1, column=c).fill = PatternFill("solid", fgColor="E8EEF9")
+        except Exception:
+            pass
+
+        paragraphs = [p.strip() for p in (narrative_text or "").split("\n") if p.strip()]
+        if not paragraphs:
+            paragraphs = ["(No text extracted)"]
+        for idx, p in enumerate(paragraphs, start=1):
+            ws_narr.append(["", "", idx, p, source_type])
+
+        _xlsx_autofit(ws_narr)
+
+        t_list = tables or []
+        for t_i, t_rows in enumerate(t_list, start=1):
+            name = f"Table_{t_i}"
+            ws_t = wb.create_sheet(name)
+            if t_rows:
+                for r in t_rows:
+                    ws_t.append(list(r))
+            else:
+                ws_t.append(["(Empty table)"])
+            _xlsx_autofit(ws_t)
+            ws_summary.cell(row=row, column=1, value=name)
+            ws_summary.cell(row=row, column=2, value="Extracted table")
+            row += 1
+
+        ws_fig = wb.create_sheet("Figures_Images")
+        ws_fig.append(["Figure ID", "Section", "Page", "Notes"])
+        ws_fig.append(["(not_available)", "", "", "Images/charts preservation is not implemented in this MVP."])
+        _xlsx_autofit(ws_fig)
+        ws_summary.cell(row=row, column=1, value="Figures_Images")
+        ws_summary.cell(row=row, column=2, value="Placeholder")
+
+        _xlsx_autofit(ws_summary)
+
+        buf = io.BytesIO()
+        wb.save(buf)
+        buf.seek(0)
+        return buf.read(), ""
+    except Exception as e:
+        logger.exception("build structured xlsx failed")
+        return b"", str(e)
+
+
+def docx_to_xlsx_structured(docx_bytes: bytes, source_filename: str = "") -> Tuple[bytes, str]:
+    if not DOCX_AVAILABLE:
+        return b"", "DOCX to XLSX requires python-docx"
+    try:
+        doc = Document(io.BytesIO(docx_bytes))
+        parts = []
+        for p in doc.paragraphs:
+            t = (p.text or "").strip()
+            if t:
+                parts.append(t)
+
+        tables = []
+        for table in doc.tables:
+            t_rows = []
+            for row in table.rows:
+                row_vals = []
+                for cell in row.cells:
+                    row_vals.append((cell.text or "").strip())
+                if row_vals:
+                    t_rows.append(row_vals)
+            if t_rows:
+                tables.append(t_rows)
+
+        return _build_structured_workbook_xlsx(
+            source_filename=source_filename,
+            source_type="docx",
+            narrative_text="\n".join(parts),
+            tables=tables,
+        )
+    except Exception as e:
+        logger.exception("docx_to_xlsx_structured failed")
+        return b"", str(e)
+
+
+def pdf_to_xlsx_structured(pdf_bytes: bytes, source_filename: str = "") -> Tuple[bytes, str]:
+    try:
+        text = ""
+        try:
+            import pdfplumber
+            pages_text = []
+            with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+                for p in pdf.pages[:25]:
+                    t = (p.extract_text() or "").strip()
+                    if t:
+                        pages_text.append(t)
+            text = "\n".join(pages_text).strip()
+        except Exception:
+            text = ""
+
+        if not text and FITZ_AVAILABLE and fitz is not None:
+            try:
+                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+                pages_text = []
+                for i in range(min(doc.page_count, 25)):
+                    pages_text.append((doc.load_page(i).get_text("text") or "").strip())
+                doc.close()
+                text = "\n".join([t for t in pages_text if t]).strip()
+            except Exception:
+                text = ""
+
+        if not text:
+            text = "(No text extracted from PDF)"
+
+        return _build_structured_workbook_xlsx(
+            source_filename=source_filename,
+            source_type="pdf",
+            narrative_text=text,
+            tables=[],
+        )
+    except Exception as e:
+        logger.exception("pdf_to_xlsx_structured failed")
+        return b"", str(e)
+
+
+def pptx_to_xlsx_structured(pptx_bytes: bytes, source_filename: str = "") -> Tuple[bytes, str]:
+    if not PPTX_AVAILABLE:
+        return b"", "PPTX to XLSX requires python-pptx"
+    try:
+        prs = Presentation(io.BytesIO(pptx_bytes))
+        parts = []
+        for idx, slide in enumerate(prs.slides[:200], start=1):
+            slide_parts = []
+            for shape in slide.shapes:
+                if not getattr(shape, "has_text_frame", False):
+                    continue
+                t = (getattr(shape, "text", None) or "").strip()
+                if t:
+                    slide_parts.append(t)
+            if slide_parts:
+                parts.append(f"Slide {idx}: " + " | ".join(slide_parts))
+        text = "\n".join(parts).strip() or "(No text extracted from PPTX)"
+        return _build_structured_workbook_xlsx(
+            source_filename=source_filename,
+            source_type="pptx",
+            narrative_text=text,
+            tables=[],
+        )
+    except Exception as e:
+        logger.exception("pptx_to_xlsx_structured failed")
+        return b"", str(e)
 
 
 def _docx_to_text(docx_bytes: bytes) -> str:

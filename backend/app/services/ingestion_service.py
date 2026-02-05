@@ -109,6 +109,7 @@ class IngestionService:
 
         doc = Document(io.BytesIO(content))
         parts: List[str] = []
+        extracted_tables: List[List[List[str]]] = []
 
         for p in doc.paragraphs:
             t = (p.text or "").strip()
@@ -116,14 +117,17 @@ class IngestionService:
                 parts.append(t)
 
         for table in doc.tables:
+            t_rows: List[List[str]] = []
             for row in table.rows:
                 row_vals = []
                 for cell in row.cells:
                     t = _normalize_whitespace(cell.text or "")
-                    if t:
-                        row_vals.append(t)
+                    row_vals.append(t)
                 if row_vals:
                     parts.append(" | ".join(row_vals))
+                    t_rows.append(row_vals)
+            if t_rows:
+                extracted_tables.append(t_rows)
 
         text = "\n".join(parts).strip()
         text = _clip(text, self.limits.max_chars)
@@ -135,6 +139,7 @@ class IngestionService:
             "meta": {
                 "paragraphs": len(doc.paragraphs),
                 "tables": len(doc.tables),
+                "tables_extracted": extracted_tables,
                 "chars": len(text),
             },
         }

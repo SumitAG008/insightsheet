@@ -21,6 +21,7 @@ import ActivityLogger from '@/components/tracking/ActivityLogger';
 import LogoutWarningModal from '@/components/common/LogoutWarningModal';
 import CookieConsent from '@/components/CookieConsent';
 import SupportChatWidget from '@/components/SupportChatWidget';
+import OnboardingAssistantModal from '@/components/onboarding/OnboardingAssistantModal';
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -31,6 +32,7 @@ export default function Layout({ children, currentPageName }) {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [showLogoutWarning, setShowLogoutWarning] = React.useState(false);
   const [pendingLogout, setPendingLogout] = React.useState(false);
+  const [showOnboarding, setShowOnboarding] = React.useState(false);
   
   const loadUser = useCallback(async () => {
     try {
@@ -75,6 +77,46 @@ export default function Layout({ children, currentPageName }) {
   React.useEffect(() => {
     loadUser();
   }, [loadUser]);
+
+  useEffect(() => {
+    if (!user?.email) return;
+
+    let mode = '';
+    try {
+      const sp = new URLSearchParams(location.search);
+      mode = (sp.get('onboarding') || '').trim().toLowerCase();
+    } catch {
+      mode = '';
+    }
+
+    const key = `onboarding_completed:${user.email}`;
+
+    if (mode === 'reset') {
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // ignore
+      }
+      setShowOnboarding(true);
+      return;
+    }
+
+    if (mode === '1') {
+      setShowOnboarding(true);
+      return;
+    }
+
+    let completed = false;
+    try {
+      completed = localStorage.getItem(key) === '1';
+    } catch {
+      completed = false;
+    }
+
+    if (!completed) {
+      setShowOnboarding(true);
+    }
+  }, [user?.email, location.search]);
 
   const logLogin = async (email) => {
     try {
@@ -129,6 +171,17 @@ export default function Layout({ children, currentPageName }) {
 
     // Redirect to login page
     navigate('/Login');
+  };
+
+  const handleOnboardingOpenChange = (open) => {
+    setShowOnboarding(open);
+    if (!open && user?.email) {
+      try {
+        localStorage.setItem(`onboarding_completed:${user.email}`, '1');
+      } catch {
+        // ignore
+      }
+    }
   };
 
   // Handle browser close/refresh warning
@@ -587,6 +640,12 @@ export default function Layout({ children, currentPageName }) {
       <CookieConsent privacyUrl={createPageUrl('Privacy')} />
 
       <SupportChatWidget page={currentPageName} />
+
+      <OnboardingAssistantModal
+        userEmail={user?.email}
+        open={showOnboarding}
+        onOpenChange={handleOnboardingOpenChange}
+      />
     </div>
   );
 }

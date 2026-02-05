@@ -5,8 +5,8 @@ const DEFAULT_TAGLINE = 'DATA MADE SIMPLE';
 
 export default function Logo({ className = "", size = "medium", showText = true, style = {}, lowercaseM = false, tagline }) {
   const sizes = {
-    small: { container: "w-10 h-10", text: "text-lg", tagline: "text-[11px]" },
-    medium: { container: "w-12 h-12", text: "text-2xl", tagline: "text-sm" },
+    small: { container: "w-12 h-12 md:w-10 md:h-10", text: "text-lg", tagline: "text-[11px]" },
+    medium: { container: "w-14 h-14 md:w-12 md:h-12", text: "text-2xl", tagline: "text-sm" },
     large: { container: "w-24 h-24", text: "text-4xl", tagline: "text-sm" }
   };
 
@@ -22,7 +22,7 @@ export default function Logo({ className = "", size = "medium", showText = true,
         <img 
           src="/meldra.png" 
           alt="Meldra" 
-          className="w-full h-full object-contain"
+          className="w-full h-full object-contain contrast-125 saturate-125"
           onError={(e) => {
             e.target.style.display = 'none';
             const parent = e.target.parentElement;

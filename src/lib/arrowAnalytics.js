@@ -151,8 +151,18 @@ export function inferColumns(data) {
       if (isExcelSerialDateNumber(n)) excelSerialHits++;
       if (isMonthNumber(n)) monthNumHits++;
       if (isYearNumber(n)) yearNumHits++;
-      const d = new Date(v);
-      if (!Number.isNaN(d.getTime())) dateHits++;
+
+      // Only count real dates from strings/Date objects.
+      // NOTE: new Date(123) is valid (ms since epoch) and would incorrectly classify numeric columns as dates.
+      if (v instanceof Date) {
+        if (!Number.isNaN(v.getTime())) dateHits++;
+      } else if (typeof v === 'string') {
+        const d = new Date(v);
+        if (!Number.isNaN(d.getTime())) dateHits++;
+      } else if (typeof v === 'number') {
+        // Count numeric as date only if it looks like an Excel serial date.
+        if (isExcelSerialDateNumber(v)) dateHits++;
+      }
     }
 
     if (nonEmpty === 0) {

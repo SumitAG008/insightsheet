@@ -135,6 +135,17 @@ class PLBuilderService:
                 "notes": response.get("notes", "")
             }
 
+            if user_context:
+                cn = (user_context.get("company_name") or "").strip()
+                if cn:
+                    spec["company_name"] = cn
+                cur = (user_context.get("currency") or "").strip()
+                if cur:
+                    spec["currency"] = cur
+                pt = (user_context.get("period_type") or "").strip()
+                if pt:
+                    spec["period_type"] = pt
+
             spec = self._apply_extracted_hints(spec, extracted)
 
             return spec

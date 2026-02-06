@@ -1,5 +1,40 @@
 import { tableFromArrays } from 'apache-arrow';
 
+function getTableColumn(table, name) {
+  if (!table || !name) return null;
+  try {
+    if (typeof table.getChild === 'function') {
+      const v = table.getChild(name);
+      if (v) return v;
+    }
+  } catch (_) {}
+
+  try {
+    if (typeof table.getColumn === 'function') {
+      const v = table.getColumn(name);
+      if (v) return v;
+    }
+  } catch (_) {}
+
+  try {
+    if (typeof table.getColumnAt === 'function') {
+      const idx = table?.schema?.fields?.findIndex?.((f) => f?.name === name) ?? -1;
+      if (idx >= 0) {
+        const v = table.getColumnAt(idx);
+        if (v) return v;
+      }
+    }
+  } catch (_) {}
+
+  // Fallback: some builds expose columns as an array-like
+  try {
+    const idx = table?.schema?.fields?.findIndex?.((f) => f?.name === name) ?? -1;
+    if (idx >= 0 && table?.columns?.[idx]) return table.columns[idx];
+  } catch (_) {}
+
+  return null;
+}
+
 function isNumberLike(v) {
   if (v === null || v === undefined || v === '') return false;
   if (typeof v === 'number') return Number.isFinite(v);
@@ -110,7 +145,8 @@ export function computeArrowKPIs(table, { maxDistinct = 2000 } = {}) {
 
   for (const field of table.schema.fields) {
     const name = field.name;
-    const col = table.getColumn(name);
+    const col = getTableColumn(table, name);
+    if (!col) continue;
 
     let nulls = 0;
     for (let i = 0; i < numRows; i++) {
@@ -125,7 +161,8 @@ export function computeArrowKPIs(table, { maxDistinct = 2000 } = {}) {
   const distinctCounts = {};
   for (const field of table.schema.fields) {
     const name = field.name;
-    const col = table.getColumn(name);
+    const col = getTableColumn(table, name);
+    if (!col) continue;
 
     const set = new Set();
     for (let i = 0; i < numRows; i++) {
@@ -189,8 +226,9 @@ export function bestColumnsForOverview({ inferred, kpis }) {
 export function groupSumTopN(table, categoryColumn, valueColumn, { topN = 8 } = {}) {
   if (!categoryColumn || !valueColumn) return [];
 
-  const cat = table.getColumn(categoryColumn);
-  const val = table.getColumn(valueColumn);
+  const cat = getTableColumn(table, categoryColumn);
+  const val = getTableColumn(table, valueColumn);
+  if (!cat || !val) return [];
 
   const sums = new Map();
   for (let i = 0; i < table.numRows; i++) {
@@ -213,7 +251,8 @@ export function groupSumTopN(table, categoryColumn, valueColumn, { topN = 8 } = 
 export function numericHistogram(table, valueColumn, { bins = 12 } = {}) {
   if (!valueColumn) return [];
 
-  const col = table.getColumn(valueColumn);
+  const col = getTableColumn(table, valueColumn);
+  if (!col) return [];
   const values = [];
   for (let i = 0; i < table.numRows; i++) {
     const v = col.get(i);
@@ -308,7 +347,8 @@ export function computePnLFromTable(table, cols) {
 
   const sumCol = (name) => {
     if (!name) return null;
-    const col = table.getColumn(name);
+    const col = getTableColumn(table, name);
+    if (!col) return null;
     let sum = 0;
     let ok = false;
     for (let i = 0; i < table.numRows; i++) {

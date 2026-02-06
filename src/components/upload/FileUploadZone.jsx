@@ -97,6 +97,56 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
     return { headers, rows, raw: lines };
   };
 
+  const parseCSVFile = async (file) => {
+    const fileSizeMB = file.size / (1024 * 1024);
+
+    // For smaller CSVs, keep the existing simple parser (fast enough, fewer deps)
+    if (fileSizeMB <= 5) {
+      const text = await file.text();
+      return parseCSV(text);
+    }
+
+    // For large CSVs, use streaming-style parsing to avoid splitting the whole file into memory.
+    const Papa = (await import('papaparse')).default;
+
+    return new Promise((resolve, reject) => {
+      let headers = null;
+      const rows = [];
+
+      Papa.parse(file, {
+        skipEmptyLines: true,
+        dynamicTyping: true,
+        worker: true,
+        step: (results) => {
+          const row = results?.data;
+          if (!row || !row.length) return;
+
+          if (!headers) {
+            headers = row.map((h, idx) => {
+              const name = (h != null && String(h).trim() !== '') ? String(h).trim() : `Column_${idx + 1}`;
+              return name;
+            });
+            return;
+          }
+
+          const obj = {};
+          for (let i = 0; i < headers.length; i++) {
+            obj[headers[i]] = row[i] ?? '';
+          }
+          rows.push(obj);
+        },
+        complete: () => {
+          if (!headers || rows.length === 0) {
+            reject(new Error('No data found in CSV. Please check the file format.'));
+            return;
+          }
+          resolve({ headers, rows, raw: null });
+        },
+        error: (err) => reject(new Error(err?.message || 'Failed to parse CSV')),
+      });
+    });
+  };
+
   const parseExcel = async (file) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -235,9 +285,8 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
       
       let data;
       if (ext === 'csv') {
-        const text = await file.text();
         setProcessingStatus('Parsing CSV...');
-        data = parseCSV(text);
+        data = await parseCSVFile(file);
       } else if (ext === 'xlsx' || ext === 'xls') {
         setProcessingStatus('Parsing Excel...');
         data = await parseExcel(file);

@@ -18,6 +18,7 @@ import DataTransform from '../components/dashboard/DataTransform';
 import SmartFormula from '../components/dashboard/SmartFormula';
 import DataValidator from '../components/dashboard/DataValidator';
 import AdvancedFilter from '../components/dashboard/AdvancedFilter';
+import OverviewDashboard from '../components/dashboard/OverviewDashboard';
 import FileUploadZone from '../components/upload/FileUploadZone';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -39,9 +40,10 @@ export default function Dashboard() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [displayData, setDisplayData] = useState(null);
   const [activeSheet, setActiveSheet] = useState('');
+  const [activity, setActivity] = useState([]);
   const [activeTab, setActiveTab] = useState(() => {
     const t = (searchParams.get('tab') || '').trim();
-    return t === 'transform' || t === 'ai' || t === 'analysis' ? t : 'analysis';
+    return t === 'overview' || t === 'transform' || t === 'ai' || t === 'analysis' ? t : 'overview';
   });
   
   // Undo/Redo functionality
@@ -69,7 +71,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     const t = (searchParams.get('tab') || '').trim();
-    const next = t === 'transform' || t === 'ai' || t === 'analysis' ? t : 'analysis';
+    const next = t === 'overview' || t === 'transform' || t === 'ai' || t === 'analysis' ? t : 'overview';
     setActiveTab(next);
   }, [searchParams]);
 
@@ -123,8 +125,30 @@ export default function Dashboard() {
     setActiveSheet(sheet);
     setData(next);
     sessionStorage.setItem('insightsheet_data', JSON.stringify(next));
+    setActivity((prev) => [
+      {
+        id: crypto.randomUUID(),
+        at: new Date().toISOString(),
+        title: 'Switched sheet',
+        detail: sheet,
+        badge: 'Overview',
+      },
+      ...(prev || []),
+    ]);
     addToHistory(next);
   };
+
+  const pushActivity = useCallback((evt) => {
+    if (!evt) return;
+    const nextEvt = {
+      id: crypto.randomUUID(),
+      at: new Date().toISOString(),
+      title: evt.title || 'Update',
+      detail: evt.detail || '',
+      badge: evt.badge || '',
+    };
+    setActivity((prev) => [nextEvt, ...(prev || [])].slice(0, 200));
+  }, []);
 
   // Add to history when data changes
   const addToHistory = useCallback((newData) => {
@@ -210,9 +234,14 @@ export default function Dashboard() {
       setData(uploadedData);
       setFilename(file.name);
       setActiveSheet(uploadedData?.workbook?.activeSheet || (uploadedData?.workbook?.sheetNames || [])[0] || '');
+      pushActivity({
+        title: 'Uploaded file',
+        detail: `${file.name} • ${uploadedData?.rows?.length ?? 0} rows`,
+        badge: 'Overview',
+      });
       addToHistory(uploadedData);
     }, 1000);
-  }, [addToHistory]);
+  }, [addToHistory, pushActivity]);
 
   const handleTemplateLoad = useCallback((templateData) => {
     setIsProcessing(true);
@@ -226,14 +255,49 @@ export default function Dashboard() {
       setData(templateData);
       setFilename(templateFilename);
       setActiveSheet(templateData?.workbook?.activeSheet || (templateData?.workbook?.sheetNames || [])[0] || '');
+      pushActivity({
+        title: 'Loaded template',
+        detail: `${templateFilename} • ${templateData?.rows?.length ?? 0} rows`,
+        badge: 'Overview',
+      });
       addToHistory(templateData);
     }, 500);
-  }, [addToHistory]);
+  }, [addToHistory, pushActivity]);
 
-  const handleDataUpdate = (newData) => {
+  const handleDataUpdate = (newData, meta) => {
+    const prevRows = data?.rows?.length ?? 0;
+    const prevCols = data?.headers?.length ?? 0;
     setData(newData);
     sessionStorage.setItem('insightsheet_data', JSON.stringify(newData));
     addToHistory(newData);
+
+    const nextRows = newData?.rows?.length ?? 0;
+    const nextCols = newData?.headers?.length ?? 0;
+    const deltaRows = nextRows - prevRows;
+    const deltaCols = nextCols - prevCols;
+
+    if (meta?.title) {
+      pushActivity({
+        title: meta.title,
+        detail: meta.detail || '',
+        badge: meta.badge || (activeTab === 'transform' ? 'Transform' : activeTab === 'ai' ? 'AI' : 'Cleaning'),
+      });
+      return;
+    }
+
+    if (deltaRows !== 0 || deltaCols !== 0) {
+      pushActivity({
+        title: 'Dataset updated',
+        detail: `${deltaRows >= 0 ? '+' : ''}${deltaRows} rows, ${deltaCols >= 0 ? '+' : ''}${deltaCols} columns`,
+        badge: activeTab === 'transform' ? 'Transform' : activeTab === 'ai' ? 'AI' : 'Cleaning',
+      });
+    } else {
+      pushActivity({
+        title: 'Dataset updated',
+        detail: 'Values changed',
+        badge: activeTab === 'transform' ? 'Transform' : activeTab === 'ai' ? 'AI' : 'Cleaning',
+      });
+    }
   };
 
   const handleSave = () => {
@@ -688,6 +752,9 @@ export default function Dashboard() {
         {/* Tabs for Different Sections */}
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-1">
+            <TabsTrigger value="overview" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
+              Overview
+            </TabsTrigger>
             <TabsTrigger value="analysis" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
               Analysis & Cleaning
             </TabsTrigger>
@@ -698,6 +765,10 @@ export default function Dashboard() {
               AI Tools
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="overview" className="space-y-6">
+            <OverviewDashboard data={displayData || data} filename={filename} activity={activity} />
+          </TabsContent>
 
           <TabsContent value="analysis" className="space-y-6">
             <div className="grid lg:grid-cols-3 gap-6">

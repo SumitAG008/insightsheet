@@ -2,6 +2,8 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { InvokeLLM } from '@/api/integrations';
+import { backendApi } from '@/api/backendClient';
+import { applyTransform } from '@/lib/transformUtils';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Send, Loader2, Lightbulb, Wand2 } from 'lucide-react';
@@ -11,6 +13,7 @@ export default function AIAssistant({ data, onDataUpdate }) {
   const [prompt, setPrompt] = useState('');
   const [response, setResponse] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [applyToData, setApplyToData] = useState(true);
   const [suggestions] = useState([
     'Calculate the average of all numeric columns',
     'Find duplicate rows',
@@ -23,12 +26,41 @@ export default function AIAssistant({ data, onDataUpdate }) {
 
   const handleAIOperation = async () => {
     if (!prompt.trim()) return;
-    
+
     setIsProcessing(true);
     setResponse(null);
 
     try {
-      // Prepare data context for AI
+      // If enabled, try to apply a real transform to the dataset.
+      if (applyToData && typeof onDataUpdate === 'function') {
+        const columns = (data.headers || []).map((h) => ({ name: h }));
+        const r = await backendApi.llm.transform(prompt, columns, (data.rows || []).slice(0, 15));
+
+        const name = (r.new_column_name || 'new_column').replace(/\s+/g, '_');
+        const colA = r.col_a || r.colA;
+        const colB = r.col_b || r.colB;
+        const op = (r.op || 'add').toLowerCase();
+        const separator = r.separator || ' ';
+
+        if (!colA || !colB || !(data.headers || []).includes(colA) || !(data.headers || []).includes(colB)) {
+          setResponse(`AI suggestion couldn't be applied (missing columns: ${colA || '—'}, ${colB || '—'}). Showing guidance instead.`);
+        } else if ((data.headers || []).includes(name)) {
+          setResponse(`Column "${name}" already exists. Showing guidance instead.`);
+        } else {
+          const newRows = applyTransform(data.rows || [], colA, colB, op, name, separator);
+          const updated = { ...data, headers: [...(data.headers || []), name], rows: newRows };
+          onDataUpdate(updated, {
+            title: 'AI applied transform',
+            detail: `Created ${name} = ${colA} ${op} ${colB}`,
+            badge: 'AI',
+          });
+          setResponse(`Applied: Created column "${name}" = ${colA} ${op} ${colB}`);
+          setIsProcessing(false);
+          return;
+        }
+      }
+
+      // Fallback: guidance-only response
       const sampleData = data.rows.slice(0, 5);
 
       const aiPrompt = `You are a data analysis assistant. The user has a CSV file with the following structure:
@@ -56,14 +88,14 @@ Format your response in a clear, structured way.`;
     } catch {
       setResponse('Error: Unable to process request. Please try again.');
     }
-    
+
     setIsProcessing(false);
   };
 
   return (
     <div className="relative group">
       <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-2xl blur-xl" />
-      
+
       <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-purple-200 flex items-center gap-2">
@@ -78,6 +110,23 @@ Format your response in a clear, structured way.`;
         <p className="text-slate-400 text-sm mb-4">
           Describe any operation you want to perform on your data. The AI will guide you through it!
         </p>
+
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/30 p-3">
+          <div className="text-xs text-slate-300">
+            <span className="font-semibold">Apply to data:</span> {applyToData ? 'On' : 'Off'}
+            <div className="text-[11px] text-slate-400 mt-0.5">
+              When On, AI will try to create a new column automatically.
+            </div>
+          </div>
+          <button
+            type="button"
+            className={`text-xs px-3 py-1.5 rounded border transition-colors ${applyToData ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20' : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-700/50'}`}
+            onClick={() => setApplyToData((v) => !v)}
+            disabled={isProcessing}
+          >
+            {applyToData ? 'Disable' : 'Enable'}
+          </button>
+        </div>
 
         {/* Quick Suggestions */}
         <div className="mb-4">

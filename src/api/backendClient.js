@@ -174,6 +174,24 @@ export const backendApi = {
       return response.json();
     },
 
+    transform: async (instruction, columns, sampleRows) => {
+      const response = await apiCall('/api/ai/transform', {
+        method: 'POST',
+        body: {
+          instruction,
+          columns: Array.isArray(columns) ? columns : [],
+          sample_rows: Array.isArray(sampleRows) ? sampleRows : null,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Transform failed: ${response.status}`);
+      }
+
+      return response.json();
+    },
+
     generateImage: async (prompt, size = '1024x1024') => {
       const response = await apiCall('/api/integrations/image/generate', {
         method: 'POST',

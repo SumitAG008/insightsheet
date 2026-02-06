@@ -517,9 +517,17 @@ export default function DataTransform({ data, onDataUpdate }) {
               },
             },
           },
+        }, {
+          title: 'Created column (AI)',
+          detail: name,
+          badge: 'Transform',
         });
       } else {
-        onDataUpdate({ headers: nextHeaders, rows: newRows });
+        onDataUpdate({ headers: nextHeaders, rows: newRows }, {
+          title: 'Created column (AI)',
+          detail: name,
+          badge: 'Transform',
+        });
       }
       setAiInstruction('');
     } catch (e) {
@@ -559,9 +567,17 @@ export default function DataTransform({ data, onDataUpdate }) {
               },
             },
           },
+        }, {
+          title: 'Created column',
+          detail: newColumnName,
+          badge: 'Transform',
         });
       } else {
-        onDataUpdate({ headers: nextHeaders, rows: newRows });
+        onDataUpdate({ headers: nextHeaders, rows: newRows }, {
+          title: 'Created column',
+          detail: newColumnName,
+          badge: 'Transform',
+        });
       }
       setColumn1(''); setColumn2(''); setNewColumnName('');
       setTransforming(false);

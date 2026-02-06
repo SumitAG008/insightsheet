@@ -41,25 +41,41 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
 
   const removeDuplicates = () => run(() => {
     const { rows, removed } = dedupe(data.rows);
-    onDataUpdate({ ...data, rows });
+    onDataUpdate({ ...data, rows }, {
+      title: 'Removed duplicates',
+      detail: `${removed} rows removed`,
+      badge: 'Cleaning',
+    });
     if (onCleanedCount) onCleanedCount(removed);
     setLastAction(`Removed ${removed} duplicate rows`);
   }, 600);
 
   const trimWhitespace = () => run(() => {
-    onDataUpdate({ ...data, rows: trim(data.rows) });
+    onDataUpdate({ ...data, rows: trim(data.rows) }, {
+      title: 'Trimmed whitespace',
+      detail: 'All cells',
+      badge: 'Cleaning',
+    });
     setLastAction('Trimmed whitespace from all cells');
   }, 400);
 
   const doInferTypes = () => run(() => {
-    onDataUpdate({ ...data, rows: inferTypes(data.rows) });
+    onDataUpdate({ ...data, rows: inferTypes(data.rows) }, {
+      title: 'Inferred types',
+      detail: 'Converted cell values',
+      badge: 'Cleaning',
+    });
     setLastAction('Converted data types automatically');
   }, 500);
 
   const cleanAll = () => run(() => {
     const { rows, removed } = dedupe(trim(data.rows));
     const typed = inferTypes(rows);
-    onDataUpdate({ ...data, rows: typed });
+    onDataUpdate({ ...data, rows: typed }, {
+      title: 'Cleaned all',
+      detail: `${removed} duplicates removed • whitespace trimmed • types inferred`,
+      badge: 'Cleaning',
+    });
     if (onCleanedCount) onCleanedCount(removed);
     setLastAction(`Complete cleanup: ${removed} duplicates removed, types inferred, whitespace trimmed`);
   }, 800);
@@ -68,7 +84,11 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
     if (!outlierCol) { setLastAction('Select a numeric column first'); return; }
     run(() => {
       const { rows, removed } = removeOutliers(data.rows, outlierCol, { threshold: 1.5 });
-      onDataUpdate({ ...data, rows });
+      onDataUpdate({ ...data, rows }, {
+        title: 'Removed outliers',
+        detail: `${removed} rows from ${outlierCol}`,
+        badge: 'Cleaning',
+      });
       if (onCleanedCount) onCleanedCount(removed);
       setLastAction(removed > 0 ? `Removed ${removed} outliers from ${outlierCol}` : `No outliers in ${outlierCol}`);
     }, 500);
@@ -78,7 +98,11 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
     if (!fillCol) { setLastAction('Select a column first'); return; }
     run(() => {
       const rows = fillMissing(data.rows, fillCol, fillStrategy);
-      onDataUpdate({ ...data, rows });
+      onDataUpdate({ ...data, rows }, {
+        title: 'Filled missing values',
+        detail: `${fillCol} • ${fillStrategy}`,
+        badge: 'Cleaning',
+      });
       setLastAction(`Filled missing in ${fillCol} with ${fillStrategy}`);
     }, 500);
   };

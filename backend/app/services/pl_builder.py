@@ -86,6 +86,8 @@ class PLBuilderService:
     ) -> Dict[str, Any]:
         """Parse natural language request into structured P&L specification"""
 
+        extracted = self._extract_uploaded_file_hints(prompt)
+
         system_prompt = """
         You are a financial statement generator. Parse the user's request and generate a JSON specification for a Profit & Loss statement.
 
@@ -133,6 +135,8 @@ class PLBuilderService:
                 "notes": response.get("notes", "")
             }
 
+            spec = self._apply_extracted_hints(spec, extracted)
+
             return spec
 
         except Exception as e:
@@ -150,6 +154,125 @@ class PLBuilderService:
                 "include_percentages": True,
                 "notes": ""
             }
+
+    def _extract_uploaded_file_hints(self, prompt: str) -> Dict[str, Any]:
+        if not prompt:
+            return {}
+        if "UPLOADED FILE CONTEXT" not in prompt:
+            return {}
+
+        previews: List[str] = []
+        for m in re.finditer(r"# Sheet:\s*(.+?)\nRows:.*?\n\n(.*?)(?:\n\n# Sheet:|\Z)", prompt, flags=re.DOTALL):
+            csv_block = (m.group(2) or "").strip()
+            if csv_block:
+                previews.append(csv_block)
+
+        if not previews:
+            return {}
+
+        candidates: Dict[str, Any] = {"revenue": [], "expense": [], "periods": []}
+
+        for csv_text in previews[:3]:
+            try:
+                df = pd.read_csv(io.StringIO(csv_text))
+            except Exception:
+                continue
+            if df is None or df.empty:
+                continue
+
+            cols = [str(c) for c in df.columns]
+            period_cols = [c for c in cols if self._looks_like_period_label(c)]
+            if period_cols and not candidates["periods"]:
+                candidates["periods"] = period_cols[:24]
+
+            item_col = self._pick_line_item_column(cols)
+            if not item_col:
+                continue
+
+            raw_items = [str(v).strip() for v in df[item_col].tolist()[:80] if str(v).strip() and str(v).strip().lower() != "nan"]
+            for item in raw_items:
+                bucket = self._classify_line_item(item)
+                if bucket == "revenue":
+                    candidates["revenue"].append(item)
+                elif bucket == "expense":
+                    candidates["expense"].append(item)
+
+        candidates["revenue"] = self._dedupe_keep_order(candidates["revenue"])[:25]
+        candidates["expense"] = self._dedupe_keep_order(candidates["expense"])[:25]
+
+        if not candidates["revenue"] and not candidates["expense"] and not candidates["periods"]:
+            return {}
+        return candidates
+
+    def _apply_extracted_hints(self, spec: Dict[str, Any], extracted: Dict[str, Any]) -> Dict[str, Any]:
+        if not extracted:
+            return spec
+
+        revenue = extracted.get("revenue") or []
+        expense = extracted.get("expense") or []
+        periods = extracted.get("periods") or []
+
+        if revenue:
+            spec["revenue_categories"] = revenue
+        if expense:
+            spec["expense_categories"] = expense
+
+        if periods:
+            if len(periods) <= 4:
+                spec["period_type"] = "quarterly"
+            elif len(periods) <= 14:
+                spec["period_type"] = "monthly"
+            else:
+                spec["period_type"] = spec.get("period_type") or "monthly"
+            spec["period_count"] = len(periods)
+        return spec
+
+    def _dedupe_keep_order(self, items: List[str]) -> List[str]:
+        seen = set()
+        out: List[str] = []
+        for x in items:
+            k = (x or "").strip().lower()
+            if not k or k in seen:
+                continue
+            seen.add(k)
+            out.append(x)
+        return out
+
+    def _pick_line_item_column(self, cols: List[str]) -> Optional[str]:
+        preferred = ["line item", "category", "account", "name", "description", "item"]
+        for p in preferred:
+            for c in cols:
+                if str(c).strip().lower() == p:
+                    return c
+        for c in cols:
+            cl = str(c).strip().lower()
+            if any(p in cl for p in preferred):
+                return c
+        return None
+
+    def _looks_like_period_label(self, s: str) -> bool:
+        if not s:
+            return False
+        t = str(s).strip()
+        if re.match(r"^(q[1-4])\s*\d{4}$", t, flags=re.IGNORECASE):
+            return True
+        if re.match(r"^[A-Za-z]{3}\s+\d{4}$", t):
+            return True
+        if re.match(r"^\d{4}[-/]\d{1,2}$", t):
+            return True
+        if re.match(r"^\d{1,2}/\d{1,2}/\d{2,4}$", t):
+            return True
+        return False
+
+    def _classify_line_item(self, item: str) -> Optional[str]:
+        t = (item or "").strip().lower()
+        if not t:
+            return None
+        if any(k in t for k in ["revenue", "sales", "income", "turnover", "other income", "service revenue"]):
+            return "revenue"
+        if any(k in t for k in ["cogs", "cost of goods", "expense", "opex", "operating", "marketing", "rent", "salary", "wage", "payroll", "tax", "interest", "depreciation", "amortization", "rd", "r&d"]):
+            return "expense"
+        return None
 
     def _build_pl_structure(self, ws, spec: Dict[str, Any]):
         """Build the P&L structure in Excel"""

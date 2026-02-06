@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react';
 import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -138,7 +146,7 @@ export default function PLBuilder() {
               type="file"
               accept=".docx,.xlsx,.xls,.pptx,.md,.pdf"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="w-full mt-2"
+              className="w-full mt-2 text-foreground file:text-foreground file:bg-transparent file:border-0"
               disabled={loading}
             />
             {file && (
@@ -151,41 +159,47 @@ export default function PLBuilder() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="company">Company Name (Optional)</Label>
-              <input
+              <Input
                 id="company"
                 type="text"
                 value={context.company_name}
                 onChange={(e) => setContext({ ...context, company_name: e.target.value })}
                 placeholder="My Company"
-                className="w-full mt-2 px-3 py-2 border rounded-md"
+                className="mt-2"
               />
             </div>
             <div>
               <Label htmlFor="currency">Currency</Label>
-              <select
-                id="currency"
+              <Select
                 value={context.currency}
-                onChange={(e) => setContext({ ...context, currency: e.target.value })}
-                className="w-full mt-2 px-3 py-2 border rounded-md"
+                onValueChange={(v) => setContext({ ...context, currency: v })}
               >
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="GBP">GBP (£)</option>
-                <option value="INR">INR (₹)</option>
-              </select>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD ($)</SelectItem>
+                  <SelectItem value="EUR">EUR (€)</SelectItem>
+                  <SelectItem value="GBP">GBP (£)</SelectItem>
+                  <SelectItem value="INR">INR (₹)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="period">Period Type</Label>
-              <select
-                id="period"
+              <Select
                 value={context.period_type}
-                onChange={(e) => setContext({ ...context, period_type: e.target.value })}
-                className="w-full mt-2 px-3 py-2 border rounded-md"
+                onValueChange={(v) => setContext({ ...context, period_type: v })}
               >
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="yearly">Yearly</option>
-              </select>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Select period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="monthly">Monthly</SelectItem>
+                  <SelectItem value="quarterly">Quarterly</SelectItem>
+                  <SelectItem value="yearly">Yearly</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -229,7 +243,7 @@ export default function PLBuilder() {
               <button
                 key={index}
                 onClick={() => handleExampleClick(example)}
-                className="w-full text-left p-3 border rounded-md hover:bg-accent transition-colors"
+                className="w-full text-left p-3 border rounded-md hover:bg-accent transition-colors text-foreground"
               >
                 <p className="text-sm">{example}</p>
               </button>

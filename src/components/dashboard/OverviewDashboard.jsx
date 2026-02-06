@@ -33,6 +33,49 @@ function excelSerialToDate(serial) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function parsePeriodString(v) {
+  const s = String(v || '').trim();
+  if (!s) return null;
+
+  // 2024-01 or 2024/01
+  let m = s.match(/^\s*(\d{4})[-/](\d{1,2})\s*$/);
+  if (m) {
+    const y = Number(m[1]);
+    const mo = Number(m[2]);
+    if (y >= 1900 && y <= 2100 && mo >= 1 && mo <= 12) return new Date(Date.UTC(y, mo - 1, 1));
+  }
+
+  // Jan-24, Jan 24, January-2024
+  m = s.match(/^\s*([A-Za-z]{3,9})[\s-]*(\d{2,4})\s*$/);
+  if (m) {
+    const monStr = m[1].slice(0, 3).toLowerCase();
+    const months = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
+    const mo = months[monStr];
+    if (mo !== undefined) {
+      let y = Number(m[2]);
+      if (y < 100) y += 2000;
+      if (y >= 1900 && y <= 2100) return new Date(Date.UTC(y, mo, 1));
+    }
+  }
+
+  // FY2024
+  m = s.match(/^\s*fy\s*(\d{4})\s*$/i);
+  if (m) {
+    const y = Number(m[1]);
+    if (y >= 1900 && y <= 2100) return new Date(Date.UTC(y, 0, 1));
+  }
+
+  // Q1 2024 or 2024 Q1
+  m = s.match(/^\s*q([1-4])\s*(\d{4})\s*$/i) || s.match(/^\s*(\d{4})\s*q([1-4])\s*$/i);
+  if (m) {
+    const q = Number(m[1].toLowerCase?.().startsWith?.('q') ? m[1].slice(1) : m[1]);
+    const y = Number(m[2]);
+    if (y >= 1900 && y <= 2100 && q >= 1 && q <= 4) return new Date(Date.UTC(y, (q - 1) * 3, 1));
+  }
+
+  return null;
+}
+
 function parseDateSmart(v) {
   if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
   if (typeof v === 'number') {
@@ -42,6 +85,12 @@ function parseDateSmart(v) {
   if (typeof v === 'string') {
     const n = Number(v);
     if (Number.isFinite(n) && n >= 30000 && n <= 60000) return excelSerialToDate(n);
+    const p = parsePeriodString(v);
+    if (p) return p;
+  }
+  if (typeof v === 'string') {
+    const p2 = parsePeriodString(v);
+    if (p2) return p2;
   }
   const d = new Date(v);
   return Number.isNaN(d.getTime()) ? null : d;
@@ -54,6 +103,12 @@ function formatCompactTick(v) {
   if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
   if (Math.abs(n) >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
   return `${Math.round(n * 100) / 100}`;
+}
+
+function truncateLabel(v, max = 12) {
+  const s = String(v ?? '');
+  if (s.length <= max) return s;
+  return s.slice(0, max - 1) + '…';
 }
 
 function buildTimeSeries(rows, dateColumn, valueColumn, { maxPoints = 24 } = {}) {
@@ -78,6 +133,19 @@ function buildTimeSeries(rows, dateColumn, valueColumn, { maxPoints = 24 } = {})
 
   if (arr.length <= maxPoints) return arr;
   return arr.slice(arr.length - maxPoints);
+}
+
+function buildIndexSeries(rows, valueColumn, { maxPoints = 40 } = {}) {
+  if (!valueColumn) return [];
+  const pts = [];
+  const n = Math.min((rows || []).length, maxPoints);
+  const start = Math.max(0, (rows || []).length - n);
+  for (let i = start; i < (rows || []).length; i++) {
+    const v = Number(rows[i]?.[valueColumn]);
+    if (!Number.isFinite(v)) continue;
+    pts.push({ name: String(i + 1), value: Math.round(v * 100) / 100 });
+  }
+  return pts;
 }
 
 export default function OverviewDashboard({ data, filename, activity }) {
@@ -133,7 +201,8 @@ export default function OverviewDashboard({ data, filename, activity }) {
 
   const trendData = useMemo(() => {
     const rows = Array.isArray(data?.rows) ? data.rows : [];
-    return buildTimeSeries(rows, chosen.dateColumn, chosen.valueColumn, { maxPoints: 24 });
+    if (chosen.dateColumn) return buildTimeSeries(rows, chosen.dateColumn, chosen.valueColumn, { maxPoints: 24 });
+    return buildIndexSeries(rows, chosen.valueColumn, { maxPoints: 40 });
   }, [data, chosen.dateColumn, chosen.valueColumn]);
 
   const missingPct = useMemo(() => {
@@ -289,17 +358,17 @@ export default function OverviewDashboard({ data, filename, activity }) {
                 <h3 className="font-bold text-slate-900 dark:text-white">Trend</h3>
               </div>
               <Badge className="bg-[#4169E1]/10 text-[#4169E1] border-[#4169E1]/20">
-                {chosen.dateColumn ? `By ${chosen.dateColumn}` : 'No date column detected'}
+                {chosen.dateColumn ? `By ${chosen.dateColumn}` : (chosen.valueColumn ? 'By row' : 'No trend available')}
               </Badge>
             </div>
 
             {trendData.length > 1 ? (
               <div className="h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <RechartsLineChart data={trendData} margin={{ top: 10, right: 16, left: 24, bottom: 12 }}>
+                  <RechartsLineChart data={trendData} margin={{ top: 10, right: 16, left: 44, bottom: 12 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                     <XAxis dataKey="name" tickMargin={8} />
-                    <YAxis width={64} tickFormatter={formatCompactTick} />
+                    <YAxis width={88} tickFormatter={formatCompactTick} tickMargin={6} />
                     <Tooltip />
                     <Legend />
                     <Line type="monotone" dataKey="value" name={chosen.valueColumn || 'Value'} stroke="#4169E1" strokeWidth={3} dot={false} />
@@ -308,7 +377,7 @@ export default function OverviewDashboard({ data, filename, activity }) {
               </div>
             ) : (
               <div className="h-[320px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                Add a date-like column (or select a sheet with dates) to see a time trend.
+                {chosen.valueColumn ? 'Not enough numeric values to plot a trend.' : 'No numeric column detected to plot a trend.'}
               </div>
             )}
           </div>
@@ -328,10 +397,10 @@ export default function OverviewDashboard({ data, filename, activity }) {
               {categoryData.length ? (
                 <div className="h-[280px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <RechartsBarChart data={categoryData} margin={{ top: 10, right: 12, left: 28, bottom: 60 }}>
+                    <RechartsBarChart data={categoryData} margin={{ top: 10, right: 12, left: 44, bottom: 60 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="name" angle={0} textAnchor="middle" interval={0} height={60} tickMargin={10} />
-                      <YAxis width={72} tickFormatter={formatCompactTick} />
+                      <XAxis dataKey="name" angle={0} textAnchor="middle" interval="preserveStartEnd" minTickGap={12} height={60} tickMargin={10} tickFormatter={(v) => truncateLabel(v, 14)} />
+                      <YAxis width={88} tickFormatter={formatCompactTick} tickMargin={6} />
                       <Tooltip />
                       <Bar dataKey="value" name={chosen.valueColumn || 'Value'} fill="#8B5CF6" radius={[6, 6, 0, 0]} />
                     </RechartsBarChart>
@@ -391,10 +460,10 @@ export default function OverviewDashboard({ data, filename, activity }) {
             {histogramData.length ? (
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <RechartsBarChart data={histogramData} margin={{ top: 10, right: 12, left: 28, bottom: 60 }}>
+                  <RechartsBarChart data={histogramData} margin={{ top: 10, right: 12, left: 44, bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="name" angle={0} textAnchor="middle" interval={0} height={60} tickMargin={10} />
-                    <YAxis width={72} tickFormatter={formatCompactTick} />
+                    <XAxis dataKey="name" angle={0} textAnchor="middle" interval="preserveStartEnd" minTickGap={12} height={60} tickMargin={10} tickFormatter={(v) => truncateLabel(v, 14)} />
+                    <YAxis width={88} tickFormatter={formatCompactTick} tickMargin={6} />
                     <Tooltip />
                     <Bar dataKey="count" name="Count" fill="#10B981" radius={[6, 6, 0, 0]} />
                   </RechartsBarChart>

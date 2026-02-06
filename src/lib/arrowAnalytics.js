@@ -79,6 +79,14 @@ function headerLooksLikeDate(h) {
   );
 }
 
+function isMonthNumber(n) {
+  return Number.isFinite(n) && n >= 1 && n <= 12;
+}
+
+function isYearNumber(n) {
+  return Number.isFinite(n) && n >= 1900 && n <= 2100;
+}
+
 export function buildArrowTable(data, { maxRows = 200000 } = {}) {
   const headers = (data?.headers || []).filter((h) => h && String(h).trim() !== '');
   const rows = Array.isArray(data?.rows) ? data.rows : [];
@@ -130,6 +138,8 @@ export function inferColumns(data) {
     let numericHits = 0;
     let dateHits = 0;
     let excelSerialHits = 0;
+    let monthNumHits = 0;
+    let yearNumHits = 0;
 
     const sampleN = Math.min(rows.length, 2000);
     for (let i = 0; i < sampleN; i++) {
@@ -139,6 +149,8 @@ export function inferColumns(data) {
       if (isNumberLike(v)) numericHits++;
       const n = typeof v === 'number' ? v : (typeof v === 'string' ? Number(v) : NaN);
       if (isExcelSerialDateNumber(n)) excelSerialHits++;
+      if (isMonthNumber(n)) monthNumHits++;
+      if (isYearNumber(n)) yearNumHits++;
       const d = new Date(v);
       if (!Number.isNaN(d.getTime())) dateHits++;
     }
@@ -151,11 +163,17 @@ export function inferColumns(data) {
     const numericRatio = numericHits / nonEmpty;
     const dateRatio = dateHits / nonEmpty;
     const excelRatio = excelSerialHits / nonEmpty;
+    const monthRatio = monthNumHits / nonEmpty;
+    const yearRatio = yearNumHits / nonEmpty;
 
     const dateHeaderBoost = headerLooksLikeDate(h);
 
     // If header looks like date OR many values look like dates (including Excel serials), prefer date.
-    if ((dateHeaderBoost && (dateRatio >= 0.5 || excelRatio >= 0.5)) || dateRatio >= 0.85 || excelRatio >= 0.85) {
+    if (
+      (dateHeaderBoost && (dateRatio >= 0.35 || excelRatio >= 0.35 || monthRatio >= 0.6 || yearRatio >= 0.6)) ||
+      dateRatio >= 0.85 ||
+      excelRatio >= 0.85
+    ) {
       date.push(h);
       continue;
     }
@@ -219,6 +237,7 @@ export function bestColumnsForOverview({ inferred, kpis }) {
   const numeric = inferred.numeric || [];
   const text = inferred.text || [];
   const date = inferred.date || [];
+  const headers = inferred.headers || [];
 
   const pickNumeric = () => {
     if (numeric.length === 0) return '';
@@ -249,7 +268,7 @@ export function bestColumnsForOverview({ inferred, kpis }) {
   };
 
   return {
-    dateColumn: date[0] || '',
+    dateColumn: date[0] || (headers.find((h) => headerLooksLikeDate(h)) || ''),
     valueColumn: pickNumeric(),
     categoryColumn: pickCategory(),
   };

@@ -59,6 +59,26 @@ function normalizeString(v) {
   return String(v).trim();
 }
 
+function isExcelSerialDateNumber(n) {
+  // Common Excel serial date range ~ 2000-01-01 to 2064-04-18
+  // Excel day 36526 = 2000-01-01, 60000 ~ 2064
+  return Number.isFinite(n) && n >= 30000 && n <= 60000;
+}
+
+function headerLooksLikeDate(h) {
+  const s = String(h || '').toLowerCase();
+  return (
+    s.includes('date') ||
+    s.includes('day') ||
+    s.includes('month') ||
+    s.includes('year') ||
+    s.includes('period') ||
+    s.includes('week') ||
+    s.includes('quarter') ||
+    s === 'dt'
+  );
+}
+
 export function buildArrowTable(data, { maxRows = 200000 } = {}) {
   const headers = (data?.headers || []).filter((h) => h && String(h).trim() !== '');
   const rows = Array.isArray(data?.rows) ? data.rows : [];
@@ -109,6 +129,7 @@ export function inferColumns(data) {
     let nonEmpty = 0;
     let numericHits = 0;
     let dateHits = 0;
+    let excelSerialHits = 0;
 
     const sampleN = Math.min(rows.length, 2000);
     for (let i = 0; i < sampleN; i++) {
@@ -116,6 +137,8 @@ export function inferColumns(data) {
       if (v === null || v === undefined || v === '') continue;
       nonEmpty++;
       if (isNumberLike(v)) numericHits++;
+      const n = typeof v === 'number' ? v : (typeof v === 'string' ? Number(v) : NaN);
+      if (isExcelSerialDateNumber(n)) excelSerialHits++;
       const d = new Date(v);
       if (!Number.isNaN(d.getTime())) dateHits++;
     }
@@ -127,6 +150,15 @@ export function inferColumns(data) {
 
     const numericRatio = numericHits / nonEmpty;
     const dateRatio = dateHits / nonEmpty;
+    const excelRatio = excelSerialHits / nonEmpty;
+
+    const dateHeaderBoost = headerLooksLikeDate(h);
+
+    // If header looks like date OR many values look like dates (including Excel serials), prefer date.
+    if ((dateHeaderBoost && (dateRatio >= 0.5 || excelRatio >= 0.5)) || dateRatio >= 0.85 || excelRatio >= 0.85) {
+      date.push(h);
+      continue;
+    }
 
     if (numericRatio >= 0.8) numeric.push(h);
     else if (dateRatio >= 0.8) date.push(h);

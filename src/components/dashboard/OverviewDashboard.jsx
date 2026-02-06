@@ -24,6 +24,38 @@ function formatNumber(n) {
   return `${Math.round(v * 100) / 100}`;
 }
 
+function excelSerialToDate(serial) {
+  const n = Number(serial);
+  if (!Number.isFinite(n)) return null;
+  // Excel incorrectly treats 1900 as leap year; using 1899-12-30 is the common fix.
+  const ms = (n - 25569) * 86400 * 1000;
+  const d = new Date(ms);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function parseDateSmart(v) {
+  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
+  if (typeof v === 'number') {
+    // Likely Excel serial
+    if (v >= 30000 && v <= 60000) return excelSerialToDate(v);
+  }
+  if (typeof v === 'string') {
+    const n = Number(v);
+    if (Number.isFinite(n) && n >= 30000 && n <= 60000) return excelSerialToDate(n);
+  }
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatCompactTick(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return String(v ?? '');
+  if (Math.abs(n) >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
+  if (Math.abs(n) >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
+  if (Math.abs(n) >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
+  return `${Math.round(n * 100) / 100}`;
+}
+
 function buildTimeSeries(rows, dateColumn, valueColumn, { maxPoints = 24 } = {}) {
   if (!dateColumn || !valueColumn) return [];
   const m = new Map();
@@ -31,9 +63,9 @@ function buildTimeSeries(rows, dateColumn, valueColumn, { maxPoints = 24 } = {})
   for (const r of rows || []) {
     const rawDate = r?.[dateColumn];
     const rawVal = r?.[valueColumn];
-    const d = new Date(rawDate);
+    const d = parseDateSmart(rawDate);
     const v = Number(rawVal);
-    if (Number.isNaN(d.getTime())) continue;
+    if (!d) continue;
     if (!Number.isFinite(v)) continue;
 
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -264,13 +296,13 @@ export default function OverviewDashboard({ data, filename, activity }) {
             {trendData.length > 1 ? (
               <div className="h-[320px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <RechartsLineChart data={trendData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
+                  <RechartsLineChart data={trendData} margin={{ top: 10, right: 16, left: 24, bottom: 12 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
+                    <XAxis dataKey="name" tickMargin={8} />
+                    <YAxis width={64} tickFormatter={formatCompactTick} />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="value" name={chosen.valueColumn || 'Value'} stroke="#4169E1" strokeWidth={2} dot={false} />
+                    <Line type="monotone" dataKey="value" name={chosen.valueColumn || 'Value'} stroke="#4169E1" strokeWidth={3} dot={false} />
                   </RechartsLineChart>
                 </ResponsiveContainer>
               </div>
@@ -296,10 +328,10 @@ export default function OverviewDashboard({ data, filename, activity }) {
               {categoryData.length ? (
                 <div className="h-[280px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <RechartsBarChart data={categoryData} margin={{ top: 10, right: 10, left: 10, bottom: 40 }}>
+                    <RechartsBarChart data={categoryData} margin={{ top: 10, right: 12, left: 28, bottom: 60 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="name" angle={-25} textAnchor="end" interval={0} height={60} />
-                      <YAxis />
+                      <XAxis dataKey="name" angle={0} textAnchor="middle" interval={0} height={60} tickMargin={10} />
+                      <YAxis width={72} tickFormatter={formatCompactTick} />
                       <Tooltip />
                       <Bar dataKey="value" name={chosen.valueColumn || 'Value'} fill="#8B5CF6" radius={[6, 6, 0, 0]} />
                     </RechartsBarChart>
@@ -359,10 +391,10 @@ export default function OverviewDashboard({ data, filename, activity }) {
             {histogramData.length ? (
               <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <RechartsBarChart data={histogramData} margin={{ top: 10, right: 10, left: 10, bottom: 40 }}>
+                  <RechartsBarChart data={histogramData} margin={{ top: 10, right: 12, left: 28, bottom: 60 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis dataKey="name" angle={-25} textAnchor="end" interval={0} height={60} />
-                    <YAxis />
+                    <XAxis dataKey="name" angle={0} textAnchor="middle" interval={0} height={60} tickMargin={10} />
+                    <YAxis width={72} tickFormatter={formatCompactTick} />
                     <Tooltip />
                     <Bar dataKey="count" name="Count" fill="#10B981" radius={[6, 6, 0, 0]} />
                   </RechartsBarChart>

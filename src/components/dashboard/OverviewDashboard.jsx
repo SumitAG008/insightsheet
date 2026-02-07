@@ -148,6 +148,57 @@ function buildIndexSeries(rows, valueColumn, { maxPoints = 40 } = {}) {
   return pts;
 }
 
+function buildWidePeriodSeries(rows, headers, categoryColumn, { maxPoints = 24 } = {}) {
+  const hs = (headers || []).filter(Boolean);
+  if (hs.length === 0) return [];
+
+  const periodCols = [];
+  for (const h of hs) {
+    const d = parsePeriodString(h);
+    if (!d) continue;
+    periodCols.push({ header: h, d });
+  }
+
+  // Not a wide time matrix if we don't have enough period-like columns.
+  if (periodCols.length < 4) return [];
+
+  // Use the Total row if present, else sum all rows per period column.
+  const rowsArr = Array.isArray(rows) ? rows : [];
+  const totalRow = categoryColumn
+    ? rowsArr.find((r) => String(r?.[categoryColumn] || '').trim().toLowerCase() === 'total')
+    : undefined;
+
+  const series = periodCols
+    .map(({ header, d }) => {
+      let v = 0;
+      let ok = false;
+      if (totalRow) {
+        const n = Number(totalRow?.[header]);
+        if (Number.isFinite(n)) {
+          v = n;
+          ok = true;
+        }
+      } else {
+        for (const r of rowsArr) {
+          const n = Number(r?.[header]);
+          if (!Number.isFinite(n)) continue;
+          v += n;
+          ok = true;
+        }
+      }
+      return ok ? { d, header, value: Math.round(v * 100) / 100 } : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.d.getTime() - b.d.getTime());
+
+  const trimmed = series.length <= maxPoints ? series : series.slice(series.length - maxPoints);
+  return trimmed.map((p) => {
+    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][p.d.getUTCMonth()];
+    const y = String(p.d.getUTCFullYear()).slice(-2);
+    return { name: `${m}-${y}`, value: p.value };
+  });
+}
+
 export default function OverviewDashboard({ data, filename, activity }) {
   const rootRef = useRef(null);
   const [exporting, setExporting] = useState(false);
@@ -202,8 +253,13 @@ export default function OverviewDashboard({ data, filename, activity }) {
   const trendData = useMemo(() => {
     const rows = Array.isArray(data?.rows) ? data.rows : [];
     if (chosen.dateColumn) return buildTimeSeries(rows, chosen.dateColumn, chosen.valueColumn, { maxPoints: 24 });
+
+    // If this is a wide matrix with period headers (e.g. Jan-25..Dec-25), build a proper month series.
+    const wide = buildWidePeriodSeries(rows, inferred?.headers || [], chosen.categoryColumn, { maxPoints: 24 });
+    if (wide.length > 0) return wide;
+
     return buildIndexSeries(rows, chosen.valueColumn, { maxPoints: 40 });
-  }, [data, chosen.dateColumn, chosen.valueColumn]);
+  }, [data, chosen.dateColumn, chosen.valueColumn, chosen.categoryColumn, inferred?.headers]);
 
   const missingPct = useMemo(() => {
     if (!kpis) return 0;

@@ -278,7 +278,9 @@ export function bestColumnsForOverview({ inferred, kpis }) {
   };
 
   return {
-    dateColumn: date[0] || (headers.find((h) => headerLooksLikeDate(h)) || ''),
+    // Only use columns inferred as date-like from values. A header keyword match alone
+    // can incorrectly treat numeric totals (e.g. "12-month") as a date column.
+    dateColumn: date[0] || '',
     valueColumn: pickNumeric(),
     categoryColumn: pickCategory(),
   };

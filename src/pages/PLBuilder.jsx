@@ -236,6 +236,17 @@ export default function PLBuilder() {
                     <div>Periods detected: {preview.period_count}</div>
                     <div>Line items detected: {preview.line_item_count}</div>
                     <div>Non-zero cells: {preview.nonzero_cells}</div>
+                    {typeof preview.confidence === 'number' && (
+                      <div>Confidence: {Math.round(preview.confidence * 100)}%</div>
+                    )}
+                    {preview.recommendation && (
+                      <div>Recommendation: {String(preview.recommendation)}</div>
+                    )}
+                    {Array.isArray(preview.reasons) && preview.reasons.length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        {preview.reasons[0]}
+                      </div>
+                    )}
                     {Array.isArray(preview.warnings) && preview.warnings.length > 0 && (
                       <div className="text-xs text-muted-foreground">
                         {preview.warnings[0]}

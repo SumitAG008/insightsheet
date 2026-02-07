@@ -98,6 +98,14 @@ class PLBuilderService:
                 if isinstance(v, (int, float)) and v != 0:
                     nonzero_cells += 1
 
+        confidence_payload = self._compute_extraction_confidence(
+            period_count=len(period_labels),
+            line_item_count=len(values_by_category),
+            nonzero_cells=nonzero_cells,
+            has_revenue=bool(extracted.get("has_revenue")),
+            has_expense=bool(extracted.get("has_expense")),
+        )
+
         return {
             "ok": True,
             "period_labels": period_labels,
@@ -106,6 +114,9 @@ class PLBuilderService:
             "expense_categories": extracted.get("expense_categories") or [],
             "line_item_count": len(values_by_category),
             "nonzero_cells": nonzero_cells,
+            "confidence": confidence_payload.get("confidence"),
+            "recommendation": confidence_payload.get("recommendation"),
+            "reasons": confidence_payload.get("reasons"),
             "diagnostics": extracted.get("diagnostics") or {},
             "warnings": extracted.get("warnings") or [],
         }
@@ -287,26 +298,30 @@ class PLBuilderService:
                 pass
 
     def _extract_pl_from_workbook(self, wb) -> Dict[str, Any]:
-        best = None
-        best_score = -1
+        best: Optional[Dict[str, Any]] = None
+        best_score = -1.0
 
         for ws in wb.worksheets:
             title = (ws.title or "").lower()
-            score = 0
+            score = 0.0
             if any(k in title for k in ["income", "p&l", "pnl", "profit", "financial"]):
                 score += 2
 
             extracted = self._try_extract_statement_from_sheet(ws)
             if not extracted:
+                extracted = self._try_extract_statement_vertical_periods(ws)
+            if not extracted:
                 continue
+
+            score += float(extracted.get("score", 0.0) or 0.0)
             if extracted.get("line_item_count", 0) >= 5:
-                score += 3
-            if extracted.get("period_count", 0) >= 6:
                 score += 2
+            if extracted.get("period_count", 0) >= 6:
+                score += 1
             if extracted.get("has_revenue"):
-                score += 1
+                score += 0.5
             if extracted.get("has_expense"):
-                score += 1
+                score += 0.5
 
             if score > best_score:
                 best_score = score
@@ -421,6 +436,7 @@ class PLBuilderService:
 
         return {
             "diagnostics": {
+                "layout": "horizontal_periods",
                 "sheet": ws.title,
                 "header_row": header_row_idx,
                 "line_item_col": line_item_col,
@@ -437,6 +453,187 @@ class PLBuilderService:
             "line_item_count": len(values_by_category),
             "has_revenue": has_revenue,
             "has_expense": has_expense,
+            "score": 1.0,
+        }
+
+    def _try_extract_statement_vertical_periods(self, ws) -> Optional[Dict[str, Any]]:
+        max_rows = min(getattr(ws, "max_row", 0) or 0, 800)
+        max_cols = min(getattr(ws, "max_column", 0) or 0, 80)
+        if max_rows <= 1 or max_cols <= 1:
+            return None
+
+        best = None
+        best_score = -1.0
+
+        for c in range(1, max_cols + 1):
+            period_rows: List[int] = []
+            period_labels: List[str] = []
+            for r in range(1, max_rows + 1):
+                v = ws.cell(row=r, column=c).value
+                label = self._period_label_from_cell(v)
+                if label:
+                    period_rows.append(r)
+                    period_labels.append(label)
+                if len(period_labels) >= 18:
+                    break
+
+            if len(period_labels) < 4:
+                continue
+
+            start_row = period_rows[0]
+
+            header_row = start_row - 1 if start_row > 1 else start_row
+            header_vals: List[str] = []
+            header_cols: List[int] = []
+            for hc in range(c + 1, max_cols + 1):
+                hv = ws.cell(row=header_row, column=hc).value
+                if hv is None:
+                    continue
+                t = str(hv).strip()
+                if not t:
+                    continue
+                if self._period_label_from_cell(hv):
+                    continue
+                header_vals.append(t)
+                header_cols.append(hc)
+
+            if not header_cols:
+                continue
+
+            values_by_category: Dict[str, List[float]] = {}
+            revenue_categories: List[str] = []
+            expense_categories: List[str] = []
+            has_revenue = False
+            has_expense = False
+
+            for idx, hc in enumerate(header_cols):
+                name = header_vals[idx]
+                vals: List[float] = []
+                numeric_count = 0
+                for pr in period_rows[: len(period_labels)]:
+                    v = ws.cell(row=pr, column=hc).value
+                    if isinstance(v, (int, float)):
+                        fv = float(v)
+                        vals.append(fv)
+                        if fv != 0:
+                            numeric_count += 1
+                    else:
+                        vals.append(0.0)
+
+                if numeric_count == 0:
+                    continue
+                values_by_category[name] = vals
+                bucket = self._classify_line_item(name)
+                if bucket == "revenue":
+                    revenue_categories.append(name)
+                    has_revenue = True
+                elif bucket == "expense":
+                    expense_categories.append(name)
+                    has_expense = True
+
+            revenue_categories = self._dedupe_keep_order(revenue_categories)
+            expense_categories = self._dedupe_keep_order(expense_categories)
+
+            if not values_by_category:
+                continue
+
+            warnings: List[str] = []
+            nonzero_cells = 0
+            for _k, vals in values_by_category.items():
+                for v in vals:
+                    if isinstance(v, (int, float)) and v != 0:
+                        nonzero_cells += 1
+            if nonzero_cells == 0:
+                warnings.append(
+                    "All extracted numeric cells are 0. If your model uses formulas, ensure the workbook is saved with calculated values (Excel caches results), then upload again."
+                )
+
+            score = 0.8
+            score += 0.05 * min(len(period_labels), 12)
+            score += 0.02 * min(len(values_by_category), 30)
+            if has_revenue:
+                score += 0.3
+            if has_expense:
+                score += 0.3
+
+            candidate = {
+                "diagnostics": {
+                    "layout": "vertical_periods",
+                    "sheet": ws.title,
+                    "period_col": c,
+                    "period_rows": period_rows[: len(period_labels)],
+                    "header_row": header_row,
+                    "data_cols": header_cols,
+                    "max_rows_scanned": max_rows,
+                    "max_cols_scanned": max_cols,
+                },
+                "warnings": warnings,
+                "period_labels": period_labels,
+                "period_count": len(period_labels),
+                "values_by_category": values_by_category,
+                "revenue_categories": revenue_categories,
+                "expense_categories": expense_categories,
+                "line_item_count": len(values_by_category),
+                "has_revenue": has_revenue,
+                "has_expense": has_expense,
+                "score": score,
+            }
+
+            if score > best_score:
+                best_score = score
+                best = candidate
+
+        return best
+
+    def _compute_extraction_confidence(
+        self,
+        period_count: int,
+        line_item_count: int,
+        nonzero_cells: int,
+        has_revenue: bool,
+        has_expense: bool,
+    ) -> Dict[str, Any]:
+        reasons: List[str] = []
+        score = 0.0
+
+        if period_count >= 4:
+            score += 0.25
+        else:
+            reasons.append("Fewer than 4 period columns/rows detected")
+
+        if line_item_count >= 5:
+            score += 0.25
+        else:
+            reasons.append("Fewer than 5 line items detected")
+
+        if nonzero_cells > 0:
+            score += 0.25
+        else:
+            reasons.append("No non-zero numeric cells detected (may be formula cache)")
+
+        if has_revenue:
+            score += 0.125
+        else:
+            reasons.append("Could not confidently identify revenue labels")
+
+        if has_expense:
+            score += 0.125
+        else:
+            reasons.append("Could not confidently identify expense labels")
+
+        confidence = max(0.0, min(1.0, score))
+
+        if confidence >= 0.75:
+            recommendation = "local_ok"
+        elif confidence >= 0.45:
+            recommendation = "local_low_confidence"
+        else:
+            recommendation = "server_recommended_with_consent"
+
+        return {
+            "confidence": confidence,
+            "recommendation": recommendation,
+            "reasons": reasons,
         }
 
     def _period_label_from_cell(self, v: Any) -> Optional[str]:

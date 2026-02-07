@@ -494,6 +494,9 @@ export const backendApi = {
       const formData = new FormData();
       formData.append('prompt', prompt || '');
       if (context) formData.append('context_json', JSON.stringify(context));
+      if (options && typeof options.llmAssistHeadersOnly === 'boolean') {
+        formData.append('llm_assist_headers_only', String(options.llmAssistHeadersOnly));
+      }
       formData.append('file', file);
 
       const response = await apiCall('/api/files/generate-pl-with-file', {
@@ -507,6 +510,23 @@ export const backendApi = {
         throw new Error(err.detail || `P&L generate-with-file failed: ${response.status}`);
       }
       return response.blob();
+    },
+
+    plExtractionPreview: async (file, options = {}) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await apiCall('/api/files/pl-extraction-preview', {
+        method: 'POST',
+        body: formData,
+        timeoutMs: options.timeoutMs || 60000,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Preview failed: ${response.status}`);
+      }
+      return response.json();
     },
 
     processZip: async (file, options) => {

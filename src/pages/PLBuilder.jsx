@@ -3,6 +3,7 @@ import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
   SelectContent,
@@ -21,6 +22,10 @@ export default function PLBuilder() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [file, setFile] = useState(null);
+  const [llmAssistHeadersOnly, setLlmAssistHeadersOnly] = useState(false);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [previewError, setPreviewError] = useState(null);
   const [context, setContext] = useState({
     company_name: '',
     currency: 'USD',
@@ -45,7 +50,10 @@ export default function PLBuilder() {
 
     try {
       const blob = file
-        ? await backendApi.files.generatePLWithFile(prompt, context, file, { timeoutMs: 120000 })
+        ? await backendApi.files.generatePLWithFile(prompt, context, file, {
+            timeoutMs: 120000,
+            llmAssistHeadersOnly,
+          })
         : await backendApi.files.generatePL(prompt, context);
       
       // Create download link
@@ -61,11 +69,33 @@ export default function PLBuilder() {
       toast.success('P&L statement generated and downloaded!');
       setPrompt('');
       setFile(null);
+      setPreview(null);
+      setPreviewError(null);
     } catch (err) {
       setError(err.message);
       toast.error(err.message || 'Failed to generate P&L statement');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePreview = async () => {
+    if (!file) return;
+
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setPreview(null);
+
+    try {
+      const res = await backendApi.files.plExtractionPreview(file, { timeoutMs: 60000 });
+      setPreview(res);
+      if (!res?.ok) {
+        setPreviewError(res?.message || 'Could not detect a P&L table in this workbook');
+      }
+    } catch (err) {
+      setPreviewError(err.message);
+    } finally {
+      setPreviewLoading(false);
     }
   };
 
@@ -96,6 +126,16 @@ export default function PLBuilder() {
     };
     checkBackend();
   }, []);
+
+  useEffect(() => {
+    if (!file) {
+      setPreview(null);
+      setPreviewError(null);
+      return;
+    }
+    handlePreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file]);
 
   return (
     <div className="container mx-auto p-6 max-w-4xl">
@@ -155,6 +195,57 @@ export default function PLBuilder() {
               </div>
             )}
           </div>
+
+          {file && (
+            <div className="space-y-2">
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="llm-headers-only"
+                  checked={llmAssistHeadersOnly}
+                  onCheckedChange={(v) => setLlmAssistHeadersOnly(Boolean(v))}
+                  disabled={loading}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="llm-headers-only">Optional: AI assist (headers only)</Label>
+                  <div className="text-xs text-muted-foreground">
+                    Improves ordering/categorization using only labels (no values). File data is not stored.
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-md border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium">Extraction Preview</div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePreview}
+                    disabled={previewLoading || loading}
+                  >
+                    {previewLoading ? 'Analyzing…' : 'Refresh preview'}
+                  </Button>
+                </div>
+
+                {previewError && (
+                  <div className="mt-2 text-sm text-destructive">{previewError}</div>
+                )}
+
+                {preview?.ok && (
+                  <div className="mt-2 text-sm text-muted-foreground space-y-1">
+                    <div>Periods detected: {preview.period_count}</div>
+                    <div>Line items detected: {preview.line_item_count}</div>
+                    <div>Non-zero cells: {preview.nonzero_cells}</div>
+                    {Array.isArray(preview.warnings) && preview.warnings.length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        {preview.warnings[0]}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>

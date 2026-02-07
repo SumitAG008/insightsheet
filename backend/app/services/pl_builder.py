@@ -3,6 +3,7 @@ P&L (Profit & Loss) Builder Service
 Generates Excel files with formulas, charts, and formatting from natural language
 """
 import openpyxl
+from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.chart import BarChart, Reference
 from openpyxl.utils import get_column_letter
@@ -11,7 +12,7 @@ import io
 import json
 import logging
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, date, timedelta
 import re
 
 from app.services.ai_service import invoke_llm
@@ -77,6 +78,80 @@ class PLBuilderService:
 
         except Exception as e:
             logger.error(f"Error generating P&L: {str(e)}")
+            raise Exception(f"P&L generation failed: {str(e)}")
+
+    def preview_extraction_from_uploaded_excel(self, filename: str, content: bytes) -> Dict[str, Any]:
+        extracted = self._extract_pl_from_excel_bytes(filename=filename, content=content)
+        if not extracted:
+            return {
+                "ok": False,
+                "message": "Could not detect a P&L/Income Statement table in this workbook.",
+            }
+
+        period_labels = extracted.get("period_labels") or []
+        values_by_category = extracted.get("values_by_category") or {}
+        nonzero_cells = 0
+        for _k, vals in values_by_category.items():
+            if not isinstance(vals, list):
+                continue
+            for v in vals:
+                if isinstance(v, (int, float)) and v != 0:
+                    nonzero_cells += 1
+
+        return {
+            "ok": True,
+            "period_labels": period_labels,
+            "period_count": len(period_labels),
+            "revenue_categories": extracted.get("revenue_categories") or [],
+            "expense_categories": extracted.get("expense_categories") or [],
+            "line_item_count": len(values_by_category),
+            "nonzero_cells": nonzero_cells,
+            "diagnostics": extracted.get("diagnostics") or {},
+            "warnings": extracted.get("warnings") or [],
+        }
+
+    async def generate_pl_from_uploaded_excel(
+        self,
+        filename: str,
+        content: bytes,
+        prompt: str,
+        user_context: Optional[Dict[str, Any]] = None,
+        llm_assist_headers_only: bool = False,
+    ) -> bytes:
+        try:
+            extracted = self._extract_pl_from_excel_bytes(filename=filename, content=content)
+
+            spec = await self._parse_pl_request(prompt or "", user_context)
+
+            if extracted:
+                if extracted.get("period_labels"):
+                    spec["period_labels"] = extracted["period_labels"]
+                    spec["period_count"] = len(extracted["period_labels"])
+                if extracted.get("revenue_categories"):
+                    spec["revenue_categories"] = extracted["revenue_categories"]
+                if extracted.get("expense_categories"):
+                    spec["expense_categories"] = extracted["expense_categories"]
+                if extracted.get("values_by_category"):
+                    spec["values_by_category"] = extracted["values_by_category"]
+
+            if llm_assist_headers_only:
+                spec = await self._apply_llm_header_assist(spec)
+
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Profit & Loss"
+
+            self._build_pl_structure(ws, spec)
+            self._add_formulas(ws, spec)
+            self._add_charts(ws, spec)
+            self._format_worksheet(ws, spec)
+
+            output = io.BytesIO()
+            wb.save(output)
+            output.seek(0)
+            return output.read()
+        except Exception as e:
+            logger.error(f"Error generating P&L from uploaded Excel: {str(e)}")
             raise Exception(f"P&L generation failed: {str(e)}")
 
     async def _parse_pl_request(
@@ -165,6 +240,223 @@ class PLBuilderService:
                 "include_percentages": True,
                 "notes": ""
             }
+
+    async def _apply_llm_header_assist(self, spec: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            revenue = spec.get("revenue_categories") or []
+            expense = spec.get("expense_categories") or []
+            periods = spec.get("period_labels") or []
+
+            prompt = (
+                "You are a financial statement assistant. You will be given statement headers/labels only (no amounts). "
+                "Your job is to improve categorization and ordering of Revenue and Expense line items for a P&L. "
+                "Do not invent new items not present in the input unless absolutely necessary. "
+                "Respond with JSON: {\"revenue_categories\": [...], \"expense_categories\": [...]}\n\n"
+                f"Periods: {periods}\n"
+                f"Revenue labels: {revenue}\n"
+                f"Expense labels: {expense}\n"
+            )
+            response = await invoke_llm(
+                prompt=prompt,
+                response_schema={"type": "json_object"},
+                max_tokens=800,
+            )
+            if isinstance(response, dict):
+                rc = response.get("revenue_categories")
+                ec = response.get("expense_categories")
+                if isinstance(rc, list) and rc:
+                    spec["revenue_categories"] = [str(x) for x in rc if str(x).strip()]
+                if isinstance(ec, list) and ec:
+                    spec["expense_categories"] = [str(x) for x in ec if str(x).strip()]
+            return spec
+        except Exception:
+            return spec
+
+    def _extract_pl_from_excel_bytes(self, filename: str, content: bytes) -> Dict[str, Any]:
+        ext = (filename or "").lower().split(".")[-1] if "." in (filename or "") else ""
+        if ext not in ("xlsx", "xls"):
+            return {}
+
+        wb = load_workbook(io.BytesIO(content), data_only=True, read_only=True)
+        try:
+            return self._extract_pl_from_workbook(wb)
+        finally:
+            try:
+                wb.close()
+            except Exception:
+                pass
+
+    def _extract_pl_from_workbook(self, wb) -> Dict[str, Any]:
+        best = None
+        best_score = -1
+
+        for ws in wb.worksheets:
+            title = (ws.title or "").lower()
+            score = 0
+            if any(k in title for k in ["income", "p&l", "pnl", "profit", "financial"]):
+                score += 2
+
+            extracted = self._try_extract_statement_from_sheet(ws)
+            if not extracted:
+                continue
+            if extracted.get("line_item_count", 0) >= 5:
+                score += 3
+            if extracted.get("period_count", 0) >= 6:
+                score += 2
+            if extracted.get("has_revenue"):
+                score += 1
+            if extracted.get("has_expense"):
+                score += 1
+
+            if score > best_score:
+                best_score = score
+                best = extracted
+
+        if not best:
+            return {}
+
+        return best
+
+    def _try_extract_statement_from_sheet(self, ws) -> Optional[Dict[str, Any]]:
+        max_rows = min(getattr(ws, "max_row", 0) or 0, 500)
+        max_cols = min(getattr(ws, "max_column", 0) or 0, 80)
+        if max_rows <= 1 or max_cols <= 1:
+            return None
+
+        header_row_idx = None
+        period_cols = []
+        period_labels = []
+
+        for r in range(1, max_rows + 1):
+            labels = []
+            cols = []
+            for c in range(1, max_cols + 1):
+                v = ws.cell(row=r, column=c).value
+                label = self._period_label_from_cell(v)
+                if label:
+                    labels.append(label)
+                    cols.append(c)
+            if len(labels) >= 4:
+                header_row_idx = r
+                period_cols = cols
+                period_labels = labels
+                break
+
+        if not header_row_idx or not period_cols:
+            return None
+
+        line_item_col = None
+        for c in range(1, min(period_cols) + 1):
+            hv = ws.cell(row=header_row_idx, column=c).value
+            if hv is None:
+                continue
+            t = str(hv).strip().lower()
+            if any(k in t for k in ["line", "item", "category", "account", "description", "name"]):
+                line_item_col = c
+                break
+        if not line_item_col:
+            line_item_col = 1
+
+        values_by_category: Dict[str, List[float]] = {}
+        revenue_categories: List[str] = []
+        expense_categories: List[str] = []
+        has_revenue = False
+        has_expense = False
+
+        empty_streak = 0
+        for r in range(header_row_idx + 1, max_rows + 1):
+            raw_item = ws.cell(row=r, column=line_item_col).value
+            item = str(raw_item).strip() if raw_item is not None else ""
+            if not item or item.lower() == "nan":
+                empty_streak += 1
+                if empty_streak >= 8:
+                    break
+                continue
+            empty_streak = 0
+
+            if item.strip().upper() in {"REVENUE", "EXPENSES", "COSTS", "OPERATING EXPENSES"}:
+                continue
+            if item.strip().lower() in {"total revenue", "total expenses", "net profit", "net profit / (loss)", "net income"}:
+                continue
+
+            vals: List[float] = []
+            numeric_count = 0
+            for c in period_cols:
+                v = ws.cell(row=r, column=c).value
+                if isinstance(v, (int, float)):
+                    vals.append(float(v))
+                    if v != 0:
+                        numeric_count += 1
+                else:
+                    vals.append(0.0)
+
+            if numeric_count == 0:
+                continue
+
+            values_by_category[item] = vals
+            bucket = self._classify_line_item(item)
+            if bucket == "revenue":
+                revenue_categories.append(item)
+                has_revenue = True
+            elif bucket == "expense":
+                expense_categories.append(item)
+                has_expense = True
+
+        revenue_categories = self._dedupe_keep_order(revenue_categories)
+        expense_categories = self._dedupe_keep_order(expense_categories)
+
+        if not values_by_category:
+            return None
+
+        warnings: List[str] = []
+        nonzero_cells = 0
+        for _k, vals in values_by_category.items():
+            for v in vals:
+                if isinstance(v, (int, float)) and v != 0:
+                    nonzero_cells += 1
+        if nonzero_cells == 0:
+            warnings.append(
+                "All extracted numeric cells are 0. If your model uses formulas, ensure the workbook is saved with calculated values (Excel caches results), then upload again."
+            )
+
+        return {
+            "diagnostics": {
+                "sheet": ws.title,
+                "header_row": header_row_idx,
+                "line_item_col": line_item_col,
+                "period_cols": period_cols,
+                "max_rows_scanned": max_rows,
+                "max_cols_scanned": max_cols,
+            },
+            "warnings": warnings,
+            "period_labels": period_labels,
+            "period_count": len(period_labels),
+            "values_by_category": values_by_category,
+            "revenue_categories": revenue_categories,
+            "expense_categories": expense_categories,
+            "line_item_count": len(values_by_category),
+            "has_revenue": has_revenue,
+            "has_expense": has_expense,
+        }
+
+    def _period_label_from_cell(self, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            return v.strftime("%b %Y")
+        if isinstance(v, date):
+            return v.strftime("%b %Y")
+        s = str(v).strip()
+        if not s:
+            return None
+
+        m = re.search(r"(\d{1,2}/\d{1,2}/\d{2,4})", s)
+        if m:
+            return m.group(1)
+
+        if self._looks_like_period_label(s):
+            return s
+        return None
 
     def _extract_uploaded_file_hints(self, prompt: str) -> Dict[str, Any]:
         if not prompt:
@@ -273,6 +565,8 @@ class PLBuilderService:
             return True
         if re.match(r"^\d{1,2}/\d{1,2}/\d{2,4}$", t):
             return True
+        if re.search(r"\d{4}", t) and re.search(r"[A-Za-z]{3}", t):
+            return True
         return False
 
     def _classify_line_item(self, item: str) -> Optional[str]:
@@ -324,10 +618,14 @@ class PLBuilderService:
         for category in spec['revenue_categories']:
             ws[f'A{row}'] = category
             ws[f'B{row}'] = "Revenue"
-            # Add sample data (in real app, these would be user inputs)
-            for idx in range(3, total_col):
-                col_letter = get_column_letter(idx)
-                ws[f'{col_letter}{row}'] = 0  # Placeholder - user fills
+            values_by_category = spec.get('values_by_category') or {}
+            vals = values_by_category.get(category)
+            for p_idx in range(len(periods)):
+                col_letter = get_column_letter(3 + p_idx)
+                if isinstance(vals, list) and p_idx < len(vals):
+                    ws[f'{col_letter}{row}'] = vals[p_idx]
+                else:
+                    ws[f'{col_letter}{row}'] = 0
             row += 1
 
         revenue_end_row = row - 1
@@ -349,9 +647,14 @@ class PLBuilderService:
         for category in spec['expense_categories']:
             ws[f'A{row}'] = category
             ws[f'B{row}'] = "Expense"
-            for idx in range(3, total_col):
-                col_letter = get_column_letter(idx)
-                ws[f'{col_letter}{row}'] = 0  # Placeholder
+            values_by_category = spec.get('values_by_category') or {}
+            vals = values_by_category.get(category)
+            for p_idx in range(len(periods)):
+                col_letter = get_column_letter(3 + p_idx)
+                if isinstance(vals, list) and p_idx < len(vals):
+                    ws[f'{col_letter}{row}'] = vals[p_idx]
+                else:
+                    ws[f'{col_letter}{row}'] = 0
             row += 1
 
         expense_end_row = row - 1
@@ -392,6 +695,10 @@ class PLBuilderService:
 
     def _generate_periods(self, spec: Dict[str, Any]) -> List[str]:
         """Generate period labels based on specification"""
+        labels = spec.get('period_labels')
+        if isinstance(labels, list) and labels:
+            return [str(x) for x in labels if str(x).strip()]
+
         periods = []
         start_date = datetime.strptime(spec['start_date'], "%Y-%m-%d")
         period_type = spec['period_type']

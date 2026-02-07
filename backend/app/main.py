@@ -3169,6 +3169,7 @@ async def developer_generate_pl_with_file(
     api_key: str = Form(...),
     prompt: str = Form(...),
     context_json: Optional[str] = Form(None),
+    llm_assist_headers_only: bool = Form(False),
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
@@ -3217,11 +3218,14 @@ async def developer_generate_pl_with_file(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-        file_context = build_ingestion_prompt_block(ingested)
-        combined_prompt = f"{prompt}\n\n{file_context}" if file_context else prompt
-
         pl_service = PLBuilderService()
-        excel_data = await pl_service.generate_pl_from_natural_language(combined_prompt, context)
+        excel_data = await pl_service.generate_pl_from_uploaded_excel(
+            filename=(file.filename or "uploaded_file"),
+            content=raw,
+            prompt=prompt,
+            user_context=context,
+            llm_assist_headers_only=bool(llm_assist_headers_only),
+        )
 
         if should_apply_watermark(getattr(subscription, "plan", None)):
             excel_data = watermark_xlsx_bytes(excel_data)
@@ -3495,6 +3499,7 @@ async def generate_pl(
 async def generate_pl_with_file(
     prompt: str = Form(...),
     context_json: Optional[str] = Form(None),
+    llm_assist_headers_only: bool = Form(False),
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3527,11 +3532,14 @@ async def generate_pl_with_file(
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
-        file_context = build_ingestion_prompt_block(ingested)
-        combined_prompt = f"{prompt}\n\n{file_context}" if file_context else prompt
-
         pl_service = PLBuilderService()
-        excel_data = await pl_service.generate_pl_from_natural_language(combined_prompt, context)
+        excel_data = await pl_service.generate_pl_from_uploaded_excel(
+            filename=(file.filename or "uploaded_file"),
+            content=content,
+            prompt=prompt,
+            user_context=context,
+            llm_assist_headers_only=bool(llm_assist_headers_only),
+        )
 
         _consume_ai_quota(db, subscription)
 
@@ -3547,6 +3555,40 @@ async def generate_pl_with_file(
     except Exception as e:
         logger.error(f"P&L generate-with-file error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"P&L generation failed: {str(e)}")
+
+
+@app.post("/api/files/pl-extraction-preview")
+async def pl_extraction_preview(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Preview deterministic P&L extraction from an uploaded Excel file (ZERO STORAGE)."""
+    try:
+        _enforce_verified_user(db, current_user["email"])
+        subscription = _get_or_create_subscription(db, current_user["email"])
+
+        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        content = await file.read()
+        if len(content) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+
+        if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
+            raise HTTPException(status_code=400, detail="Invalid file type. Only .xlsx and .xls are supported.")
+
+        pl_service = PLBuilderService()
+        preview = pl_service.preview_extraction_from_uploaded_excel(
+            filename=(file.filename or "uploaded_file"),
+            content=content,
+        )
+
+        return preview
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"P&L extraction preview error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Preview failed")
 
 
 @app.post("/api/files/process-zip")

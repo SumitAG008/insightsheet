@@ -26,6 +26,7 @@ export default function PLBuilder() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [preview, setPreview] = useState(null);
   const [previewError, setPreviewError] = useState(null);
+  const [selectedCandidateId, setSelectedCandidateId] = useState('');
   const [context, setContext] = useState({
     company_name: '',
     currency: 'USD',
@@ -53,6 +54,7 @@ export default function PLBuilder() {
         ? await backendApi.files.generatePLWithFile(prompt, context, file, {
             timeoutMs: 120000,
             llmAssistHeadersOnly,
+            candidateId: selectedCandidateId || preview?.candidate_id || undefined,
           })
         : await backendApi.files.generatePL(prompt, context);
       
@@ -71,6 +73,7 @@ export default function PLBuilder() {
       setFile(null);
       setPreview(null);
       setPreviewError(null);
+      setSelectedCandidateId('');
     } catch (err) {
       setError(err.message);
       toast.error(err.message || 'Failed to generate P&L statement');
@@ -89,6 +92,9 @@ export default function PLBuilder() {
     try {
       const res = await backendApi.files.plExtractionPreview(file, { timeoutMs: 60000 });
       setPreview(res);
+      if (res?.ok) {
+        setSelectedCandidateId(res.candidate_id || '');
+      }
       if (!res?.ok) {
         setPreviewError(res?.message || 'Could not detect a P&L table in this workbook');
       }
@@ -233,6 +239,26 @@ export default function PLBuilder() {
 
                 {preview?.ok && (
                   <div className="mt-2 text-sm text-muted-foreground space-y-1">
+                    {Array.isArray(preview.candidates) && preview.candidates.length > 1 && (
+                      <div className="space-y-1">
+                        <div className="text-xs text-muted-foreground">Choose detected statement</div>
+                        <Select
+                          value={selectedCandidateId}
+                          onValueChange={(v) => setSelectedCandidateId(v)}
+                        >
+                          <SelectTrigger className="h-8">
+                            <SelectValue placeholder="Select candidate" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {preview.candidates.map((c) => (
+                              <SelectItem key={c.candidate_id} value={String(c.candidate_id)}>
+                                {String(c.sheet || 'Sheet')} · {String(c.layout || 'layout')} · {c.period_count}p · {c.line_item_count} items
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                     <div>Periods detected: {preview.period_count}</div>
                     <div>Line items detected: {preview.line_item_count}</div>
                     <div>Non-zero cells: {preview.nonzero_cells}</div>

@@ -81,12 +81,14 @@ class PLBuilderService:
             raise Exception(f"P&L generation failed: {str(e)}")
 
     def preview_extraction_from_uploaded_excel(self, filename: str, content: bytes) -> Dict[str, Any]:
-        extracted = self._extract_pl_from_excel_bytes(filename=filename, content=content)
-        if not extracted:
+        candidates = self._extract_pl_candidates_from_excel_bytes(filename=filename, content=content)
+        if not candidates:
             return {
                 "ok": False,
                 "message": "Could not detect a P&L/Income Statement table in this workbook.",
             }
+
+        extracted = candidates[0]
 
         period_labels = extracted.get("period_labels") or []
         values_by_category = extracted.get("values_by_category") or {}
@@ -106,8 +108,41 @@ class PLBuilderService:
             has_expense=bool(extracted.get("has_expense")),
         )
 
+        preview_candidates: List[Dict[str, Any]] = []
+        for cand in candidates[:6]:
+            vals_by_cat = cand.get("values_by_category") or {}
+            nz = 0
+            for _k, vals in vals_by_cat.items():
+                if not isinstance(vals, list):
+                    continue
+                for v in vals:
+                    if isinstance(v, (int, float)) and v != 0:
+                        nz += 1
+            conf = self._compute_extraction_confidence(
+                period_count=int(cand.get("period_count") or 0),
+                line_item_count=int(cand.get("line_item_count") or 0),
+                nonzero_cells=nz,
+                has_revenue=bool(cand.get("has_revenue")),
+                has_expense=bool(cand.get("has_expense")),
+            )
+            diag = cand.get("diagnostics") or {}
+            preview_candidates.append(
+                {
+                    "candidate_id": cand.get("candidate_id"),
+                    "sheet": diag.get("sheet"),
+                    "layout": diag.get("layout"),
+                    "period_count": cand.get("period_count"),
+                    "line_item_count": cand.get("line_item_count"),
+                    "nonzero_cells": nz,
+                    "confidence": conf.get("confidence"),
+                    "recommendation": conf.get("recommendation"),
+                    "reasons": conf.get("reasons"),
+                }
+            )
+
         return {
             "ok": True,
+            "candidate_id": extracted.get("candidate_id"),
             "period_labels": period_labels,
             "period_count": len(period_labels),
             "revenue_categories": extracted.get("revenue_categories") or [],
@@ -119,6 +154,7 @@ class PLBuilderService:
             "reasons": confidence_payload.get("reasons"),
             "diagnostics": extracted.get("diagnostics") or {},
             "warnings": extracted.get("warnings") or [],
+            "candidates": preview_candidates,
         }
 
     async def generate_pl_from_uploaded_excel(
@@ -128,9 +164,10 @@ class PLBuilderService:
         prompt: str,
         user_context: Optional[Dict[str, Any]] = None,
         llm_assist_headers_only: bool = False,
+        candidate_id: Optional[str] = None,
     ) -> bytes:
         try:
-            extracted = self._extract_pl_from_excel_bytes(filename=filename, content=content)
+            extracted = self._extract_pl_from_excel_bytes(filename=filename, content=content, candidate_id=candidate_id)
 
             spec = await self._parse_pl_request(prompt or "", user_context)
 
@@ -283,14 +320,24 @@ class PLBuilderService:
         except Exception:
             return spec
 
-    def _extract_pl_from_excel_bytes(self, filename: str, content: bytes) -> Dict[str, Any]:
+    def _extract_pl_from_excel_bytes(self, filename: str, content: bytes, candidate_id: Optional[str] = None) -> Dict[str, Any]:
+        candidates = self._extract_pl_candidates_from_excel_bytes(filename=filename, content=content)
+        if not candidates:
+            return {}
+        if candidate_id:
+            for c in candidates:
+                if c.get("candidate_id") == candidate_id:
+                    return c
+        return candidates[0]
+
+    def _extract_pl_candidates_from_excel_bytes(self, filename: str, content: bytes) -> List[Dict[str, Any]]:
         ext = (filename or "").lower().split(".")[-1] if "." in (filename or "") else ""
         if ext not in ("xlsx", "xls"):
-            return {}
+            return []
 
-        wb = load_workbook(io.BytesIO(content), data_only=True, read_only=True)
+        wb = load_workbook(io.BytesIO(content), data_only=True, read_only=False)
         try:
-            return self._extract_pl_from_workbook(wb)
+            return self._extract_pl_candidates_from_workbook(wb)
         finally:
             try:
                 wb.close()
@@ -298,8 +345,13 @@ class PLBuilderService:
                 pass
 
     def _extract_pl_from_workbook(self, wb) -> Dict[str, Any]:
-        best: Optional[Dict[str, Any]] = None
-        best_score = -1.0
+        candidates = self._extract_pl_candidates_from_workbook(wb)
+        if not candidates:
+            return {}
+        return candidates[0]
+
+    def _extract_pl_candidates_from_workbook(self, wb) -> List[Dict[str, Any]]:
+        scored: List[Dict[str, Any]] = []
 
         for ws in wb.worksheets:
             title = (ws.title or "").lower()
@@ -323,20 +375,20 @@ class PLBuilderService:
             if extracted.get("has_expense"):
                 score += 0.5
 
-            if score > best_score:
-                best_score = score
-                best = extracted
+            extracted["score"] = float(extracted.get("score", 0.0) or 0.0) + score
+            extracted["candidate_id"] = self._candidate_id_for_extraction(extracted)
+            scored.append(extracted)
 
-        if not best:
-            return {}
-
-        return best
+        scored.sort(key=lambda x: float(x.get("score", 0.0) or 0.0), reverse=True)
+        return scored
 
     def _try_extract_statement_from_sheet(self, ws) -> Optional[Dict[str, Any]]:
         max_rows = min(getattr(ws, "max_row", 0) or 0, 500)
         max_cols = min(getattr(ws, "max_column", 0) or 0, 80)
         if max_rows <= 1 or max_cols <= 1:
             return None
+
+        merged_lookup = self._build_merged_lookup(ws)
 
         header_row_idx = None
         period_cols = []
@@ -346,7 +398,7 @@ class PLBuilderService:
             labels = []
             cols = []
             for c in range(1, max_cols + 1):
-                v = ws.cell(row=r, column=c).value
+                v = self._get_cell_value(ws, r, c, merged_lookup)
                 label = self._period_label_from_cell(v)
                 if label:
                     labels.append(label)
@@ -362,7 +414,7 @@ class PLBuilderService:
 
         line_item_col = None
         for c in range(1, min(period_cols) + 1):
-            hv = ws.cell(row=header_row_idx, column=c).value
+            hv = self._get_cell_value(ws, header_row_idx, c, merged_lookup)
             if hv is None:
                 continue
             t = str(hv).strip().lower()
@@ -380,7 +432,7 @@ class PLBuilderService:
 
         empty_streak = 0
         for r in range(header_row_idx + 1, max_rows + 1):
-            raw_item = ws.cell(row=r, column=line_item_col).value
+            raw_item = self._get_cell_value(ws, r, line_item_col, merged_lookup)
             item = str(raw_item).strip() if raw_item is not None else ""
             if not item or item.lower() == "nan":
                 empty_streak += 1
@@ -397,7 +449,7 @@ class PLBuilderService:
             vals: List[float] = []
             numeric_count = 0
             for c in period_cols:
-                v = ws.cell(row=r, column=c).value
+                v = self._get_cell_value(ws, r, c, merged_lookup)
                 if isinstance(v, (int, float)):
                     vals.append(float(v))
                     if v != 0:
@@ -462,6 +514,8 @@ class PLBuilderService:
         if max_rows <= 1 or max_cols <= 1:
             return None
 
+        merged_lookup = self._build_merged_lookup(ws)
+
         best = None
         best_score = -1.0
 
@@ -469,7 +523,7 @@ class PLBuilderService:
             period_rows: List[int] = []
             period_labels: List[str] = []
             for r in range(1, max_rows + 1):
-                v = ws.cell(row=r, column=c).value
+                v = self._get_cell_value(ws, r, c, merged_lookup)
                 label = self._period_label_from_cell(v)
                 if label:
                     period_rows.append(r)
@@ -486,7 +540,7 @@ class PLBuilderService:
             header_vals: List[str] = []
             header_cols: List[int] = []
             for hc in range(c + 1, max_cols + 1):
-                hv = ws.cell(row=header_row, column=hc).value
+                hv = self._get_cell_value(ws, header_row, hc, merged_lookup)
                 if hv is None:
                     continue
                 t = str(hv).strip()
@@ -511,7 +565,7 @@ class PLBuilderService:
                 vals: List[float] = []
                 numeric_count = 0
                 for pr in period_rows[: len(period_labels)]:
-                    v = ws.cell(row=pr, column=hc).value
+                    v = self._get_cell_value(ws, pr, hc, merged_lookup)
                     if isinstance(v, (int, float)):
                         fv = float(v)
                         vals.append(fv)
@@ -654,6 +708,44 @@ class PLBuilderService:
         if self._looks_like_period_label(s):
             return s
         return None
+
+    def _build_merged_lookup(self, ws) -> Dict[tuple, tuple]:
+        lookup: Dict[tuple, tuple] = {}
+        try:
+            ranges = list(getattr(ws, "merged_cells", []).ranges)
+        except Exception:
+            ranges = []
+        for r in ranges:
+            try:
+                min_row = int(r.min_row)
+                max_row = int(r.max_row)
+                min_col = int(r.min_col)
+                max_col = int(r.max_col)
+            except Exception:
+                continue
+            for rr in range(min_row, max_row + 1):
+                for cc in range(min_col, max_col + 1):
+                    lookup[(rr, cc)] = (min_row, min_col)
+        return lookup
+
+    def _get_cell_value(self, ws, row: int, col: int, merged_lookup: Dict[tuple, tuple]) -> Any:
+        v = ws.cell(row=row, column=col).value
+        if v is not None:
+            return v
+        tl = merged_lookup.get((row, col))
+        if not tl:
+            return v
+        tl_row, tl_col = tl
+        return ws.cell(row=tl_row, column=tl_col).value
+
+    def _candidate_id_for_extraction(self, extracted: Dict[str, Any]) -> str:
+        diag = extracted.get("diagnostics") or {}
+        sheet = str(diag.get("sheet") or "")
+        layout = str(diag.get("layout") or "")
+        header_row = str(diag.get("header_row") or "")
+        line_item_col = str(diag.get("line_item_col") or "")
+        period_col = str(diag.get("period_col") or "")
+        return f"{sheet}:{layout}:{header_row}:{line_item_col}:{period_col}"
 
     def _extract_uploaded_file_hints(self, prompt: str) -> Dict[str, Any]:
         if not prompt:

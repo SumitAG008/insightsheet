@@ -3500,6 +3500,7 @@ async def generate_pl_with_file(
     prompt: str = Form(...),
     context_json: Optional[str] = Form(None),
     llm_assist_headers_only: bool = Form(False),
+    candidate_id: Optional[str] = Form(None),
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3539,6 +3540,7 @@ async def generate_pl_with_file(
             prompt=prompt,
             user_context=context,
             llm_assist_headers_only=bool(llm_assist_headers_only),
+            candidate_id=(candidate_id or None),
         )
 
         _consume_ai_quota(db, subscription)

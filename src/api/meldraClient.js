@@ -497,6 +497,9 @@ export const backendApi = {
       if (options && typeof options.llmAssistHeadersOnly === 'boolean') {
         formData.append('llm_assist_headers_only', String(options.llmAssistHeadersOnly));
       }
+      if (options && options.candidateId) {
+        formData.append('candidate_id', String(options.candidateId));
+      }
       formData.append('file', file);
 
       const response = await apiCall('/api/files/generate-pl-with-file', {

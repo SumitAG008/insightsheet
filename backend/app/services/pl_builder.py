@@ -701,12 +701,28 @@ class PLBuilderService:
         if not s:
             return None
 
+        if "total" in s.strip().lower():
+            return None
+
+        s2 = re.sub(r"^(act\.|act|actual)\s*", "", s, flags=re.IGNORECASE).strip()
+
+        # e.g. Jan-26 / Jan 26 / Jan-2026
+        m_my = re.match(r"^([A-Za-z]{3})[-\s](\d{2}|\d{4})$", s2)
+        if m_my:
+            mon = m_my.group(1).title()
+            yy = m_my.group(2)
+            if len(yy) == 2:
+                year = 2000 + int(yy)
+            else:
+                year = int(yy)
+            return f"{mon} {year}"
+
         m = re.search(r"(\d{1,2}/\d{1,2}/\d{2,4})", s)
         if m:
             return m.group(1)
 
-        if self._looks_like_period_label(s):
-            return s
+        if self._looks_like_period_label(s2):
+            return s2
         return None
 
     def _build_merged_lookup(self, ws) -> Dict[tuple, tuple]:
@@ -846,9 +862,20 @@ class PLBuilderService:
         if not s:
             return False
         t = str(s).strip()
+        if not t:
+            return False
+        if "total" in t.strip().lower():
+            return False
+
+        # Normalize common prefixes
+        t_norm = re.sub(r"^(act\.|act|actual)\s*", "", t, flags=re.IGNORECASE).strip()
         if re.match(r"^(q[1-4])\s*\d{4}$", t, flags=re.IGNORECASE):
             return True
         if re.match(r"^[A-Za-z]{3}\s+\d{4}$", t):
+            return True
+        if re.match(r"^[A-Za-z]{3}[-\s]\d{2}$", t_norm):
+            return True
+        if re.match(r"^[A-Za-z]{3}[-\s]\d{4}$", t_norm):
             return True
         if re.match(r"^\d{4}[-/]\d{1,2}$", t):
             return True

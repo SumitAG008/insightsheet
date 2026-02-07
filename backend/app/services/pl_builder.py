@@ -90,6 +90,14 @@ class PLBuilderService:
 
         extracted = candidates[0]
 
+        warnings: List[str] = []
+        diag0 = extracted.get("diagnostics") or {}
+        if isinstance(diag0, dict) and diag0.get("workbook_has_formulas"):
+            warnings.append(
+                "Workbook contains formulas. If Excel did not save cached results, extraction may return zeros. "
+                "Fix: open the file in Excel, calculate (Formulas → Calculate Now), save, then re-upload; or paste values."
+            )
+
         period_labels = extracted.get("period_labels") or []
         values_by_category = extracted.get("values_by_category") or {}
         nonzero_cells = 0
@@ -153,7 +161,7 @@ class PLBuilderService:
             "recommendation": confidence_payload.get("recommendation"),
             "reasons": confidence_payload.get("reasons"),
             "diagnostics": extracted.get("diagnostics") or {},
-            "warnings": extracted.get("warnings") or [],
+            "warnings": (extracted.get("warnings") or []) + warnings,
             "candidates": preview_candidates,
         }
 
@@ -276,7 +284,7 @@ class PLBuilderService:
         except Exception as e:
             logger.error(f"Error parsing PL request: {str(e)}")
             # Return default spec if parsing fails
-            return {
+            spec = {
                 "period_type": "monthly",
                 "period_count": 12,
                 "start_date": datetime.now().strftime("%Y-01-01"),
@@ -288,6 +296,52 @@ class PLBuilderService:
                 "include_percentages": True,
                 "notes": ""
             }
+
+            if user_context:
+                cn = (user_context.get("company_name") or "").strip()
+                if cn:
+                    spec["company_name"] = cn
+                cur = (user_context.get("currency") or "").strip()
+                if cur:
+                    spec["currency"] = cur
+                pt = (user_context.get("period_type") or "").strip()
+                if pt:
+                    spec["period_type"] = pt
+
+            spec = self._apply_extracted_hints(spec, extracted)
+            return spec
+
+    def _workbook_has_formulas(self, content: bytes) -> bool:
+        """Best-effort: detect presence of formulas in workbook.
+
+        openpyxl cannot evaluate formulas; it can only read cached values when
+        data_only=True. If a workbook relies heavily on formulas and was not saved
+        with cached results, extracted numbers will look like zeros.
+        """
+        try:
+            wb = load_workbook(io.BytesIO(content), data_only=False, read_only=True)
+            try:
+                for ws in wb.worksheets[:8]:
+                    max_rows = min(getattr(ws, "max_row", 0) or 0, 120)
+                    max_cols = min(getattr(ws, "max_column", 0) or 0, 40)
+                    if max_rows <= 0 or max_cols <= 0:
+                        continue
+                    for r in range(1, max_rows + 1):
+                        for c in range(1, max_cols + 1):
+                            cell = ws.cell(row=r, column=c)
+                            if getattr(cell, "data_type", None) == "f":
+                                return True
+                            v = cell.value
+                            if isinstance(v, str) and v.startswith("="):
+                                return True
+                return False
+            finally:
+                try:
+                    wb.close()
+                except Exception:
+                    pass
+        except Exception:
+            return False
 
     async def _apply_llm_header_assist(self, spec: Dict[str, Any]) -> Dict[str, Any]:
         try:
@@ -335,9 +389,18 @@ class PLBuilderService:
         if ext not in ("xlsx", "xls"):
             return []
 
+        has_formulas = self._workbook_has_formulas(content)
         wb = load_workbook(io.BytesIO(content), data_only=True, read_only=False)
         try:
-            return self._extract_pl_candidates_from_workbook(wb)
+            candidates = self._extract_pl_candidates_from_workbook(wb)
+            if has_formulas and candidates:
+                for c in candidates:
+                    diag = c.get("diagnostics")
+                    if not isinstance(diag, dict):
+                        diag = {}
+                    diag["workbook_has_formulas"] = True
+                    c["diagnostics"] = diag
+            return candidates
         finally:
             try:
                 wb.close()

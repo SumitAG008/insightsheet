@@ -168,13 +168,105 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
               return { headers: [], rows: [], raw: jsonData || [] };
             }
 
+            const toCellStr = (v) => {
+              if (v === null || v === undefined) return '';
+              const s = String(v).trim();
+              return s;
+            };
+
+            const looksLikePeriodHeader = (s) => {
+              const t = String(s || '').trim();
+              if (!t) return false;
+              if (/^\d{4}[-/]\d{1,2}$/.test(t)) return true;
+              if (/^(q[1-4])\s*\d{4}$/i.test(t)) return true;
+              if (/^\d{1,2}[-/]\d{1,2}[-/]\d{2,4}$/.test(t)) return true;
+              const m = t.match(/^\s*([A-Za-z]{3,9})[\s-]*(\d{2,4})\s*$/);
+              if (m) {
+                const monStr = m[1].slice(0, 3).toLowerCase();
+                return ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].includes(monStr);
+              }
+              if (/\b(12\s*-?month)\b/i.test(t)) return true;
+              return false;
+            };
+
+            const looksLikeHeaderKeyword = (s) => {
+              const t = String(s || '').trim().toLowerCase();
+              if (!t) return false;
+              return (
+                t === 'salesperson' ||
+                t === 'customer' ||
+                t === 'product' ||
+                t === 'region' ||
+                t === 'date' ||
+                t === 'order no' ||
+                t === 'order' ||
+                t === 'total' ||
+                t === 'total sales' ||
+                t === 'item price' ||
+                t === 'no. items' ||
+                t === 'no items'
+              );
+            };
+
+            const isNumberLike = (v) => {
+              if (typeof v === 'number') return Number.isFinite(v);
+              if (typeof v !== 'string') return false;
+              const s = v.trim();
+              if (!s) return false;
+              const n = Number(s.replace(/,/g, ''));
+              return Number.isFinite(n);
+            };
+
+            const maxHeaderScan = Math.min(40, jsonData.length);
             let headerRow = 0;
-            for (let r = 0; r < Math.min(20, jsonData.length); r++) {
+            let bestScore = -Infinity;
+
+            for (let r = 0; r < maxHeaderScan; r++) {
               const row = jsonData[r] || [];
-              const nonEmpty = row.filter(c => c != null && c !== '' && String(c).trim() !== '').length;
-              if (nonEmpty >= 2) {
+              const cells = row.map(toCellStr);
+              const nonEmptyCells = cells.filter((c) => c !== '');
+              if (nonEmptyCells.length < 2) continue;
+
+              const uniq = new Set(nonEmptyCells.map((c) => c.toLowerCase()));
+              const uniqRatio = uniq.size / Math.max(1, nonEmptyCells.length);
+
+              let periodHits = 0;
+              let keywordHits = 0;
+              for (const c of nonEmptyCells) {
+                if (looksLikePeriodHeader(c)) periodHits++;
+                if (looksLikeHeaderKeyword(c)) keywordHits++;
+              }
+
+              // Look ahead: real header rows are usually followed by numeric-heavy rows.
+              const lookaheadN = Math.min(8, jsonData.length - (r + 1));
+              let numericHits = 0;
+              let filledHits = 0;
+              if (lookaheadN > 0) {
+                for (let rr = r + 1; rr < r + 1 + lookaheadN; rr++) {
+                  const prow = jsonData[rr] || [];
+                  for (let c = 0; c < Math.max(row.length, prow.length); c++) {
+                    const hv = cells[c] || '';
+                    if (!hv) continue;
+                    const pv = prow[c];
+                    if (pv === null || pv === undefined || pv === '') continue;
+                    filledHits++;
+                    if (isNumberLike(pv)) numericHits++;
+                  }
+                }
+              }
+
+              const numericRatio = filledHits > 0 ? numericHits / filledHits : 0;
+
+              const score =
+                nonEmptyCells.length * 0.5 +
+                uniqRatio * 4 +
+                periodHits * 3 +
+                keywordHits * 2 +
+                numericRatio * 6;
+
+              if (score > bestScore) {
+                bestScore = score;
                 headerRow = r;
-                break;
               }
             }
 

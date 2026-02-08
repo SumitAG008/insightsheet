@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { BarChart as RechartsBarChart, Bar, LineChart as RechartsLineChart, Line, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Activity, AlertCircle, BarChart3, Download, FileDown, LineChart, PieChart, Sparkles } from 'lucide-react';
 import { bestColumnsForOverview, buildArrowTable, computeArrowKPIs, computePnLFromTable, detectFinanceColumns, groupSumTopN, inferColumns, numericHistogram } from '@/lib/arrowAnalytics';
@@ -224,6 +225,7 @@ export default function OverviewDashboard({
 }) {
   const rootRef = useRef(null);
   const [exporting, setExporting] = useState(false);
+  const [excelHelpOpen, setExcelHelpOpen] = useState(false);
 
   const inferred = useMemo(() => inferColumns(data), [data]);
 
@@ -360,6 +362,50 @@ export default function OverviewDashboard({
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
           <div className="flex items-center justify-between gap-3 mb-2">
             <div className="text-sm font-bold text-slate-900 dark:text-white">Trusted from Excel (Strict Correctness)</div>
+            <div className="flex items-center gap-2">
+              <Dialog open={excelHelpOpen} onOpenChange={setExcelHelpOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="border-slate-300 dark:border-slate-700"
+                  >
+                    Help
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Formula files: how to make charts trustworthy</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-3 text-sm text-slate-700 dark:text-slate-200">
+                    <div>
+                      If your workbook contains formulas, InsightSheet relies on Excel's cached results. If the file was saved before formulas were calculated, charts may be blocked to avoid showing misleading numbers.
+                    </div>
+
+                    <div className="font-semibold text-slate-900 dark:text-white">Option 1 (recommended): Calculate + Save in Excel</div>
+                    <div className="space-y-1">
+                      <div>1) Open the workbook in Excel.</div>
+                      <div>2) Let calculations finish (you should see values populated, not blanks/zeros).</div>
+                      <div>3) Save the file.</div>
+                      <div>4) Re-upload the saved file here.</div>
+                    </div>
+
+                    <div className="font-semibold text-slate-900 dark:text-white">Option 2: Paste Values (locks numbers)</div>
+                    <div className="space-y-1">
+                      <div>1) Select the computed range (cells with formulas).</div>
+                      <div>2) Copy.</div>
+                      <div>3) Paste Special → Values.</div>
+                      <div>4) Save as a new file and upload that file.</div>
+                    </div>
+
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      Note: "Paste Values" removes formulas, so future changes to inputs will not recalculate automatically.
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
             {universalAnalysis?.status ? (
               <Badge className={
                 universalAnalysis.status === 'blocked'
@@ -371,6 +417,7 @@ export default function OverviewDashboard({
                 {universalAnalysis.status}
               </Badge>
             ) : null}
+            </div>
           </div>
 
           {universalError ? (

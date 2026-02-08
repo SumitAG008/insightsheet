@@ -318,6 +318,29 @@ export default function Dashboard() {
     }
   }, [uploadedFile, pushActivity]);
 
+  const handleUniversalClarify = useCallback(async (overrides) => {
+    const f = uploadedFile?.file;
+    if (!f) return;
+    const universalAnalyze = meldraAi?.files?.universalAnalyze || backendApi?.files?.universalAnalyze;
+    setUniversalRecalcLoading(true);
+    setUniversalError('');
+    try {
+      if (typeof universalAnalyze !== 'function') {
+        throw new Error('Universal analyze is not available in this build yet. Please hard refresh and try again.');
+      }
+      const res = await universalAnalyze(f, { overrides, timeoutMs: 180000 });
+      setUniversalAnalysis(res);
+      sessionStorage.setItem('insightsheet_universal_analysis', JSON.stringify(res));
+      pushActivity({ title: 'Universal Excel clarification', detail: 'Applied user selections', badge: 'Overview' });
+    } catch (e) {
+      const msg = e?.message || 'Clarification failed';
+      setUniversalError(msg);
+      pushActivity({ title: 'Universal Excel clarification failed', detail: msg, badge: 'Overview' });
+    } finally {
+      setUniversalRecalcLoading(false);
+    }
+  }, [uploadedFile, pushActivity]);
+
   const handleTemplateLoad = useCallback((templateData) => {
     setIsProcessing(true);
     const templateFilename = 'template_data.csv';
@@ -843,12 +866,13 @@ export default function Dashboard() {
 
           <TabsContent value="overview" className="space-y-6">
             <OverviewDashboard
-              data={displayData || data}
+              data={displayData}
               filename={filename}
               activity={activity}
               universalAnalysis={universalAnalysis}
               universalError={universalError}
               onUniversalRecalc={handleUniversalRecalc}
+              onUniversalClarify={handleUniversalClarify}
               universalRecalcLoading={universalRecalcLoading}
             />
           </TabsContent>

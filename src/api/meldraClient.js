@@ -536,6 +536,10 @@ export const backendApi = {
       const formData = new FormData();
       formData.append('file', file);
 
+      if (options && options.overrides) {
+        formData.append('overrides', JSON.stringify(options.overrides));
+      }
+
       const url = options?.recalculate ? '/api/files/universal-analyze?recalculate=1' : '/api/files/universal-analyze';
 
       const response = await apiCall(url, {

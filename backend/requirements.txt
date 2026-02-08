@@ -9,7 +9,6 @@ psycopg2-binary
 pymysql
 pymongo
 pyodbc
-oracledb==2.0.1
 alembic==1.14.0
 
 # Authentication & Security

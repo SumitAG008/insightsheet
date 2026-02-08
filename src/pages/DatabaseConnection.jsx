@@ -64,17 +64,6 @@ const DB_TYPES = {
       { name: 'trustServerCertificate', label: 'Trust Server Certificate', type: 'select', required: false, options: ['true', 'false'], default: 'false' }
     ]
   },
-  oracle: {
-    name: 'Oracle',
-    icon: Database,
-    fields: [
-      { name: 'host', label: 'Host', type: 'text', required: true, placeholder: 'localhost' },
-      { name: 'port', label: 'Port', type: 'number', required: true, placeholder: '1521', default: 1521 },
-      { name: 'serviceName', label: 'Service Name / SID', type: 'text', required: true, placeholder: 'ORCL or XE' },
-      { name: 'username', label: 'Username', type: 'text', required: true, placeholder: 'system' },
-      { name: 'password', label: 'Password', type: 'password', required: true, placeholder: '••••••••' }
-    ]
-  },
   sqlite: {
     name: 'SQLite',
     icon: Database,

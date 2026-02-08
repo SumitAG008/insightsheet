@@ -3600,6 +3600,7 @@ async def pl_extraction_preview(
 async def universal_analyze(
     file: UploadFile = File(...),
     recalculate: bool = Query(False),
+    overrides: str = Form(None),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -3625,7 +3626,14 @@ async def universal_analyze(
         if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
             raise HTTPException(status_code=400, detail="Invalid file type. Only .xlsx and .xls are supported.")
 
-        processor = UniversalExcelProcessor(content, file.filename or "uploaded_file")
+        overrides_obj = None
+        if overrides:
+            try:
+                overrides_obj = json.loads(overrides)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid overrides JSON")
+
+        processor = UniversalExcelProcessor(content, file.filename or "uploaded_file", overrides=overrides_obj)
         results = processor.process_universal()
 
         results["recalculation"] = {

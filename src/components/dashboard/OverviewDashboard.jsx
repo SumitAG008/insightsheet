@@ -219,6 +219,7 @@ export default function OverviewDashboard({
   universalAnalysis,
   universalError,
   onUniversalRecalc,
+  onUniversalClarify,
   universalRecalcLoading,
 }) {
   const rootRef = useRef(null);
@@ -340,6 +341,18 @@ export default function OverviewDashboard({
   const blockedSheets = trustedSheets.filter((s) => s?.risk_level === 'blocked');
   const warningSheets = trustedSheets.filter((s) => s?.risk_level === 'warning');
   const trustedCharts = Array.isArray(universalAnalysis?.charts) ? universalAnalysis.charts : [];
+  const clarification = universalAnalysis?.clarification;
+  const clarifySheets = Array.isArray(clarification?.sheets) ? clarification.sheets : [];
+
+  const [clarifySheetName, setClarifySheetName] = useState(clarifySheets?.[0]?.sheet || '');
+  const [clarifyHeaderRow, setClarifyHeaderRow] = useState('');
+  const [clarifyDataStartRow, setClarifyDataStartRow] = useState('');
+
+  useEffect(() => {
+    if (clarifySheets?.length && !clarifySheetName) {
+      setClarifySheetName(clarifySheets[0]?.sheet || '');
+    }
+  }, [clarifySheets, clarifySheetName]);
 
   return (
     <div ref={rootRef} id="overview-root" className="space-y-6">
@@ -378,6 +391,75 @@ export default function OverviewDashboard({
                       <span className="font-semibold">Blocked sheets:</span> {blockedSheets.length}
                     </div>
                   ) : null}
+
+              {universalAnalysis?.status === 'needs_clarification' && clarification ? (
+                <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">Needs clarification</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{clarification?.message || 'Please confirm header and data rows.'}</div>
+
+                  <div className="grid md:grid-cols-3 gap-3 mt-3">
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Sheet</div>
+                      <select
+                        className="w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-2 text-sm"
+                        value={clarifySheetName}
+                        onChange={(e) => setClarifySheetName(e.target.value)}
+                      >
+                        {clarifySheets.map((s) => (
+                          <option key={s.sheet} value={s.sheet}>{s.sheet}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Header row</div>
+                      <input
+                        className="w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-2 text-sm"
+                        value={clarifyHeaderRow}
+                        onChange={(e) => setClarifyHeaderRow(e.target.value)}
+                        placeholder="e.g. 7"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Data start row</div>
+                      <input
+                        className="w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-2 text-sm"
+                        value={clarifyDataStartRow}
+                        onChange={(e) => setClarifyDataStartRow(e.target.value)}
+                        placeholder="e.g. 8"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 mt-3">
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      Tip: use the spreadsheet row numbers for the header row (months) and the first data row.
+                    </div>
+                    <Button
+                      type="button"
+                      className="bg-[#4169E1] hover:bg-[#3659c7] text-white"
+                      onClick={() => {
+                        if (typeof onUniversalClarify !== 'function') return;
+                        const hr = Number(clarifyHeaderRow);
+                        const ds = Number(clarifyDataStartRow);
+                        const ov = {
+                          sheets: {
+                            [clarifySheetName]: {
+                              header_row: Number.isFinite(hr) ? hr : undefined,
+                              data_start_row: Number.isFinite(ds) ? ds : undefined,
+                            },
+                          },
+                        };
+                        onUniversalClarify(ov);
+                      }}
+                      disabled={!!universalRecalcLoading}
+                    >
+                      Apply & re-analyze
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
                   {warningSheets.length > 0 ? (
                     <div>
                       <span className="font-semibold">Warning sheets:</span> {warningSheets.length}
@@ -786,5 +868,6 @@ OverviewDashboard.propTypes = {
   universalAnalysis: PropTypes.any,
   universalError: PropTypes.string,
   onUniversalRecalc: PropTypes.func,
+  onUniversalClarify: PropTypes.func,
   universalRecalcLoading: PropTypes.bool,
 };

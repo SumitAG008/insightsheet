@@ -8,10 +8,11 @@ import openpyxl
 
 
 class UniversalExcelProcessor:
-    def __init__(self, file_bytes: bytes, filename: str):
+    def __init__(self, file_bytes: bytes, filename: str, overrides: Optional[Dict[str, Any]] = None):
         self.file_bytes = file_bytes
         self.filename = filename
         self.file_size_mb = len(file_bytes) / (1024 * 1024)
+        self.overrides = overrides or {}
 
         stream = io.BytesIO(file_bytes)
         self.wb_values = openpyxl.load_workbook(stream, read_only=True, data_only=True)
@@ -189,6 +190,7 @@ class UniversalExcelProcessor:
             regions.append(region)
 
         enriched: List[Dict[str, Any]] = []
+        sheet_overrides = (self.overrides.get("sheets") or {}).get(sheet_name) if isinstance(self.overrides, dict) else None
         for region in regions:
             min_r, max_r, min_c, max_c = region["bounds"]
 
@@ -224,12 +226,27 @@ class UniversalExcelProcessor:
                 best_idx = scores.index(max(scores))
                 header_row_idx = min_r + best_idx
 
+            # Apply explicit overrides if provided.
+            if isinstance(sheet_overrides, dict):
+                if sheet_overrides.get("header_row"):
+                    try:
+                        header_row_idx = int(sheet_overrides["header_row"])
+                    except Exception:
+                        pass
+
             conf = min(region["cell_count"] / 50, 1.0)
+            data_start_row = (header_row_idx + 1) if header_row_idx else min_r
+            if isinstance(sheet_overrides, dict) and sheet_overrides.get("data_start_row"):
+                try:
+                    data_start_row = int(sheet_overrides["data_start_row"])
+                except Exception:
+                    pass
+
             enriched.append(
                 {
                     "bounds": region["bounds"],
                     "header_row": header_row_idx,
-                    "data_start_row": (header_row_idx + 1) if header_row_idx else min_r,
+                    "data_start_row": data_start_row,
                     "cell_count": region["cell_count"],
                     "confidence": conf,
                     "scan_limits": {"max_rows": max_row_seen, "max_cols": max_col_seen},
@@ -469,12 +486,85 @@ class UniversalExcelProcessor:
             },
         }
 
+    def _detect_pattern_and_tier(self, sheet_name: str, region: Dict[str, Any], roles: Dict[str, Any]) -> Dict[str, Any]:
+        period_headers = roles.get("period_headers") or []
+        period_count = len(period_headers)
+        has_periods = period_count >= 4
+        has_date_cols = len(roles.get("date_columns") or []) > 0
+        has_value_cols = len(roles.get("value_columns") or []) > 0
+        has_category_cols = len(roles.get("category_columns") or []) > 0
+
+        pattern = None
+        reasons: List[str] = []
+        confidence = 0.0
+
+        if has_periods and has_category_cols:
+            pattern = "WIDE_MATRIX"
+            confidence = 0.92 if period_count >= 8 else 0.82
+            reasons.append(f"✓ Found {period_count} period-like headers")
+            reasons.append("✓ Found category labels in rows")
+        elif has_date_cols and has_value_cols:
+            pattern = "LONG_TABLE"
+            confidence = 0.9
+            reasons.append("✓ Found date column")
+            reasons.append("✓ Found numeric value column")
+        elif has_category_cols and has_value_cols:
+            pattern = "CROSS_TAB"
+            confidence = 0.75
+            reasons.append("✓ Found category column")
+            reasons.append("✓ Found numeric value columns")
+        else:
+            reasons.append("✗ Could not confidently detect a known pattern")
+
+        tier = "diagnostic"
+        if confidence >= 0.9:
+            tier = "auto_render"
+        elif confidence >= 0.7:
+            tier = "clarify"
+
+        # Build candidate rows preview for clarification (no raw values persisted; only short text labels).
+        candidates: List[Dict[str, Any]] = []
+        try:
+            ws = self.wb_values[sheet_name]
+            min_r, max_r, min_c, max_c = region["bounds"]
+            scan_rows = list(range(min_r, min(max_r, min_r + 20) + 1))
+            for r in scan_rows:
+                parts = []
+                for c in range(min_c, min(max_c, min_c + 8) + 1):
+                    v = ws.cell(r, c).value
+                    if v is None:
+                        continue
+                    if isinstance(v, str) and not v.strip():
+                        continue
+                    if isinstance(v, (int, float)):
+                        continue
+                    s = str(v).strip()
+                    if not s:
+                        continue
+                    parts.append(s)
+                    if len(parts) >= 4:
+                        break
+                if parts:
+                    candidates.append({"row": r, "preview": " | ".join(parts)[:80]})
+        except Exception:
+            candidates = []
+
+        return {
+            "sheet": sheet_name,
+            "pattern": pattern,
+            "confidence": round(float(confidence), 4),
+            "tier": tier,
+            "justification": reasons,
+            "candidates": candidates,
+        }
+
     def process_universal(self) -> Dict[str, Any]:
         results: Dict[str, Any] = {
             "filename": self.filename,
             "file_size_mb": round(self.file_size_mb, 2),
             "diagnostics": {"sheets": []},
             "charts": [],
+            "sheet_insights": [],
             "status": "success",
         }
 
@@ -491,6 +581,14 @@ class UniversalExcelProcessor:
 
             best = regions[0]
             roles = self._detect_column_roles(sheet_name, best)
+            insight = self._detect_pattern_and_tier(sheet_name, best, roles)
+            insight["region"] = f"R{best['bounds'][0]}C{best['bounds'][2]}:R{best['bounds'][1]}C{best['bounds'][3]}"
+            results["sheet_insights"].append(insight)
+
+            # Correctness-first tiers: only auto-render charts on high confidence.
+            if insight.get("tier") != "auto_render":
+                continue
+
             aggs = self._aggregate(sheet_name, best, roles)
 
             cat_totals = aggs.get("category_totals") or {}
@@ -528,6 +626,17 @@ class UniversalExcelProcessor:
                 )
 
         results["total_charts"] = len(results["charts"])
+
+        # If no charts were produced but we have clarify-tier sheets, request clarification.
+        if results.get("total_charts") == 0:
+            clarify = [s for s in (results.get("sheet_insights") or []) if s.get("tier") == "clarify"]
+            if clarify:
+                results["status"] = "needs_clarification"
+                results["clarification"] = {
+                    "message": "We detected spreadsheet structure but need confirmation to generate trusted charts.",
+                    "sheets": clarify[:3],
+                    "fields": ["header_row", "data_start_row"],
+                }
 
         blocked_count = sum(1 for s in (results.get("diagnostics", {}).get("sheets") or []) if s.get("risk_level") == "blocked")
         if blocked_count >= len(results["diagnostics"]["sheets"]) and len(results["diagnostics"]["sheets"]) > 0:

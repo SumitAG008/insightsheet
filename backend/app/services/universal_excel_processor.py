@@ -192,9 +192,12 @@ class UniversalExcelProcessor:
         for region in regions:
             min_r, max_r, min_c, max_c = region["bounds"]
 
+            # Header row: scan a small window of rows within the region and score.
+            # Many real-world sheets have title rows above the actual table header.
             first_rows: List[List[Any]] = []
-            for r in range(min_r, min(min_r + 3, max_r + 1)):
-                row_data = []
+            scan_n = min(12, max(1, (max_r - min_r + 1)))
+            for r in range(min_r, min(min_r + scan_n, max_r + 1)):
+                row_data: List[Any] = []
                 for c in range(min_c, max_c + 1):
                     row_data.append(ws.cell(r, c).value)
                 first_rows.append(row_data)
@@ -205,7 +208,19 @@ class UniversalExcelProcessor:
                 for row in first_rows:
                     text_count = sum(1 for v in row if isinstance(v, str) and v.strip())
                     num_count = sum(1 for v in row if isinstance(v, (int, float)))
-                    scores.append(text_count - (num_count * 0.5))
+
+                    # Prefer rows that look like headers for wide matrices, e.g. Jan-25..Dec-25.
+                    period_hits = 0
+                    keyword_hits = 0
+                    for v in row:
+                        if isinstance(v, str) and v.strip():
+                            if self._is_period_header(v):
+                                period_hits += 1
+                            vv = v.strip().lower()
+                            if vv in {"salesperson", "customer", "product", "region", "date", "total sales", "order", "order no"}:
+                                keyword_hits += 1
+
+                    scores.append(text_count + (period_hits * 3.0) + (keyword_hits * 2.0) - (num_count * 0.5))
                 best_idx = scores.index(max(scores))
                 header_row_idx = min_r + best_idx
 
@@ -431,6 +446,8 @@ class UniversalExcelProcessor:
                     continue
                 cat = str(cv).strip()
                 if not cat:
+                    continue
+                if cat.strip().lower() == "total":
                     continue
                 total = 0.0
                 ok = False

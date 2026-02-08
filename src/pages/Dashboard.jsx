@@ -20,7 +20,7 @@ import DataValidator from '../components/dashboard/DataValidator';
 import AdvancedFilter from '../components/dashboard/AdvancedFilter';
 import OverviewDashboard from '../components/dashboard/OverviewDashboard';
 import FileUploadZone from '../components/upload/FileUploadZone';
-import { meldraAi } from '@/api/meldraClient';
+import { meldraAi, backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -249,10 +249,15 @@ export default function Dashboard() {
     const ext = String(file?.name || '').split('.').pop().toLowerCase();
     const isExcel = ext === 'xlsx' || ext === 'xls';
 
+    const universalAnalyze = meldraAi?.files?.universalAnalyze || backendApi?.files?.universalAnalyze;
+
     if (isExcel) {
       (async () => {
         try {
-          const res = await meldraAi.files.universalAnalyze(file);
+          if (typeof universalAnalyze !== 'function') {
+            throw new Error('Universal analyze is not available in this build yet. Please hard refresh and try again.');
+          }
+          const res = await universalAnalyze(file);
           setUniversalAnalysis(res);
           sessionStorage.setItem('insightsheet_universal_analysis', JSON.stringify(res));
           pushActivity({
@@ -289,10 +294,14 @@ export default function Dashboard() {
   const handleUniversalRecalc = useCallback(async () => {
     const f = uploadedFile?.file;
     if (!f) return;
+    const universalAnalyze = meldraAi?.files?.universalAnalyze || backendApi?.files?.universalAnalyze;
     setUniversalRecalcLoading(true);
     setUniversalError('');
     try {
-      const res = await meldraAi.files.universalAnalyze(f, { recalculate: true, timeoutMs: 180000 });
+      if (typeof universalAnalyze !== 'function') {
+        throw new Error('Universal analyze is not available in this build yet. Please hard refresh and try again.');
+      }
+      const res = await universalAnalyze(f, { recalculate: true, timeoutMs: 180000 });
       setUniversalAnalysis(res);
       sessionStorage.setItem('insightsheet_universal_analysis', JSON.stringify(res));
       pushActivity({

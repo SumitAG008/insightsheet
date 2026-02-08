@@ -279,7 +279,8 @@ export default function OverviewDashboard({
     const wide = buildWidePeriodSeries(rows, inferred?.headers || [], chosen.categoryColumn, { maxPoints: 24 });
     if (wide.length > 0) return wide;
 
-    return buildIndexSeries(rows, chosen.valueColumn, { maxPoints: 40 });
+    // Correctness-only: do not render index-based trends (they are often misleading).
+    return [];
   }, [data, chosen.dateColumn, chosen.valueColumn, chosen.categoryColumn, inferred?.headers]);
 
   const missingPct = useMemo(() => {
@@ -580,7 +581,7 @@ export default function OverviewDashboard({
                 <h3 className="font-bold text-slate-900 dark:text-white">Trend</h3>
               </div>
               <Badge className="bg-[#4169E1]/10 text-[#4169E1] border-[#4169E1]/20">
-                {chosen.dateColumn ? `By ${chosen.dateColumn}` : (chosen.valueColumn ? 'By row' : 'No trend available')}
+                {chosen.dateColumn ? `By ${chosen.dateColumn}` : 'Needs time axis'}
               </Badge>
             </div>
 
@@ -599,7 +600,9 @@ export default function OverviewDashboard({
               </div>
             ) : (
               <div className="h-[320px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                {chosen.valueColumn ? 'Not enough numeric values to plot a trend.' : 'No numeric column detected to plot a trend.'}
+                {chosen.dateColumn
+                  ? (chosen.valueColumn ? 'Not enough numeric values to plot a trend.' : 'No numeric column detected to plot a trend.')
+                  : 'No trusted time axis detected (date column or month headers).'}
               </div>
             )}
           </div>

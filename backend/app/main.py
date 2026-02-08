@@ -12,6 +12,7 @@ from fastapi import (
     Form,
     UploadFile,
     File,
+    Query,
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -62,6 +63,7 @@ from app.services.ocr_service import (
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
 from app.services.universal_excel_processor import UniversalExcelProcessor
+from app.services.excel_recalc_service import recalc_xlsx_with_libreoffice_bytes
 from app.services.ingestion_service import IngestionService, IngestLimits, build_ingestion_prompt_block
 from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email, send_api_key_email
 from app.services.db_connection_service import DatabaseConnectionService
@@ -3597,6 +3599,7 @@ async def pl_extraction_preview(
 @app.post("/api/files/universal-analyze")
 async def universal_analyze(
     file: UploadFile = File(...),
+    recalculate: bool = Query(False),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -3624,6 +3627,65 @@ async def universal_analyze(
 
         processor = UniversalExcelProcessor(content, file.filename or "uploaded_file")
         results = processor.process_universal()
+
+        results["recalculation"] = {
+            "requested": bool(recalculate),
+            "attempted": False,
+            "method": None,
+            "success": False,
+            "message": None,
+        }
+
+        # Option A+ (premium-only): attempt server-side recalculation if strict mode blocks.
+        if recalculate and (results.get("status") == "blocked"):
+            if subscription.plan != "premium":
+                results["recalculation"]["attempted"] = False
+                results["recalculation"]["message"] = "Server-side recalculation is available on Premium plan"
+            else:
+                results["recalculation"]["attempted"] = True
+                results["recalculation"]["method"] = "libreoffice"
+                recalc_bytes, recalc_msg = recalc_xlsx_with_libreoffice_bytes(
+                    content=content,
+                    filename=(file.filename or "uploaded_file.xlsx"),
+                    timeout_seconds=60,
+                )
+
+                if recalc_bytes is None:
+                    results["recalculation"]["success"] = False
+                    results["recalculation"]["message"] = recalc_msg
+                else:
+                    results["recalculation"]["success"] = True
+                    results["recalculation"]["message"] = "ok"
+                    try:
+                        try:
+                            processor.close()
+                        except Exception:
+                            pass
+                        processor = UniversalExcelProcessor(recalc_bytes, file.filename or "uploaded_file")
+                        results = processor.process_universal()
+                        results["recalculation"] = {
+                            "requested": True,
+                            "attempted": True,
+                            "method": "libreoffice",
+                            "success": True,
+                            "message": "ok",
+                        }
+                    except Exception as e:
+                        results = {
+                            "filename": file.filename or "uploaded_file",
+                            "file_size_mb": round(file_size_mb, 2),
+                            "diagnostics": {"sheets": []},
+                            "charts": [],
+                            "status": "blocked",
+                            "message": "Recalculation succeeded but analysis failed",
+                            "recalculation": {
+                                "requested": True,
+                                "attempted": True,
+                                "method": "libreoffice",
+                                "success": False,
+                                "message": str(e),
+                            },
+                        }
 
         if results.get("status") == "blocked":
             results["action_required"] = {

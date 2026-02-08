@@ -536,7 +536,9 @@ export const backendApi = {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await apiCall('/api/files/universal-analyze', {
+      const url = options?.recalculate ? '/api/files/universal-analyze?recalculate=1' : '/api/files/universal-analyze';
+
+      const response = await apiCall(url, {
         method: 'POST',
         body: formData,
         timeoutMs: options.timeoutMs || 120000,

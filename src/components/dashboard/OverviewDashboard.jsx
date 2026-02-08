@@ -212,7 +212,15 @@ function toTrustedSeries(chart) {
   return out;
 }
 
-export default function OverviewDashboard({ data, filename, activity, universalAnalysis, universalError }) {
+export default function OverviewDashboard({
+  data,
+  filename,
+  activity,
+  universalAnalysis,
+  universalError,
+  onUniversalRecalc,
+  universalRecalcLoading,
+}) {
   const rootRef = useRef(null);
   const [exporting, setExporting] = useState(false);
 
@@ -395,6 +403,22 @@ export default function OverviewDashboard({ data, filename, activity, universalA
                     ) : null}
                   </AlertDescription>
                 </Alert>
+              ) : null}
+
+              {universalAnalysis?.status === 'blocked' && typeof onUniversalRecalc === 'function' ? (
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm text-slate-600 dark:text-slate-400">
+                    If this workbook relies on formulas, you can try server recalculation (Premium).
+                  </div>
+                  <Button
+                    type="button"
+                    className="bg-[#4169E1] hover:bg-[#3659c7] text-white"
+                    onClick={onUniversalRecalc}
+                    disabled={!!universalRecalcLoading}
+                  >
+                    {universalRecalcLoading ? 'Recalculating…' : 'Try server recalculation'}
+                  </Button>
+                </div>
               ) : null}
 
               {trustedCharts.length ? (
@@ -758,4 +782,6 @@ OverviewDashboard.propTypes = {
   ),
   universalAnalysis: PropTypes.any,
   universalError: PropTypes.string,
+  onUniversalRecalc: PropTypes.func,
+  universalRecalcLoading: PropTypes.bool,
 };

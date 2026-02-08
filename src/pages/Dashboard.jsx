@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [activity, setActivity] = useState([]);
   const [universalAnalysis, setUniversalAnalysis] = useState(null);
   const [universalError, setUniversalError] = useState('');
+  const [universalRecalcLoading, setUniversalRecalcLoading] = useState(false);
   const [activeTab, setActiveTab] = useState(() => {
     const t = (searchParams.get('tab') || '').trim();
     return t === 'overview' || t === 'transform' || t === 'ai' || t === 'analysis' ? t : 'overview';
@@ -284,6 +285,29 @@ export default function Dashboard() {
       addToHistory(uploadedData);
     }, 1000);
   }, [addToHistory, pushActivity]);
+
+  const handleUniversalRecalc = useCallback(async () => {
+    const f = uploadedFile?.file;
+    if (!f) return;
+    setUniversalRecalcLoading(true);
+    setUniversalError('');
+    try {
+      const res = await meldraAi.files.universalAnalyze(f, { recalculate: true, timeoutMs: 180000 });
+      setUniversalAnalysis(res);
+      sessionStorage.setItem('insightsheet_universal_analysis', JSON.stringify(res));
+      pushActivity({
+        title: 'Universal Excel recalculation',
+        detail: `${res?.status || 'success'} • ${res?.total_charts ?? 0} trusted chart(s)`,
+        badge: 'Overview',
+      });
+    } catch (e) {
+      const msg = e?.message || 'Recalculation failed';
+      setUniversalError(msg);
+      pushActivity({ title: 'Universal Excel recalculation failed', detail: msg, badge: 'Overview' });
+    } finally {
+      setUniversalRecalcLoading(false);
+    }
+  }, [uploadedFile, pushActivity]);
 
   const handleTemplateLoad = useCallback((templateData) => {
     setIsProcessing(true);
@@ -815,6 +839,8 @@ export default function Dashboard() {
               activity={activity}
               universalAnalysis={universalAnalysis}
               universalError={universalError}
+              onUniversalRecalc={handleUniversalRecalc}
+              universalRecalcLoading={universalRecalcLoading}
             />
           </TabsContent>
 

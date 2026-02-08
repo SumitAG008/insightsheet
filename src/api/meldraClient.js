@@ -532,6 +532,28 @@ export const backendApi = {
       return response.json();
     },
 
+    universalAnalyze: async (file, options = {}) => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await apiCall('/api/files/universal-analyze', {
+        method: 'POST',
+        body: formData,
+        timeoutMs: options.timeoutMs || 120000,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        const status = response.status;
+        if (status === 502 || status === 503 || status === 504) {
+          throw new Error(err.detail || 'Universal analyze took too long or the server is busy. Try again later.');
+        }
+        throw new Error(err.detail || `Universal analyze failed: ${status}`);
+      }
+
+      return response.json();
+    },
+
     processZip: async (file, options) => {
       const formData = new FormData();
       formData.append('file', file);

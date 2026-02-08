@@ -199,7 +199,20 @@ function buildWidePeriodSeries(rows, headers, categoryColumn, { maxPoints = 24 }
   });
 }
 
-export default function OverviewDashboard({ data, filename, activity }) {
+function toTrustedSeries(chart) {
+  const labels = chart?.data?.labels;
+  const values = chart?.data?.values;
+  if (!Array.isArray(labels) || !Array.isArray(values) || labels.length !== values.length) return [];
+  const out = [];
+  for (let i = 0; i < labels.length; i++) {
+    const v = Number(values[i]);
+    if (!Number.isFinite(v)) continue;
+    out.push({ name: String(labels[i] ?? ''), value: v });
+  }
+  return out;
+}
+
+export default function OverviewDashboard({ data, filename, activity, universalAnalysis, universalError }) {
   const rootRef = useRef(null);
   const [exporting, setExporting] = useState(false);
 
@@ -314,8 +327,137 @@ export default function OverviewDashboard({ data, filename, activity }) {
 
   if (!data) return null;
 
+  const trustedSheets = (universalAnalysis?.diagnostics?.sheets || []).filter(Boolean);
+  const blockedSheets = trustedSheets.filter((s) => s?.risk_level === 'blocked');
+  const warningSheets = trustedSheets.filter((s) => s?.risk_level === 'warning');
+  const trustedCharts = Array.isArray(universalAnalysis?.charts) ? universalAnalysis.charts : [];
+
   return (
     <div ref={rootRef} id="overview-root" className="space-y-6">
+      {(universalError || universalAnalysis) ? (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <div className="text-sm font-bold text-slate-900 dark:text-white">Trusted from Excel (Strict Correctness)</div>
+            {universalAnalysis?.status ? (
+              <Badge className={
+                universalAnalysis.status === 'blocked'
+                  ? 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
+                  : universalAnalysis.status === 'partial'
+                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                    : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+              }>
+                {universalAnalysis.status}
+              </Badge>
+            ) : null}
+          </div>
+
+          {universalError ? (
+            <Alert className="bg-amber-500/10 border-amber-500/30">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+              <AlertDescription className="text-slate-700 dark:text-slate-200">
+                {universalError}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          {universalAnalysis ? (
+            <div className="space-y-3">
+              {(blockedSheets.length > 0 || warningSheets.length > 0) ? (
+                <div className="text-sm text-slate-700 dark:text-slate-300">
+                  {blockedSheets.length > 0 ? (
+                    <div>
+                      <span className="font-semibold">Blocked sheets:</span> {blockedSheets.length}
+                    </div>
+                  ) : null}
+                  {warningSheets.length > 0 ? (
+                    <div>
+                      <span className="font-semibold">Warning sheets:</span> {warningSheets.length}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  No formula-cache issues detected.
+                </div>
+              )}
+
+              {universalAnalysis?.status === 'blocked' && universalAnalysis?.action_required?.message ? (
+                <Alert className="bg-red-500/10 border-red-500/30">
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                  <AlertDescription className="text-slate-700 dark:text-slate-200">
+                    <div className="font-semibold">{universalAnalysis.action_required.message}</div>
+                    {Array.isArray(universalAnalysis?.action_required?.steps) ? (
+                      <div className="mt-2 space-y-1">
+                        {universalAnalysis.action_required.steps.slice(0, 4).map((s, idx) => (
+                          <div key={idx} className="text-sm">{String(s)}</div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
+              {trustedCharts.length ? (
+                <div className="grid lg:grid-cols-2 gap-4">
+                  {trustedCharts.slice(0, 4).map((ch, idx) => {
+                    const series = toTrustedSeries(ch);
+                    const title = String(ch?.title || `Trusted Chart ${idx + 1}`);
+                    const prov = ch?.provenance || {};
+                    return (
+                      <div key={idx} className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">{title}</div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                              {prov?.sheet ? `Sheet: ${prov.sheet}` : ''}{prov?.region ? ` • ${prov.region}` : ''}{prov?.method ? ` • ${prov.method}` : ''}
+                            </div>
+                          </div>
+                          <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700">
+                            {String(ch?.type || '').toUpperCase()}
+                          </Badge>
+                        </div>
+
+                        {series.length ? (
+                          <div className="h-[220px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              {ch?.type === 'line' ? (
+                                <RechartsLineChart data={series} margin={{ top: 10, right: 12, left: 44, bottom: 60 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                  <XAxis dataKey="name" interval="preserveStartEnd" height={60} tickMargin={10} tickFormatter={(v) => truncateLabel(v, 14)} />
+                                  <YAxis width={88} tickFormatter={formatCompactTick} tickMargin={6} />
+                                  <Tooltip />
+                                  <Line type="monotone" dataKey="value" name="Value" stroke="#4169E1" strokeWidth={3} dot={false} />
+                                </RechartsLineChart>
+                              ) : (
+                                <RechartsBarChart data={series} margin={{ top: 10, right: 12, left: 44, bottom: 60 }}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                  <XAxis dataKey="name" interval="preserveStartEnd" height={60} tickMargin={10} tickFormatter={(v) => truncateLabel(v, 14)} />
+                                  <YAxis width={88} tickFormatter={formatCompactTick} tickMargin={6} />
+                                  <Tooltip />
+                                  <Bar dataKey="value" name="Value" fill="#8B5CF6" radius={[6, 6, 0, 0]} />
+                                </RechartsBarChart>
+                              )}
+                            </ResponsiveContainer>
+                          </div>
+                        ) : (
+                          <div className="h-[220px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
+                            Trusted chart has no numeric series.
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  No trusted charts were generated.
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {pnl && (
         <div className="grid lg:grid-cols-5 gap-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
@@ -614,4 +756,6 @@ OverviewDashboard.propTypes = {
       badge: PropTypes.string,
     })
   ),
+  universalAnalysis: PropTypes.any,
+  universalError: PropTypes.string,
 };

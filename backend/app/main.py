@@ -61,6 +61,7 @@ from app.services.ocr_service import (
 )
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
+from app.services.universal_excel_processor import UniversalExcelProcessor
 from app.services.ingestion_service import IngestionService, IngestLimits, build_ingestion_prompt_block
 from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email, send_api_key_email
 from app.services.db_connection_service import DatabaseConnectionService
@@ -3591,6 +3592,74 @@ async def pl_extraction_preview(
     except Exception as e:
         logger.error(f"P&L extraction preview error: {str(e)}")
         raise HTTPException(status_code=500, detail="Preview failed")
+
+
+@app.post("/api/files/universal-analyze")
+async def universal_analyze(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Universal Excel analysis for dashboard charts (ZERO STORAGE).
+
+    Strict correctness mode:
+    - Detect formulas and whether cached results appear missing.
+    - If a sheet is "blocked", it is excluded from chart generation.
+    - Response returns only aggregates + provenance (no raw cell data).
+    """
+    processor: Optional[UniversalExcelProcessor] = None
+    try:
+        _enforce_verified_user(db, current_user["email"])
+        subscription = _get_or_create_subscription(db, current_user["email"])
+
+        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        content = await file.read()
+        file_size_mb = len(content) / (1024 * 1024)
+        if len(content) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"File size ({file_size_mb:.1f}MB) exceeds {max_size_mb}MB limit")
+
+        if not (file.filename or "").lower().endswith((".xlsx", ".xls")):
+            raise HTTPException(status_code=400, detail="Invalid file type. Only .xlsx and .xls are supported.")
+
+        processor = UniversalExcelProcessor(content, file.filename or "uploaded_file")
+        results = processor.process_universal()
+
+        if results.get("status") == "blocked":
+            results["action_required"] = {
+                "message": "File contains formulas without cached values",
+                "steps": [
+                    "Open file in Excel",
+                    "Calculate (F9 / Formulas → Calculate Now)",
+                    "Save (Ctrl+S)",
+                    "Re-upload the file",
+                ],
+                "alternative": "Paste Special → Values to remove formulas",
+            }
+
+        # Log processing history (NO file content)
+        processing_history = FileProcessingHistory(
+            user_email=current_user["email"],
+            processing_type="universal_analyze",
+            original_filename=file.filename,
+            file_size_mb=file_size_mb,
+            status=str(results.get("status") or "success"),
+        )
+        db.add(processing_history)
+        db.commit()
+
+        return results
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Universal analyze error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Universal analyze failed")
+    finally:
+        if processor is not None:
+            try:
+                processor.close()
+            except Exception:
+                pass
 
 
 @app.post("/api/files/process-zip")

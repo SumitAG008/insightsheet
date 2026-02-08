@@ -20,6 +20,7 @@ import DataValidator from '../components/dashboard/DataValidator';
 import AdvancedFilter from '../components/dashboard/AdvancedFilter';
 import OverviewDashboard from '../components/dashboard/OverviewDashboard';
 import FileUploadZone from '../components/upload/FileUploadZone';
+import { meldraAi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -41,6 +42,8 @@ export default function Dashboard() {
   const [displayData, setDisplayData] = useState(null);
   const [activeSheet, setActiveSheet] = useState('');
   const [activity, setActivity] = useState([]);
+  const [universalAnalysis, setUniversalAnalysis] = useState(null);
+  const [universalError, setUniversalError] = useState('');
   const [activeTab, setActiveTab] = useState(() => {
     const t = (searchParams.get('tab') || '').trim();
     return t === 'overview' || t === 'transform' || t === 'ai' || t === 'analysis' ? t : 'overview';
@@ -54,6 +57,7 @@ export default function Dashboard() {
   useEffect(() => {
     const storedData = sessionStorage.getItem('insightsheet_data');
     const storedFilename = sessionStorage.getItem('insightsheet_filename');
+    const storedUniversal = sessionStorage.getItem('insightsheet_universal_analysis');
     
     if (storedData) {
       const parsedData = JSON.parse(storedData);
@@ -66,6 +70,14 @@ export default function Dashboard() {
       historyRef.current.index = 0;
       setHistory([parsedData]);
       setHistoryIndex(0);
+    }
+
+    if (storedUniversal) {
+      try {
+        setUniversalAnalysis(JSON.parse(storedUniversal));
+      } catch (_) {
+        setUniversalAnalysis(null);
+      }
     }
   }, []);
 
@@ -225,9 +237,39 @@ export default function Dashboard() {
   const handleFileUpload = useCallback((file, uploadedData) => {
     setUploadedFile({ file, data: uploadedData });
     setIsProcessing(true);
+
+    setUniversalError('');
+    setUniversalAnalysis(null);
+    sessionStorage.removeItem('insightsheet_universal_analysis');
     
     sessionStorage.setItem('insightsheet_data', JSON.stringify(uploadedData));
     sessionStorage.setItem('insightsheet_filename', file.name);
+
+    const ext = String(file?.name || '').split('.').pop().toLowerCase();
+    const isExcel = ext === 'xlsx' || ext === 'xls';
+
+    if (isExcel) {
+      (async () => {
+        try {
+          const res = await meldraAi.files.universalAnalyze(file);
+          setUniversalAnalysis(res);
+          sessionStorage.setItem('insightsheet_universal_analysis', JSON.stringify(res));
+          pushActivity({
+            title: 'Universal Excel diagnostics',
+            detail: `${res?.status || 'success'} • ${res?.total_charts ?? 0} trusted chart(s)`,
+            badge: 'Overview',
+          });
+        } catch (e) {
+          const msg = e?.message || 'Universal analyze failed';
+          setUniversalError(msg);
+          pushActivity({
+            title: 'Universal Excel diagnostics failed',
+            detail: msg,
+            badge: 'Overview',
+          });
+        }
+      })();
+    }
     
     setTimeout(() => {
       setIsProcessing(false);
@@ -767,7 +809,13 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            <OverviewDashboard data={displayData || data} filename={filename} activity={activity} />
+            <OverviewDashboard
+              data={displayData || data}
+              filename={filename}
+              activity={activity}
+              universalAnalysis={universalAnalysis}
+              universalError={universalError}
+            />
           </TabsContent>
 
           <TabsContent value="analysis" className="space-y-6">

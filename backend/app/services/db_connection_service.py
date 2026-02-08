@@ -94,18 +94,16 @@ class DatabaseConnectionService:
                 cursor.close()
                 
             elif db_type == "oracle":
-                import cx_Oracle
-                
-                dsn = cx_Oracle.makedsn(
-                    connection_data.get("host"),
-                    int(connection_data.get("port", 1521)),
-                    service_name=connection_data.get("serviceName")
-                )
-                conn = cx_Oracle.connect(
-                    user=connection_data.get("username"),
-                    password=connection_data.get("password"),
-                    dsn=dsn
-                )
+                import oracledb
+
+                host = connection_data.get("host")
+                port = int(connection_data.get("port", 1521))
+                service_name = connection_data.get("serviceName")
+                username = connection_data.get("username")
+                password = connection_data.get("password")
+
+                dsn = f"{host}:{port}/{service_name}" if service_name else f"{host}:{port}"
+                conn = oracledb.connect(user=username, password=password, dsn=dsn)
                 cursor = conn.cursor()
                 cursor.execute("SELECT 1 FROM DUAL")
                 cursor.close()

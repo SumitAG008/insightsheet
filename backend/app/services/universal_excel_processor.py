@@ -236,30 +236,30 @@ class UniversalExcelProcessor:
         if not t:
             return False
 
-        months = [
-            "jan",
-            "feb",
-            "mar",
-            "apr",
-            "may",
-            "jun",
-            "jul",
-            "aug",
-            "sep",
-            "oct",
-            "nov",
-            "dec",
-        ]
-        if any(m in t for m in months):
-            return True
-        if re.search(r"\b20\d{2}\b", t):
-            return True
-        if re.search(r"\bq[1-4]\b", t):
-            return True
-        if "fy" in t and re.search(r"\d{2,4}", t):
-            return True
+        # Exclude summary columns like "12-month Total" / "YTD Total".
+        if "total" in t or "subtotal" in t:
+            return False
+
+        # Strict patterns only (avoid treating arbitrary text containing 'jan' etc. as a period).
+        # YYYY-MM or YYYY/M
         if re.match(r"^\d{4}[-/]\d{1,2}$", t):
             return True
+
+        # Q1 2025 / Q1-25
+        if re.match(r"^q[1-4]\s*[-/]?\s*\d{2,4}$", t):
+            return True
+
+        # FY2025 / FY 25
+        if re.match(r"^fy\s*\d{2,4}$", t):
+            return True
+
+        # Jan-25 / January 2025
+        m = re.match(r"^([a-z]{3,9})\s*[-/]?\s*(\d{2,4})$", t)
+        if m:
+            mon = m.group(1)[:3]
+            if mon in {"jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"}:
+                return True
+
         return False
 
     def _detect_column_roles(self, sheet_name: str, region: Dict[str, Any]) -> Dict[str, Any]:
@@ -360,6 +360,10 @@ class UniversalExcelProcessor:
                     cv = ws.cell(row_idx, category_col).value
                     if cv is not None and not (isinstance(cv, str) and not cv.strip()):
                         cat = str(cv).strip()
+
+                # Avoid treating the summary Total row as a category.
+                if cat and cat.strip().lower() == "total":
+                    continue
 
                 row_total = 0.0
                 row_has_any = False

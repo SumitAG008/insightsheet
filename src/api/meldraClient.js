@@ -798,6 +798,7 @@ export const backendApi = {
 // Export meldraAi with backward compatibility layer
 meldraAi.auth = backendApi.auth;
 meldraAi.admin = backendApi.admin;
+meldraAi.files = backendApi.files;
 meldraAi.integrations.Core.InvokeLLM = backendApi.llm.invoke;
 meldraAi.integrations.Core.GenerateImage = backendApi.llm.generateImage;
 meldraAi.integrations.Core.UploadFile = backendApi.files.upload;

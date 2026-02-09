@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { BarChart as RechartsBarChart, Bar, LineChart as RechartsLineChart, Line, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Activity, AlertCircle, BarChart3, Download, FileDown, LineChart, PieChart, Sparkles } from 'lucide-react';
 import { bestColumnsForOverview, buildArrowTable, computeArrowKPIs, computePnLFromTable, detectFinanceColumns, groupSumTopN, inferColumns, numericHistogram } from '@/lib/arrowAnalytics';
-import { parseDateSmart } from '@/lib/dateParsing';
+import { parseDateSmart, parsePeriodString } from '@/lib/dateParsing';
 
 const CHART_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#06B6D4', '#EF4444', '#F472B6'];
 
@@ -156,6 +156,24 @@ export default function OverviewDashboard({
   const [exporting, setExporting] = useState(false);
   const [excelHelpOpen, setExcelHelpOpen] = useState(false);
 
+  const trustedSheets = (universalAnalysis?.diagnostics?.sheets || []).filter(Boolean);
+  const blockedSheets = trustedSheets.filter((s) => s?.risk_level === 'blocked');
+  const warningSheets = trustedSheets.filter((s) => s?.risk_level === 'warning');
+  const trustedCharts = Array.isArray(universalAnalysis?.charts) ? universalAnalysis.charts : [];
+  const sheetInsights = Array.isArray(universalAnalysis?.sheet_insights) ? universalAnalysis.sheet_insights : [];
+  const clarification = universalAnalysis?.clarification;
+  const clarifySheets = Array.isArray(clarification?.sheets) ? clarification.sheets : [];
+
+  const [clarifySheetName, setClarifySheetName] = useState(clarifySheets?.[0]?.sheet || '');
+  const [clarifyHeaderRow, setClarifyHeaderRow] = useState('');
+  const [clarifyDataStartRow, setClarifyDataStartRow] = useState('');
+
+  useEffect(() => {
+    if (clarifySheets?.length && !clarifySheetName) {
+      setClarifySheetName(clarifySheets[0]?.sheet || '');
+    }
+  }, [clarifySheets, clarifySheetName]);
+
   const inferred = useMemo(() => inferColumns(data), [data]);
 
   const arrowTable = useMemo(() => {
@@ -267,24 +285,6 @@ export default function OverviewDashboard({
   }, [data]);
 
   if (!data) return null;
-
-  const trustedSheets = (universalAnalysis?.diagnostics?.sheets || []).filter(Boolean);
-  const blockedSheets = trustedSheets.filter((s) => s?.risk_level === 'blocked');
-  const warningSheets = trustedSheets.filter((s) => s?.risk_level === 'warning');
-  const trustedCharts = Array.isArray(universalAnalysis?.charts) ? universalAnalysis.charts : [];
-  const sheetInsights = Array.isArray(universalAnalysis?.sheet_insights) ? universalAnalysis.sheet_insights : [];
-  const clarification = universalAnalysis?.clarification;
-  const clarifySheets = Array.isArray(clarification?.sheets) ? clarification.sheets : [];
-
-  const [clarifySheetName, setClarifySheetName] = useState(clarifySheets?.[0]?.sheet || '');
-  const [clarifyHeaderRow, setClarifyHeaderRow] = useState('');
-  const [clarifyDataStartRow, setClarifyDataStartRow] = useState('');
-
-  useEffect(() => {
-    if (clarifySheets?.length && !clarifySheetName) {
-      setClarifySheetName(clarifySheets[0]?.sheet || '');
-    }
-  }, [clarifySheets, clarifySheetName]);
 
   return (
     <div ref={rootRef} id="overview-root" className="space-y-6">

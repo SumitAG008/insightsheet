@@ -522,6 +522,12 @@ class UniversalExcelProcessor:
         elif confidence >= 0.7:
             tier = "clarify"
 
+        # Special-case: wide-matrix sheets with 4+ period headers are often safe to auto-render
+        # even if confidence is below the generic 0.9 threshold.
+        if pattern == "WIDE_MATRIX" and has_periods and has_category_cols and confidence >= 0.82:
+            tier = "auto_render"
+            reasons.append("✓ Wide-matrix with ≥4 period headers: auto-render enabled")
+
         # Build candidate rows preview for clarification (no raw values persisted; only short text labels).
         candidates: List[Dict[str, Any]] = []
         try:

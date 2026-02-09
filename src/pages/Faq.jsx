@@ -118,6 +118,68 @@ function normalize(s) {
   return String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+function renderFaqBody(body) {
+  const lines = String(body || '').split(/\r?\n/);
+  const blocks = [];
+
+  let currentParagraph = [];
+  let currentList = [];
+
+  const flushParagraph = () => {
+    if (!currentParagraph.length) return;
+    blocks.push({ type: 'p', text: currentParagraph.join(' ').trim() });
+    currentParagraph = [];
+  };
+
+  const flushList = () => {
+    if (!currentList.length) return;
+    blocks.push({ type: 'ul', items: currentList.slice() });
+    currentList = [];
+  };
+
+  for (const raw of lines) {
+    const line = String(raw || '').trim();
+    if (!line) {
+      flushParagraph();
+      flushList();
+      continue;
+    }
+
+    if (line.startsWith('- ')) {
+      flushParagraph();
+      currentList.push(line.slice(2).trim());
+      continue;
+    }
+
+    flushList();
+    currentParagraph.push(line);
+  }
+
+  flushParagraph();
+  flushList();
+
+  return (
+    <div className="space-y-3">
+      {blocks.map((b, idx) => {
+        if (b.type === 'ul') {
+          return (
+            <ul key={idx} className="list-disc pl-5 space-y-1">
+              {(b.items || []).map((it, i) => (
+                <li key={i}>{it}</li>
+              ))}
+            </ul>
+          );
+        }
+        return (
+          <p key={idx} className="leading-relaxed">
+            {b.text}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Faq() {
   const [q, setQ] = useState('');
 
@@ -135,7 +197,7 @@ export default function Faq() {
       <div className="container mx-auto max-w-4xl px-4 py-8">
         <div className="flex items-start justify-between gap-4 mb-6">
           <div className="min-w-0">
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">FAQ</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>FAQ</h1>
             <p className="text-slate-600 dark:text-slate-400 mt-2">
               Definitions and expectations for the main tabs and features.
             </p>
@@ -160,11 +222,11 @@ export default function Faq() {
           {filtered.map((item) => (
             <Card key={item.id} className="border-slate-200 dark:border-slate-800">
               <CardHeader>
-                <CardTitle className="text-base text-slate-900 dark:text-white">{item.title}</CardTitle>
+                <CardTitle className="text-lg text-slate-900 dark:text-white" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.01em' }}>{item.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
-                  {item.body}
+                <div className="text-sm text-slate-700 dark:text-slate-200" style={{ fontFamily: "'Inter', sans-serif" }}>
+                  {renderFaqBody(item.body)}
                 </div>
               </CardContent>
             </Card>

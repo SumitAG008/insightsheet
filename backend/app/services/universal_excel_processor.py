@@ -215,9 +215,9 @@ class UniversalExcelProcessor:
                     period_hits = 0
                     keyword_hits = 0
                     for v in row:
+                        if self._is_period_header(v):
+                            period_hits += 1
                         if isinstance(v, str) and v.strip():
-                            if self._is_period_header(v):
-                                period_hits += 1
                             vv = v.strip().lower()
                             if vv in {"salesperson", "customer", "product", "region", "date", "total sales", "order", "order no"}:
                                 keyword_hits += 1

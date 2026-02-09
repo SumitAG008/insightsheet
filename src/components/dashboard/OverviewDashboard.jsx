@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { BarChart as RechartsBarChart, Bar, LineChart as RechartsLineChart, Line, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Activity, AlertCircle, BarChart3, Download, FileDown, LineChart, PieChart, Sparkles } from 'lucide-react';
 import { bestColumnsForOverview, buildArrowTable, computeArrowKPIs, computePnLFromTable, detectFinanceColumns, groupSumTopN, inferColumns, numericHistogram } from '@/lib/arrowAnalytics';
+import { parseDateSmart, parsePeriodString } from '@/lib/dateParsing';
 
 const CHART_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#06B6D4', '#EF4444', '#F472B6'];
 
@@ -23,78 +24,6 @@ function formatNumber(n) {
   if (Math.abs(v) >= 1e6) return `${(v / 1e6).toFixed(2)}M`;
   if (Math.abs(v) >= 1e3) return `${(v / 1e3).toFixed(2)}K`;
   return `${Math.round(v * 100) / 100}`;
-}
-
-function excelSerialToDate(serial) {
-  const n = Number(serial);
-  if (!Number.isFinite(n)) return null;
-  // Excel incorrectly treats 1900 as leap year; using 1899-12-30 is the common fix.
-  const ms = (n - 25569) * 86400 * 1000;
-  const d = new Date(ms);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function parsePeriodString(v) {
-  const s = String(v || '').trim();
-  if (!s) return null;
-
-  // 2024-01 or 2024/01
-  let m = s.match(/^\s*(\d{4})[-/](\d{1,2})\s*$/);
-  if (m) {
-    const y = Number(m[1]);
-    const mo = Number(m[2]);
-    if (y >= 1900 && y <= 2100 && mo >= 1 && mo <= 12) return new Date(Date.UTC(y, mo - 1, 1));
-  }
-
-  // Jan-24, Jan 24, January-2024
-  m = s.match(/^\s*([A-Za-z]{3,9})[\s-]*(\d{2,4})\s*$/);
-  if (m) {
-    const monStr = m[1].slice(0, 3).toLowerCase();
-    const months = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11 };
-    const mo = months[monStr];
-    if (mo !== undefined) {
-      let y = Number(m[2]);
-      if (y < 100) y += 2000;
-      if (y >= 1900 && y <= 2100) return new Date(Date.UTC(y, mo, 1));
-    }
-  }
-
-  // FY2024
-  m = s.match(/^\s*fy\s*(\d{4})\s*$/i);
-  if (m) {
-    const y = Number(m[1]);
-    if (y >= 1900 && y <= 2100) return new Date(Date.UTC(y, 0, 1));
-  }
-
-  // Q1 2024 or 2024 Q1
-  m = s.match(/^\s*q([1-4])\s*(\d{4})\s*$/i) || s.match(/^\s*(\d{4})\s*q([1-4])\s*$/i);
-  if (m) {
-    const q = Number(m[1].toLowerCase?.().startsWith?.('q') ? m[1].slice(1) : m[1]);
-    const y = Number(m[2]);
-    if (y >= 1900 && y <= 2100 && q >= 1 && q <= 4) return new Date(Date.UTC(y, (q - 1) * 3, 1));
-  }
-
-  return null;
-}
-
-function parseDateSmart(v) {
-  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : v;
-  if (typeof v === 'number') {
-    // Likely Excel serial
-    if (v >= 30000 && v <= 60000) return excelSerialToDate(v);
-  }
-  if (typeof v === 'string') {
-    const n = Number(v);
-    if (Number.isFinite(n) && n >= 30000 && n <= 60000) return excelSerialToDate(n);
-    const p = parsePeriodString(v);
-    if (p) return p;
-  }
-  if (typeof v === 'string') {
-    const p2 = parsePeriodString(v);
-    if (p2) return p2;
-  }
-  const d = new Date(v);
-  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 function formatCompactTick(v) {
@@ -227,6 +156,24 @@ export default function OverviewDashboard({
   const [exporting, setExporting] = useState(false);
   const [excelHelpOpen, setExcelHelpOpen] = useState(false);
 
+  const trustedSheets = (universalAnalysis?.diagnostics?.sheets || []).filter(Boolean);
+  const blockedSheets = trustedSheets.filter((s) => s?.risk_level === 'blocked');
+  const warningSheets = trustedSheets.filter((s) => s?.risk_level === 'warning');
+  const trustedCharts = Array.isArray(universalAnalysis?.charts) ? universalAnalysis.charts : [];
+  const sheetInsights = Array.isArray(universalAnalysis?.sheet_insights) ? universalAnalysis.sheet_insights : [];
+  const clarification = universalAnalysis?.clarification;
+  const clarifySheets = Array.isArray(clarification?.sheets) ? clarification.sheets : [];
+
+  const [clarifySheetName, setClarifySheetName] = useState(clarifySheets?.[0]?.sheet || '');
+  const [clarifyHeaderRow, setClarifyHeaderRow] = useState('');
+  const [clarifyDataStartRow, setClarifyDataStartRow] = useState('');
+
+  useEffect(() => {
+    if (clarifySheets?.length && !clarifySheetName) {
+      setClarifySheetName(clarifySheets[0]?.sheet || '');
+    }
+  }, [clarifySheets, clarifySheetName]);
+
   const inferred = useMemo(() => inferColumns(data), [data]);
 
   const arrowTable = useMemo(() => {
@@ -338,24 +285,6 @@ export default function OverviewDashboard({
   }, [data]);
 
   if (!data) return null;
-
-  const trustedSheets = (universalAnalysis?.diagnostics?.sheets || []).filter(Boolean);
-  const blockedSheets = trustedSheets.filter((s) => s?.risk_level === 'blocked');
-  const warningSheets = trustedSheets.filter((s) => s?.risk_level === 'warning');
-  const trustedCharts = Array.isArray(universalAnalysis?.charts) ? universalAnalysis.charts : [];
-  const sheetInsights = Array.isArray(universalAnalysis?.sheet_insights) ? universalAnalysis.sheet_insights : [];
-  const clarification = universalAnalysis?.clarification;
-  const clarifySheets = Array.isArray(clarification?.sheets) ? clarification.sheets : [];
-
-  const [clarifySheetName, setClarifySheetName] = useState(clarifySheets?.[0]?.sheet || '');
-  const [clarifyHeaderRow, setClarifyHeaderRow] = useState('');
-  const [clarifyDataStartRow, setClarifyDataStartRow] = useState('');
-
-  useEffect(() => {
-    if (clarifySheets?.length && !clarifySheetName) {
-      setClarifySheetName(clarifySheets[0]?.sheet || '');
-    }
-  }, [clarifySheets, clarifySheetName]);
 
   return (
     <div ref={rootRef} id="overview-root" className="space-y-6">

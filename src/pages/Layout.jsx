@@ -20,6 +20,7 @@ import { LoginHistory } from '@/api/entities';
 import { getIPAndLocation, getBrowserInfo } from '@/components/tracking/ActivityLogger';
 import ActivityLogger from '@/components/tracking/ActivityLogger';
 import LogoutWarningModal from '@/components/common/LogoutWarningModal';
+import { clearAllAppSessionData } from '@/utils/clearAppData';
 import CookieConsent from '@/components/CookieConsent';
 import SupportChatWidget from '@/components/SupportChatWidget';
 import OnboardingAssistantModal from '@/components/onboarding/OnboardingAssistantModal';
@@ -180,6 +181,7 @@ export default function Layout({ children, currentPageName }) {
     }
 
     // Clear all app data (session + local: auth, user, agent_history, OCR draft, etc.)
+    clearAllAppSessionData();
     meldraAi.auth.logout();
     setUser(null);
     setLoginTime(null);

@@ -57,9 +57,11 @@ export default function ActivityLogger({ children }) {
       });
 
       // Update last_activity_date in User entity
-      await User.update(currentUser.id, {
-        last_activity_date: new Date().toISOString()
-      });
+      if (typeof User?.update === 'function') {
+        await User.update(currentUser.id, {
+          last_activity_date: new Date().toISOString()
+        });
+      }
     } catch (error) {
       // User not logged in or error logging activity
       // Silently fail - activity logging should never break the app
@@ -91,9 +93,11 @@ export const logActivity = async (activityType, details = {}) => {
     });
 
     // Update last_activity_date
-    await User.update(currentUser.id, {
-      last_activity_date: new Date().toISOString()
-    });
+    if (typeof User?.update === 'function') {
+      await User.update(currentUser.id, {
+        last_activity_date: new Date().toISOString()
+      });
+    }
   } catch (error) {
     // Silently fail - activity logging should never break the app
     console.warn('Activity logging skipped:', error.message);

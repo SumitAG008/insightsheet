@@ -31,6 +31,55 @@ import {
   DropdownMenuTrigger,
 } from '../components/ui/dropdown-menu';
 
+class DashboardErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, errorMessage: '' };
+  }
+
+  static getDerivedStateFromError(error) {
+    const msg = error?.message ? String(error.message) : 'Unexpected UI error';
+    return { hasError: true, errorMessage: msg };
+  }
+
+  componentDidCatch(error, info) {
+    // Keep the console error for debugging without taking down the whole page.
+    // eslint-disable-next-line no-console
+    console.error('Dashboard UI crash:', error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-white dark:bg-slate-950">
+          <div className="container mx-auto px-4 py-10">
+            <div className="max-w-2xl mx-auto border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 rounded-xl p-6">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-6 h-6 text-red-700 dark:text-red-400 mt-0.5" />
+                <div className="flex-1">
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">Something went wrong while rendering your dashboard</h2>
+                  <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+                    {this.state.errorMessage}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Button onClick={() => window.location.reload()} variant="default">Reload</Button>
+                    <Button onClick={() => this.setState({ hasError: false, errorMessage: '' })} variant="outline">Try Again</Button>
+                  </div>
+                  <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
+                    If this happens right after uploading a spreadsheet, it usually means one of the chart widgets crashed. This screen prevents a blank page so you can recover.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
@@ -696,26 +745,28 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{filename || 'Analysis Dashboard'}</h1>
-            <p className="text-slate-600 dark:text-slate-400 flex items-center gap-2 flex-wrap">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              Analysis Dashboard • {(displayData || data).rows.length} rows • {(displayData || data).headers.length} columns
-              {displayData && displayData.rows.length !== data.rows.length && (
-                <span className="ml-2 px-2 py-1 bg-[#4169E1]/20 text-[#4169E1] text-sm rounded-full">
-                  Filtered: {data.rows.length - displayData.rows.length} hidden
-                </span>
-              )}
-              {cleanedRowCount > 0 && (
-                <span className="ml-2 px-2 py-1 bg-amber-500/20 text-amber-400 text-xs rounded-full">
-                  {cleanedRowCount} cleaned
-                </span>
-              )}
-            </p>
+    <DashboardErrorBoundary>
+      <div className="min-h-screen bg-white dark:bg-slate-950">
+        <div className="container mx-auto px-4 py-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{filename || 'Analysis Dashboard'}</h1>
+              <p className="text-slate-600 dark:text-slate-400 flex items-center gap-2 flex-wrap">
+                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+                Analysis Dashboard • {(displayData || data).rows.length} rows • {(displayData || data).headers.length} columns
+                {displayData && displayData.rows.length !== data.rows.length && (
+                  <span className="ml-2 px-2 py-1 bg-[#4169E1]/20 text-[#4169E1] text-sm rounded-full">
+                    Filtered: {data.rows.length - displayData.rows.length} hidden
+                  </span>
+                )}
+                {cleanedRowCount > 0 && (
+                  <span className="ml-2 px-2 py-1 bg-amber-500/20 text-amber-400 text-xs rounded-full">
+                    {cleanedRowCount} cleaned
+                  </span>
+                )}
+              </p>
+
 
             {hasWorkbook && sheetNames.length > 1 && (
               <div className="mt-3 flex flex-wrap gap-2">
@@ -737,7 +788,7 @@ export default function Dashboard() {
                 })}
               </div>
             )}
-          </div>
+            </div>
           
           <div className="flex gap-3 flex-wrap">
             {/* Template Selector */}
@@ -916,8 +967,9 @@ export default function Dashboard() {
             </div>
             <DataGrid data={displayData || data} />
           </TabsContent>
-        </Tabs>
+          </Tabs>
+        </div>
       </div>
-    </div>
+    </DashboardErrorBoundary>
   );
 }

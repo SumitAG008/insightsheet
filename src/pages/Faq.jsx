@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Logo from '@/components/branding/Logo';
 
 const FAQ_ITEMS = [
   {
@@ -193,48 +194,79 @@ export default function Faq() {
   }, [q]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-950">
-      <div className="container mx-auto max-w-4xl px-4 py-8">
-        <div className="flex items-start justify-between gap-4 mb-6">
-          <div className="min-w-0">
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>FAQ</h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-2">
-              Definitions and expectations for the main tabs and features.
-            </p>
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white dark:from-slate-950 dark:via-slate-950 dark:to-slate-950">
+      <div className="container mx-auto max-w-5xl px-4 py-8 md:py-10">
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between gap-4">
+            <Link
+              to={createPageUrl('Dashboard')}
+              className="inline-flex items-center"
+              aria-label="Back to Dashboard"
+            >
+              <Logo size="small" showText />
+            </Link>
+
+            <Link
+              to={createPageUrl('Dashboard')}
+              className="text-sm font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              Back to Dashboard
+            </Link>
           </div>
-          <Link
-            to={createPageUrl('Dashboard')}
-            className="text-sm text-blue-600 hover:text-blue-700"
-          >
-            Back to Dashboard
-          </Link>
-        </div>
 
-        <div className="mb-6">
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search FAQ (e.g. 'blocked', 'overview', 'conversion')"
-          />
-        </div>
-
-        <div className="space-y-4">
-          {filtered.map((item) => (
-            <Card key={item.id} className="border-slate-200 dark:border-slate-800">
-              <CardHeader>
-                <CardTitle className="text-lg text-slate-900 dark:text-white" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.01em' }}>{item.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm text-slate-700 dark:text-slate-200" style={{ fontFamily: "'Inter', sans-serif" }}>
-                  {renderFaqBody(item.body)}
+          <div className="rounded-2xl border border-slate-200/70 bg-white/70 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm dark:border-slate-800/80 dark:bg-slate-900/30">
+            <div className="px-6 py-7 md:px-8 md:py-8">
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+                <div className="min-w-0">
+                  <h1
+                    className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white"
+                    style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.03em' }}
+                  >
+                    FAQ
+                  </h1>
+                  <p className="text-base md:text-lg text-slate-600 dark:text-slate-300 mt-2 font-medium">
+                    Definitions and expectations for the main tabs and features.
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              </div>
 
-          {filtered.length === 0 ? (
-            <div className="text-sm text-slate-600 dark:text-slate-400">No results.</div>
-          ) : null}
+              <div className="mt-6">
+                <Input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Search FAQ (e.g. 'blocked', 'overview', 'conversion')"
+                  className="h-11 text-base bg-white/80 dark:bg-slate-950/40"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-5">
+            {filtered.map((item) => (
+              <Card
+                key={item.id}
+                className="border-slate-200/80 dark:border-slate-800/80 shadow-sm hover:shadow-md transition-shadow bg-white/90 dark:bg-slate-900/30"
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle
+                    className="text-xl md:text-2xl font-extrabold text-slate-900 dark:text-white"
+                    style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.015em' }}
+                  >
+                    {item.title}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-[15px] md:text-base text-slate-700 dark:text-slate-200 leading-relaxed" style={{ fontFamily: "'Inter', sans-serif" }}>
+                    {renderFaqBody(item.body)}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {filtered.length === 0 ? (
+              <div className="text-sm text-slate-600 dark:text-slate-400">No results.</div>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

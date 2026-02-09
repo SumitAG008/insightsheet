@@ -145,7 +145,7 @@ export default function Landing() {
         <div className="rounded-2xl p-10 md:p-16 mb-5 border border-slate-200 bg-slate-50">
           <div className="max-w-5xl mx-auto">
             <h2 className="text-4xl md:text-5xl font-bold text-slate-900 text-center mb-12 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.03em' }}>
-              Why Choose Meldra?
+              Why Choose meldra?
             </h2>
             <div className="grid md:grid-cols-3 gap-8">
               <div className="text-center">
@@ -178,7 +178,7 @@ export default function Landing() {
       <div className="container mx-auto px-4 pt-5 pb-8 border-t border-slate-200 bg-white">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-4xl font-bold text-slate-900 text-center mb-4">
-            About Meldra
+            About meldra
           </h2>
           <p className="text-xl text-slate-600 text-center mb-12">
             Turn data into reports and slides—without formulas or IT
@@ -190,7 +190,7 @@ export default function Landing() {
               <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600">
                 <Target className="w-6 h-6 text-white" />
               </div>
-              What Meldra Does for You
+              What meldra Does for You
             </h3>
             <div className="space-y-6">
               <div>
@@ -325,7 +325,7 @@ export default function Landing() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold text-slate-900 mb-4">
-              Why Teams Use Meldra
+              Why Teams Use meldra
             </h2>
             <p className="text-xl text-slate-600 max-w-2xl mx-auto">
               From finance to sales to leadership—one place to turn data into reports and slides
@@ -396,7 +396,7 @@ export default function Landing() {
             <Link to="/pricing" className="text-blue-600 hover:text-blue-700">
               Pricing
             </Link>
-            <span className="text-slate-500">Â© {new Date().getFullYear()} Meldra. All rights reserved.</span>
+            <span className="text-slate-500">Â© {new Date().getFullYear()} meldra. All rights reserved.</span>
           </div>
         </div>
       </footer>

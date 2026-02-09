@@ -685,7 +685,7 @@ export default function Layout({ children, currentPageName }) {
 
           <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 text-center">
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              © 2026 Meldra • All rights reserved
+              © 2026 meldra • All rights reserved
             </p>
           </div>
         </div>

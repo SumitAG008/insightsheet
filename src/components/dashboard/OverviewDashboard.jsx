@@ -343,6 +343,7 @@ export default function OverviewDashboard({
   const blockedSheets = trustedSheets.filter((s) => s?.risk_level === 'blocked');
   const warningSheets = trustedSheets.filter((s) => s?.risk_level === 'warning');
   const trustedCharts = Array.isArray(universalAnalysis?.charts) ? universalAnalysis.charts : [];
+  const sheetInsights = Array.isArray(universalAnalysis?.sheet_insights) ? universalAnalysis.sheet_insights : [];
   const clarification = universalAnalysis?.clarification;
   const clarifySheets = Array.isArray(clarification?.sheets) ? clarification.sheets : [];
 
@@ -438,6 +439,17 @@ export default function OverviewDashboard({
                       <span className="font-semibold">Blocked sheets:</span> {blockedSheets.length}
                     </div>
                   ) : null}
+                  {warningSheets.length > 0 ? (
+                    <div>
+                      <span className="font-semibold">Warning sheets:</span> {warningSheets.length}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  No formula-cache issues detected.
+                </div>
+              )}
 
               {universalAnalysis?.status === 'needs_clarification' && clarification ? (
                 <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
@@ -507,17 +519,46 @@ export default function OverviewDashboard({
                   </div>
                 </div>
               ) : null}
-                  {warningSheets.length > 0 ? (
-                    <div>
-                      <span className="font-semibold">Warning sheets:</span> {warningSheets.length}
-                    </div>
-                  ) : null}
+
+              {sheetInsights.length ? (
+                <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">Detected sheet structure</div>
+                  <div className="mt-2 space-y-2">
+                    {sheetInsights.slice(0, 6).map((s, idx) => (
+                      <div key={`${s?.sheet || 'sheet'}-${idx}`} className="text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <span className="font-semibold text-slate-900 dark:text-white">{s?.sheet || `Sheet ${idx + 1}`}</span>
+                            {s?.pattern ? <span className="text-slate-600 dark:text-slate-400">{` • ${s.pattern}`}</span> : null}
+                            {s?.region ? <span className="text-slate-500 dark:text-slate-400">{` • ${s.region}`}</span> : null}
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {typeof s?.confidence === 'number' ? (
+                              <span className="text-xs text-slate-500 dark:text-slate-400">{Math.round(s.confidence * 100)}%</span>
+                            ) : null}
+                            {s?.tier ? (
+                              <Badge className={
+                                s.tier === 'auto_render'
+                                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+                                  : s.tier === 'clarify'
+                                    ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30'
+                                    : 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/30'
+                              }>
+                                {s.tier}
+                              </Badge>
+                            ) : null}
+                          </div>
+                        </div>
+                        {Array.isArray(s?.justification) && s.justification.length ? (
+                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                            {s.justification.slice(0, 3).join(' • ')}
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ) : (
-                <div className="text-sm text-slate-600 dark:text-slate-400">
-                  No formula-cache issues detected.
-                </div>
-              )}
+              ) : null}
 
               {universalAnalysis?.status === 'blocked' && universalAnalysis?.action_required?.message ? (
                 <Alert className="bg-red-500/10 border-red-500/30">

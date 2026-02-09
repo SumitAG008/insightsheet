@@ -58,7 +58,7 @@ export default function OnboardingAssistantModal({ userEmail, open, onOpenChange
 
   useEffect(() => {
     if (!open) return;
-    const intro = `Hi${userEmail ? ` ${userEmail}` : ''} — welcome to Meldra.\n\nHere are a few things I can help with:\n- What Meldra can do\n- What it can't do / common limitations\n- Privacy mode + data retention\n- Exporting and conversions\n\nAsk me anything, or use the quick prompts below.`;
+    const intro = `Hi${userEmail ? ` ${userEmail}` : ''} — welcome to meldra.\n\nHere are a few things I can help with:\n- What meldra can do\n- What it can't do / common limitations\n- Privacy mode + data retention\n- Exporting and conversions\n\nAsk me anything, or use the quick prompts below.`;
     setMessages([{ role: 'assistant', content: intro }]);
     setInput('');
     setLoading(false);
@@ -96,7 +96,7 @@ export default function OnboardingAssistantModal({ userEmail, open, onOpenChange
   };
 
   const quickPrompts = [
-    { label: 'What can Meldra do?', text: 'What can Meldra do? Give me a quick overview.' },
+    { label: 'What can meldra do?', text: 'What can meldra do? Give me a quick overview.' },
     { label: 'What can it not do?', text: 'What are the key limitations users should know?' },
     { label: 'Privacy & retention', text: 'Explain privacy mode and how long data is kept.' },
     { label: 'Exports', text: 'What outputs can I export and what is included?' },
@@ -106,7 +106,7 @@ export default function OnboardingAssistantModal({ userEmail, open, onOpenChange
   const localAnswer = (q) => {
     const query = String(q || '').toLowerCase();
     if (query.includes('can') && query.includes('do')) {
-      return `Meldra can help you:\n\n${canDo.map((x) => `- ${x}`).join('\n')}\n\nIf you tell me your file type and goal, I can suggest the best workflow.`;
+      return `meldra can help you:\n\n${canDo.map((x) => `- ${x}`).join('\n')}\n\nIf you tell me your file type and goal, I can suggest the best workflow.`;
     }
     if (query.includes('limit') || query.includes("can't") || query.includes('cannot')) {
       return `Key limitations / expectations:\n\n${cantDo.map((x) => `- ${x}`).join('\n')}\n\nIf you share your exact scenario, I can suggest the best workaround.`;

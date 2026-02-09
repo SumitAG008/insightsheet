@@ -48,6 +48,7 @@ import DatabaseConnection from "./DatabaseConnection";
 import Settings from "./Settings";
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
+import Faq from "./Faq";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
@@ -145,7 +146,7 @@ function PagesContent() {
     const currentPage = _getCurrentPage(location.pathname);
 
     // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword/VerifyEmail, Blog)
-    const noLayoutRoutes = ['/', '/pricing', '/developers', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
+    const noLayoutRoutes = ['/', '/pricing', '/developers', '/faq', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
     const isNoLayoutRoute = noLayoutRoutes.some(route => {
         const path = location.pathname.toLowerCase();
         const routeLower = route.toLowerCase();
@@ -161,6 +162,8 @@ function PagesContent() {
                 <Route path="/Pricing" element={<Pricing />} />
                 <Route path="/developers" element={<Developers />} />
                 <Route path="/Developers" element={<Developers />} />
+                <Route path="/faq" element={<Faq />} />
+                <Route path="/Faq" element={<Faq />} />
                 <Route path="/developers/blog" element={<DevelopersBlog />} />
                 <Route path="/developers/blog/:slugOrId" element={<BlogPost />} />
                 <Route path="/login" element={<Login />} />

@@ -650,13 +650,20 @@ export default function Layout({ children, currentPageName }) {
 
             <div className="min-w-0">
               <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">Legal</h3>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <Link 
                   to={createPageUrl('Privacy')}
                   className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
                 >
                   <Shield className="w-4 h-4 flex-shrink-0" />
                   <span>Privacy Policy</span>
+                </Link>
+                <Link
+                  to="/faq"
+                  className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                >
+                  <MessageSquareText className="w-4 h-4 flex-shrink-0" />
+                  <span>FAQ</span>
                 </Link>
                 <Link 
                   to={createPageUrl('Disclaimer')}

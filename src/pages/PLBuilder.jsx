@@ -46,6 +46,13 @@ export default function PLBuilder() {
       return;
     }
 
+    if (!backendConnected) {
+      const msg = backendError || 'Backend server is not connected. Please try again after the backend is online.';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -57,6 +64,16 @@ export default function PLBuilder() {
             candidateId: selectedCandidateId || preview?.candidate_id || undefined,
           })
         : await backendApi.files.generatePL(prompt, context);
+
+      if (!blob || typeof blob.size !== 'number' || blob.size <= 0) {
+        throw new Error('P&L generation returned an empty file. Please try again or check backend logs.');
+      }
+
+      const ct = String(blob.type || '').toLowerCase();
+      const isExcel = ct.includes('spreadsheetml') || ct.includes('ms-excel') || ct === 'application/octet-stream' || ct === '';
+      if (!isExcel) {
+        throw new Error('P&L generation did not return an Excel file. Please check backend configuration/deployment.');
+      }
       
       // Create download link
       const url = window.URL.createObjectURL(blob);
@@ -75,8 +92,9 @@ export default function PLBuilder() {
       setPreviewError(null);
       setSelectedCandidateId('');
     } catch (err) {
-      setError(err.message);
-      toast.error(err.message || 'Failed to generate P&L statement');
+      const msg = err?.message ? String(err.message) : 'Failed to generate P&L statement';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }

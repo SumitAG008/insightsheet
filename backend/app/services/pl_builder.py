@@ -177,6 +177,43 @@ class PLBuilderService:
         try:
             extracted = self._extract_pl_from_excel_bytes(filename=filename, content=content, candidate_id=candidate_id)
 
+            if extracted and extracted.get("values_by_category"):
+                period_count = int(extracted.get("period_count") or 0)
+                line_item_count = int(extracted.get("line_item_count") or 0)
+                has_revenue = bool(extracted.get("has_revenue"))
+                has_expense = bool(extracted.get("has_expense"))
+
+                nonzero_cells = 0
+                values_by_category = extracted.get("values_by_category") or {}
+                if isinstance(values_by_category, dict):
+                    for _k, vals in values_by_category.items():
+                        if not isinstance(vals, list):
+                            continue
+                        for v in vals:
+                            if isinstance(v, (int, float)) and v != 0:
+                                nonzero_cells += 1
+
+                conf = self._compute_extraction_confidence(
+                    period_count=period_count,
+                    line_item_count=line_item_count,
+                    nonzero_cells=nonzero_cells,
+                    has_revenue=has_revenue,
+                    has_expense=has_expense,
+                )
+
+                # Strict mode (Option A): if we are not confident, require explicit user confirmation
+                # via candidate_id selection from preview before generating an output workbook.
+                if float(conf.get("confidence") or 0.0) < 0.75 and not candidate_id:
+                    reasons = conf.get("reasons") or []
+                    reason_text = "; ".join([str(r) for r in reasons if r])
+                    msg = (
+                        "Could not confidently build a P&L from this upload (strict mode). "
+                        "Use Preview to select the correct detected table, then Generate again."
+                    )
+                    if reason_text:
+                        msg = f"{msg} Reasons: {reason_text}"
+                    raise Exception(msg)
+
             spec = await self._parse_pl_request(prompt or "", user_context)
 
             if extracted:
@@ -189,6 +226,8 @@ class PLBuilderService:
                     spec["expense_categories"] = extracted["expense_categories"]
                 if extracted.get("values_by_category"):
                     spec["values_by_category"] = extracted["values_by_category"]
+
+            spec = self._normalize_spec_from_extraction(spec)
 
             if llm_assist_headers_only:
                 spec = await self._apply_llm_header_assist(spec)
@@ -209,6 +248,69 @@ class PLBuilderService:
         except Exception as e:
             logger.error(f"Error generating P&L from uploaded Excel: {str(e)}")
             raise Exception(f"P&L generation failed: {str(e)}")
+
+    def _normalize_spec_from_extraction(self, spec: Dict[str, Any]) -> Dict[str, Any]:
+        values_by_category = spec.get("values_by_category") or {}
+        if not isinstance(values_by_category, dict) or not values_by_category:
+            return spec
+
+        extracted_items: List[str] = []
+        for k in values_by_category.keys():
+            if k is None:
+                continue
+            s = str(k).strip()
+            if not s:
+                continue
+            extracted_items.append(s)
+
+        if not extracted_items:
+            return spec
+
+        revenue = spec.get("revenue_categories") or []
+        expense = spec.get("expense_categories") or []
+
+        if not isinstance(revenue, list):
+            revenue = []
+        if not isinstance(expense, list):
+            expense = []
+
+        revenue = [str(x).strip() for x in revenue if x is not None and str(x).strip()]
+        expense = [str(x).strip() for x in expense if x is not None and str(x).strip()]
+
+        rev_set = set([x.lower() for x in revenue])
+        exp_set = set([x.lower() for x in expense])
+
+        if not revenue and not expense:
+            for item in extracted_items:
+                bucket = self._classify_line_item(item)
+                if bucket == "revenue":
+                    revenue.append(item)
+                elif bucket == "expense":
+                    expense.append(item)
+                else:
+                    expense.append(item)
+        else:
+            for item in extracted_items:
+                key = item.lower()
+                if key in rev_set or key in exp_set:
+                    continue
+                bucket = self._classify_line_item(item)
+                if bucket == "revenue":
+                    revenue.append(item)
+                    rev_set.add(key)
+                elif bucket == "expense":
+                    expense.append(item)
+                    exp_set.add(key)
+                else:
+                    expense.append(item)
+                    exp_set.add(key)
+
+        revenue = self._dedupe_keep_order(revenue)
+        expense = self._dedupe_keep_order(expense)
+
+        spec["revenue_categories"] = revenue
+        spec["expense_categories"] = expense
+        return spec
 
     async def _parse_pl_request(
         self,

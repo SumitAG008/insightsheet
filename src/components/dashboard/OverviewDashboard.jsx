@@ -156,6 +156,11 @@ export default function OverviewDashboard({
   const [exporting, setExporting] = useState(false);
   const [excelHelpOpen, setExcelHelpOpen] = useState(false);
 
+  const safeData = useMemo(() => {
+    if (data && Array.isArray(data.headers) && Array.isArray(data.rows)) return data;
+    return { headers: [], rows: [] };
+  }, [data]);
+
   const trustedSheets = (universalAnalysis?.diagnostics?.sheets || []).filter(Boolean);
   const blockedSheets = trustedSheets.filter((s) => s?.risk_level === 'blocked');
   const warningSheets = trustedSheets.filter((s) => s?.risk_level === 'warning');
@@ -174,15 +179,21 @@ export default function OverviewDashboard({
     }
   }, [clarifySheets, clarifySheetName]);
 
-  const inferred = useMemo(() => inferColumns(data), [data]);
+  const inferred = useMemo(() => {
+    try {
+      return inferColumns(safeData);
+    } catch {
+      return { headers: safeData.headers || [], numeric: [], text: [], date: [] };
+    }
+  }, [safeData]);
 
   const arrowTable = useMemo(() => {
     try {
-      return buildArrowTable(data, { maxRows: 200000 });
+      return buildArrowTable(safeData, { maxRows: 200000 });
     } catch {
       return null;
     }
-  }, [data]);
+  }, [safeData]);
 
   const kpis = useMemo(() => {
     if (!arrowTable) return null;
@@ -222,7 +233,7 @@ export default function OverviewDashboard({
   }, [arrowTable, chosen.valueColumn]);
 
   const trendData = useMemo(() => {
-    const rows = Array.isArray(data?.rows) ? data.rows : [];
+    const rows = Array.isArray(safeData?.rows) ? safeData.rows : [];
     if (chosen.dateColumn) return buildTimeSeries(rows, chosen.dateColumn, chosen.valueColumn, { maxPoints: 24 });
 
     // If this is a wide matrix with period headers (e.g. Jan-25..Dec-25), build a proper month series.
@@ -231,7 +242,7 @@ export default function OverviewDashboard({
 
     // Correctness-only: do not render index-based trends (they are often misleading).
     return [];
-  }, [data, chosen.dateColumn, chosen.valueColumn, chosen.categoryColumn, inferred?.headers]);
+  }, [safeData, chosen.dateColumn, chosen.valueColumn, chosen.categoryColumn, inferred?.headers]);
 
   const missingPct = useMemo(() => {
     if (!kpis) return 0;
@@ -282,12 +293,18 @@ export default function OverviewDashboard({
 
   useEffect(() => {
     if (rootRef.current) rootRef.current.scrollTop = 0;
-  }, [data]);
-
-  if (!data) return null;
+  }, [safeData]);
 
   return (
     <div ref={rootRef} id="overview-root" className="space-y-6">
+      {!data ? (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
+          <div className="text-lg font-bold text-slate-900 dark:text-white">Upload a spreadsheet to see your Overview</div>
+          <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            Once you upload a file, this page will show KPIs, trends, and (when possible) an auto-detected P&amp;L summary.
+          </div>
+        </div>
+      ) : null}
       {(universalError || universalAnalysis) ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
           <div className="flex items-center justify-between gap-3 mb-2">
@@ -582,7 +599,7 @@ export default function OverviewDashboard({
         </div>
       ) : null}
 
-      {pnl && (
+      {pnl ? (
         <div className="grid lg:grid-cols-5 gap-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
             <div className="text-xs text-slate-500 dark:text-slate-400">Revenue</div>
@@ -623,13 +640,21 @@ export default function OverviewDashboard({
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Auto-detected P&L</div>
           </div>
         </div>
+      ) : (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
+          <div className="text-sm font-semibold text-slate-900 dark:text-white">P&amp;L summary</div>
+          <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            We couldn't auto-detect Finance columns (Revenue/Expenses/COGS) in this sheet yet. If your headers include finance terms,
+            try renaming columns (e.g. "Revenue", "Expenses", "COGS").
+          </div>
+        </div>
       )}
 
       <div className="grid lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
           <div className="text-xs text-slate-500 dark:text-slate-400">Rows</div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-white">{kpis ? kpis.numRows : (data.rows || []).length}</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Columns: {kpis ? kpis.numCols : (data.headers || []).length}</div>
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">{kpis ? kpis.numRows : (safeData.rows || []).length}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Columns: {kpis ? kpis.numCols : (safeData.headers || []).length}</div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
@@ -848,7 +873,7 @@ export default function OverviewDashboard({
             </div>
             <div className="text-sm text-slate-700 dark:text-slate-300 space-y-2">
               <div>
-                <span className="font-semibold">Active sheet columns:</span> {(data.headers || []).filter(Boolean).length}
+                <span className="font-semibold">Active sheet columns:</span> {(safeData.headers || []).filter(Boolean).length}
               </div>
               <div>
                 <span className="font-semibold">Best value column:</span> {chosen.valueColumn || '—'}

@@ -474,9 +474,20 @@ export default function OverviewDashboard({
                       <div key={`${s?.sheet || 'sheet'}-${idx}`} className="text-sm">
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <span className="font-semibold text-slate-900 dark:text-white">{s?.sheet || `Sheet ${idx + 1}`}</span>
-                            {s?.pattern ? <span className="text-slate-600 dark:text-slate-400">{` • ${s.pattern}`}</span> : null}
-                            {s?.region ? <span className="text-slate-500 dark:text-slate-400">{` • ${s.region}`}</span> : null}
+                            <span
+                              className="font-semibold text-slate-900 dark:text-white"
+                              title={s?.region ? `Region: ${s.region}` : undefined}
+                            >
+                              {s?.sheet || `Sheet ${idx + 1}`}
+                            </span>
+                            {s?.pattern ? (
+                              <span
+                                className="text-slate-600 dark:text-slate-400"
+                                title={s?.region ? `Region: ${s.region}` : undefined}
+                              >
+                                {` • ${s.pattern}`}
+                              </span>
+                            ) : null}
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             {typeof s?.confidence === 'number' ? (

@@ -8,6 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
+  # GHCR requires lowercase image names. github.repository can include uppercase letters.
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
@@ -101,23 +102,25 @@ jobs:
       - name: Build and push backend
         working-directory: ./backend
         run: |
-          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }} .
-          docker build -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest .
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:${{ github.sha }}
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:latest
+          IMAGE_REPO=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          docker build -t ${{ env.REGISTRY }}/$IMAGE_REPO-backend:${{ github.sha }} .
+          docker build -t ${{ env.REGISTRY }}/$IMAGE_REPO-backend:latest .
+          docker push ${{ env.REGISTRY }}/$IMAGE_REPO-backend:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/$IMAGE_REPO-backend:latest
       
       - name: Build and push frontend
         run: |
-          docker build -f Dockerfile.frontend -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }} .
-          docker build -f Dockerfile.frontend -t ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest .
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:${{ github.sha }}
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:latest
+          IMAGE_REPO=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          docker build -f Dockerfile.frontend -t ${{ env.REGISTRY }}/$IMAGE_REPO-frontend:${{ github.sha }} .
+          docker build -f Dockerfile.frontend -t ${{ env.REGISTRY }}/$IMAGE_REPO-frontend:latest .
+          docker push ${{ env.REGISTRY }}/$IMAGE_REPO-frontend:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/$IMAGE_REPO-frontend:latest
 
   # Deploy to Kubernetes
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && secrets.KUBECONFIG != ''
     
     steps:
       - uses: actions/checkout@v4

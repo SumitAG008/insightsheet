@@ -922,6 +922,7 @@ export const backendApi = {
 
 // Export meldraAi with backward compatibility layer
 meldraAi.auth = backendApi.auth;
+meldraAi.subscriptions = backendApi.subscriptions;
 meldraAi.admin = backendApi.admin;
 meldraAi.files = backendApi.files;
 meldraAi.integrations.Core.InvokeLLM = backendApi.llm.invoke;

@@ -496,7 +496,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                             {verification_link}
                         </div>
                         
-                        <p><strong>⏰ This verification link will expire in 24 hours.</strong></p>
+                        <p><strong>⏰ This verification link will expire in 1 hour.</strong></p>
                         
                         <p>If you didn't create an account with Meldra, please ignore this email. No account will be created.</p>
                         
@@ -534,7 +534,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
             Click this secure link to verify your email:
             {verification_link}
             
-            This verification link will expire in 24 hours.
+            This verification link will expire in 1 hour.
             
             If you didn't create an account with Meldra, please ignore this email. No account will be created.
             
@@ -680,7 +680,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                         {verification_link}
                     </div>
                     
-                    <p><strong>⏰ This verification link will expire in 24 hours.</strong></p>
+                    <p><strong>⏰ This verification link will expire in 1 hour.</strong></p>
                     
                     <p>If you didn't create an account with Meldra, please ignore this email. No account will be created.</p>
                     
@@ -716,7 +716,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
         Click this secure link to verify your email:
         {verification_link}
         
-        This verification link will expire in 24 hours.
+        This verification link will expire in 1 hour.
         
         If you didn't create an account with Meldra, please ignore this email. No account will be created.
         
@@ -793,7 +793,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                         {verification_link}
                     </div>
                     
-                    <p><strong>⏰ This verification link will expire in 24 hours.</strong></p>
+                    <p><strong>⏰ This verification link will expire in 1 hour.</strong></p>
                     
                     <p>If you didn't create an account with Meldra, please ignore this email. No account will be created.</p>
                     
@@ -829,7 +829,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
         Click this secure link to verify your email:
         {verification_link}
         
-        This verification link will expire in 24 hours.
+        This verification link will expire in 1 hour.
         
         If you didn't create an account with Meldra, please ignore this email. No account will be created.
         

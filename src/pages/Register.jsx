@@ -105,15 +105,6 @@ export default function Register() {
                 <AlertDescription className="text-red-700">{error}</AlertDescription>
               </Alert>
             )}
-            {success && (
-              <Alert className="bg-blue-50 border-blue-200">
-                <AlertDescription className="text-blue-800">
-                  <strong>Registration successful!</strong> A verification email has been sent to <strong>{formData.email}</strong>. 
-                  Please check your inbox (and spam folder) and click the verification link to activate your account. 
-                  You'll need to verify your email before you can login. Redirecting to login page...
-                </AlertDescription>
-              </Alert>
-            )}
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Full Name</label>
               <Input

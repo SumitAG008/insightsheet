@@ -96,21 +96,21 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-purple-950 to-slate-950 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-xl">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl p-8 shadow-xl">
         <div className="text-center mb-6">
           <div className="flex justify-center mb-4">
             {status === 'verifying' && (
-              <Loader2 className="w-16 h-16 text-purple-400 animate-spin" />
+              <Loader2 className="w-16 h-16 text-blue-600 animate-spin" />
             )}
             {status === 'success' && (
-              <CheckCircle className="w-16 h-16 text-emerald-400" />
+              <CheckCircle className="w-16 h-16 text-emerald-600" />
             )}
             {(status === 'error' || status === 'expired') && (
-              <XCircle className="w-16 h-16 text-red-400" />
+              <XCircle className="w-16 h-16 text-red-600" />
             )}
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">
             {status === 'verifying' && 'Verifying Email...'}
             {status === 'success' && 'Email Verified!'}
             {(status === 'error' || status === 'expired') && 'Verification Failed'}
@@ -126,7 +126,7 @@ export default function VerifyEmail() {
               : 'bg-blue-500/10 border-blue-500/30'
           }`}
         >
-          <AlertDescription className="text-slate-300">
+          <AlertDescription className="text-slate-700">
             {status === 'verifying' && 'Please wait while we verify your email address...'}
             {status === 'success' && message}
             {(status === 'error' || status === 'expired') && message}
@@ -135,11 +135,11 @@ export default function VerifyEmail() {
 
         {status === 'success' && (
           <div className="text-center">
-            <p className="text-slate-400 mb-4">
+            <p className="text-slate-600 mb-4">
               Redirecting to login page in 3 seconds...
             </p>
             <Link to="/login">
-              <Button className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                 Go to Login
               </Button>
             </Link>
@@ -149,7 +149,7 @@ export default function VerifyEmail() {
         {(status === 'error' || status === 'expired') && (
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Email Address
               </label>
               <input
@@ -157,18 +157,18 @@ export default function VerifyEmail() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
-                className="w-full px-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <Button
               onClick={resendVerification}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
               <Mail className="w-4 h-4 mr-2" />
               Resend Verification Email
             </Button>
             <Link to="/login" className="block text-center">
-              <Button variant="outline" className="w-full border-slate-700 text-slate-300">
+              <Button variant="outline" className="w-full border-slate-300 text-slate-700 hover:bg-white">
                 Back to Login
               </Button>
             </Link>

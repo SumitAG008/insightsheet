@@ -689,7 +689,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
 
         # Generate verification token
         verification_token = secrets.token_urlsafe(32)
-        verification_expires = datetime.utcnow() + timedelta(hours=24)  # Token expires in 24 hours
+        verification_expires = datetime.utcnow() + timedelta(hours=1)  # Token expires in 1 hour
         
         # Create new user (unverified by default)
         hashed_password = get_password_hash(user_data.password)
@@ -1178,7 +1178,7 @@ async def resend_verification(request: ForgotPasswordRequest, db: Session = Depe
         
         # Generate new verification token
         verification_token = secrets.token_urlsafe(32)
-        verification_expires = datetime.utcnow() + timedelta(hours=24)  # Token expires in 24 hours
+        verification_expires = datetime.utcnow() + timedelta(hours=1)  # Token expires in 1 hour
         
         # Update user with new token
         if hasattr(user, 'verification_token'):

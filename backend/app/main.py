@@ -550,7 +550,13 @@ def _enforce_ai_quota(subscription: Subscription) -> None:
             raise HTTPException(status_code=429, detail="AI token limit reached. Upgrade to increase limits.")
 
 
-def _consume_ai_quota(db: Session, subscription: Subscription, tokens_used: int) -> None:
+def _consume_ai_quota(db: Session, subscription: Subscription, *args) -> None:
+    if len(args) == 1:
+        tokens_used = args[0]
+    elif len(args) >= 3:
+        tokens_used = args[2]
+    else:
+        tokens_used = 0
     if subscription.ai_queries_limit is not None and subscription.ai_queries_limit >= 0:
         inc = int(tokens_used or 0)
         if inc < 0:

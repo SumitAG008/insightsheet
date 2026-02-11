@@ -128,7 +128,7 @@ export default function AdvancedFilter({ data, onFilteredData }) {
             onClick={clearFilters}
             variant="outline"
             size="sm"
-            className="border-blue-700/60 text-blue-100 hover:bg-blue-900/30"
+            className="bg-black/40 border-blue-700/60 text-white font-bold hover:bg-black/55"
           >
             Clear
           </Button>
@@ -164,12 +164,12 @@ export default function AdvancedFilter({ data, onFilteredData }) {
       {/* Column Filters */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-blue-100">Column Filters</label>
+          <label className="text-sm font-bold text-blue-50">Column Filters</label>
           <Button
             onClick={addFilter}
             variant="outline"
             size="sm"
-            className="border-blue-700/60 text-blue-100 hover:bg-blue-900/30"
+            className="bg-black/40 border-blue-700/60 text-white font-bold hover:bg-black/55"
           >
             <Plus className="w-4 h-4 mr-1" />
             Add Filter

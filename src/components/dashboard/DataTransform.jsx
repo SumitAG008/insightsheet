@@ -588,7 +588,7 @@ export default function DataTransform({ data, onDataUpdate }) {
     <div className="relative group">
       <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-cyan-600/10 rounded-2xl blur-xl" />
 
-      <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+      <div className="relative bg-blue-900/80 backdrop-blur-xl border border-blue-700/40 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-blue-200 flex items-center gap-2">
             <Calculator className="w-5 h-5 text-blue-400" />
@@ -603,15 +603,15 @@ export default function DataTransform({ data, onDataUpdate }) {
 
           {/* Sheet Selection (Excel Workbooks) */}
           {hasWorkbook && sheetNames.length > 1 && (
-            <div className="p-4 bg-slate-800/30 border border-slate-700/50 rounded-lg">
-              <label className="text-sm font-semibold text-slate-200 mb-2 block">Active Sheet</label>
+            <div className="p-4 bg-blue-800/20 border border-blue-700/40 rounded-lg">
+              <label className="text-sm font-bold text-blue-50 mb-2 block">Active Sheet</label>
               <Select value={activeSheetName} onValueChange={handleSheetChange}>
-                <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                <SelectTrigger className="bg-blue-800/40 border-blue-700/50 text-blue-50 hover:bg-blue-800/50">
                   <SelectValue placeholder="Select a sheet" className="text-white" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
+                <SelectContent className="bg-blue-900 border-blue-700/50">
                   {sheetNames.map((s) => (
-                    <SelectItem key={s} value={s} className="text-white hover:bg-slate-700">{s}</SelectItem>
+                    <SelectItem key={s} value={s} className="text-white hover:bg-blue-800/40">{s}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -619,8 +619,8 @@ export default function DataTransform({ data, onDataUpdate }) {
           )}
 
           {/* Operation */}
-          <div className="p-4 bg-slate-800/30 border border-slate-700/50 rounded-lg">
-            <label className="text-sm font-semibold text-slate-200 mb-2 block">Operation</label>
+          <div className="p-4 bg-blue-800/20 border border-blue-700/40 rounded-lg">
+            <label className="text-sm font-bold text-blue-50 mb-2 block">Operation</label>
 
             {(!hasWorkbook || sheetNames.length < 2) && (
               <div className="mb-3 p-3 rounded-md border border-amber-500/30 bg-amber-500/10 text-amber-200 text-xs">
@@ -638,7 +638,7 @@ export default function DataTransform({ data, onDataUpdate }) {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
-                <label className="text-xs font-semibold text-slate-300 mb-1 block">Mathematics</label>
+                <label className="text-xs font-bold text-blue-100 mb-1 block">Mathematics</label>
                 <Select value={mathOp} onValueChange={(v) => {
                   setMathOp(v);
                   setLookupOp('');
@@ -647,62 +647,62 @@ export default function DataTransform({ data, onDataUpdate }) {
                   setExcelOp(v);
                   setOperation(v);
                 }}>
-                  <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                  <SelectTrigger className="bg-blue-800/40 border-blue-700/50 text-blue-50 hover:bg-blue-800/50">
                     <SelectValue placeholder="Select math" className="text-white" />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectContent className="bg-blue-900 border-blue-700/50">
                     {mathOps.map((k) => (
-                      <SelectItem key={k} value={k} className="text-white hover:bg-slate-700">{opMeta[k]?.label || k}</SelectItem>
+                      <SelectItem key={k} value={k} className="text-white hover:bg-blue-800/40">{opMeta[k]?.label || k}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-300 mb-1 block">Lookups</label>
+                <label className="text-xs font-bold text-blue-100 mb-1 block">Lookups</label>
                 <Select value={lookupOp} onValueChange={(v) => {
                   setLookupOp(v);
                   setConditionalOp('');
                   setOpCategory('lookups');
                   setExcelOp(v);
                 }}>
-                  <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                  <SelectTrigger className="bg-blue-800/40 border-blue-700/50 text-blue-50 hover:bg-blue-800/50">
                     <SelectValue placeholder={hasWorkbook && sheetNames.length > 1 ? 'Select lookup' : 'Upload Excel with 2+ sheets'} className="text-white" />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectContent className="bg-blue-900 border-blue-700/50">
                     {(hasWorkbook && sheetNames.length > 1 ? lookupOps : []).map((k) => (
-                      <SelectItem key={k} value={k} className="text-white hover:bg-slate-700">{opMeta[k]?.label || k}</SelectItem>
+                      <SelectItem key={k} value={k} className="text-white hover:bg-blue-800/40">{opMeta[k]?.label || k}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-300 mb-1 block">Conditional</label>
+                <label className="text-xs font-bold text-blue-100 mb-1 block">Conditional</label>
                 <Select value={conditionalOp} onValueChange={(v) => {
                   setConditionalOp(v);
                   setLookupOp('');
                   setOpCategory('conditional');
                   setExcelOp(v);
                 }}>
-                  <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
+                  <SelectTrigger className="bg-blue-800/40 border-blue-700/50 text-blue-50 hover:bg-blue-800/50">
                     <SelectValue placeholder="Select conditional" className="text-white" />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700">
+                  <SelectContent className="bg-blue-900 border-blue-700/50">
                     {conditionalOps.map((k) => (
-                      <SelectItem key={k} value={k} className="text-white hover:bg-slate-700">{opMeta[k]?.label || k}</SelectItem>
+                      <SelectItem key={k} value={k} className="text-white hover:bg-blue-800/40">{opMeta[k]?.label || k}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="mt-2 text-xs text-slate-400">{opMeta[excelOp]?.meaning || ''}</div>
+            <div className="mt-2 text-xs text-blue-200/70">{opMeta[excelOp]?.meaning || ''}</div>
 
             {(excelOp === 'xlookup' || excelOp === 'vlookup' || excelOp === 'hlookup') && (
               <div className="mt-3 space-y-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 mb-1 block">Lookup Value Column (in active sheet)</label>
+                  <label className="text-xs font-bold text-blue-100 mb-1 block">Lookup Value Column (in active sheet)</label>
                   <Select value={xLookupValueCol} onValueChange={setXLookupValueCol}>
                     <SelectTrigger className="bg-slate-800/50 border-slate-600 text-white hover:bg-slate-700/50">
                       <SelectValue placeholder="Select column" className="text-white" />

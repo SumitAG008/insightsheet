@@ -1223,7 +1223,11 @@ export default function EnhancedChartPanel({ data }) {
           {Object.entries(CHART_CATEGORIES).map(([key, category]) => {
             const Icon = category.icon;
             return (
-              <TabsTrigger key={key} value={key} className="data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <TabsTrigger
+                key={key}
+                value={key}
+                className="text-blue-100 font-bold data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+              >
                 <Icon className="w-4 h-4 mr-2" />
                 {category.name}
               </TabsTrigger>

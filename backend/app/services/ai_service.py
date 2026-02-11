@@ -39,6 +39,23 @@ async def invoke_llm(
         str or dict: LLM response (text or JSON)
     """
     try:
+        effective_model = (model or os.getenv("AI_ASSISTANT_MODEL") or "gpt-4o-mini").strip() or "gpt-4o-mini"
+        try:
+            env_max_tokens = int((os.getenv("AI_ASSISTANT_MAX_TOKENS") or "").strip() or "0")
+        except Exception:
+            env_max_tokens = 0
+        effective_max_tokens = max_tokens if isinstance(max_tokens, int) and max_tokens > 0 else 2000
+        if env_max_tokens > 0:
+            effective_max_tokens = min(effective_max_tokens, env_max_tokens)
+
+        # Defensive prompt cap to reduce TPM/rate-limit errors.
+        # Approx: 1 token ~ 4 chars in English, so 60k chars can be ~15k tokens.
+        # Keep well below typical TPM limits.
+        prompt_text = prompt or ""
+        max_prompt_chars = int((os.getenv("AI_ASSISTANT_MAX_PROMPT_CHARS") or "24000").strip() or "24000")
+        if max_prompt_chars > 0 and len(prompt_text) > max_prompt_chars:
+            prompt_text = prompt_text[:max_prompt_chars] + "\n\n[Context trimmed to fit token budget.]"
+
         messages = [
             {
                 "role": "system",
@@ -51,17 +68,17 @@ async def invoke_llm(
             },
             {
                 "role": "user",
-                "content": prompt
+                "content": prompt_text
             }
         ]
 
         # JSON response mode
         if response_schema:
             response = openai.chat.completions.create(
-                model=model,
+                model=effective_model,
                 messages=messages,
                 response_format={"type": "json_object"},
-                max_tokens=max_tokens
+                max_tokens=effective_max_tokens
             )
             content = response.choices[0].message.content
             if not content:
@@ -74,9 +91,9 @@ async def invoke_llm(
         # Text response mode
         else:
             response = openai.chat.completions.create(
-                model=model,
+                model=effective_model,
                 messages=messages,
-                max_tokens=max_tokens
+                max_tokens=effective_max_tokens
             )
             return response.choices[0].message.content
 

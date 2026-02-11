@@ -592,6 +592,9 @@ class LLMRequest(BaseModel):
     prompt: str
     add_context_from_internet: bool = False
     response_json_schema: Optional[Dict[str, Any]] = None
+    model: Optional[str] = None
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
 
 
 class ImageGenerationRequest(BaseModel):
@@ -615,9 +618,9 @@ class ChartSuggestionRequest(BaseModel):
 
 
 class TransformRequest(BaseModel):
-    columns: List[Dict[str, Any]]
-    sample_rows: Optional[List[Dict]] = None
     instruction: str
+    columns: List[Dict[str, str]]
+    sample_rows: Optional[List[Dict]] = None
 
 
 class ExplainSqlRequest(BaseModel):
@@ -2180,7 +2183,9 @@ async def invoke_llm_endpoint(
             response = await invoke_llm(
                 prompt=request.prompt,
                 add_context=request.add_context_from_internet,
-                response_schema=request.response_json_schema
+                response_schema=request.response_json_schema,
+                model=request.model or os.getenv("AI_ASSISTANT_MODEL", "gpt-4o-mini"),
+                max_tokens=int(request.max_tokens) if request.max_tokens is not None else int(os.getenv("AI_ASSISTANT_MAX_TOKENS", "1200") or "1200"),
             )
         except Exception as llm_error:
             logger.error(f"LLM invocation failed: {str(llm_error)}")

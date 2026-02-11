@@ -21,6 +21,20 @@ export default function AgenticAI() {
   const [data, setData] = useState(null);
   const [docFile, setDocFile] = useState(null);
 
+  const truncateText = (s, maxLen) => {
+    const t = s == null ? '' : String(s);
+    if (!maxLen || maxLen <= 0) return t;
+    return t.length > maxLen ? (t.slice(0, maxLen) + '\n\n[Context trimmed to fit token budget.]') : t;
+  };
+
+  const safeJson = (obj, maxChars) => {
+    try {
+      return truncateText(JSON.stringify(obj, null, 2), maxChars);
+    } catch (e) {
+      return truncateText(String(obj ?? ''), maxChars);
+    }
+  };
+
   const inferDocConversion = (prompt, fileName) => {
     const p = (prompt || '').toLowerCase();
     const ext = (fileName || '').split('.').pop()?.toLowerCase();
@@ -163,6 +177,15 @@ Respond in markdown with short headings.`;
       }
 
       // STEP 1: Agent plans the task
+      const maxColsForPrompt = 40;
+      const promptHeaders = (data.headers || []).slice(0, maxColsForPrompt);
+      const maxRowsForPlanSample = 3;
+      const planSample = (data.rows || []).slice(0, maxRowsForPlanSample).map((row) => {
+        const r = {};
+        for (const h of promptHeaders) r[h] = row?.[h];
+        return r;
+      });
+
       const planPrompt = `You are an autonomous AI agent for data analysis.
 
 Task: "${task}"
@@ -170,8 +193,8 @@ Task: "${task}"
 Available data:
 - ${data.rows.length} rows
 - ${data.headers.length} columns
-- Columns: ${data.headers.join(', ')}
-- Sample data: ${JSON.stringify(data.rows.slice(0, 3), null, 2)}
+- Columns: ${promptHeaders.join(', ')}${(data.headers || []).length > promptHeaders.length ? ' (trimmed)' : ''}
+- Sample data: ${safeJson(planSample, 6000)}
 
 Create a step-by-step execution plan. For each step, specify:
 1. Action type (analyze|clean|transform|calculate|visualize|report)
@@ -191,6 +214,8 @@ Return JSON:
 
       const planResponse = await backendApi.llm.invoke(planPrompt, {
         addContext: false,
+        model: 'gpt-4o-mini',
+        max_tokens: 900,
         responseSchema: {
           type: "object",
           properties: {
@@ -267,12 +292,16 @@ Return JSON:
       }
 
       // STEP 3: Generate final report
+      const cappedResultsForPrompt = results.map((r) => {
+        const out = truncateText(r.output ?? '', 1200);
+        return { ...r, output: out };
+      });
       const reportPrompt = `Summarize the execution of this AI agent task:
 
 Original Task: "${task}"
 
 Steps Executed:
-${results.map(r => `${r.step}. ${r.description}\n   Result: ${r.output}`).join('\n')}
+${cappedResultsForPrompt.map(r => `${r.step}. ${r.description}\n   Result: ${r.output}`).join('\n')}
 
 Create a clear, executive summary in markdown format with:
 1. What was done
@@ -281,7 +310,9 @@ Create a clear, executive summary in markdown format with:
 4. Next steps`;
 
       const finalReportResponse = await backendApi.llm.invoke(reportPrompt, {
-        addContext: false
+        addContext: false,
+        model: 'gpt-4o-mini',
+        max_tokens: 900,
       });
       const finalReport = finalReportResponse.response;
 
@@ -315,18 +346,26 @@ Create a clear, executive summary in markdown format with:
 
   // EXECUTION FUNCTIONS
   const executeAnalysis = async (step, data) => {
-    const sampleData = data.rows.slice(0, 50);
+    const maxColsForPrompt = 30;
+    const promptHeaders = (data.headers || []).slice(0, maxColsForPrompt);
+    const sampleData = (data.rows || []).slice(0, 20).map((row) => {
+      const r = {};
+      for (const h of promptHeaders) r[h] = row?.[h];
+      return r;
+    });
     const analysisPrompt = `Analyze this data and provide insights:
 
 ${step.description}
 
 Data sample:
-${JSON.stringify(sampleData, null, 2)}
+${safeJson(sampleData, 12000)}
 
 Provide specific, actionable insights.`;
 
     const insightsResponse = await backendApi.llm.invoke(analysisPrompt, {
-      addContext: false
+      addContext: false,
+      model: 'gpt-4o-mini',
+      max_tokens: 900,
     });
 
     return { success: true, output: insightsResponse.response };

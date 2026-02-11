@@ -5,12 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Check, Crown, Sparkles, Zap, Star, CreditCard, AlertCircle, BarChart3, Brain, Database, FileSpreadsheet, FileText, Shield, ArrowRight, TrendingUp, FileCheck, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Pricing() {
   const [user, setUser] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
-  const [billingCycle, setBillingCycle] = useState('monthly'); // monthly, quarterly, yearly
 
   useEffect(() => {
     loadUser();
@@ -25,37 +23,6 @@ export default function Pricing() {
     }
   };
 
-  // Pricing tiers with different billing cycles (in GBP)
-  const getPricing = (cycle) => {
-    if (cycle === 'monthly') {
-      return {
-        monthly: 20,
-        display: '£20',
-        period: '/month',
-        total: '£20/month',
-        savings: null
-      };
-    } else if (cycle === 'quarterly') {
-      return {
-        monthly: 19,
-        display: '£19',
-        period: '/month',
-        total: '£57 billed quarterly',
-        savings: '5% off'
-      };
-    } else { // yearly
-      return {
-        monthly: 18,
-        display: '£18',
-        period: '/month',
-        total: '£216 billed annually',
-        savings: '10% off'
-      };
-    }
-  };
-
-  const pricing = getPricing(billingCycle);
-
   // Show both tiers on landing page
   const plans = [
     {
@@ -67,37 +34,59 @@ export default function Pricing() {
       icon: Sparkles,
       color: 'from-gray-600 to-gray-700',
       features: [
-        'Files up to 10MB',
-        '50 jobs per month',
-        '5 questions to your data per day',
-        '3 chart types',
+        '20 jobs per month',
+        '2 questions per day',
+        'Basic chart types',
         'Basic clean & filter',
-        'Export to CSV'
+        'Export to CSV',
+        'Files up to 10MB',
       ]
     },
     {
-      id: 'premium',
+      id: 'premium_quarterly',
       name: 'Premium',
-      price: pricing.monthly,
-      priceDisplay: pricing.display,
-      period: pricing.period,
-      totalDisplay: pricing.total,
-      savings: pricing.savings,
+      price: 19,
+      priceDisplay: '£19',
+      period: '/month',
+      totalDisplay: '£57 billed quarterly',
+      savings: '5% off',
       icon: Crown,
       color: 'from-teal-600 to-sky-600',
       popular: true,
       features: [
-        'No file size limit',
-        'Unlimited jobs',
-        'Unlimited questions to your data',
-        'All chart types (P&L, forecasts, and more)',
+        '200MB file size limit',
+        '200 jobs',
+        '300 questions per month',
+        '400 chart types per month',
         'Clean & reshape data without formulas',
         'AI suggests formulas when you need them',
         'Priority support',
         'Export to Excel, Word, PDF, and more',
         'Import Excel and CSV directly'
       ]
-    }
+    },
+    {
+      id: 'premium_yearly',
+      name: 'Premium',
+      price: 18,
+      priceDisplay: '£18',
+      period: '/month',
+      totalDisplay: '£216 billed annually',
+      savings: '10% off',
+      icon: Crown,
+      color: 'from-teal-600 to-sky-600',
+      features: [
+        '500MB file size limit',
+        '400 jobs',
+        '400 questions per month',
+        '500 chart types per month',
+        'Clean & reshape data without formulas',
+        'AI suggests formulas when you need them',
+        'Priority support',
+        'Export to Excel, Word, PDF, and more',
+        'Import Excel and CSV directly'
+      ]
+    },
   ];
 
   const handleSubscribe = (plan) => {
@@ -111,7 +100,7 @@ export default function Pricing() {
       return;
     }
 
-    setSelectedPlan({ ...plan, billingCycle });
+    setSelectedPlan({ ...plan });
   };
 
   const features = [
@@ -148,22 +137,6 @@ export default function Pricing() {
           <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-6">
             Start free. Upgrade when you need bigger files and more reports.
           </p>
-
-          {user && (
-            <Tabs value={billingCycle} onValueChange={setBillingCycle} className="max-w-md mx-auto mb-8">
-              <TabsList className="grid w-full grid-cols-3 bg-slate-100 border border-slate-200">
-                <TabsTrigger value="monthly">Monthly</TabsTrigger>
-                <TabsTrigger value="quarterly">
-                  Quarterly
-                  <Badge className="ml-2 bg-blue-100 text-blue-600 text-xs">Save 5%</Badge>
-                </TabsTrigger>
-                <TabsTrigger value="yearly">
-                  Yearly
-                  <Badge className="ml-2 bg-blue-100 text-blue-600 text-xs">Save 10%</Badge>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-          )}
         </div>
 
         <Alert className="mb-4 max-w-4xl mx-auto bg-blue-50 border-blue-200">
@@ -175,7 +148,7 @@ export default function Pricing() {
         </Alert>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto mt-0 pt-4">
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mt-0 pt-4">
           {plans.map((plan) => (
             <div
               key={plan.id}
@@ -276,7 +249,7 @@ export default function Pricing() {
               </p>
               <p className="text-slate-500 text-sm mb-6">
                 {selectedPlan.totalDisplay}
-                {billingCycle === 'yearly' && (
+                {selectedPlan.id === 'premium_yearly' && (
                   <span className="block text-blue-600 mt-1">
                     ✓ Auto-renews annually after first year
                   </span>

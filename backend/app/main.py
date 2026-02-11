@@ -394,15 +394,56 @@ def _first_day_next_month_utc(dt: datetime) -> datetime:
     return datetime(year, month + 1, 1)
 
 
+def _first_day_next_day_utc(dt: datetime) -> datetime:
+    base = datetime(dt.year, dt.month, dt.day)
+    return base + timedelta(days=1)
+
+
+def _plan_file_size_mb(subscription: Subscription) -> int:
+    plan = (getattr(subscription, "plan", None) or "free").strip().lower()
+    if plan == "premium_yearly":
+        return 500
+    if plan in ("premium", "premium_quarterly"):
+        return 200
+    return 10
+
+
+def _plan_ai_limit(subscription: Subscription) -> int:
+    plan = (getattr(subscription, "plan", None) or "free").strip().lower()
+    if plan == "premium_yearly":
+        return 400
+    if plan in ("premium", "premium_quarterly"):
+        return 300
+    return 2
+
+
+def _plan_transactions_limit(subscription: Subscription) -> int:
+    plan = (getattr(subscription, "plan", None) or "free").strip().lower()
+    if plan == "premium_yearly":
+        return 400
+    if plan in ("premium", "premium_quarterly"):
+        return 200
+    return 20
+
+
+def _plan_upload_bytes_limit(subscription: Subscription) -> int:
+    return int(_plan_file_size_mb(subscription) * 1024 * 1024)
+
+
 def _ensure_subscription_monthly_resets(subscription: Subscription, db: Session) -> None:
     now = datetime.utcnow()
 
+    # Free plan: AI quota resets daily (2 questions/day).
+    # Premium plans: AI quota resets monthly.
+    plan = (getattr(subscription, "plan", None) or "free").strip().lower()
+    ai_reset_fn = _first_day_next_day_utc if plan == "free" else _first_day_next_month_utc
+
     if subscription.ai_queries_reset_at is None:
-        subscription.ai_queries_reset_at = _first_day_next_month_utc(now)
+        subscription.ai_queries_reset_at = ai_reset_fn(now)
 
     if subscription.ai_queries_reset_at is not None and now >= subscription.ai_queries_reset_at:
         subscription.ai_queries_used = 0
-        subscription.ai_queries_reset_at = _first_day_next_month_utc(now)
+        subscription.ai_queries_reset_at = ai_reset_fn(now)
 
     # Reuse workflow_runs_* counters as monthly upload-bytes meters.
     if subscription.workflow_runs_reset_at is None:
@@ -425,6 +466,19 @@ def _ensure_subscription_monthly_resets(subscription: Subscription, db: Session)
 def _get_or_create_subscription(db: Session, user_email: str) -> Subscription:
     subscription = db.query(Subscription).filter(Subscription.user_email == user_email).first()
     if subscription:
+        # Normalize plan entitlements on read (keeps UI + enforcement consistent)
+        try:
+            subscription.ai_queries_limit = int(_plan_ai_limit(subscription))
+        except Exception:
+            pass
+        try:
+            subscription.workflow_runs_limit = int(_plan_upload_bytes_limit(subscription))
+        except Exception:
+            pass
+        try:
+            subscription.conversions_limit = int(_plan_transactions_limit(subscription))
+        except Exception:
+            pass
         _ensure_subscription_monthly_resets(subscription, db)
         _apply_admin_entitlements(subscription, user_email)
         db.commit()
@@ -434,16 +488,15 @@ def _get_or_create_subscription(db: Session, user_email: str) -> Subscription:
         user_email=user_email,
         plan="free",
         status="active",
-        # ai_queries_* is treated as monthly AI tokens meter.
-        ai_queries_limit=int(os.getenv("FREE_AI_TOKENS_LIMIT", os.getenv("FREE_AI_QUERIES_LIMIT", "100"))),
+        # ai_queries_* is treated as AI questions/tokens meter.
+        ai_queries_limit=int(_plan_ai_limit(Subscription(plan="free"))),
         ai_queries_used=0,
         payment_status="unpaid",
-        # workflow_runs_* is treated as monthly upload-bytes meter.
-        # Default: 10MB/month for free tier.
-        workflow_runs_limit=int(os.getenv("FREE_UPLOAD_BYTES_LIMIT", str(10 * 1024 * 1024))),
+        # workflow_runs_* is treated as upload-bytes meter.
+        workflow_runs_limit=int(_plan_upload_bytes_limit(Subscription(plan="free"))),
         workflow_runs_used=0,
         # conversions_* is treated as monthly transactions meter.
-        conversions_limit=int(os.getenv("FREE_TRANSACTIONS_LIMIT", os.getenv("FREE_CONVERSIONS_LIMIT", "50"))),
+        conversions_limit=int(_plan_transactions_limit(Subscription(plan="free"))),
         conversions_used=0,
     )
 
@@ -578,7 +631,17 @@ def _enforce_upload_quota(subscription: Subscription, bytes_to_add: int) -> None
         raise HTTPException(status_code=413, detail=f"Monthly upload limit exceeded ({max_mb}MB/month).")
 
 
-def _consume_upload_bytes(db: Session, subscription: Subscription, bytes_used: int) -> None:
+def _consume_upload_bytes(db: Session, subscription: Subscription, *args) -> None:
+    # Supported call styles:
+    # - _consume_upload_bytes(db, subscription, bytes_used)
+    # - _consume_upload_bytes(db, subscription, user_email, request_id, bytes_used)
+    if len(args) == 1:
+        bytes_used = args[0]
+    elif len(args) >= 3:
+        bytes_used = args[2]
+    else:
+        bytes_used = 0
+
     inc = int(bytes_used or 0)
     if inc < 0:
         inc = 0
@@ -595,7 +658,10 @@ def _enforce_transactions_quota(subscription: Subscription) -> None:
         raise HTTPException(status_code=429, detail="Transaction limit reached. Upgrade to increase limits.")
 
 
-def _consume_transaction(db: Session, subscription: Subscription) -> None:
+def _consume_transaction(db: Session, subscription: Subscription, *args) -> None:
+    # Supported call styles:
+    # - _consume_transaction(db, subscription)
+    # - _consume_transaction(db, subscription, user_email, request_id)
     subscription.conversions_used = int(getattr(subscription, "conversions_used", 0) or 0) + 1
     db.commit()
 
@@ -1445,7 +1511,7 @@ async def convert_document(
     subscription = _get_or_create_subscription(db, current_user["email"])
     _apply_admin_entitlements(subscription, current_user["email"])
     db.commit()
-    max_size_mb = 500 if subscription.plan == "premium" else 10
+    max_size_mb = _plan_file_size_mb(subscription)
     max_bytes = max_size_mb * 1024 * 1024
 
     raw = await file.read()
@@ -1766,7 +1832,7 @@ async def support_chat_with_file(
     subscription = _get_or_create_subscription(db, current_user["email"])
     _enforce_ai_quota(subscription)
 
-    max_size_mb = 500 if subscription.plan == "premium" else 10
+    max_size_mb = _plan_file_size_mb(subscription)
     max_bytes = max_size_mb * 1024 * 1024
     content = await file.read()
     if len(content) > max_bytes:
@@ -2460,7 +2526,7 @@ async def invoke_llm_with_file_endpoint(
         subscription = _get_or_create_subscription(db, current_user["email"])
         _enforce_ai_quota(subscription)
 
-        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = await file.read()
         if len(content) > max_bytes:
@@ -3762,7 +3828,7 @@ async def generate_pl_with_file(
         subscription = _get_or_create_subscription(db, current_user["email"])
         _enforce_ai_quota(subscription)
 
-        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = await file.read()
         if len(content) > max_bytes:
@@ -3820,7 +3886,7 @@ async def pl_extraction_preview(
         _enforce_verified_user(db, current_user["email"])
         subscription = _get_or_create_subscription(db, current_user["email"])
 
-        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = await file.read()
         if len(content) > max_bytes:
@@ -3863,7 +3929,7 @@ async def universal_analyze(
         _enforce_verified_user(db, current_user["email"])
         subscription = _get_or_create_subscription(db, current_user["email"])
 
-        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = await file.read()
         file_size_mb = len(content) / (1024 * 1024)
@@ -3995,7 +4061,7 @@ async def standardize_preview(
         _enforce_verified_user(db, current_user["email"])
         subscription = _get_or_create_subscription(db, current_user["email"])
 
-        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = await file.read()
         if len(content) > max_bytes:
@@ -4035,7 +4101,7 @@ async def standardize_download(
         _enforce_verified_user(db, current_user["email"])
         subscription = _get_or_create_subscription(db, current_user["email"])
 
-        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = await file.read()
         if len(content) > max_bytes:
@@ -4095,7 +4161,7 @@ async def reconcile_preview(
         _enforce_verified_user(db, current_user["email"])
         subscription = _get_or_create_subscription(db, current_user["email"])
 
-        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         left = await left_file.read()
         right = await right_file.read()
@@ -4143,7 +4209,7 @@ async def reconcile_download(
         _enforce_verified_user(db, current_user["email"])
         subscription = _get_or_create_subscription(db, current_user["email"])
 
-        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         left = await left_file.read()
         right = await right_file.read()

@@ -940,7 +940,7 @@ export default function Dashboard() {
                   />
                 </div>
                 <DataValidator data={displayData || data} onDataUpdate={handleDataUpdate} />
-                <DataGrid data={displayData || data} />
+                <DataGrid data={displayData || data} onDataUpdate={handleDataUpdate} />
               </div>
 
               <div className="space-y-6">
@@ -958,14 +958,14 @@ export default function Dashboard() {
               <DataTransform data={displayData || data} onDataUpdate={handleDataUpdate} />
               <SmartFormula data={displayData || data} onDataUpdate={handleDataUpdate} />
             </div>
-            <DataGrid data={displayData || data} />
+            <DataGrid data={displayData || data} onDataUpdate={handleDataUpdate} />
           </TabsContent>
 
           <TabsContent value="ai" className="space-y-6">
             <div id="ai">
               <AIAssistant data={displayData || data} onDataUpdate={handleDataUpdate} />
             </div>
-            <DataGrid data={displayData || data} />
+            <DataGrid data={displayData || data} onDataUpdate={handleDataUpdate} />
           </TabsContent>
           </Tabs>
         </div>

@@ -278,7 +278,7 @@ export default function DataValidator({ data, onDataUpdate }) {
       )}
 
       {!validationResults && (
-        <p className="text-sm text-blue-200/70 text-center py-4">
+        <p className="text-sm text-blue-50/90 text-center py-4">
           Click "Validate Data" to automatically detect data types and find validation issues
         </p>
       )}

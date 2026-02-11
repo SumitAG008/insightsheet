@@ -166,7 +166,7 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
           <p className="text-sm font-semibold text-amber-300/90 mb-2">ML-powered</p>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={outlierCol} onValueChange={setOutlierCol}>
-              <SelectTrigger className="w-40 h-9 bg-blue-800/40 border-blue-700/50 text-blue-50 text-sm">
+              <SelectTrigger className="w-40 h-9 bg-blue-950/60 border-blue-500/40 text-white text-sm">
                 <SelectValue placeholder="Column (outliers)" />
               </SelectTrigger>
               <SelectContent className="bg-blue-900 border-blue-700/50">
@@ -179,13 +179,13 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
               onClick={doRemoveOutliers}
               disabled={cleaning || !outlierCol}
               size="sm"
-              className="bg-blue-800/60 hover:bg-blue-800 text-white"
+              className="bg-blue-950/60 hover:bg-blue-900 text-white"
             >
               <TrendingDown className="w-4 h-4 mr-1" />
               Remove outliers
             </Button>
             <Select value={fillCol} onValueChange={setFillCol} className="ml-2">
-              <SelectTrigger className="w-40 h-9 bg-blue-800/40 border-blue-700/50 text-blue-50 text-sm">
+              <SelectTrigger className="w-40 h-9 bg-blue-950/60 border-blue-500/40 text-white text-sm">
                 <SelectValue placeholder="Column (fill)" />
               </SelectTrigger>
               <SelectContent className="bg-blue-900 border-blue-700/50">
@@ -195,7 +195,7 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
               </SelectContent>
             </Select>
             <Select value={fillStrategy} onValueChange={setFillStrategy}>
-              <SelectTrigger className="w-36 h-9 bg-blue-800/40 border-blue-700/50 text-blue-50 text-sm">
+              <SelectTrigger className="w-36 h-9 bg-blue-950/60 border-blue-500/40 text-white text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-blue-900 border-blue-700/50">
@@ -208,7 +208,7 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
               onClick={doFillMissing}
               disabled={cleaning || !fillCol}
               size="sm"
-              className="bg-blue-800/60 hover:bg-blue-800 text-white"
+              className="bg-blue-950/60 hover:bg-blue-900 text-white"
             >
               <PaintBucket className="w-4 h-4 mr-1" />
               Fill missing

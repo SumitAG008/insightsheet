@@ -3,9 +3,12 @@ import React, { useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
-export default function DataGrid({ data }) {
+export default function DataGrid({ data, onDataUpdate }) {
   const [currentPage, setCurrentPage] = useState(0);
+  const [editingHeader, setEditingHeader] = useState(null);
+  const [editValue, setEditValue] = useState('');
   const rowsPerPage = 20;
   
   if (!data || !data.rows) return null;
@@ -17,6 +20,70 @@ export default function DataGrid({ data }) {
   const startIdx = currentPage * rowsPerPage;
   const endIdx = Math.min(startIdx + rowsPerPage, data.rows.length);
   const currentRows = data.rows.slice(startIdx, endIdx);
+
+  const startRename = (header) => {
+    setEditingHeader(header);
+    setEditValue(String(header || ''));
+  };
+
+  const cancelRename = () => {
+    setEditingHeader(null);
+    setEditValue('');
+  };
+
+  const commitRename = () => {
+    if (!editingHeader) return;
+    const oldName = String(editingHeader || '');
+    const nextName = String(editValue || '').trim();
+
+    if (!nextName) {
+      cancelRename();
+      return;
+    }
+    if (nextName === oldName) {
+      cancelRename();
+      return;
+    }
+    if ((data.headers || []).some((h) => String(h) === nextName)) {
+      return;
+    }
+
+    const renameInTable = (tbl) => {
+      if (!tbl || !Array.isArray(tbl.headers) || !Array.isArray(tbl.rows)) return tbl;
+      const headers = tbl.headers.map((h) => (String(h) === oldName ? nextName : h));
+      const rows = tbl.rows.map((r) => {
+        if (!r || typeof r !== 'object') return r;
+        if (!(oldName in r)) return r;
+        const next = { ...r };
+        next[nextName] = r[oldName];
+        delete next[oldName];
+        return next;
+      });
+      return { ...tbl, headers, rows };
+    };
+
+    const nextData = renameInTable(data);
+    const activeSheet = nextData?.workbook?.activeSheet;
+    if (activeSheet && nextData?.workbook?.sheets?.[activeSheet]) {
+      const nextSheets = {
+        ...(nextData.workbook.sheets || {}),
+        [activeSheet]: renameInTable(nextData.workbook.sheets[activeSheet]),
+      };
+      nextData.workbook = {
+        ...(nextData.workbook || {}),
+        sheets: nextSheets,
+      };
+    }
+
+    cancelRename();
+    if (typeof onDataUpdate === 'function') {
+      onDataUpdate(nextData, {
+        title: 'Renamed column',
+        detail: `${oldName} → ${nextName}`,
+        badge: 'Cleaning',
+      });
+    }
+  };
 
   return (
     <div className="relative group">
@@ -33,10 +100,31 @@ export default function DataGrid({ data }) {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="border-blue-700/40 hover:bg-blue-800/30">
+              <TableRow className="border-blue-700/40 bg-blue-950/40 hover:bg-blue-950/60">
                 {validHeaders.map((header, idx) => (
                   <TableHead key={idx} className="text-blue-50 font-semibold whitespace-nowrap">
-                    {header}
+                    {editingHeader === header ? (
+                      <Input
+                        value={editValue}
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitRename();
+                          if (e.key === 'Escape') cancelRename();
+                        }}
+                        onBlur={commitRename}
+                        autoFocus
+                        className="h-8 w-40 bg-blue-950/70 border-blue-400/40 text-blue-50 placeholder:text-blue-200/80"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => startRename(header)}
+                        className="text-left hover:underline underline-offset-4"
+                        title="Click to rename column"
+                      >
+                        {header}
+                      </button>
+                    )}
                   </TableHead>
                 ))}
               </TableRow>

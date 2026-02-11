@@ -4,7 +4,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -199,6 +199,10 @@ export default function Layout({ children, currentPageName }) {
         // ignore
       }
     }
+  };
+
+  const openOnboarding = () => {
+    setShowOnboarding(true);
   };
 
   // Handle browser close/refresh warning
@@ -487,6 +491,10 @@ export default function Layout({ children, currentPageName }) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-[220px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
                       <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Account</DropdownMenuLabel>
+                      <DropdownMenuItem onClick={openOnboarding} className="flex items-center gap-2 cursor-pointer">
+                        <HelpCircle className="w-4 h-4" />
+                        Onboarding
+                      </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('Settings')} className="flex items-center gap-2 cursor-pointer">
                           <SettingsIcon className="w-4 h-4" />
@@ -590,6 +598,17 @@ export default function Layout({ children, currentPageName }) {
                       <SettingsIcon className="w-4 h-4" />
                       <span>Settings</span>
                     </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        openOnboarding();
+                      }}
+                      className="w-full text-left flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm"
+                    >
+                      <HelpCircle className="w-4 h-4" />
+                      <span>Onboarding</span>
+                    </button>
                     <Link
                       to={createPageUrl('Security')}
                       onClick={() => setMobileMenuOpen(false)}

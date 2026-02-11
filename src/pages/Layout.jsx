@@ -226,9 +226,9 @@ export default function Layout({ children, currentPageName }) {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen app-premium-bg dark:bg-slate-950">
       {/* Navigation */}
-      <nav className="border-b border-slate-200 dark:border-slate-800 backdrop-blur-xl bg-white/95 dark:bg-slate-900/95 sticky top-0 z-50 shadow-sm">
+      <nav className="glass-surface-strong dark:bg-slate-900/95 dark:border-slate-800 sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             <Link to={user && user.email ? createPageUrl('Dashboard') : '/pricing'} className="group">
@@ -650,7 +650,7 @@ export default function Layout({ children, currentPageName }) {
       {/* Main content */}
       <SubscriptionChecker>
         <ActivityLogger>
-          <main className="min-h-[calc(100vh-16rem)] bg-white dark:bg-slate-950">
+          <main className="min-h-[calc(100vh-16rem)] bg-transparent">
             <div className="container mx-auto px-4 py-8">
               {children}
             </div>
@@ -659,7 +659,7 @@ export default function Layout({ children, currentPageName }) {
       </SubscriptionChecker>
 
       {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mt-auto">
+      <footer className="glass-surface dark:bg-slate-900 dark:border-slate-800 mt-auto">
         <div className="container mx-auto px-4 py-8">
           <div className="grid md:grid-cols-3 gap-8 items-start">
             <div className="min-w-0">

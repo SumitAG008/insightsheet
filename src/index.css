@@ -173,3 +173,17 @@ button:focus-visible {
     line-height: 1.6;
   }
 }
+
+@layer components {
+  .app-premium-bg {
+    @apply bg-gradient-to-br from-slate-50 via-white to-blue-50;
+  }
+
+  .glass-surface {
+    @apply bg-white/75 backdrop-blur-xl border border-slate-200/70 shadow-sm;
+  }
+
+  .glass-surface-strong {
+    @apply bg-white/85 backdrop-blur-xl border border-slate-200/80 shadow-md;
+  }
+}

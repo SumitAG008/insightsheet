@@ -105,10 +105,10 @@ export default function AdvancedFilter({ data, onFilteredData }) {
   }
 
   return (
-    <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+    <div className="bg-blue-900/80 backdrop-blur-xl border border-blue-700/40 rounded-2xl p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <Filter className="w-5 h-5 text-blue-400" />
+          <Filter className="w-5 h-5 text-blue-300" />
           Advanced Filter & Search
           {activeFiltersCount > 0 && (
             <Badge className="bg-blue-600 text-white ml-2">
@@ -128,7 +128,7 @@ export default function AdvancedFilter({ data, onFilteredData }) {
             onClick={clearFilters}
             variant="outline"
             size="sm"
-            className="border-slate-700 text-slate-300"
+            className="border-blue-700/60 text-blue-100 hover:bg-blue-900/30"
           >
             Clear
           </Button>
@@ -138,8 +138,8 @@ export default function AdvancedFilter({ data, onFilteredData }) {
       {/* Global Search */}
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2">
-          <Search className="w-4 h-4 text-slate-400" />
-          <label className="text-sm font-medium text-slate-300">Global Search</label>
+          <Search className="w-4 h-4 text-blue-200/70" />
+          <label className="text-sm font-medium text-blue-100">Global Search</label>
         </div>
         <div className="flex gap-2">
           <Input
@@ -147,10 +147,10 @@ export default function AdvancedFilter({ data, onFilteredData }) {
             placeholder="Search across all columns..."
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
-            className="bg-slate-800/50 border-slate-700 text-slate-200 placeholder:text-slate-500"
+            className="bg-blue-800/40 border-blue-700/50 text-blue-50 placeholder:text-blue-200/50"
           />
           <Select value={searchOperator} onValueChange={setSearchOperator}>
-            <SelectTrigger className="w-32 bg-slate-800/50 border-slate-700 text-slate-200">
+            <SelectTrigger className="w-32 bg-blue-800/40 border-blue-700/50 text-blue-50">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -164,12 +164,12 @@ export default function AdvancedFilter({ data, onFilteredData }) {
       {/* Column Filters */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-slate-300">Column Filters</label>
+          <label className="text-sm font-medium text-blue-100">Column Filters</label>
           <Button
             onClick={addFilter}
             variant="outline"
             size="sm"
-            className="border-slate-700 text-slate-300"
+            className="border-blue-700/60 text-blue-100 hover:bg-blue-900/30"
           >
             <Plus className="w-4 h-4 mr-1" />
             Add Filter
@@ -177,7 +177,7 @@ export default function AdvancedFilter({ data, onFilteredData }) {
         </div>
 
         {filters.length === 0 && (
-          <p className="text-sm text-slate-400 text-center py-4">
+          <p className="text-sm text-blue-200/70 text-center py-4">
             No filters added. Click "Add Filter" to create column-specific filters.
           </p>
         )}
@@ -185,13 +185,13 @@ export default function AdvancedFilter({ data, onFilteredData }) {
         {filters.map((filter) => (
           <div
             key={filter.id}
-            className="flex items-center gap-2 p-3 bg-slate-800/50 border border-slate-700/50 rounded-lg"
+            className="flex items-center gap-2 p-3 bg-blue-800/30 border border-blue-700/40 rounded-lg"
           >
             <Select
               value={filter.column}
               onValueChange={(value) => updateFilter(filter.id, 'column', value)}
             >
-              <SelectTrigger className="w-40 bg-slate-900/50 border-slate-700 text-slate-200">
+              <SelectTrigger className="w-40 bg-blue-900/40 border-blue-700/50 text-blue-50">
                 <SelectValue placeholder="Column" />
               </SelectTrigger>
               <SelectContent>
@@ -205,7 +205,7 @@ export default function AdvancedFilter({ data, onFilteredData }) {
               value={filter.operator}
               onValueChange={(value) => updateFilter(filter.id, 'operator', value)}
             >
-              <SelectTrigger className="w-36 bg-slate-900/50 border-slate-700 text-slate-200">
+              <SelectTrigger className="w-36 bg-blue-900/40 border-blue-700/50 text-blue-50">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -227,14 +227,14 @@ export default function AdvancedFilter({ data, onFilteredData }) {
               placeholder="Value"
               value={filter.value}
               onChange={(e) => updateFilter(filter.id, 'value', e.target.value)}
-              className="flex-1 bg-slate-900/50 border-slate-700 text-slate-200"
+              className="flex-1 bg-blue-900/40 border-blue-700/50 text-blue-50 placeholder:text-blue-200/50"
             />
 
             <Button
               onClick={() => removeFilter(filter.id)}
               variant="ghost"
               size="sm"
-              className="text-slate-400 hover:text-red-400"
+              className="text-blue-200/70 hover:text-red-300"
             >
               <X className="w-4 h-4" />
             </Button>

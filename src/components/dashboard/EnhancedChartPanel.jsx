@@ -1173,12 +1173,12 @@ export default function EnhancedChartPanel({ data }) {
 
   if (numericColumns.length === 0 || categoricalColumns.length === 0) {
     return (
-      <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+      <div className="bg-blue-900/80 backdrop-blur-xl border border-blue-700/40 rounded-2xl p-6">
         <h2 className="text-xl font-bold text-indigo-200 flex items-center gap-2 mb-4">
           <BarChart3 className="w-5 h-5 text-indigo-400" />
           Enhanced Charts
         </h2>
-        <div className="text-center py-8 text-slate-400">
+        <div className="text-center py-8 text-blue-200/70">
           <AlertCircle className="w-12 h-12 mx-auto mb-3 text-yellow-500" />
           <p className="text-sm">
             {numericColumns.length === 0 
@@ -1194,7 +1194,7 @@ export default function EnhancedChartPanel({ data }) {
   const currentCharts = currentCategory.charts;
 
   return (
-    <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+    <div className="bg-blue-950/80 backdrop-blur-xl border border-blue-800/40 rounded-2xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-indigo-200 flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-indigo-400" />
@@ -1219,7 +1219,7 @@ export default function EnhancedChartPanel({ data }) {
       </div>
 
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="mb-6">
-        <TabsList className="grid w-full grid-cols-3 bg-slate-800/50 border-slate-700">
+        <TabsList className="grid w-full grid-cols-3 bg-blue-800/30 border-blue-700/40">
           {Object.entries(CHART_CATEGORIES).map(([key, category]) => {
             const Icon = category.icon;
             return (
@@ -1248,7 +1248,7 @@ export default function EnhancedChartPanel({ data }) {
                     className={`${
                       chartType === chart.id 
                         ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white border-transparent shadow-lg' 
-                        : 'border-slate-700 text-slate-300 hover:bg-slate-800 bg-slate-900/50'
+                        : 'border-blue-700/50 text-blue-100 hover:bg-blue-800/30 bg-blue-900/40'
                     } h-auto py-3 px-2 flex flex-col items-center gap-1.5 transition-all`}
                     title={chart.description}
                   >
@@ -1265,11 +1265,11 @@ export default function EnhancedChartPanel({ data }) {
       <div className="space-y-4 mb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm text-slate-300 mb-2 block font-medium">
+            <label className="text-sm text-blue-100 mb-2 block font-medium">
               X-Axis (Category) <span className="text-red-400">*</span>
             </label>
             <Select value={xColumn || ''} onValueChange={setXColumn}>
-              <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-200 h-10">
+              <SelectTrigger className="bg-blue-800/40 border-blue-700/50 text-blue-50 h-10">
                 <SelectValue placeholder="Select category column" />
               </SelectTrigger>
               <SelectContent>
@@ -1281,11 +1281,11 @@ export default function EnhancedChartPanel({ data }) {
           </div>
 
           <div>
-            <label className="text-sm text-slate-300 mb-2 block font-medium">
+            <label className="text-sm text-blue-100 mb-2 block font-medium">
               Y-Axis (Value) <span className="text-red-400">*</span>
             </label>
             <Select value={yColumn || ''} onValueChange={setYColumn}>
-              <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-200 h-10">
+              <SelectTrigger className="bg-blue-900/40 border-blue-800/50 text-blue-50 h-10">
                 <SelectValue placeholder="Select numeric column" />
               </SelectTrigger>
               <SelectContent>
@@ -1299,11 +1299,11 @@ export default function EnhancedChartPanel({ data }) {
 
         {(chartType === 'multiline' || chartType === 'combo' || chartType === 'stacked_column' || chartType === 'stacked_100' || chartType === 'error_bars' || chartType === 'variance_column' || chartType === 'variance_waterfall' || chartType === 'gantt' || chartType === 'bubble') && (
           <div>
-            <label className="text-sm text-slate-300 mb-2 block font-medium">
+            <label className="text-sm text-blue-100 mb-2 block font-medium">
               {chartType === 'error_bars' ? 'Error Value (Optional)' : 'Y-Axis 2 (Second Value)'}
             </label>
             <Select value={yColumn2 || ''} onValueChange={setYColumn2}>
-              <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-200 h-10">
+              <SelectTrigger className="bg-blue-900/40 border-blue-800/50 text-blue-50 h-10">
                 <SelectValue placeholder={chartType === 'error_bars' ? 'Select error column (or leave empty for auto-calculated)' : 'Select second numeric column'} />
               </SelectTrigger>
               <SelectContent>
@@ -1313,7 +1313,7 @@ export default function EnhancedChartPanel({ data }) {
               </SelectContent>
             </Select>
             {chartType === 'error_bars' && (
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-blue-200/60 mt-1">
                 Optional: Select a column with error values. If not provided, standard deviation will be calculated automatically.
               </p>
             )}
@@ -1338,7 +1338,7 @@ export default function EnhancedChartPanel({ data }) {
       </div>
 
       {chartData && chartData.length > 0 && (
-        <div className="mt-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-xl recharts-wrapper">
+        <div className="mt-6 p-4 bg-blue-800/30 border border-blue-700/40 rounded-xl recharts-wrapper">
           {renderChart()}
         </div>
       )}

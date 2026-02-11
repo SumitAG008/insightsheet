@@ -429,13 +429,13 @@ export default function ChartPanel({ data }) {
       <div className="relative group">
         <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/10 to-blue-600/10 rounded-2xl blur-xl" />
         
-        <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+        <div className="relative bg-blue-900/80 backdrop-blur-xl border border-blue-700/40 rounded-2xl p-6">
           <h2 className="text-xl font-bold text-indigo-200 flex items-center gap-2 mb-4">
             <BarChart3 className="w-5 h-5 text-indigo-400" />
             Advanced Charts
           </h2>
           
-          <div className="text-center py-8 text-slate-400">
+          <div className="text-center py-8 text-blue-200/70">
             <AlertCircle className="w-12 h-12 mx-auto mb-3 text-yellow-500" />
             <p className="text-sm">
               {numericColumns.length === 0 
@@ -452,7 +452,7 @@ export default function ChartPanel({ data }) {
     <div className="relative group">
       <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/10 to-blue-600/10 rounded-2xl blur-xl" />
       
-      <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 md:p-6">
+      <div className="relative bg-blue-900/80 backdrop-blur-xl border border-blue-700/40 rounded-2xl p-4 md:p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg md:text-xl font-bold text-indigo-200 flex items-center gap-2">
             <BarChart3 className="w-5 h-5 text-indigo-400" />
@@ -474,7 +474,7 @@ export default function ChartPanel({ data }) {
         <div className="space-y-4 mb-6">
           {/* Chart Type Selection */}
           <div>
-            <label className="text-xs md:text-sm text-slate-300 mb-2 block font-medium">Chart Type</label>
+            <label className="text-xs md:text-sm text-blue-100 mb-2 block font-medium">Chart Type</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
               {CHART_TYPES.map((type) => (
                 <Button
@@ -485,7 +485,7 @@ export default function ChartPanel({ data }) {
                   className={`${
                     chartType === type.id 
                       ? `bg-gradient-to-r ${type.color} text-white border-transparent shadow-lg scale-105` 
-                      : 'border-slate-700 text-slate-300 hover:bg-slate-800 bg-slate-900/50'
+                      : 'border-blue-700/50 text-blue-100 hover:bg-blue-800/30 bg-blue-900/40'
                   } h-auto py-3 px-2 flex flex-col items-center gap-1.5 transition-all duration-200`}
                 >
                   <type.icon className="w-5 h-5 flex-shrink-0" />
@@ -497,11 +497,11 @@ export default function ChartPanel({ data }) {
 
           {/* X-Axis Selection */}
           <div>
-            <label className="text-xs md:text-sm text-slate-300 mb-2 block font-medium">
+            <label className="text-xs md:text-sm text-blue-100 mb-2 block font-medium">
               X-Axis (Category) <span className="text-red-400">*</span>
             </label>
             <Select value={xColumn || ''} onValueChange={setXColumn}>
-              <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-200 h-10">
+              <SelectTrigger className="bg-blue-800/40 border-blue-700/50 text-blue-50 h-10">
                 <SelectValue placeholder="Select category column" />
               </SelectTrigger>
               <SelectContent>
@@ -514,11 +514,11 @@ export default function ChartPanel({ data }) {
 
           {/* Y-Axis Selection */}
           <div>
-            <label className="text-xs md:text-sm text-slate-300 mb-2 block font-medium">
+            <label className="text-xs md:text-sm text-blue-100 mb-2 block font-medium">
               Y-Axis (Value) <span className="text-red-400">*</span>
             </label>
             <Select value={yColumn || ''} onValueChange={setYColumn}>
-              <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-200 h-10">
+              <SelectTrigger className="bg-blue-900/40 border-blue-800/50 text-blue-50 h-10">
                 <SelectValue placeholder="Select numeric column" />
               </SelectTrigger>
               <SelectContent>
@@ -532,11 +532,11 @@ export default function ChartPanel({ data }) {
           {/* Y-Axis 2 (For Combo Charts) */}
           {chartType === 'combo' && (
             <div>
-              <label className="text-xs md:text-sm text-slate-300 mb-2 block font-medium">
+              <label className="text-xs md:text-sm text-blue-100 mb-2 block font-medium">
                 Y-Axis 2 (Second Value) <span className="text-red-400">*</span>
               </label>
               <Select value={yColumn2 || ''} onValueChange={setYColumn2}>
-                <SelectTrigger className="bg-slate-800/50 border-slate-700 text-slate-200 h-10">
+                <SelectTrigger className="bg-blue-800/40 border-blue-700/50 text-blue-50 h-10">
                   <SelectValue placeholder="Select second numeric column" />
                 </SelectTrigger>
                 <SelectContent>
@@ -552,7 +552,7 @@ export default function ChartPanel({ data }) {
           {chartData && (
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs md:text-sm text-slate-300 mb-2 block font-medium">
+                <label className="text-xs md:text-sm text-blue-100 mb-2 block font-medium">
                   Primary Color
                 </label>
                 <div className="flex gap-2">
@@ -560,20 +560,20 @@ export default function ChartPanel({ data }) {
                     type="color"
                     value={primaryColor}
                     onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="w-12 h-10 rounded border border-slate-700 cursor-pointer"
+                    className="w-12 h-10 rounded border border-blue-800/50 cursor-pointer"
                   />
                   <input
                     type="text"
                     value={primaryColor}
                     onChange={(e) => setPrimaryColor(e.target.value)}
-                    className="flex-1 bg-slate-800/50 border border-slate-700 text-slate-200 rounded px-3 h-10 text-sm"
+                    className="flex-1 bg-blue-900/40 border border-blue-800/50 text-blue-50 rounded px-3 h-10 text-sm"
                     placeholder="#8B5CF6"
                   />
                 </div>
               </div>
               {(chartType === 'combo' || chartType === 'pie') && (
                 <div>
-                  <label className="text-xs md:text-sm text-slate-300 mb-2 block font-medium">
+                  <label className="text-xs md:text-sm text-blue-100 mb-2 block font-medium">
                     Secondary Color
                   </label>
                   <div className="flex gap-2">
@@ -581,13 +581,13 @@ export default function ChartPanel({ data }) {
                       type="color"
                       value={secondaryColor}
                       onChange={(e) => setSecondaryColor(e.target.value)}
-                      className="w-12 h-10 rounded border border-slate-700 cursor-pointer"
+                      className="w-12 h-10 rounded border border-blue-800/50 cursor-pointer"
                     />
                     <input
                       type="text"
                       value={secondaryColor}
                       onChange={(e) => setSecondaryColor(e.target.value)}
-                      className="flex-1 bg-slate-800/50 border border-slate-700 text-slate-200 rounded px-3 h-10 text-sm"
+                      className="flex-1 bg-blue-900/40 border border-blue-800/50 text-blue-50 rounded px-3 h-10 text-sm"
                       placeholder="#EC4899"
                     />
                   </div>
@@ -617,7 +617,7 @@ export default function ChartPanel({ data }) {
 
         {/* Chart Display */}
         {chartData && chartData.length > 0 && (
-          <div className="mt-6 p-3 md:p-4 bg-slate-800/50 border border-slate-700/50 rounded-xl recharts-wrapper">
+          <div className="mt-6 p-3 md:p-4 bg-blue-800/30 border border-blue-700/40 rounded-xl recharts-wrapper">
             {renderChart()}
           </div>
         )}

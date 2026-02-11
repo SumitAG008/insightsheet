@@ -94,33 +94,33 @@ Format your response in a clear, structured way.`;
 
   return (
     <div className="relative group">
-      <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-2xl blur-xl" />
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-blue-600/10 rounded-2xl blur-xl" />
 
-      <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+      <div className="relative bg-blue-900/80 backdrop-blur-xl border border-blue-700/40 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-purple-200 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-400" />
+          <h2 className="text-xl font-bold text-blue-200 flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-blue-400" />
             AI Assistant
           </h2>
-          <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
+          <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
             Powered by AI
           </Badge>
         </div>
 
-        <p className="text-slate-400 text-sm mb-4">
+        <p className="text-blue-200/70 text-sm mb-4">
           Describe any operation you want to perform on your data. The AI will guide you through it!
         </p>
 
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/30 p-3">
-          <div className="text-xs text-slate-300">
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-blue-700/40 bg-blue-800/20 p-3">
+          <div className="text-xs text-blue-100">
             <span className="font-semibold">Apply to data:</span> {applyToData ? 'On' : 'Off'}
-            <div className="text-[11px] text-slate-400 mt-0.5">
+            <div className="text-[11px] text-blue-200/70 mt-0.5">
               When On, AI will try to create a new column automatically.
             </div>
           </div>
           <button
             type="button"
-            className={`text-xs px-3 py-1.5 rounded border transition-colors ${applyToData ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20' : 'bg-slate-800/50 border-slate-700 text-slate-300 hover:bg-slate-700/50'}`}
+            className={`text-xs px-3 py-1.5 rounded border transition-colors ${applyToData ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20' : 'bg-blue-900/30 border-blue-800/50 text-blue-100 hover:bg-blue-900/40'}`}
             onClick={() => setApplyToData((v) => !v)}
             disabled={isProcessing}
           >
@@ -132,14 +132,14 @@ Format your response in a clear, structured way.`;
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             <Lightbulb className="w-4 h-4 text-amber-400" />
-            <span className="text-xs text-slate-400 font-medium">Quick Examples:</span>
+            <span className="text-xs text-blue-200/70 font-medium">Quick Examples:</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {suggestions.slice(0, 3).map((suggestion, idx) => (
               <button
                 key={idx}
                 onClick={() => setPrompt(suggestion)}
-                className="text-xs px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 rounded-lg text-slate-300 transition-colors"
+                className="text-xs px-3 py-1.5 bg-blue-800/30 hover:bg-blue-800/40 border border-blue-700/50 rounded-lg text-blue-100 transition-colors"
               >
                 {suggestion}
               </button>
@@ -153,14 +153,14 @@ Format your response in a clear, structured way.`;
             placeholder="Example: 'Calculate the total of Sales column' or 'Find rows where Amount > 1000'"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            className="bg-slate-800/50 border-slate-700 text-slate-200 min-h-[100px]"
+            className="bg-blue-800/40 border-blue-700/50 text-blue-50 placeholder:text-blue-200/50 min-h-[100px]"
             disabled={isProcessing}
           />
-          
+
           <Button
             onClick={handleAIOperation}
             disabled={isProcessing || !prompt.trim()}
-            className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            className="w-full bg-gradient-to-r from-blue-600 to-blue-600 hover:from-blue-700 hover:to-blue-700"
           >
             {isProcessing ? (
               <>
@@ -178,12 +178,12 @@ Format your response in a clear, structured way.`;
 
         {/* AI Response */}
         {response && (
-          <div className="mt-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-lg">
+          <div className="mt-6 p-4 bg-blue-800/30 border border-blue-700/40 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
-              <Wand2 className="w-5 h-5 text-purple-400" />
-              <span className="text-sm font-semibold text-purple-300">AI Response:</span>
+              <Wand2 className="w-5 h-5 text-blue-400" />
+              <span className="text-sm font-semibold text-blue-300">AI Response:</span>
             </div>
-            <div className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">
+            <div className="text-sm text-blue-50 whitespace-pre-wrap leading-relaxed">
               {response}
             </div>
           </div>
@@ -191,7 +191,7 @@ Format your response in a clear, structured way.`;
 
         {/* All Suggestions */}
         <details className="mt-4">
-          <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-300">
+          <summary className="text-xs text-blue-200/70 cursor-pointer hover:text-blue-100">
             View all example operations
           </summary>
           <div className="mt-2 space-y-1">
@@ -199,7 +199,7 @@ Format your response in a clear, structured way.`;
               <button
                 key={idx}
                 onClick={() => setPrompt(suggestion)}
-                className="block w-full text-left text-xs px-3 py-2 bg-slate-800/30 hover:bg-slate-700/50 border border-slate-700/50 rounded text-slate-400 hover:text-slate-300 transition-colors"
+                className="block w-full text-left text-xs px-3 py-2 bg-blue-800/20 hover:bg-blue-800/30 border border-blue-700/40 rounded text-blue-200/70 hover:text-blue-100 transition-colors"
               >
                 {suggestion}
               </button>

@@ -88,7 +88,7 @@ Provide detailed answer based on the data.`;
     <div className="relative group">
       <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 to-pink-600/10 rounded-2xl blur-xl" />
       
-      <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+      <div className="relative bg-blue-900/80 backdrop-blur-xl border border-blue-700/40 rounded-2xl p-6">
         <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
           <Sparkles className="w-5 h-5 text-purple-400" />
           AI Analysis
@@ -122,13 +122,13 @@ Provide detailed answer based on the data.`;
           </Button>
         </div>
 
-        <div className="border-t border-slate-700/50 pt-6">
+        <div className="border-t border-blue-700/40 pt-6">
           <label className="text-sm text-white font-semibold mb-2 block">Custom Question</label>
           <Textarea
             placeholder="Ask anything about your data..."
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
-            className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-400 mb-3"
+            className="bg-blue-800/40 border-blue-700/50 text-blue-50 placeholder:text-blue-200/50 mb-3"
             rows={3}
           />
           <Button
@@ -151,13 +151,13 @@ Provide detailed answer based on the data.`;
         </div>
 
         {insights && (
-          <div className="mt-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-lg">
+          <div className="mt-6 p-4 bg-blue-800/30 border border-blue-700/40 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
               <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
                 {insights.type === 'summary' ? 'Summary' : insights.type === 'formula' ? 'Formulas' : 'Custom Analysis'}
               </Badge>
             </div>
-            <div className="text-sm text-white whitespace-pre-wrap leading-relaxed">
+            <div className="text-sm text-blue-50 whitespace-pre-wrap leading-relaxed">
               {insights.content}
             </div>
           </div>

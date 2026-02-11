@@ -58,7 +58,7 @@ Format your response clearly.`;
     <div className="relative group">
       <div className="absolute inset-0 bg-gradient-to-r from-emerald-600/10 to-teal-600/10 rounded-2xl blur-xl" />
       
-      <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+      <div className="relative bg-blue-900/80 backdrop-blur-xl border border-blue-700/40 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-emerald-200 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-emerald-400" />
@@ -69,7 +69,7 @@ Format your response clearly.`;
           </Badge>
         </div>
 
-        <p className="text-slate-300 text-sm mb-4">
+        <p className="text-blue-200/70 text-sm mb-4">
           Describe what you want to calculate, and AI will generate the formula for you!
         </p>
 
@@ -77,14 +77,14 @@ Format your response clearly.`;
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             <Lightbulb className="w-4 h-4 text-amber-400" />
-            <span className="text-xs text-slate-400 font-medium">Example:</span>
+            <span className="text-xs text-blue-200/70 font-medium">Example:</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {examplePrompts.map((example, idx) => (
               <button
                 key={idx}
                 onClick={() => setPrompt(example)}
-                className="text-xs px-3 py-1.5 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700 rounded-lg text-slate-300 transition-colors"
+                className="text-xs px-3 py-1.5 bg-blue-800/30 hover:bg-blue-800/40 border border-blue-700/50 rounded-lg text-blue-100 transition-colors"
               >
                 {example}
               </button>
@@ -94,14 +94,14 @@ Format your response clearly.`;
 
         {/* Input Area */}
         <div className="space-y-3">
-          <label className="text-sm font-semibold text-slate-200 block">
+          <label className="text-sm font-semibold text-blue-50 block">
             Describe what you want to calculate:
           </label>
           <Textarea
             placeholder="Example: 'Calculate the percentage of Sales relative to Total' or 'Find the difference between Price and Cost'"
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            className="bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-400 min-h-[100px]"
+            className="bg-blue-800/40 border-blue-700/50 text-blue-50 placeholder:text-blue-200/50 min-h-[100px]"
             disabled={isGenerating}
           />
           

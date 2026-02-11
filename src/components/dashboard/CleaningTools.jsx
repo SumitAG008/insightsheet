@@ -111,7 +111,7 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
     <div className="relative group">
       <div className="absolute inset-0 bg-gradient-to-r from-amber-600/10 to-orange-600/10 rounded-2xl blur-xl" />
       
-      <div className="relative bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6">
+      <div className="relative bg-blue-900/80 backdrop-blur-xl border border-blue-700/40 rounded-2xl p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-white flex items-center gap-2">
             <Wand2 className="w-5 h-5 text-amber-400" />
@@ -162,14 +162,14 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
         </div>
 
         {/* ML: Outliers + Fill missing */}
-        <div className="mt-4 pt-4 border-t border-slate-700/50">
+        <div className="mt-4 pt-4 border-t border-blue-700/40">
           <p className="text-sm font-semibold text-amber-300/90 mb-2">ML-powered</p>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={outlierCol} onValueChange={setOutlierCol}>
-              <SelectTrigger className="w-40 h-9 bg-slate-800/50 border-slate-600 text-white text-sm">
+              <SelectTrigger className="w-40 h-9 bg-blue-800/40 border-blue-700/50 text-blue-50 text-sm">
                 <SelectValue placeholder="Column (outliers)" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
+              <SelectContent className="bg-blue-900 border-blue-700/50">
                 {numericColumns.map((c) => (
                   <SelectItem key={c} value={c} className="text-white">{c}</SelectItem>
                 ))}
@@ -179,26 +179,26 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
               onClick={doRemoveOutliers}
               disabled={cleaning || !outlierCol}
               size="sm"
-              className="bg-slate-700 hover:bg-slate-600 text-white"
+              className="bg-blue-800/60 hover:bg-blue-800 text-white"
             >
               <TrendingDown className="w-4 h-4 mr-1" />
               Remove outliers
             </Button>
             <Select value={fillCol} onValueChange={setFillCol} className="ml-2">
-              <SelectTrigger className="w-40 h-9 bg-slate-800/50 border-slate-600 text-white text-sm">
+              <SelectTrigger className="w-40 h-9 bg-blue-800/40 border-blue-700/50 text-blue-50 text-sm">
                 <SelectValue placeholder="Column (fill)" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
+              <SelectContent className="bg-blue-900 border-blue-700/50">
                 {(data.headers || []).map((c) => (
                   <SelectItem key={c} value={c} className="text-white">{c}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Select value={fillStrategy} onValueChange={setFillStrategy}>
-              <SelectTrigger className="w-36 h-9 bg-slate-800/50 border-slate-600 text-white text-sm">
+              <SelectTrigger className="w-36 h-9 bg-blue-800/40 border-blue-700/50 text-blue-50 text-sm">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
+              <SelectContent className="bg-blue-900 border-blue-700/50">
                 {FILL_STRATEGIES.map((s) => (
                   <SelectItem key={s.id} value={s.id} className="text-white">{s.label}</SelectItem>
                 ))}
@@ -208,7 +208,7 @@ export default function CleaningTools({ data, onDataUpdate, onCleanedCount }) {
               onClick={doFillMissing}
               disabled={cleaning || !fillCol}
               size="sm"
-              className="bg-slate-700 hover:bg-slate-600 text-white"
+              className="bg-blue-800/60 hover:bg-blue-800 text-white"
             >
               <PaintBucket className="w-4 h-4 mr-1" />
               Fill missing

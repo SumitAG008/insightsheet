@@ -268,6 +268,9 @@ export default function ApiTestingConsole() {
         formData.append('chart_json', cjson);
       } else {
         formData.append('endpoint', selectedEndpoint.id);
+        if (selectedEndpoint.id === 'zip-clean' && jsonPayload.trim()) {
+          formData.append('options', jsonPayload.trim());
+        }
         if (selectedEndpoint.id === 'pdf-to-doc') {
           formData.append('mode', pdfDocMode);
         }
@@ -412,6 +415,18 @@ export default function ApiTestingConsole() {
                 onChange={(e) => setJsonPayload(e.target.value)}
               />
             </div>
+          </div>
+        )}
+
+        {selectedEndpoint.id === 'zip-clean' && (
+          <div>
+            <label className="text-sm font-medium mb-2 block">Options JSON (optional)</label>
+            <Input
+              type="text"
+              placeholder='{"allowedChars":"a-z0-9-_","disallowedChars":"_","replaceChar":" ","removeSpaces":false,"maxLength":255}'
+              value={jsonPayload}
+              onChange={(e) => setJsonPayload(e.target.value)}
+            />
           </div>
         )}
 

@@ -3019,6 +3019,7 @@ async def developer_api_proxy(
 
                 merged_options = {
                     "allowed_chars": "a-z0-9-_",
+                    "disallowed_chars": None,
                     "replace_char": "_",
                     "remove_spaces": True,
                     "max_length": 255,
@@ -3029,6 +3030,10 @@ async def developer_api_proxy(
                         merged_options["allowed_chars"] = str(user_options.get("allowedChars") or "")
                     if user_options.get("allowed_chars") is not None:
                         merged_options["allowed_chars"] = str(user_options.get("allowed_chars") or "")
+                    if user_options.get("disallowedChars") is not None:
+                        merged_options["disallowed_chars"] = str(user_options.get("disallowedChars") or "")
+                    if user_options.get("disallowed_chars") is not None:
+                        merged_options["disallowed_chars"] = str(user_options.get("disallowed_chars") or "")
                     if user_options.get("replaceChar") is not None:
                         merged_options["replace_char"] = str(user_options.get("replaceChar") or "")
                     if user_options.get("replace_char") is not None:

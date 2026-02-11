@@ -18,7 +18,8 @@ async def invoke_llm(
     add_context: bool = False,
     response_schema: Optional[Dict[str, Any]] = None,
     model: str = "gpt-4-turbo-preview",
-    max_tokens: int = 2000
+    max_tokens: int = 2000,
+    return_usage: bool = False,
 ) -> Any:
     """
     Invoke OpenAI LLM for data analysis
@@ -72,6 +73,16 @@ async def invoke_llm(
             }
         ]
 
+        def _extract_usage(resp: Any) -> Dict[str, int]:
+            usage = getattr(resp, "usage", None)
+            if not usage:
+                return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+            return {
+                "prompt_tokens": int(getattr(usage, "prompt_tokens", 0) or 0),
+                "completion_tokens": int(getattr(usage, "completion_tokens", 0) or 0),
+                "total_tokens": int(getattr(usage, "total_tokens", 0) or 0),
+            }
+
         # JSON response mode
         if response_schema:
             response = openai.chat.completions.create(
@@ -84,7 +95,10 @@ async def invoke_llm(
             if not content:
                 raise Exception("OpenAI returned empty response")
             try:
-                return json.loads(content)
+                parsed = json.loads(content)
+                if return_usage:
+                    return {"content": parsed, "usage": _extract_usage(response), "model": effective_model}
+                return parsed
             except json.JSONDecodeError as e:
                 raise Exception(f"Failed to parse JSON response from OpenAI: {str(e)}. Content: {content[:200]}")
 
@@ -95,7 +109,10 @@ async def invoke_llm(
                 messages=messages,
                 max_tokens=effective_max_tokens
             )
-            return response.choices[0].message.content
+            text = response.choices[0].message.content
+            if return_usage:
+                return {"content": text, "usage": _extract_usage(response), "model": effective_model}
+            return text
 
     except Exception as e:
         raise Exception(f"OpenAI Error: {str(e)}")

@@ -385,6 +385,7 @@ def _ensure_subscription_monthly_resets(subscription: Subscription, db: Session)
         subscription.ai_queries_used = 0
         subscription.ai_queries_reset_at = _first_day_next_month_utc(now)
 
+    # Reuse workflow_runs_* counters as monthly upload-bytes meters.
     if subscription.workflow_runs_reset_at is None:
         subscription.workflow_runs_reset_at = _first_day_next_month_utc(now)
 
@@ -406,18 +407,24 @@ def _get_or_create_subscription(db: Session, user_email: str) -> Subscription:
     subscription = db.query(Subscription).filter(Subscription.user_email == user_email).first()
     if subscription:
         _ensure_subscription_monthly_resets(subscription, db)
+        _apply_admin_entitlements(subscription, user_email)
+        db.commit()
         return subscription
 
     subscription = Subscription(
         user_email=user_email,
         plan="free",
         status="active",
-        ai_queries_limit=int(os.getenv("FREE_AI_QUERIES_LIMIT", "10")),
+        # ai_queries_* is treated as monthly AI tokens meter.
+        ai_queries_limit=int(os.getenv("FREE_AI_TOKENS_LIMIT", os.getenv("FREE_AI_QUERIES_LIMIT", "100"))),
         ai_queries_used=0,
         payment_status="unpaid",
-        workflow_runs_limit=int(os.getenv("FREE_WORKFLOW_RUNS_LIMIT", "0")),
+        # workflow_runs_* is treated as monthly upload-bytes meter.
+        # Default: 10MB/month for free tier.
+        workflow_runs_limit=int(os.getenv("FREE_UPLOAD_BYTES_LIMIT", str(10 * 1024 * 1024))),
         workflow_runs_used=0,
-        conversions_limit=int(os.getenv("FREE_CONVERSIONS_LIMIT", "0")),
+        # conversions_* is treated as monthly transactions meter.
+        conversions_limit=int(os.getenv("FREE_TRANSACTIONS_LIMIT", os.getenv("FREE_CONVERSIONS_LIMIT", "50"))),
         conversions_used=0,
     )
 
@@ -433,6 +440,8 @@ def _get_or_create_subscription(db: Session, user_email: str) -> Subscription:
     db.commit()
     db.refresh(subscription)
     _ensure_subscription_monthly_resets(subscription, db)
+    _apply_admin_entitlements(subscription, user_email)
+    db.commit()
     return subscription
 
 
@@ -519,13 +528,68 @@ def _enforce_ai_quota(subscription: Subscription) -> None:
         raise HTTPException(status_code=403, detail="Subscription inactive")
     if subscription.ai_queries_limit is not None and subscription.ai_queries_limit >= 0:
         if (subscription.ai_queries_used or 0) >= subscription.ai_queries_limit:
-            raise HTTPException(status_code=429, detail="AI query limit reached. Upgrade to increase limits.")
+            raise HTTPException(status_code=429, detail="AI token limit reached. Upgrade to increase limits.")
 
 
-def _consume_ai_quota(db: Session, subscription: Subscription) -> None:
+def _consume_ai_quota(db: Session, subscription: Subscription, tokens_used: int) -> None:
     if subscription.ai_queries_limit is not None and subscription.ai_queries_limit >= 0:
-        subscription.ai_queries_used = (subscription.ai_queries_used or 0) + 1
+        inc = int(tokens_used or 0)
+        if inc < 0:
+            inc = 0
+        subscription.ai_queries_used = int(subscription.ai_queries_used or 0) + inc
         db.commit()
+
+
+def _enforce_upload_quota(subscription: Subscription, bytes_to_add: int) -> None:
+    if (subscription.status or "").lower() != "active":
+        raise HTTPException(status_code=403, detail="Subscription inactive")
+    limit = int(getattr(subscription, "workflow_runs_limit", 0) or 0)
+    used = int(getattr(subscription, "workflow_runs_used", 0) or 0)
+    add = int(bytes_to_add or 0)
+    if add < 0:
+        add = 0
+    if limit >= 0 and (used + add) > limit:
+        max_mb = max(1, int(limit / (1024 * 1024)))
+        raise HTTPException(status_code=413, detail=f"Monthly upload limit exceeded ({max_mb}MB/month).")
+
+
+def _consume_upload_bytes(db: Session, subscription: Subscription, bytes_used: int) -> None:
+    inc = int(bytes_used or 0)
+    if inc < 0:
+        inc = 0
+    subscription.workflow_runs_used = int(getattr(subscription, "workflow_runs_used", 0) or 0) + inc
+    db.commit()
+
+
+def _enforce_transactions_quota(subscription: Subscription) -> None:
+    if (subscription.status or "").lower() != "active":
+        raise HTTPException(status_code=403, detail="Subscription inactive")
+    limit = int(getattr(subscription, "conversions_limit", 0) or 0)
+    used = int(getattr(subscription, "conversions_used", 0) or 0)
+    if limit >= 0 and used >= limit:
+        raise HTTPException(status_code=429, detail="Transaction limit reached. Upgrade to increase limits.")
+
+
+def _consume_transaction(db: Session, subscription: Subscription) -> None:
+    subscription.conversions_used = int(getattr(subscription, "conversions_used", 0) or 0) + 1
+    db.commit()
+
+
+def _apply_admin_entitlements(subscription: Subscription, user_email: str) -> None:
+    admin_email = (os.getenv("ADMIN_PREMIUM_EMAIL") or "sumitagaria@gmail.com").strip().lower()
+    if (user_email or "").strip().lower() != admin_email:
+        return
+    subscription.plan = "premium"
+    subscription.ai_queries_limit = -1
+    subscription.workflow_runs_limit = -1
+    subscription.conversions_limit = -1
+
+
+def _estimate_tokens_from_text(text: str) -> int:
+    t = (text or "")
+    # Rough heuristic: ~4 characters per token for English.
+    # This is only used when the provider does not return usage.
+    return int((len(t) + 3) / 4)
 logger.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
@@ -1352,12 +1416,17 @@ async def convert_document(
     """
 
     subscription = _get_or_create_subscription(db, current_user["email"])
+    _apply_admin_entitlements(subscription, current_user["email"])
+    db.commit()
     max_size_mb = 500 if subscription.plan == "premium" else 10
     max_bytes = max_size_mb * 1024 * 1024
 
     raw = await file.read()
     if len(raw) > max_bytes:
         raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+
+    _enforce_upload_quota(subscription, len(raw))
+    _enforce_transactions_quota(subscription)
 
     if endpoint == "pdf-to-doc":
         data, err = pdf_to_docx_smart(raw, ocr_lang=ocr_lang, mode=mode)
@@ -1415,6 +1484,9 @@ async def convert_document(
     base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
     base = _ascii_safe_filename(base)
     headers = {"Content-Disposition": f"attachment; filename={base}{out_ext}"}
+
+    _consume_upload_bytes(db, subscription, len(raw))
+    _consume_transaction(db, subscription)
     return StreamingResponse(io.BytesIO(data), media_type=media, headers=headers)
 
 
@@ -1600,16 +1672,20 @@ async def support_chat(
         _enforce_verified_user(db, current_user["email"])
         subscription = _get_or_create_subscription(db, current_user["email"])
         _enforce_ai_quota(subscription)
-        answer = await invoke_llm(
+        llm_out = await invoke_llm(
             prompt=prompt,
             add_context=False,
             model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4-turbo-preview"),
             max_tokens=800,
+            return_usage=True,
         )
+        answer = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
         if not answer:
             raise Exception("Empty response")
 
-        _consume_ai_quota(db, subscription)
+        usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
+        total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
+        _consume_ai_quota(db, subscription, total_tokens)
         return {
             "answer": answer,
             "refused": False,
@@ -1666,6 +1742,8 @@ async def support_chat_with_file(
     if len(content) > max_bytes:
         raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
+    _enforce_upload_quota(subscription, len(content))
+
     svc = IngestionService(IngestLimits(max_bytes=max_bytes))
     try:
         ingested = svc.ingest(file.filename or "uploaded_file", content)
@@ -1698,16 +1776,21 @@ async def support_chat_with_file(
     )
 
     try:
-        answer = await invoke_llm(
+        llm_out = await invoke_llm(
             prompt=prompt,
             add_context=False,
             model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4-turbo-preview"),
             max_tokens=900,
+            return_usage=True,
         )
+        answer = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
         if not answer:
             raise Exception("Empty response")
 
-        _consume_ai_quota(db, subscription)
+        usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
+        total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
+        _consume_ai_quota(db, subscription, total_tokens)
+        _consume_upload_bytes(db, subscription, len(content))
         return {
             "answer": answer,
             "refused": False,
@@ -2288,12 +2371,13 @@ async def invoke_llm_endpoint(
 
         # Invoke LLM
         try:
-            response = await invoke_llm(
+            llm_out = await invoke_llm(
                 prompt=request.prompt,
                 add_context=request.add_context_from_internet,
                 response_schema=request.response_json_schema,
                 model=request.model or os.getenv("AI_ASSISTANT_MODEL", "gpt-4o-mini"),
                 max_tokens=int(request.max_tokens) if request.max_tokens is not None else int(os.getenv("AI_ASSISTANT_MAX_TOKENS", "1200") or "1200"),
+                return_usage=True,
             )
         except Exception as llm_error:
             logger.error(f"LLM invocation failed: {str(llm_error)}")
@@ -2302,7 +2386,10 @@ async def invoke_llm_endpoint(
                 detail=f"AI service error: {str(llm_error)}"
             )
 
-        _consume_ai_quota(db, subscription)
+        response = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
+        usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
+        total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
+        _consume_ai_quota(db, subscription, total_tokens)
 
         # Log activity (NO content stored)
         activity = UserActivity(
@@ -2348,6 +2435,8 @@ async def invoke_llm_with_file_endpoint(
                 detail=f"File size exceeds {max_size_mb}MB limit",
             )
 
+        _enforce_upload_quota(subscription, len(content))
+
         svc = IngestionService(IngestLimits(max_bytes=max_bytes))
         try:
             ingested = svc.ingest(file.filename or "uploaded_file", content)
@@ -2365,10 +2454,11 @@ async def invoke_llm_with_file_endpoint(
                 raise HTTPException(status_code=400, detail="response_json_schema must be valid JSON")
 
         try:
-            response = await invoke_llm(
+            llm_out = await invoke_llm(
                 prompt=combined_prompt,
                 add_context=add_context_from_internet,
                 response_schema=schema_obj,
+                return_usage=True,
             )
         except Exception as llm_error:
             logger.error(f"LLM invocation failed: {str(llm_error)}")
@@ -2377,7 +2467,11 @@ async def invoke_llm_with_file_endpoint(
                 detail=f"AI service error: {str(llm_error)}",
             )
 
-        _consume_ai_quota(db, subscription)
+        response = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
+        usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
+        total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
+        _consume_ai_quota(db, subscription, total_tokens)
+        _consume_upload_bytes(db, subscription, len(content))
 
         activity = UserActivity(
             user_email=current_user["email"],
@@ -3583,7 +3677,7 @@ async def generate_pl(
         if should_apply_watermark(getattr(subscription, "plan", None)):
             excel_data = watermark_xlsx_bytes(excel_data)
 
-        _consume_ai_quota(db, subscription)
+        _consume_ai_quota(db, subscription, _estimate_tokens_from_text(prompt))
 
         # Log activity
         activity = UserActivity(
@@ -3659,7 +3753,9 @@ async def generate_pl_with_file(
             candidate_id=(candidate_id or None),
         )
 
-        _consume_ai_quota(db, subscription)
+        _enforce_upload_quota(subscription, len(content))
+        _consume_upload_bytes(db, subscription, len(content))
+        _consume_ai_quota(db, subscription, _estimate_tokens_from_text(prompt))
 
         return StreamingResponse(
             io.BytesIO(excel_data),
@@ -3943,6 +4039,8 @@ async def get_my_subscription(
 ):
     """Get current user's subscription"""
     subscription = _get_or_create_subscription(db, current_user["email"])
+    _apply_admin_entitlements(subscription, current_user["email"])
+    db.commit()
 
     return {
         "id": subscription.id,
@@ -3951,14 +4049,14 @@ async def get_my_subscription(
         "status": subscription.status,
         "ai_queries_used": subscription.ai_queries_used,
         "ai_queries_limit": subscription.ai_queries_limit,
-        "ai_queries_reset_at": subscription.ai_queries_reset_at,
+        "ai_queries_reset_at": subscription.ai_queries_reset_at.isoformat() if subscription.ai_queries_reset_at else None,
         "files_uploaded": subscription.files_uploaded,
         "workflow_runs_used": subscription.workflow_runs_used,
         "workflow_runs_limit": subscription.workflow_runs_limit,
-        "workflow_runs_reset_at": subscription.workflow_runs_reset_at,
+        "workflow_runs_reset_at": subscription.workflow_runs_reset_at.isoformat() if subscription.workflow_runs_reset_at else None,
         "conversions_used": subscription.conversions_used,
         "conversions_limit": subscription.conversions_limit,
-        "conversions_reset_at": subscription.conversions_reset_at,
+        "conversions_reset_at": subscription.conversions_reset_at.isoformat() if subscription.conversions_reset_at else None,
         "payment_status": subscription.payment_status,
         "trial_start_date": subscription.trial_start_date,
         "trial_end_date": subscription.trial_end_date,

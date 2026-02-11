@@ -22,31 +22,14 @@ export default function SubscriptionChecker({ children }) {
       const currentUser = await meldraAi.auth.me();
       setUser(currentUser);
 
-      let userSub = await meldraAi.entities.Subscription.filter({ 
-        user_email: currentUser.email 
-      });
+      const mySub = await meldraAi.subscriptions.getMy();
+      setSubscription(mySub);
 
-      if (userSub.length === 0) {
-        // Create free plan subscription for new users
-        const newSub = await meldraAi.entities.Subscription.create({
-          user_email: currentUser.email,
-          plan: 'free',
-          status: 'active',
-          ai_queries_used: 0,
-          ai_queries_limit: 5,
-          files_uploaded: 0
-        });
-        setSubscription(newSub);
-      } else {
-        setSubscription(userSub[0]);
-        
-        // Calculate days left for trial users
-        if (userSub[0].trial_end_date) {
-          const endDate = new Date(userSub[0].trial_end_date);
-          const now = new Date();
-          const days = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
-          setDaysLeft(Math.max(0, days));
-        }
+      if (mySub?.trial_end_date) {
+        const endDate = new Date(mySub.trial_end_date);
+        const now = new Date();
+        const days = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24));
+        setDaysLeft(Math.max(0, days));
       }
     } catch (error) {
       // User not authenticated - this is expected for public pages
@@ -60,16 +43,12 @@ export default function SubscriptionChecker({ children }) {
     setLoading(false);
   };
 
-  const getFileSizeLimit = () => {
-    return subscription?.plan === 'premium' ? 'Unlimited' : '10';
-  };
+  const isUnlimited = (v) => v === -1 || v === 999999;
+  const formatLimit = (v) => (isUnlimited(v) ? 'Unlimited' : v);
 
-  const getTransactionLimit = () => {
-    return subscription?.plan === 'premium' ? 999999 : 50;
-  };
-
-  const getAIQueryLimit = () => {
-    return subscription?.plan === 'premium' ? 999999 : 5;
+  const bytesToMb = (b) => {
+    const n = Number(b || 0);
+    return n / (1024 * 1024);
   };
 
   if (loading) {
@@ -80,8 +59,19 @@ export default function SubscriptionChecker({ children }) {
     );
   }
 
-  const transactionUsage = ((subscription?.files_uploaded || 0) / getTransactionLimit()) * 100;
-  const aiQueryUsage = ((subscription?.ai_queries_used || 0) / getAIQueryLimit()) * 100;
+  const plan = (subscription?.plan || 'free').toLowerCase();
+
+  const tokensUsed = Number(subscription?.ai_queries_used || 0);
+  const tokensLimit = subscription?.ai_queries_limit;
+  const tokenUsage = isUnlimited(tokensLimit) ? 0 : ((tokensUsed / Number(tokensLimit || 1)) * 100);
+
+  const uploadBytesUsed = Number(subscription?.workflow_runs_used || 0);
+  const uploadBytesLimit = subscription?.workflow_runs_limit;
+  const uploadUsage = isUnlimited(uploadBytesLimit) ? 0 : ((uploadBytesUsed / Number(uploadBytesLimit || 1)) * 100);
+
+  const txUsed = Number(subscription?.conversions_used || 0);
+  const txLimit = subscription?.conversions_limit;
+  const txUsage = isUnlimited(txLimit) ? 0 : ((txUsed / Number(txLimit || 1)) * 100);
 
   return (
     <>
@@ -107,22 +97,22 @@ export default function SubscriptionChecker({ children }) {
             <div className="flex flex-wrap items-center gap-6 text-sm">
               {/* Plan Badge */}
               <div className="flex items-center gap-2">
-                {subscription?.plan === 'premium' ? (
+                {plan === 'premium' ? (
                   <Crown className="w-4 h-4 text-amber-400" />
                 ) : (
                   <Zap className="w-4 h-4 text-purple-400" />
                 )}
                 <span className="font-semibold text-slate-900 dark:text-slate-200">
-                  {subscription?.plan === 'premium' ? 'Premium Plan' : 'Free Plan'}
+                  {plan === 'premium' ? 'Premium Plan' : plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
                 </span>
               </div>
 
-              {/* File Size Limit */}
+              {/* Upload Used */}
               <div className="flex items-center gap-2">
                 <Lock className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 <span className="text-slate-600 dark:text-slate-400">
-                  File Size: <strong className="text-slate-900 dark:text-slate-200">
-                    {subscription?.plan === 'premium' ? 'Unlimited' : '10MB'}
+                  Upload Used: <strong className="text-slate-900 dark:text-slate-200">
+                    {bytesToMb(uploadBytesUsed).toFixed(1)}MB/{isUnlimited(uploadBytesLimit) ? 'Unlimited' : `${bytesToMb(uploadBytesLimit).toFixed(0)}MB`}
                   </strong>
                 </span>
               </div>
@@ -130,42 +120,42 @@ export default function SubscriptionChecker({ children }) {
               {/* Transaction Usage */}
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${
-                  transactionUsage >= 90 ? 'bg-red-500' : 
-                  transactionUsage >= 70 ? 'bg-amber-500' : 
+                  txUsage >= 90 ? 'bg-red-500' : 
+                  txUsage >= 70 ? 'bg-amber-500' : 
                   'bg-emerald-500'
                 } animate-pulse`} />
                 <span className="text-slate-600 dark:text-slate-400">
-                  Transactions: <strong className={`${
-                    transactionUsage >= 90 ? 'text-red-600 dark:text-red-400' : 
-                    transactionUsage >= 70 ? 'text-amber-600 dark:text-amber-400' : 
+                  Transactions: <strong className={`$${
+                    txUsage >= 90 ? 'text-red-600 dark:text-red-400' : 
+                    txUsage >= 70 ? 'text-amber-600 dark:text-amber-400' : 
                     'text-slate-900 dark:text-slate-200'
                   }`}>
-                    {subscription?.files_uploaded || 0}/{getTransactionLimit()}
+                    {txUsed}/{formatLimit(txLimit)}
                   </strong>
                 </span>
               </div>
 
-              {/* AI Query Usage */}
+              {/* AI Tokens Usage */}
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${
-                  aiQueryUsage >= 90 ? 'bg-red-500' : 
-                  aiQueryUsage >= 70 ? 'bg-amber-500' : 
+                  tokenUsage >= 90 ? 'bg-red-500' : 
+                  tokenUsage >= 70 ? 'bg-amber-500' : 
                   'bg-emerald-500'
                 } animate-pulse`} />
                 <span className="text-slate-600 dark:text-slate-400">
-                  AI Queries: <strong className={`${
-                    aiQueryUsage >= 90 ? 'text-red-600 dark:text-red-400' : 
-                    aiQueryUsage >= 70 ? 'text-amber-600 dark:text-amber-400' : 
+                  AI Tokens: <strong className={`$${
+                    tokenUsage >= 90 ? 'text-red-600 dark:text-red-400' : 
+                    tokenUsage >= 70 ? 'text-amber-600 dark:text-amber-400' : 
                     'text-slate-900 dark:text-slate-200'
                   }`}>
-                    {subscription?.ai_queries_used || 0}/{getAIQueryLimit()}
+                    {tokensUsed}/{formatLimit(tokensLimit)}
                   </strong>
                 </span>
               </div>
             </div>
 
             {/* Upgrade Button (only for free users) */}
-            {subscription?.plan !== 'premium' && (
+            {plan !== 'premium' && (
               <Link to={createPageUrl('Pricing')}>
                 <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
                   <Crown className="w-4 h-4 mr-2" />

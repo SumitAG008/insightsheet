@@ -278,7 +278,7 @@ export default function Layout({ children, currentPageName }) {
                       <button
                         type="button"
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                          [createPageUrl('FileAnalyzer'), createPageUrl('PLBuilder')].some(p => isActive(p))
+                          [createPageUrl('FileAnalyzer'), createPageUrl('PLBuilder'), createPageUrl('AutoStandardize'), createPageUrl('Reconciliation')].some(p => isActive(p))
                             ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
                             : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
                         }`}
@@ -294,6 +294,18 @@ export default function Layout({ children, currentPageName }) {
                         <Link to={createPageUrl('FileAnalyzer')} className="flex items-center gap-2 cursor-pointer">
                           <BarChart3 className="w-4 h-4" />
                           Analyzer
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={createPageUrl('AutoStandardize')} className="flex items-center gap-2 cursor-pointer">
+                          <Sparkles className="w-4 h-4" />
+                          Auto-Standardize
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={createPageUrl('Reconciliation')} className="flex items-center gap-2 cursor-pointer">
+                          <GitCompareArrows className="w-4 h-4" />
+                          Reconciliation
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
@@ -556,6 +568,12 @@ export default function Layout({ children, currentPageName }) {
                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">File Analysis</p>
                   <Link to={createPageUrl('FileAnalyzer')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FileAnalyzer')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <BarChart3 className="w-4 h-4" /> <span>Analyzer</span>
+                  </Link>
+                  <Link to={createPageUrl('AutoStandardize')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('AutoStandardize')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    <Sparkles className="w-4 h-4" /> <span>Auto-Standardize</span>
+                  </Link>
+                  <Link to={createPageUrl('Reconciliation')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('Reconciliation')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    <GitCompareArrows className="w-4 h-4" /> <span>Reconciliation</span>
                   </Link>
                   <Link to={createPageUrl('PLBuilder')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('PLBuilder')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <FileSpreadsheet className="w-4 h-4" /> <span>P&L Builder</span>

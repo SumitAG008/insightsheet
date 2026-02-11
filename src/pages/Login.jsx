@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, LogIn, Sparkles, Eye, EyeOff } from 'lucide-react';
+import Logo from '@/components/branding/Logo';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -91,9 +92,7 @@ export default function Login() {
       <Card className="w-full max-w-md bg-white border-slate-200 shadow-lg">
         <CardHeader className="space-y-1">
           <div className="flex items-center justify-center mb-4">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
+            <Logo size="small" showText={false} />
           </div>
           <CardTitle className="text-2xl text-center text-slate-900">Welcome to InsightSheet-lite</CardTitle>
           <CardDescription className="text-center text-slate-600">

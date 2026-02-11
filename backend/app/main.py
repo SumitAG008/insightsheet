@@ -65,6 +65,8 @@ from app.services.pl_builder import PLBuilderService
 from app.services.universal_excel_processor import UniversalExcelProcessor
 from app.services.excel_recalc_service import recalc_xlsx_with_libreoffice_bytes
 from app.services.ingestion_service import IngestionService, IngestLimits, build_ingestion_prompt_block
+from app.services.standardize_service import StandardizeService, StandardizeOptions
+from app.services.reconciliation_service import ReconciliationService, ReconcileOptions
 from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email, send_api_key_email, send_trial_deletion_warning_email, send_credentials_deleted_email
 from app.services.db_connection_service import DatabaseConnectionService
 from app.services.security_ai_service import SecurityAIService
@@ -1407,6 +1409,7 @@ async def convert_document(
     mode: Optional[str] = Form(None),
     max_pages: Optional[int] = Form(None),
     timeout_seconds: Optional[float] = Form(None),
+    request: Request = None,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1415,6 +1418,7 @@ async def convert_document(
     Frontend calls: POST /api/convert/{slug} with Authorization: Bearer <jwt>.
     """
 
+    request_id = _get_request_id(request)
     subscription = _get_or_create_subscription(db, current_user["email"])
     _apply_admin_entitlements(subscription, current_user["email"])
     db.commit()
@@ -1485,8 +1489,8 @@ async def convert_document(
     base = _ascii_safe_filename(base)
     headers = {"Content-Disposition": f"attachment; filename={base}{out_ext}"}
 
-    _consume_upload_bytes(db, subscription, len(raw))
-    _consume_transaction(db, subscription)
+    _consume_upload_bytes(db, subscription, current_user["email"], request_id, len(raw))
+    _consume_transaction(db, subscription, current_user["email"], request_id)
     return StreamingResponse(io.BytesIO(data), media_type=media, headers=headers)
 
 
@@ -1613,6 +1617,7 @@ async def get_suggestions(
 @app.post("/api/support/chat", response_model=Dict[str, Any])
 async def support_chat(
     payload: SupportChatRequest,
+    request: Request = None,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1669,6 +1674,7 @@ async def support_chat(
     )
 
     try:
+        request_id = _get_request_id(request)
         _enforce_verified_user(db, current_user["email"])
         subscription = _get_or_create_subscription(db, current_user["email"])
         _enforce_ai_quota(subscription)
@@ -1685,7 +1691,7 @@ async def support_chat(
 
         usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
         total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
-        _consume_ai_quota(db, subscription, total_tokens)
+        _consume_ai_quota(db, subscription, current_user["email"], request_id, total_tokens)
         return {
             "answer": answer,
             "refused": False,
@@ -1700,6 +1706,7 @@ async def support_chat_with_file(
     message: str = Form(...),
     page: Optional[str] = Form(None),
     file: UploadFile = File(...),
+    request: Request = None,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1776,6 +1783,7 @@ async def support_chat_with_file(
     )
 
     try:
+        request_id = _get_request_id(request)
         llm_out = await invoke_llm(
             prompt=prompt,
             add_context=False,
@@ -1789,8 +1797,8 @@ async def support_chat_with_file(
 
         usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
         total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
-        _consume_ai_quota(db, subscription, total_tokens)
-        _consume_upload_bytes(db, subscription, len(content))
+        _consume_ai_quota(db, subscription, current_user["email"], request_id, total_tokens)
+        _consume_upload_bytes(db, subscription, current_user["email"], request_id, len(content))
         return {
             "answer": answer,
             "refused": False,
@@ -2357,6 +2365,7 @@ async def predict_anomalies(
 @app.post("/api/integrations/llm/invoke")
 async def invoke_llm_endpoint(
     request: LLMRequest,
+    http_request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -2366,6 +2375,7 @@ async def invoke_llm_endpoint(
     """
     try:
         _enforce_verified_user(db, current_user["email"])
+        request_id = _get_request_id(http_request)
         subscription = _get_or_create_subscription(db, current_user["email"])
         _enforce_ai_quota(subscription)
 
@@ -2389,7 +2399,7 @@ async def invoke_llm_endpoint(
         response = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
         usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
         total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
-        _consume_ai_quota(db, subscription, total_tokens)
+        _consume_ai_quota(db, subscription, current_user["email"], request_id, total_tokens)
 
         # Log activity (NO content stored)
         activity = UserActivity(
@@ -2417,6 +2427,7 @@ async def invoke_llm_with_file_endpoint(
     add_context_from_internet: bool = Form(False),
     response_json_schema: Optional[str] = Form(None),
     file: UploadFile = File(...),
+    request: Request = None,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -2454,6 +2465,7 @@ async def invoke_llm_with_file_endpoint(
                 raise HTTPException(status_code=400, detail="response_json_schema must be valid JSON")
 
         try:
+            request_id = _get_request_id(request)
             llm_out = await invoke_llm(
                 prompt=combined_prompt,
                 add_context=add_context_from_internet,
@@ -2470,8 +2482,8 @@ async def invoke_llm_with_file_endpoint(
         response = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
         usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
         total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
-        _consume_ai_quota(db, subscription, total_tokens)
-        _consume_upload_bytes(db, subscription, len(content))
+        _consume_ai_quota(db, subscription, current_user["email"], request_id, total_tokens)
+        _consume_upload_bytes(db, subscription, current_user["email"], request_id, len(content))
 
         activity = UserActivity(
             user_email=current_user["email"],
@@ -3664,6 +3676,7 @@ async def generate_pl(
             raise HTTPException(status_code=400, detail="Prompt is required")
 
         _enforce_verified_user(db, current_user["email"])
+        request_id = _get_request_id(request)
         subscription = _get_or_create_subscription(db, current_user["email"])
         _enforce_ai_quota(subscription)
 
@@ -3677,7 +3690,7 @@ async def generate_pl(
         if should_apply_watermark(getattr(subscription, "plan", None)):
             excel_data = watermark_xlsx_bytes(excel_data)
 
-        _consume_ai_quota(db, subscription, _estimate_tokens_from_text(prompt))
+        _consume_ai_quota(db, subscription, current_user["email"], request_id, _estimate_tokens_from_text(prompt))
 
         # Log activity
         activity = UserActivity(
@@ -3707,6 +3720,7 @@ async def generate_pl(
 
 @app.post("/api/files/generate-pl-with-file")
 async def generate_pl_with_file(
+    request: Request,
     prompt: str = Form(...),
     context_json: Optional[str] = Form(None),
     llm_assist_headers_only: bool = Form(False),
@@ -3721,6 +3735,7 @@ async def generate_pl_with_file(
             raise HTTPException(status_code=400, detail="Prompt is required")
 
         _enforce_verified_user(db, current_user["email"])
+        request_id = _get_request_id(request)
         subscription = _get_or_create_subscription(db, current_user["email"])
         _enforce_ai_quota(subscription)
 
@@ -3754,8 +3769,8 @@ async def generate_pl_with_file(
         )
 
         _enforce_upload_quota(subscription, len(content))
-        _consume_upload_bytes(db, subscription, len(content))
-        _consume_ai_quota(db, subscription, _estimate_tokens_from_text(prompt))
+        _consume_upload_bytes(db, subscription, current_user["email"], request_id, len(content))
+        _consume_ai_quota(db, subscription, current_user["email"], request_id, _estimate_tokens_from_text(prompt))
 
         return StreamingResponse(
             io.BytesIO(excel_data),
@@ -3934,11 +3949,226 @@ async def universal_analyze(
         logger.error(f"Universal analyze error: {str(e)}")
         raise HTTPException(status_code=500, detail="Universal analyze failed")
     finally:
-        if processor is not None:
-            try:
+        try:
+            if processor is not None:
                 processor.close()
-            except Exception:
-                pass
+        except Exception:
+            pass
+
+
+@app.post("/api/files/standardize-preview")
+async def standardize_preview(
+    request: Request,
+    file: UploadFile = File(...),
+    dedupe_rows: bool = Form(True),
+    normalize_headers: bool = Form(True),
+    parse_numbers: bool = Form(True),
+    parse_dates: bool = Form(True),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Preview deterministic file standardization (ZERO STORAGE)."""
+    try:
+        _enforce_verified_user(db, current_user["email"])
+        subscription = _get_or_create_subscription(db, current_user["email"])
+
+        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        content = await file.read()
+        if len(content) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+
+        svc = StandardizeService()
+        opts = StandardizeOptions(
+            dedupe_rows=bool(dedupe_rows),
+            normalize_headers=bool(normalize_headers),
+            parse_numbers=bool(parse_numbers),
+            parse_dates=bool(parse_dates),
+        )
+        _out, summary = svc.standardize(file.filename or "uploaded_file", content, options=opts)
+        summary["note"] = "Preview only. Run Standardize to download the standardized workbook."
+        return summary
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Standardize preview error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Standardize preview failed: {str(e)}")
+
+
+@app.post("/api/files/standardize")
+async def standardize_download(
+    request: Request,
+    file: UploadFile = File(...),
+    dedupe_rows: bool = Form(True),
+    normalize_headers: bool = Form(True),
+    parse_numbers: bool = Form(True),
+    parse_dates: bool = Form(True),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Standardize a file and return a downloadable Excel workbook (ZERO STORAGE)."""
+    try:
+        request_id = _get_request_id(request)
+        _enforce_verified_user(db, current_user["email"])
+        subscription = _get_or_create_subscription(db, current_user["email"])
+
+        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        content = await file.read()
+        if len(content) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+
+        _enforce_upload_quota(subscription, len(content))
+        _enforce_transactions_quota(subscription)
+
+        svc = StandardizeService()
+        opts = StandardizeOptions(
+            dedupe_rows=bool(dedupe_rows),
+            normalize_headers=bool(normalize_headers),
+            parse_numbers=bool(parse_numbers),
+            parse_dates=bool(parse_dates),
+        )
+        out_bytes, summary = svc.standardize(file.filename or "uploaded_file", content, options=opts)
+
+        base = (os.path.splitext(file.filename or "file")[0] or "file").rstrip(".")
+        base = _ascii_safe_filename(base)
+        headers = {
+            "Content-Disposition": f"attachment; filename={base}_standardized.xlsx",
+            "X-Standardize-Rows-Before": str(summary.get("rows_before") or 0),
+            "X-Standardize-Rows-After": str(summary.get("rows_after") or 0),
+            "X-Standardize-Duplicates-Removed": str(summary.get("duplicate_rows_removed") or 0),
+        }
+
+        _consume_upload_bytes(db, subscription, current_user["email"], request_id, len(content))
+        _consume_transaction(db, subscription, current_user["email"], request_id)
+
+        return StreamingResponse(
+            io.BytesIO(out_bytes),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers=headers,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Standardize error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Standardize failed: {str(e)}")
+
+
+@app.post("/api/files/reconcile-preview")
+async def reconcile_preview(
+    request: Request,
+    left_file: UploadFile = File(...),
+    right_file: UploadFile = File(...),
+    left_key_col: str = Form(...),
+    right_key_col: str = Form(...),
+    left_amount_col: str = Form(...),
+    right_amount_col: str = Form(...),
+    tolerance: float = Form(0.0),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Preview reconciliation counts/totals (ZERO STORAGE)."""
+    try:
+        _enforce_verified_user(db, current_user["email"])
+        subscription = _get_or_create_subscription(db, current_user["email"])
+
+        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        left = await left_file.read()
+        right = await right_file.read()
+        if len(left) > max_bytes or len(right) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"Each file must be <= {max_size_mb}MB")
+
+        svc = ReconciliationService()
+        opts = ReconcileOptions(tolerance=float(tolerance or 0.0))
+        _report, summary = svc.reconcile(
+            left_filename=left_file.filename or "left",
+            left_content=left,
+            right_filename=right_file.filename or "right",
+            right_content=right,
+            left_key_col=left_key_col,
+            right_key_col=right_key_col,
+            left_amount_col=left_amount_col,
+            right_amount_col=right_amount_col,
+            options=opts,
+        )
+        summary["note"] = "Preview only. Run Reconcile to download an Excel report."
+        return summary
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reconcile preview error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Reconcile preview failed: {str(e)}")
+
+
+@app.post("/api/files/reconcile")
+async def reconcile_download(
+    request: Request,
+    left_file: UploadFile = File(...),
+    right_file: UploadFile = File(...),
+    left_key_col: str = Form(...),
+    right_key_col: str = Form(...),
+    left_amount_col: str = Form(...),
+    right_amount_col: str = Form(...),
+    tolerance: float = Form(0.0),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Reconcile two files and return an Excel reconciliation report (ZERO STORAGE)."""
+    try:
+        request_id = _get_request_id(request)
+        _enforce_verified_user(db, current_user["email"])
+        subscription = _get_or_create_subscription(db, current_user["email"])
+
+        max_size_mb = 500 if subscription.plan == "premium" else 10
+        max_bytes = max_size_mb * 1024 * 1024
+        left = await left_file.read()
+        right = await right_file.read()
+        if len(left) > max_bytes or len(right) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"Each file must be <= {max_size_mb}MB")
+
+        total_upload = len(left) + len(right)
+        _enforce_upload_quota(subscription, total_upload)
+        _enforce_transactions_quota(subscription)
+
+        svc = ReconciliationService()
+        opts = ReconcileOptions(tolerance=float(tolerance or 0.0))
+        report_bytes, summary = svc.reconcile(
+            left_filename=left_file.filename or "left",
+            left_content=left,
+            right_filename=right_file.filename or "right",
+            right_content=right,
+            left_key_col=left_key_col,
+            right_key_col=right_key_col,
+            left_amount_col=left_amount_col,
+            right_amount_col=right_amount_col,
+            options=opts,
+        )
+
+        headers = {
+            "Content-Disposition": "attachment; filename=reconciliation_report.xlsx",
+            "X-Reconcile-Matched": str(((summary.get("counts") or {}).get("matched")) or 0),
+            "X-Reconcile-Mismatched": str(((summary.get("counts") or {}).get("mismatch")) or 0),
+            "X-Reconcile-Missing-Left": str(((summary.get("counts") or {}).get("missing_on_left")) or 0),
+            "X-Reconcile-Missing-Right": str(((summary.get("counts") or {}).get("missing_on_right")) or 0),
+            "X-Reconcile-Left-Total": str(((summary.get("totals") or {}).get("left_total")) or 0),
+            "X-Reconcile-Right-Total": str(((summary.get("totals") or {}).get("right_total")) or 0),
+            "X-Reconcile-Variance-Total": str(((summary.get("totals") or {}).get("variance_total")) or 0),
+        }
+
+        _consume_upload_bytes(db, subscription, current_user["email"], request_id, total_upload)
+        _consume_transaction(db, subscription, current_user["email"], request_id)
+
+        return StreamingResponse(
+            io.BytesIO(report_bytes),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers=headers,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Reconcile error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Reconcile failed: {str(e)}")
 
 
 @app.post("/api/files/process-zip")

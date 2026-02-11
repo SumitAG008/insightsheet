@@ -46,6 +46,8 @@ import FileAnalyzer from "./FileAnalyzer";
 import Reviews from "./Reviews";
 import DatabaseConnection from "./DatabaseConnection";
 import Settings from "./Settings";
+import AutoStandardize from "./AutoStandardize";
+import Reconciliation from "./Reconciliation";
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
 import Faq from "./Faq";
@@ -243,6 +245,12 @@ function PagesContent() {
 
                 <Route path="/Settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+
+                <Route path="/AutoStandardize" element={<ProtectedRoute><AutoStandardize /></ProtectedRoute>} />
+                <Route path="/autostandardize" element={<ProtectedRoute><AutoStandardize /></ProtectedRoute>} />
+
+                <Route path="/Reconciliation" element={<ProtectedRoute><Reconciliation /></ProtectedRoute>} />
+                <Route path="/reconciliation" element={<ProtectedRoute><Reconciliation /></ProtectedRoute>} />
 
             </Routes>
         </Layout>

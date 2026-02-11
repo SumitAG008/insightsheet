@@ -1,7 +1,7 @@
 """
 Database configuration and models for InsightSheet-lite
 """
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Boolean, Text
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Boolean, Text, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -141,6 +141,20 @@ class SubscriptionEventLog(Base):
     ip_address = Column(String(100), nullable=True)
     user_agent = Column(String(500), nullable=True)
     created_date = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+class UsageMeterDedup(Base):
+    __tablename__ = "usage_meter_dedup"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    request_id = Column(String(128), index=True, nullable=False)
+    kind = Column(String(50), index=True, nullable=False)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+
+    __table_args__ = (
+        UniqueConstraint("user_email", "request_id", "kind", name="uq_usage_meter_dedup"),
+    )
 
 
 class LoginHistory(Base):

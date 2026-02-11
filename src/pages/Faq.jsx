@@ -7,6 +7,37 @@ import Logo from '@/components/branding/Logo';
 
 const FAQ_ITEMS = [
   {
+    id: 'auto-standardize',
+    title: 'What is Auto-Standardize?',
+    body: `Auto-Standardize cleans and normalizes a spreadsheet into a consistent, analysis-ready Excel output.
+
+It is deterministic (repeatable) and focuses on safe operations like:
+- Normalizing headers (snake_case and unique)
+- Parsing common number formats (currency, commas, parentheses)
+- Parsing common date formats (when safe)
+- Removing exact duplicate rows (optional)
+
+Privacy: the file is processed in-memory and the content is not stored. We may store minimal operational metadata (account/usage logs).`,
+  },
+  {
+    id: 'reconciliation',
+    title: 'What is Reconciliation and how does it work?',
+    body: `Reconciliation compares two datasets by a Key column (like Invoice Number) and an Amount column.
+
+How it works:
+- It matches rows by exact key value
+- It sums amounts per key on each side (to handle duplicates)
+- It computes variance = left_total - right_total per key
+- It produces an Excel report with:
+  - Summary (all keys)
+  - Mismatches
+  - Missing on Left / Missing on Right
+
+Tolerance: you can set a numeric tolerance so small differences are treated as matched.
+
+Limitations (current): matching is exact-key only. Fuzzy matching and AI-assisted mapping can be added as an optional mode.`,
+  },
+  {
     id: 'overview',
     title: 'What is the Dashboard Overview tab?',
     body: `Overview is your executive summary.

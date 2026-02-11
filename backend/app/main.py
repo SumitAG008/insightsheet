@@ -109,6 +109,23 @@ def _ascii_safe_filename(name: str) -> str:
     return s or "file"
 
 
+def _get_request_id(request: Request) -> str:
+    rid = None
+    try:
+        rid = request.headers.get("X-Request-Id")
+    except Exception:
+        rid = None
+
+    rid = (rid or "").strip()
+    if not rid:
+        return str(uuid.uuid4())
+
+    # keep dedupe keys sane in DB
+    if len(rid) > 128:
+        return rid[:128]
+    return rid
+
+
 class SupportChatRequest(BaseModel):
     message: str
     page: Optional[str] = None

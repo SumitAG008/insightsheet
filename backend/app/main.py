@@ -65,7 +65,7 @@ from app.services.pl_builder import PLBuilderService
 from app.services.universal_excel_processor import UniversalExcelProcessor
 from app.services.excel_recalc_service import recalc_xlsx_with_libreoffice_bytes
 from app.services.ingestion_service import IngestionService, IngestLimits, build_ingestion_prompt_block
-from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email, send_api_key_email
+from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email, send_api_key_email, send_trial_deletion_warning_email, send_credentials_deleted_email
 from app.services.db_connection_service import DatabaseConnectionService
 from app.services.security_ai_service import SecurityAIService
 from app.services.api_key_service import (
@@ -420,11 +420,90 @@ def _get_or_create_subscription(db: Session, user_email: str) -> Subscription:
         conversions_limit=int(os.getenv("FREE_CONVERSIONS_LIMIT", "0")),
         conversions_used=0,
     )
+
+    now = datetime.utcnow()
+    try:
+        trial_days = int(os.getenv("FREE_TRIAL_DAYS", "60"))
+    except Exception:
+        trial_days = 60
+    subscription.trial_start_date = now
+    subscription.trial_end_date = now + timedelta(days=max(1, trial_days))
+
     db.add(subscription)
     db.commit()
     db.refresh(subscription)
     _ensure_subscription_monthly_resets(subscription, db)
     return subscription
+
+
+async def _run_free_trial_lifecycle_once(db: Session, now: datetime) -> Dict[str, int]:
+    warning_days_before = 5
+
+    subs = db.query(Subscription).filter(
+        Subscription.plan == "free",
+        Subscription.trial_end_date.isnot(None),
+    ).all()
+
+    warned = 0
+    deleted = 0
+    for sub in subs:
+        if sub.trial_end_date is None:
+            continue
+
+        deletion_date = sub.trial_end_date
+        warning_at = deletion_date - timedelta(days=warning_days_before)
+
+        if now >= warning_at and getattr(sub, "trial_warning_sent_at", None) is None and now < deletion_date:
+            user = db.query(User).filter(User.email == sub.user_email).first()
+            full_name = getattr(user, "full_name", "") if user else ""
+            ok = await send_trial_deletion_warning_email(
+                sub.user_email,
+                full_name,
+                deletion_date.replace(microsecond=0).isoformat() + "Z",
+            )
+            if ok:
+                sub.trial_warning_sent_at = now
+                db.commit()
+                warned += 1
+
+        if now >= deletion_date and getattr(sub, "credentials_deleted_at", None) is None:
+            user = db.query(User).filter(User.email == sub.user_email).first()
+            full_name = getattr(user, "full_name", "") if user else ""
+
+            if getattr(sub, "deletion_email_sent_at", None) is None:
+                ok = await send_credentials_deleted_email(sub.user_email, full_name)
+                if ok:
+                    sub.deletion_email_sent_at = now
+                    db.commit()
+
+            if user is not None:
+                db.delete(user)
+                db.commit()
+
+            sub.credentials_deleted_at = now
+            sub.status = "expired"
+            sub.ai_queries_limit = 0
+            db.commit()
+            deleted += 1
+
+    return {"warned": warned, "deleted": deleted}
+
+
+async def _background_free_trial_lifecycle() -> None:
+    from app.database import SessionLocal
+
+    while True:
+        try:
+            now = datetime.utcnow()
+            db = SessionLocal()
+            try:
+                await _run_free_trial_lifecycle_once(db, now)
+            finally:
+                db.close()
+        except Exception:
+            # Never crash server due to lifecycle task
+            pass
+        await asyncio.sleep(60 * 60 * 12)
 
 
 def _enforce_verified_user(db: Session, user_email: str) -> None:
@@ -566,6 +645,8 @@ async def startup_event():
     # Background TTL cleanup for session-scoped history
     asyncio.create_task(_background_cleanup_file_processing_history())
 
+    asyncio.create_task(_background_free_trial_lifecycle())
+
 
 # Pydantic Models
 class UserRegister(BaseModel):
@@ -672,6 +753,13 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
                 detail="Email already registered"
             )
 
+        existing_sub = db.query(Subscription).filter(Subscription.user_email == user_data.email).first()
+        if existing_sub and existing_sub.plan == "free" and existing_sub.trial_start_date is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Free trial already used for this email. Please upgrade to continue."
+            )
+
         # Validate password strength
         if len(user_data.password) < 10:
             raise HTTPException(
@@ -708,7 +796,6 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         db.refresh(new_user)
 
         # Create free subscription (but user can't use it until verified)
-        existing_sub = db.query(Subscription).filter(Subscription.user_email == user_data.email).first()
         if not existing_sub:
             subscription = Subscription(
                 user_email=user_data.email,
@@ -717,6 +804,13 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
                 ai_queries_limit=5,
                 ai_queries_used=0
             )
+            now = datetime.utcnow()
+            try:
+                trial_days = int(os.getenv("FREE_TRIAL_DAYS", "60"))
+            except Exception:
+                trial_days = 60
+            subscription.trial_start_date = now
+            subscription.trial_end_date = now + timedelta(days=max(1, trial_days))
             db.add(subscription)
             db.commit()
 
@@ -750,6 +844,20 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Registration failed: {str(e)}"
         )
+
+
+@app.post("/api/admin/free-trial-lifecycle/run")
+async def run_free_trial_lifecycle(
+    current_user: dict = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    now = datetime.utcnow()
+    try:
+        stats = await _run_free_trial_lifecycle_once(db, now)
+        return {"message": "Lifecycle run completed", **stats}
+    except Exception as e:
+        logger.error(f"Free trial lifecycle run error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/auth/login")

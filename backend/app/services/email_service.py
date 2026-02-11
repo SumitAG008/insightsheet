@@ -1037,3 +1037,164 @@ X-API-Key: {api_key}
     except Exception as e:
         logger.error(f"Failed to send API key email to {email}: {str(e)}")
         return False
+
+
+async def send_trial_deletion_warning_email(email: str, full_name: str, deletion_date_iso: str) -> bool:
+    resend_api_key = os.getenv("RESEND_API_KEY", "")
+    if resend_api_key and RESEND_AVAILABLE:
+        try:
+            resend.api_key = resend_api_key
+            from_email = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "onboarding@resend.dev"))
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <body style=\"font-family: Arial, sans-serif;\">
+                <h2>Account credentials scheduled for deletion</h2>
+                <p>Hello {full_name or 'there'},</p>
+                <p><strong>Your login credentials are scheduled to be deleted on {deletion_date_iso} (UTC).</strong></p>
+                <p>After deletion, you will not be able to log in again. If you need continued access, please upgrade.</p>
+                <p>The Meldra Team</p>
+            </body>
+            </html>
+            """
+            text_content = (
+                f"Account credentials scheduled for deletion\n\n"
+                f"Hello {full_name or 'there'},\n\n"
+                f"Your login credentials are scheduled to be deleted on {deletion_date_iso} (UTC).\n\n"
+                f"After deletion, you will not be able to log in again. If you need continued access, please upgrade.\n\n"
+                f"The Meldra Team\n"
+            )
+            resend.Emails.send({
+                "from": from_email,
+                "to": [email],
+                "subject": "Meldra: account credentials deletion scheduled",
+                "html": html_content,
+                "text": text_content,
+            })
+            logger.info(f"✅ Trial deletion warning email sent via Resend to {email}")
+            return True
+        except Exception as e:
+            logger.warning(f"Trial deletion warning via Resend failed: {type(e).__name__}: {e}")
+
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    smtp_from_email = os.getenv("SMTP_FROM_EMAIL", smtp_user)
+    if not smtp_user or not smtp_password:
+        logger.warning("SMTP not configured; trial deletion warning email not sent.")
+        return False
+
+    try:
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Meldra: account credentials deletion scheduled"
+        message["From"] = f"Meldra <{smtp_from_email}>"
+        message["To"] = email
+
+        text_body = (
+            f"Hello {full_name or 'there'},\n\n"
+            f"Your login credentials are scheduled to be deleted on {deletion_date_iso} (UTC).\n\n"
+            f"After deletion, you will not be able to log in again. If you need continued access, please upgrade.\n\n"
+            f"The Meldra Team\n"
+        )
+        html_body = (
+            f"<p>Hello {full_name or 'there'},</p>"
+            f"<p><strong>Your login credentials are scheduled to be deleted on {deletion_date_iso} (UTC).</strong></p>"
+            f"<p>After deletion, you will not be able to log in again. If you need continued access, please upgrade.</p>"
+            f"<p>The Meldra Team</p>"
+        )
+        message.attach(MIMEText(text_body, "plain"))
+        message.attach(MIMEText(html_body, "html"))
+        await aiosmtplib.send(
+            message,
+            hostname=smtp_host,
+            port=smtp_port,
+            username=smtp_user,
+            password=smtp_password,
+            use_tls=True,
+        )
+        logger.info(f"✅ Trial deletion warning email sent via SMTP to {email}")
+        return True
+    except Exception as e:
+        logger.warning(f"Trial deletion warning via SMTP failed: {type(e).__name__}: {e}")
+        return False
+
+
+async def send_credentials_deleted_email(email: str, full_name: str) -> bool:
+    resend_api_key = os.getenv("RESEND_API_KEY", "")
+    if resend_api_key and RESEND_AVAILABLE:
+        try:
+            resend.api_key = resend_api_key
+            from_email = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "onboarding@resend.dev"))
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <body style=\"font-family: Arial, sans-serif;\">
+                <h2>Account credentials deleted</h2>
+                <p>Hello {full_name or 'there'},</p>
+                <p>Your login credentials have been deleted as part of our privacy-first security policy.</p>
+                <p>You will no longer be able to log in again with this account. If you need access, please create a new account or upgrade.</p>
+                <p>The Meldra Team</p>
+            </body>
+            </html>
+            """
+            text_content = (
+                f"Account credentials deleted\n\n"
+                f"Hello {full_name or 'there'},\n\n"
+                f"Your login credentials have been deleted as part of our privacy-first security policy.\n\n"
+                f"You will no longer be able to log in again with this account. If you need access, please create a new account or upgrade.\n\n"
+                f"The Meldra Team\n"
+            )
+            resend.Emails.send({
+                "from": from_email,
+                "to": [email],
+                "subject": "Meldra: account credentials deleted",
+                "html": html_content,
+                "text": text_content,
+            })
+            logger.info(f"✅ Credentials deleted email sent via Resend to {email}")
+            return True
+        except Exception as e:
+            logger.warning(f"Credentials deleted email via Resend failed: {type(e).__name__}: {e}")
+
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    smtp_from_email = os.getenv("SMTP_FROM_EMAIL", smtp_user)
+    if not smtp_user or not smtp_password:
+        logger.warning("SMTP not configured; credentials deleted email not sent.")
+        return False
+
+    try:
+        message = MIMEMultipart("alternative")
+        message["Subject"] = "Meldra: account credentials deleted"
+        message["From"] = f"Meldra <{smtp_from_email}>"
+        message["To"] = email
+        text_body = (
+            f"Hello {full_name or 'there'},\n\n"
+            f"Your login credentials have been deleted as part of our privacy-first security policy.\n\n"
+            f"You will no longer be able to log in again with this account. If you need access, please create a new account or upgrade.\n\n"
+            f"The Meldra Team\n"
+        )
+        html_body = (
+            f"<p>Hello {full_name or 'there'},</p>"
+            f"<p>Your login credentials have been deleted as part of our privacy-first security policy.</p>"
+            f"<p>You will no longer be able to log in again with this account. If you need access, please create a new account or upgrade.</p>"
+            f"<p>The Meldra Team</p>"
+        )
+        message.attach(MIMEText(text_body, "plain"))
+        message.attach(MIMEText(html_body, "html"))
+        await aiosmtplib.send(
+            message,
+            hostname=smtp_host,
+            port=smtp_port,
+            username=smtp_user,
+            password=smtp_password,
+            use_tls=True,
+        )
+        logger.info(f"✅ Credentials deleted email sent via SMTP to {email}")
+        return True
+    except Exception as e:
+        logger.warning(f"Credentials deleted email via SMTP failed: {type(e).__name__}: {e}")
+        return False

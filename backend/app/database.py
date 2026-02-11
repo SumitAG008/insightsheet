@@ -94,6 +94,10 @@ class Subscription(Base):
     trial_start_date = Column(DateTime, nullable=True)
     trial_end_date = Column(DateTime, nullable=True)
 
+    trial_warning_sent_at = Column(DateTime, nullable=True)
+    credentials_deleted_at = Column(DateTime, nullable=True)
+    deletion_email_sent_at = Column(DateTime, nullable=True)
+
     # Subscription dates
     subscription_start_date = Column(DateTime, nullable=True)
     subscription_end_date = Column(DateTime, nullable=True)
@@ -383,6 +387,9 @@ def init_db():
                 missing_subscription_columns = {
                     "trial_start_date": "TIMESTAMP",
                     "trial_end_date": "TIMESTAMP",
+                    "trial_warning_sent_at": "TIMESTAMP",
+                    "credentials_deleted_at": "TIMESTAMP",
+                    "deletion_email_sent_at": "TIMESTAMP",
                     "subscription_start_date": "TIMESTAMP",
                     "subscription_end_date": "TIMESTAMP",
                     "ai_queries_used": "INTEGER DEFAULT 0",

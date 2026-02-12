@@ -20,6 +20,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Dict, Any, List
 from datetime import timedelta, datetime
+import hashlib
 import uuid
 import asyncio
 import base64
@@ -43,7 +44,7 @@ from sqlalchemy import func, and_
 import httpx
 
 # Import local modules
-from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, ApiKey, ApiKeyIssuanceLog, ApiUsage, ApiBilling, SubscriptionEventLog, init_db
+from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, ApiKey, ApiKeyIssuanceLog, ApiUsage, ApiBilling, SubscriptionEventLog, LoginOtpChallenge, LearningSignal, init_db
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -67,7 +68,7 @@ from app.services.excel_recalc_service import recalc_xlsx_with_libreoffice_bytes
 from app.services.ingestion_service import IngestionService, IngestLimits, build_ingestion_prompt_block
 from app.services.standardize_service import StandardizeService, StandardizeOptions
 from app.services.reconciliation_service import ReconciliationService, ReconcileOptions
-from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email, send_api_key_email, send_trial_deletion_warning_email, send_credentials_deleted_email
+from app.services.email_service import send_password_reset_email, send_welcome_email, send_verification_email, send_api_key_email, send_trial_deletion_warning_email, send_credentials_deleted_email, send_login_otp_email
 from app.services.db_connection_service import DatabaseConnectionService
 from app.services.security_ai_service import SecurityAIService
 from app.services.api_key_service import (
@@ -815,6 +816,32 @@ class UserLogin(BaseModel):
     password: str
 
 
+class LoginOtpVerifyRequest(BaseModel):
+    challenge_id: str
+    otp: str
+
+
+class LearningSignalIn(BaseModel):
+    kind: str
+    payload: Dict[str, Any]
+
+
+def _mask_email(email: str) -> str:
+    e = (email or "").strip()
+    if "@" not in e:
+        return "***"
+    name, dom = e.split("@", 1)
+    if len(name) <= 2:
+        return f"{name[:1]}***@{dom}"
+    return f"{name[:2]}***@{dom}"
+
+
+def _hash_login_otp(otp: str) -> str:
+    secret = (os.getenv("LOGIN_OTP_SECRET") or os.getenv("JWT_SECRET_KEY") or "otp-secret").encode("utf-8")
+    msg = (otp or "").encode("utf-8")
+    return hashlib.sha256(secret + b":" + msg).hexdigest()
+
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
@@ -1017,7 +1044,7 @@ async def run_free_trial_lifecycle(
 
 @app.post("/api/auth/login")
 async def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db)):
-    """Login user and return JWT token"""
+    """Login user and return OTP challenge (MFA)."""
     try:
         # Normalize email
         user_data.email = (user_data.email or "").strip().lower()
@@ -1064,15 +1091,21 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
         except Exception:
             db.rollback()
 
-        # Create access token (extended for dev/test email when configured)
-        dev_email = (os.getenv("DEV_EXTENDED_SESSION_EMAIL") or "").strip()
-        dev_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES_DEV", "10080"))  # 7 days default
-        minutes = dev_minutes if (dev_email and user.email == dev_email) else ACCESS_TOKEN_EXPIRE_MINUTES
-        access_token_expires = timedelta(minutes=minutes)
-        access_token = create_access_token(
-            data={"sub": user.email, "role": user.role},
-            expires_delta=access_token_expires
+        otp_ttl_minutes = int(os.getenv("LOGIN_OTP_TTL_MINUTES", "10") or 10)
+        otp_ttl_minutes = max(2, min(otp_ttl_minutes, 30))
+        otp = f"{secrets.randbelow(1000000):06d}"
+        challenge_id = secrets.token_urlsafe(24)
+        challenge = LoginOtpChallenge(
+            challenge_id=challenge_id,
+            user_email=user.email,
+            otp_hash=_hash_login_otp(otp),
+            expires_at=datetime.utcnow() + timedelta(minutes=otp_ttl_minutes),
+            attempts=0,
         )
+        db.add(challenge)
+        db.commit()
+
+        await send_login_otp_email(user.email, otp, expires_minutes=otp_ttl_minutes)
 
         # Log successful login (IP + geo + browser/device for security and compliance)
         # IMPORTANT: This tracks ALL users who log in, not just one user
@@ -1095,17 +1128,11 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
 
         logger.info(f"User logged in: {user.email}")
 
-        # Create response with token
         return {
-            "access_token": access_token,
-            "token_type": "bearer",
-            "user": {
-                "email": user.email,
-                "full_name": user.full_name,
-                "role": user.role,
-                "is_verified": user.is_verified
-            },
-            "expires_in": minutes * 60
+            "mfa_required": True,
+            "challenge_id": challenge_id,
+            "delivery": "email",
+            "destination": _mask_email(user.email),
         }
 
     except HTTPException:
@@ -1116,6 +1143,112 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Login failed"
         )
+
+
+@app.post("/api/auth/mfa/verify")
+async def verify_login_otp(req: LoginOtpVerifyRequest, request: Request, db: Session = Depends(get_db)):
+    try:
+        challenge_id = (req.challenge_id or "").strip()
+        otp = (req.otp or "").strip()
+        if not challenge_id or not otp:
+            raise HTTPException(status_code=400, detail="challenge_id and otp are required")
+
+        ch = db.query(LoginOtpChallenge).filter(LoginOtpChallenge.challenge_id == challenge_id).first()
+        if not ch:
+            raise HTTPException(status_code=400, detail="Invalid or expired challenge")
+        if ch.consumed_at is not None:
+            raise HTTPException(status_code=400, detail="Challenge already used")
+        if ch.expires_at is not None and datetime.utcnow() > ch.expires_at:
+            raise HTTPException(status_code=400, detail="Challenge expired")
+
+        max_attempts = int(os.getenv("LOGIN_OTP_MAX_ATTEMPTS", "5") or 5)
+        if int(ch.attempts or 0) >= max_attempts:
+            raise HTTPException(status_code=429, detail="Too many attempts")
+
+        if _hash_login_otp(otp) != (ch.otp_hash or ""):
+            ch.attempts = int(ch.attempts or 0) + 1
+            db.commit()
+            raise HTTPException(status_code=401, detail="Invalid code")
+
+        ch.consumed_at = datetime.utcnow()
+        db.commit()
+
+        user = db.query(User).filter(User.email == ch.user_email).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        if not user.is_active:
+            raise HTTPException(status_code=401, detail="Inactive user")
+
+        dev_email = (os.getenv("DEV_EXTENDED_SESSION_EMAIL") or "").strip()
+        dev_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES_DEV", "10080"))
+        minutes = dev_minutes if (dev_email and user.email == dev_email) else ACCESS_TOKEN_EXPIRE_MINUTES
+        access_token_expires = timedelta(minutes=minutes)
+        access_token = create_access_token(
+            data={"sub": user.email, "role": user.role},
+            expires_delta=access_token_expires,
+        )
+
+        client_ip = _get_client_ip(request)
+        user_agent = request.headers.get("user-agent", "")
+        browser_info = _parse_user_agent(user_agent)
+        db.add(
+            LoginHistory(
+                user_email=user.email,
+                event_type="login",
+                ip_address=client_ip or None,
+                location=_resolve_geolocation(client_ip) if client_ip else None,
+                browser=browser_info.get("browser"),
+                device=browser_info.get("device"),
+            )
+        )
+        db.commit()
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "email": user.email,
+                "full_name": user.full_name,
+                "role": user.role,
+                "is_verified": user.is_verified,
+            },
+            "expires_in": minutes * 60,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"OTP verify error: {str(e)}")
+        raise HTTPException(status_code=500, detail="OTP verification failed")
+
+
+@app.post("/api/learning/signals")
+async def ingest_learning_signal(
+    signal: LearningSignalIn,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.email == current_user["email"]).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if not getattr(user, "telemetry_opt_in", False):
+        raise HTTPException(status_code=403, detail="Telemetry not enabled")
+
+    kind = (signal.kind or "").strip()
+    if not kind:
+        raise HTTPException(status_code=400, detail="kind is required")
+    payload = signal.payload or {}
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="payload must be an object")
+
+    evt = LearningSignal(
+        user_email=current_user["email"],
+        kind=kind[:100],
+        payload_json=json.dumps(payload)[:20000],
+    )
+    db.add(evt)
+    db.commit()
+    return {"ok": True}
 
 
 @app.post("/api/auth/logout")

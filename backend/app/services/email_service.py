@@ -1198,3 +1198,89 @@ async def send_credentials_deleted_email(email: str, full_name: str) -> bool:
     except Exception as e:
         logger.warning(f"Credentials deleted email via SMTP failed: {type(e).__name__}: {e}")
         return False
+
+
+async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) -> bool:
+    resend_api_key = os.getenv("RESEND_API_KEY", "")
+    subject = "Your Meldra login code"
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: Arial, sans-serif;">
+        <h2>Login verification code</h2>
+        <p>Use this code to complete your login to <strong>insight.meldra.ai</strong>:</p>
+        <div style="font-size: 28px; letter-spacing: 6px; font-weight: 700;">{otp}</div>
+        <p>This code expires in {int(expires_minutes)} minutes.</p>
+    </body>
+    </html>
+    """
+
+    text_content = (
+        f"Your Meldra login code: {otp}\n\n"
+        f"This code expires in {int(expires_minutes)} minutes.\n"
+    )
+
+    if resend_api_key and RESEND_AVAILABLE:
+        try:
+            resend.api_key = resend_api_key
+            configured_from = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "onboarding@resend.dev"))
+            if any(domain in configured_from.lower() for domain in ["@gmail.com", "@outlook.com", "@hotmail.com", "@yahoo.com", "@icloud.com"]):
+                from_email = "onboarding@resend.dev"
+            else:
+                from_email = configured_from
+            try:
+                resend.Emails.send({
+                    "from": from_email,
+                    "to": [email],
+                    "subject": subject,
+                    "html": html_content,
+                    "text": text_content,
+                })
+                logger.info(f"✅ Login OTP email sent via Resend to {email}")
+                return True
+            except Exception as resend_error:
+                if "not verified" in str(resend_error).lower() and from_email != "onboarding@resend.dev":
+                    from_email = "onboarding@resend.dev"
+                    resend.Emails.send({
+                        "from": from_email,
+                        "to": [email],
+                        "subject": subject,
+                        "html": html_content,
+                        "text": text_content,
+                    })
+                    logger.info(f"✅ Login OTP email sent via Resend (test email) to {email}")
+                    return True
+                raise
+        except Exception as e:
+            logger.warning(f"Login OTP email via Resend failed: {type(e).__name__}: {e}")
+
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    smtp_from_email = os.getenv("SMTP_FROM_EMAIL", smtp_user)
+    if not smtp_user or not smtp_password:
+        logger.warning("SMTP not configured; login OTP email not sent.")
+        return False
+
+    try:
+        message = MIMEMultipart("alternative")
+        message["Subject"] = subject
+        message["From"] = f"Meldra <{smtp_from_email}>"
+        message["To"] = email
+        message.attach(MIMEText(text_content, "plain"))
+        message.attach(MIMEText(html_content, "html"))
+        await aiosmtplib.send(
+            message,
+            hostname=smtp_host,
+            port=smtp_port,
+            username=smtp_user,
+            password=smtp_password,
+            use_tls=True,
+        )
+        logger.info(f"✅ Login OTP email sent via SMTP to {email}")
+        return True
+    except Exception as e:
+        logger.warning(f"Login OTP email via SMTP failed: {type(e).__name__}: {e}")
+        return False

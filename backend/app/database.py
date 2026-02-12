@@ -78,8 +78,32 @@ class User(Base):
     reset_token = Column(String(255), nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)
     trial_used_at = Column(DateTime, nullable=True)
+    telemetry_opt_in = Column(Boolean, default=False)
     created_date = Column(DateTime, default=datetime.utcnow)
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class LoginOtpChallenge(Base):
+    __tablename__ = "login_otp_challenges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    challenge_id = Column(String(64), unique=True, index=True, nullable=False)
+    user_email = Column(String(255), index=True, nullable=False)
+    otp_hash = Column(String(255), nullable=False)
+    expires_at = Column(DateTime, index=True, nullable=False)
+    attempts = Column(Integer, default=0)
+    consumed_at = Column(DateTime, nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+class LearningSignal(Base):
+    __tablename__ = "learning_signals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    kind = Column(String(100), index=True, nullable=False)
+    payload_json = Column(Text, nullable=False)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 class Subscription(Base):
@@ -385,6 +409,18 @@ def init_db():
                 except (ProgrammingError, OperationalError) as e:
                     if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
                         logger.warning(f"Could not add trial_used_at column: {str(e)}")
+
+            if 'telemetry_opt_in' not in user_columns:
+                try:
+                    logger.info("Adding telemetry_opt_in column to users table...")
+                    if DATABASE_URL.startswith("postgresql"):
+                        connection.execute(text("ALTER TABLE users ADD COLUMN telemetry_opt_in BOOLEAN DEFAULT FALSE;"))
+                    else:
+                        connection.execute(text("ALTER TABLE users ADD COLUMN telemetry_opt_in BOOLEAN DEFAULT 0;"))
+                    logger.info("✅ Added telemetry_opt_in column")
+                except (ProgrammingError, OperationalError) as e:
+                    if "already exists" not in str(e).lower() and "duplicate" not in str(e).lower():
+                        logger.warning(f"Could not add telemetry_opt_in column: {str(e)}")
 
             # SUBSCRIPTIONS TABLE
             if 'subscriptions' in table_names and 'cancelled_at' not in subscription_columns:

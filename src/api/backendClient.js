@@ -117,6 +117,25 @@ export const backendApi = {
       return data;
     },
 
+    verifyLoginOtp: async (challengeId, otp) => {
+      const response = await apiCall('/api/auth/mfa/verify', {
+        method: 'POST',
+        body: { challenge_id: challengeId, otp },
+        timeoutMs: 25000,
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || `OTP verify failed: ${response.status}`);
+      }
+
+      if (data.access_token) {
+        setToken(data.access_token);
+      }
+
+      return data;
+    },
+
     logout: () => {
       clearAllAppSessionData();
       setToken(null);

@@ -13,6 +13,9 @@ export default function Login() {
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [challengeId, setChallengeId] = useState('');
+  const [otp, setOtp] = useState('');
+  const [step, setStep] = useState('password');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -26,16 +29,26 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const result = await backendApi.auth.login(email, password);
-
-      if (result.access_token) {
-        // Store user info
-        localStorage.setItem('user', JSON.stringify(result.user));
-
-        // Navigate to the page they were trying to access, or dashboard
-        navigate(from, { replace: true });
+      if (step === 'password') {
+        const result = await backendApi.auth.login(email, password);
+        if (result?.mfa_required && result?.challenge_id) {
+          setChallengeId(result.challenge_id);
+          setStep('otp');
+          setOtp('');
+        } else if (result.access_token) {
+          localStorage.setItem('user', JSON.stringify(result.user));
+          navigate(from, { replace: true });
+        } else {
+          setError('Login failed. Please try again.');
+        }
       } else {
-        setError('Login failed. Please try again.');
+        const result = await backendApi.auth.verifyLoginOtp(challengeId, otp);
+        if (result.access_token) {
+          localStorage.setItem('user', JSON.stringify(result.user));
+          navigate(from, { replace: true });
+        } else {
+          setError('Verification failed. Please try again.');
+        }
       }
     } catch (err) {
       // Check if error is about email verification
@@ -106,52 +119,82 @@ export default function Login() {
                 <AlertDescription className="text-red-700">{error}</AlertDescription>
               </Alert>
             )}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Email</label>
-              <Input
-                type="email"
-                placeholder="your@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-                className="border-slate-300 text-slate-900"
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium text-slate-700">Password</label>
-                <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 underline">
-                  Forgot password?
-                </Link>
-              </div>
-              <div className="relative">
-                <Input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
-                  required
-                  className="border-slate-300 text-slate-900 pr-10"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
+            {step === 'password' ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Email</label>
+                  <Input
+                    type="email"
+                    placeholder="your@email.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    required
+                    className="border-slate-300 text-slate-900"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-slate-700">Password</label>
+                    <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 underline">
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                      required
+                      className="border-slate-300 text-slate-900 pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700">Verification code</label>
+                  <Input
+                    type="text"
+                    placeholder="123456"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    autoComplete="one-time-code"
+                    required
+                    className="border-slate-300 text-slate-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStep('password');
+                      setChallengeId('');
+                      setOtp('');
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-700 underline"
+                  >
+                    Back
+                  </button>
+                </div>
+              </>
+            )}
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
               {loading ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Signing in...</>
               ) : (
-                <><LogIn className="w-4 h-4 mr-2" /> Sign In</>
+                <><LogIn className="w-4 h-4 mr-2" /> {step === 'password' ? 'Sign In' : 'Verify Code'}</>
               )}
             </Button>
             <p className="text-sm text-center text-slate-600">

@@ -325,31 +325,31 @@ export default function OverviewDashboard({
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">
                   <DialogHeader>
-                    <DialogTitle>Formula files: how to make charts trustworthy</DialogTitle>
+                    <DialogTitle>{t('overview_excel_help_title')}</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-3 text-sm text-slate-700 dark:text-slate-200">
                     <div>
-                      If your workbook contains formulas, InsightSheet relies on Excel's cached results. If the file was saved before formulas were calculated, charts may be blocked to avoid showing misleading numbers.
+                      {t('overview_excel_help_body_1')}
                     </div>
 
-                    <div className="font-semibold text-slate-900 dark:text-white">Option 1 (recommended): Calculate + Save in Excel</div>
+                    <div className="font-semibold text-slate-900 dark:text-white">{t('overview_excel_help_option1_title')}</div>
                     <div className="space-y-1">
-                      <div>1) Open the workbook in Excel.</div>
-                      <div>2) Let calculations finish (you should see values populated, not blanks/zeros).</div>
-                      <div>3) Save the file.</div>
-                      <div>4) Re-upload the saved file here.</div>
+                      <div>{t('overview_excel_help_option1_step1')}</div>
+                      <div>{t('overview_excel_help_option1_step2')}</div>
+                      <div>{t('overview_excel_help_option1_step3')}</div>
+                      <div>{t('overview_excel_help_option1_step4')}</div>
                     </div>
 
-                    <div className="font-semibold text-slate-900 dark:text-white">Option 2: Paste Values (locks numbers)</div>
+                    <div className="font-semibold text-slate-900 dark:text-white">{t('overview_excel_help_option2_title')}</div>
                     <div className="space-y-1">
-                      <div>1) Select the computed range (cells with formulas).</div>
-                      <div>2) Copy.</div>
-                      <div>3) Paste Special → Values.</div>
-                      <div>4) Save as a new file and upload that file.</div>
+                      <div>{t('overview_excel_help_option2_step1')}</div>
+                      <div>{t('overview_excel_help_option2_step2')}</div>
+                      <div>{t('overview_excel_help_option2_step3')}</div>
+                      <div>{t('overview_excel_help_option2_step4')}</div>
                     </div>
 
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      Note: "Paste Values" removes formulas, so future changes to inputs will not recalculate automatically.
+                      {t('overview_excel_help_note')}
                     </div>
                   </div>
                 </DialogContent>
@@ -384,29 +384,29 @@ export default function OverviewDashboard({
                 <div className="text-sm text-slate-700 dark:text-slate-300">
                   {blockedSheets.length > 0 ? (
                     <div>
-                      <span className="font-semibold">Blocked sheets:</span> {blockedSheets.length}
+                      <span className="font-semibold">{t('overview_blocked_sheets')}:</span> {blockedSheets.length}
                     </div>
                   ) : null}
                   {warningSheets.length > 0 ? (
                     <div>
-                      <span className="font-semibold">Warning sheets:</span> {warningSheets.length}
+                      <span className="font-semibold">{t('overview_warning_sheets')}:</span> {warningSheets.length}
                     </div>
                   ) : null}
                 </div>
               ) : (
                 <div className="text-sm text-slate-600 dark:text-slate-400">
-                  No formula-cache issues detected.
+                  {t('overview_no_formula_cache_issues')}
                 </div>
               )}
 
               {universalAnalysis?.status === 'needs_clarification' && clarification ? (
                 <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
-                  <div className="text-sm font-semibold text-slate-900 dark:text-white">Needs clarification</div>
-                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{clarification?.message || 'Please confirm header and data rows.'}</div>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{t('overview_needs_clarification_title')}</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-400 mt-1">{clarification?.message || t('overview_needs_clarification_default')}</div>
 
                   <div className="grid md:grid-cols-3 gap-3 mt-3">
                     <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Sheet</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('common_sheet')}</div>
                       <select
                         className="w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-2 text-sm"
                         value={clarifySheetName}
@@ -419,29 +419,29 @@ export default function OverviewDashboard({
                     </div>
 
                     <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Header row</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('overview_header_row')}</div>
                       <input
                         className="w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-2 text-sm"
                         value={clarifyHeaderRow}
                         onChange={(e) => setClarifyHeaderRow(e.target.value)}
-                        placeholder="e.g. 7"
+                        placeholder={t('overview_row_placeholder', { example: '7' })}
                       />
                     </div>
 
                     <div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Data start row</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">{t('overview_data_start_row')}</div>
                       <input
                         className="w-full rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-2 py-2 text-sm"
                         value={clarifyDataStartRow}
                         onChange={(e) => setClarifyDataStartRow(e.target.value)}
-                        placeholder="e.g. 8"
+                        placeholder={t('overview_row_placeholder', { example: '8' })}
                       />
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-3 mt-3">
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      Tip: use the spreadsheet row numbers for the header row (months) and the first data row.
+                      {t('overview_clarify_tip')}
                     </div>
                     <Button
                       type="button"
@@ -462,7 +462,7 @@ export default function OverviewDashboard({
                       }}
                       disabled={!!universalRecalcLoading}
                     >
-                      Apply & re-analyze
+                      {t('overview_apply_and_reanalyze')}
                     </Button>
                   </div>
                 </div>
@@ -470,13 +470,13 @@ export default function OverviewDashboard({
 
               {sheetInsights.length ? (
                 <div className="border border-slate-200 dark:border-slate-800 rounded-lg p-3">
-                  <div className="text-sm font-semibold text-slate-900 dark:text-white">Detected sheet structure</div>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-white">{t('overview_detected_sheet_structure')}</div>
                   <div className="mt-2 space-y-2">
                     {sheetInsights.slice(0, 6).map((s, idx) => (
                       <div key={`${s?.sheet || 'sheet'}-${idx}`} className="text-sm">
                         <div className="flex items-center justify-between gap-3">
                           <div className="min-w-0">
-                            <span className="font-semibold text-slate-900 dark:text-white">{s?.sheet || `Sheet ${idx + 1}`}</span>
+                            <span className="font-semibold text-slate-900 dark:text-white">{s?.sheet || t('common_sheet_n', { n: idx + 1 })}</span>
                             {s?.pattern ? <span className="text-slate-600 dark:text-slate-400">{` • ${s.pattern}`}</span> : null}
                             {s?.region ? <span className="text-slate-500 dark:text-slate-400">{` • ${s.region}`}</span> : null}
                           </div>
@@ -527,7 +527,7 @@ export default function OverviewDashboard({
               {universalAnalysis?.status === 'blocked' && typeof onUniversalRecalc === 'function' ? (
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm text-slate-600 dark:text-slate-400">
-                    If this workbook relies on formulas, you can try server recalculation (Premium).
+                    {t('overview_recalc_hint')}
                   </div>
                   <Button
                     type="button"
@@ -535,7 +535,7 @@ export default function OverviewDashboard({
                     onClick={onUniversalRecalc}
                     disabled={!!universalRecalcLoading}
                   >
-                    {universalRecalcLoading ? 'Recalculating…' : 'Try server recalculation'}
+                    {universalRecalcLoading ? t('overview_recalculating') : t('overview_try_server_recalc')}
                   </Button>
                 </div>
               ) : null}
@@ -552,7 +552,7 @@ export default function OverviewDashboard({
                           <div className="min-w-0">
                             <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">{title}</div>
                             <div className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                              {prov?.sheet ? `Sheet: ${prov.sheet}` : ''}{prov?.region ? ` • ${prov.region}` : ''}{prov?.method ? ` • ${prov.method}` : ''}
+                              {prov?.sheet ? `${t('common_sheet')}: ${prov.sheet}` : ''}{prov?.region ? ` • ${prov.region}` : ''}{prov?.method ? ` • ${prov.method}` : ''}
                             </div>
                           </div>
                           <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700">
@@ -569,7 +569,7 @@ export default function OverviewDashboard({
                                   <XAxis dataKey="name" interval="preserveStartEnd" height={60} tickMargin={10} tickFormatter={(v) => truncateLabel(v, 14)} />
                                   <YAxis width={88} tickFormatter={formatCompactTick} tickMargin={6} />
                                   <Tooltip />
-                                  <Line type="monotone" dataKey="value" name="Value" stroke="#4169E1" strokeWidth={3} dot={false} />
+                                  <Line type="monotone" dataKey="value" name={t('common_value')} stroke="#4169E1" strokeWidth={3} dot={false} />
                                 </RechartsLineChart>
                               ) : (
                                 <RechartsBarChart data={series} margin={{ top: 10, right: 12, left: 44, bottom: 60 }}>
@@ -577,14 +577,14 @@ export default function OverviewDashboard({
                                   <XAxis dataKey="name" interval="preserveStartEnd" height={60} tickMargin={10} tickFormatter={(v) => truncateLabel(v, 14)} />
                                   <YAxis width={88} tickFormatter={formatCompactTick} tickMargin={6} />
                                   <Tooltip />
-                                  <Bar dataKey="value" name="Value" fill="#8B5CF6" radius={[6, 6, 0, 0]} />
+                                  <Bar dataKey="value" name={t('common_value')} fill="#8B5CF6" radius={[6, 6, 0, 0]} />
                                 </RechartsBarChart>
                               )}
                             </ResponsiveContainer>
                           </div>
                         ) : (
                           <div className="h-[220px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                            Trusted chart has no numeric series.
+                            {t('overview_trusted_chart_no_series')}
                           </div>
                         )}
                       </div>
@@ -593,7 +593,7 @@ export default function OverviewDashboard({
                 </div>
               ) : (
                 <div className="text-sm text-slate-600 dark:text-slate-400">
-                  No trusted charts were generated.
+                  {t('overview_no_trusted_charts')}
                 </div>
               )}
             </div>
@@ -604,7 +604,7 @@ export default function OverviewDashboard({
       {pnl ? (
         <div className="grid lg:grid-cols-5 gap-4">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-            <div className="text-xs text-slate-500 dark:text-slate-400">Revenue</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{t('overview_revenue')}</div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white">{formatNumber(pnl.revenue)}</div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">{pnl.columns?.revenue || ''}</div>
           </div>
@@ -616,13 +616,13 @@ export default function OverviewDashboard({
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-            <div className="text-xs text-slate-500 dark:text-slate-400">Expenses</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{t('overview_expenses')}</div>
             <div className="text-2xl font-bold text-slate-900 dark:text-white">{pnl.expense != null ? formatNumber(pnl.expense) : '—'}</div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 truncate">{pnl.columns?.expense || ''}</div>
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-            <div className="text-xs text-slate-500 dark:text-slate-400">Net Profit</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{t('overview_net_profit')}</div>
             <div className={`text-2xl font-bold ${pnl.netProfit != null && pnl.netProfit < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
               {pnl.netProfit != null ? formatNumber(pnl.netProfit) : '—'}
             </div>
@@ -630,7 +630,7 @@ export default function OverviewDashboard({
           </div>
 
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-            <div className="text-xs text-slate-500 dark:text-slate-400">Margins</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{t('overview_margins')}</div>
             <div className="text-lg font-bold text-slate-900 dark:text-white">
               {pnl.grossMarginPct != null ? `${(Math.round(pnl.grossMarginPct * 10) / 10).toFixed(1)}%` : '—'}
               <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold"> GM</span>
@@ -639,51 +639,56 @@ export default function OverviewDashboard({
               {pnl.netMarginPct != null ? `${(Math.round(pnl.netMarginPct * 10) / 10).toFixed(1)}%` : '—'}
               <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold"> NM</span>
             </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Auto-detected P&L</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{t('overview_auto_detected_pnl')}</div>
           </div>
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-          <div className="text-sm font-semibold text-slate-900 dark:text-white">P&amp;L summary</div>
+          <div className="text-sm font-semibold text-slate-900 dark:text-white">{t('overview_pnl_summary_title')}</div>
           <div className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            We couldn't auto-detect Finance columns (Revenue/Expenses/COGS) in this sheet yet. If your headers include finance terms,
-            try renaming columns (e.g. "Revenue", "Expenses", "COGS").
+            {t('overview_pnl_summary_empty')}
           </div>
         </div>
       )}
 
       <div className="grid lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-          <div className="text-xs text-slate-500 dark:text-slate-400">Rows</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">{t('overview_rows')}</div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white">{kpis ? kpis.numRows : (safeData.rows || []).length}</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Columns: {kpis ? kpis.numCols : (safeData.headers || []).length}</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('overview_columns_count', { count: kpis ? kpis.numCols : (safeData.headers || []).length })}</div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-          <div className="text-xs text-slate-500 dark:text-slate-400">Missing cells</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">{t('overview_missing_cells')}</div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white">{kpis ? formatNumber(kpis.missingCells) : '—'}</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{missingPct}% of all cells</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('overview_missing_cells_pct', { pct: missingPct })}</div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
-          <div className="text-xs text-slate-500 dark:text-slate-400">Detected columns</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400">{t('overview_detected_columns')}</div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white">{(inferred.numeric || []).length}</div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Numeric • {(inferred.text || []).length} Text • {(inferred.date || []).length} Date</div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {t('overview_detected_columns_breakdown', {
+              numeric: (inferred.numeric || []).length,
+              text: (inferred.text || []).length,
+              date: (inferred.date || []).length,
+            })}
+          </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 flex flex-col justify-between">
           <div>
-            <div className="text-xs text-slate-500 dark:text-slate-400">Export overview</div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Download KPI snapshot + charts</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{t('overview_export_overview_title')}</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('overview_export_overview_subtitle')}</div>
           </div>
           <div className="flex gap-2 mt-3">
             <Button type="button" variant="outline" className="flex-1" onClick={exportOverviewPng} disabled={exporting}>
               <Download className="w-4 h-4 mr-2" />
-              PNG
+              {t('common_png')}
             </Button>
             <Button type="button" className="flex-1 bg-[#4169E1] hover:bg-[#3659c7] text-white" onClick={exportOverviewPdf} disabled={exporting}>
               <FileDown className="w-4 h-4 mr-2" />
-              PDF
+              {t('common_pdf')}
             </Button>
           </div>
         </div>
@@ -693,7 +698,7 @@ export default function OverviewDashboard({
         <Alert className="bg-amber-500/10 border-amber-500/30">
           <AlertCircle className="h-5 w-5 text-amber-500" />
           <AlertDescription className="text-slate-700 dark:text-slate-200">
-            Arrow analytics is not available for this dataset yet. Showing basic metrics only.
+            {t('overview_arrow_not_available')}
           </AlertDescription>
         </Alert>
       )}
@@ -704,10 +709,10 @@ export default function OverviewDashboard({
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <LineChart className="w-4 h-4 text-[#4169E1]" />
-                <h3 className="font-bold text-slate-900 dark:text-white">Trend</h3>
+                <h3 className="font-bold text-slate-900 dark:text-white">{t('overview_trend_title')}</h3>
               </div>
               <Badge className="bg-[#4169E1]/10 text-[#4169E1] border-[#4169E1]/20">
-                {chosen.dateColumn ? `By ${chosen.dateColumn}` : 'Needs time axis'}
+                {chosen.dateColumn ? t('overview_trend_by', { column: chosen.dateColumn }) : t('overview_trend_needs_time_axis')}
               </Badge>
             </div>
 
@@ -720,15 +725,15 @@ export default function OverviewDashboard({
                     <YAxis width={88} tickFormatter={formatCompactTick} tickMargin={6} />
                     <Tooltip />
                     <Legend />
-                    <Line type="monotone" dataKey="value" name={chosen.valueColumn || 'Value'} stroke="#4169E1" strokeWidth={3} dot={false} />
+                    <Line type="monotone" dataKey="value" name={chosen.valueColumn || t('common_value')} stroke="#4169E1" strokeWidth={3} dot={false} />
                   </RechartsLineChart>
                 </ResponsiveContainer>
               </div>
             ) : (
               <div className="h-[320px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
                 {chosen.dateColumn
-                  ? (chosen.valueColumn ? 'Not enough numeric values to plot a trend.' : 'No numeric column detected to plot a trend.')
-                  : 'No trusted time axis detected (date column or month headers).'}
+                  ? (chosen.valueColumn ? t('overview_trend_not_enough_values') : t('overview_trend_no_numeric_column'))
+                  : t('overview_trend_no_trusted_time_axis')}
               </div>
             )}
           </div>
@@ -738,10 +743,10 @@ export default function OverviewDashboard({
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-slate-700 dark:text-slate-200" />
-                  <h3 className="font-bold text-slate-900 dark:text-white">Top categories</h3>
+                  <h3 className="font-bold text-slate-900 dark:text-white">{t('overview_top_categories_title')}</h3>
                 </div>
                 <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700">
-                  {chosen.categoryColumn && chosen.valueColumn ? `${chosen.categoryColumn} vs ${chosen.valueColumn}` : 'Auto pick'}
+                  {chosen.categoryColumn && chosen.valueColumn ? t('overview_x_vs_y', { x: chosen.categoryColumn, y: chosen.valueColumn }) : t('common_auto_pick')}
                 </Badge>
               </div>
 
@@ -753,13 +758,13 @@ export default function OverviewDashboard({
                       <XAxis dataKey="name" angle={0} textAnchor="middle" interval="preserveStartEnd" minTickGap={12} height={60} tickMargin={10} tickFormatter={(v) => truncateLabel(v, 14)} />
                       <YAxis width={88} tickFormatter={formatCompactTick} tickMargin={6} />
                       <Tooltip />
-                      <Bar dataKey="value" name={chosen.valueColumn || 'Value'} fill="#8B5CF6" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="value" name={chosen.valueColumn || t('common_value')} fill="#8B5CF6" radius={[6, 6, 0, 0]} />
                     </RechartsBarChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
                 <div className="h-[280px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                  Need at least one text/category column and one numeric column.
+                  {t('overview_need_text_and_numeric')}
                 </div>
               )}
             </div>
@@ -768,10 +773,10 @@ export default function OverviewDashboard({
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <PieChart className="w-4 h-4 text-slate-700 dark:text-slate-200" />
-                  <h3 className="font-bold text-slate-900 dark:text-white">Mix</h3>
+                  <h3 className="font-bold text-slate-900 dark:text-white">{t('overview_mix_title')}</h3>
                 </div>
                 <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700">
-                  Share
+                  {t('common_share')}
                 </Badge>
               </div>
 
@@ -791,7 +796,7 @@ export default function OverviewDashboard({
                 </div>
               ) : (
                 <div className="h-[280px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                  Not enough data for a mix chart.
+                  {t('overview_mix_not_enough_data')}
                 </div>
               )}
             </div>
@@ -801,10 +806,10 @@ export default function OverviewDashboard({
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-slate-700 dark:text-slate-200" />
-                <h3 className="font-bold text-slate-900 dark:text-white">Distribution</h3>
+                <h3 className="font-bold text-slate-900 dark:text-white">{t('overview_distribution_title')}</h3>
               </div>
               <Badge className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700">
-                {chosen.valueColumn || 'Numeric column'}
+                {chosen.valueColumn || t('overview_numeric_column')}
               </Badge>
             </div>
 
@@ -822,7 +827,7 @@ export default function OverviewDashboard({
               </div>
             ) : (
               <div className="h-[280px] flex items-center justify-center text-sm text-slate-500 dark:text-slate-400">
-                No numeric column found for distribution.
+                {t('overview_distribution_no_numeric_column')}
               </div>
             )}
           </div>

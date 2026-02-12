@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Edit2, Key, Link2, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { useI18n } from '@/lib/i18n';
 
 export default function SchemaCanvas({
   schema,
@@ -11,6 +12,7 @@ export default function SchemaCanvas({
   onDeleteTable,
   onAddRelationship
 }) {
+  const { t } = useI18n();
   const canvasRef = useRef(null);
   const [draggingTable, setDraggingTable] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -113,14 +115,14 @@ export default function SchemaCanvas({
         <div className="text-sm font-medium text-slate-600 dark:text-slate-300">
           {connectingFrom ? (
             <div className="flex items-center gap-2">
-              <span className="text-blue-600 dark:text-blue-400 font-bold">Creating Relationship:</span>
-              <span>Click on a column in another table to connect</span>
+              <span className="text-blue-600 dark:text-blue-400 font-bold">{t('db_schema_canvas_creating_relationship')}</span>
+              <span>{t('db_schema_canvas_click_column_to_connect')}</span>
             </div>
           ) : (
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1">
-                <span className="font-semibold">💡 Tips:</span>
-                <span>Drag tables to arrange • Click a column, then click another column in a different table to create relationship</span>
+                <span className="font-semibold">{t('db_schema_canvas_tips_label')}</span>
+                <span>{t('db_schema_canvas_tips_body')}</span>
               </span>
             </div>
           )}
@@ -131,7 +133,7 @@ export default function SchemaCanvas({
             size="sm"
             onClick={() => setZoom(z => Math.max(0.5, z - 0.1))}
           >
-            Zoom -
+            {t('common_zoom_out')}
           </Button>
           <span className="text-sm text-slate-400 min-w-[60px] text-center">
             {Math.round(zoom * 100)}%
@@ -141,14 +143,14 @@ export default function SchemaCanvas({
             size="sm"
             onClick={() => setZoom(z => Math.min(2, z + 0.1))}
           >
-            Zoom +
+            {t('common_zoom_in')}
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => { setZoom(1); setPan({ x: 0, y: 0 }); }}
           >
-            Reset View
+            {t('common_reset_view')}
           </Button>
         </div>
       </div>
@@ -232,7 +234,12 @@ export default function SchemaCanvas({
                       e.stopPropagation();
                       handleConnectColumn(table, column);
                     }}
-                    title={connectingFrom ? `Click to connect from ${schema.tables.find(t => t.id === connectingFrom.table)?.name}.${schema.tables.find(t => t.id === connectingFrom.table)?.columns.find(c => c.id === connectingFrom.column)?.name}` : `Click to start relationship from ${column.name}`}
+                    title={connectingFrom
+                      ? t('db_schema_canvas_title_click_to_connect_from', {
+                        from: `${schema.tables.find(t => t.id === connectingFrom.table)?.name}.${schema.tables.find(t => t.id === connectingFrom.table)?.columns.find(c => c.id === connectingFrom.column)?.name}`,
+                      })
+                      : t('db_schema_canvas_title_click_to_start_relationship', { column: column.name })
+                    }
                   >
                     {column.primaryKey && (
                       <Key className="w-3 h-3 text-amber-500 dark:text-amber-400 flex-shrink-0" />
@@ -244,11 +251,11 @@ export default function SchemaCanvas({
                       {column.type}
                     </span>
                     {!column.nullable && (
-                      <span className="text-red-500 dark:text-red-400 text-xs font-bold" title="NOT NULL">*</span>
+                      <span className="text-red-500 dark:text-red-400 text-xs font-bold" title={t('common_not_null')}>*</span>
                     )}
                     {connectingFrom && connectingFrom.table !== table.id && (
                       <span className="text-xs text-blue-600 dark:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity font-medium">
-                        Click to connect
+                        {t('db_schema_canvas_click_to_connect')}
                       </span>
                     )}
                   </div>
@@ -257,7 +264,7 @@ export default function SchemaCanvas({
 
               {/* Footer */}
               <div className="px-3 py-1.5 bg-slate-900/50 text-xs text-slate-400 border-t border-slate-700">
-                {table.columns.length} columns
+                {t('db_schema_canvas_columns_count', { count: table.columns.length })}
               </div>
             </div>
           ))}
@@ -266,37 +273,37 @@ export default function SchemaCanvas({
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center p-8 bg-white dark:bg-slate-800/50 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 max-w-lg shadow-lg">
                 <Database className="w-16 h-16 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
-                <div className="text-slate-900 dark:text-slate-200 text-2xl font-bold mb-2">Start Building Your Database Schema</div>
+                <div className="text-slate-900 dark:text-slate-200 text-2xl font-bold mb-2">{t('db_schema_canvas_empty_title')}</div>
                 <div className="text-slate-600 dark:text-slate-400 text-sm mb-6">
-                  Create tables, define relationships, and generate SQL code
+                  {t('db_schema_canvas_empty_subtitle')}
                 </div>
                 <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4 text-left space-y-3">
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm flex-shrink-0 mt-0.5">1</div>
                     <div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">Add Your First Table</div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400">Click "Add Table" button at the top, or go to "Table Designer" tab</div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">{t('db_schema_canvas_empty_step1_title')}</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">{t('db_schema_canvas_empty_step1_body')}</div>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm flex-shrink-0 mt-0.5">2</div>
                     <div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">Design Your Tables</div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400">Add columns, set data types, and define primary keys in the "Table Designer" tab</div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">{t('db_schema_canvas_empty_step2_title')}</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">{t('db_schema_canvas_empty_step2_body')}</div>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-sm flex-shrink-0 mt-0.5">3</div>
                     <div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">Create Relationships</div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400">Click a column in one table, then click a column in another table to connect them. Or use the "Relationships" tab.</div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">{t('db_schema_canvas_empty_step3_title')}</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">{t('db_schema_canvas_empty_step3_body')}</div>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-400 font-bold text-sm flex-shrink-0 mt-0.5">4</div>
                     <div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">Generate SQL</div>
-                      <div className="text-sm text-slate-600 dark:text-slate-400">Go to "SQL Generator" tab to create database creation scripts</div>
+                      <div className="font-semibold text-slate-900 dark:text-slate-200 mb-1">{t('db_schema_canvas_empty_step4_title')}</div>
+                      <div className="text-sm text-slate-600 dark:text-slate-400">{t('db_schema_canvas_empty_step4_body')}</div>
                     </div>
                   </div>
                 </div>
@@ -310,7 +317,7 @@ export default function SchemaCanvas({
         <div className="mt-4 p-3 bg-blue-900/30 border border-blue-700 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium text-slate-300">
-              Creating relationship from: <span className="text-blue-400 font-bold">
+              {t('db_schema_canvas_creating_relationship_from')} <span className="text-blue-400 font-bold">
                 {schema.tables.find(t => t.id === connectingFrom.table)?.name}.
                 {schema.tables
                   .find(t => t.id === connectingFrom.table)
@@ -322,7 +329,7 @@ export default function SchemaCanvas({
               size="sm"
               onClick={() => setConnectingFrom(null)}
             >
-              Cancel
+              {t('common_cancel')}
             </Button>
           </div>
         </div>

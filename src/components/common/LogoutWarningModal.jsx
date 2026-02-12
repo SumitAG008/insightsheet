@@ -12,8 +12,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useI18n } from '@/lib/i18n';
 
 export default function LogoutWarningModal({ open, onCancel, onConfirm }) {
+  const { t } = useI18n();
   return (
     <AlertDialog open={open} onOpenChange={onCancel}>
       <AlertDialogContent className="bg-slate-900 border-slate-700 max-w-2xl">
@@ -23,32 +25,31 @@ export default function LogoutWarningModal({ open, onCancel, onConfirm }) {
               <AlertTriangle className="w-6 h-6 text-amber-400" />
             </div>
             <AlertDialogTitle className="text-2xl font-bold text-white tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
-              Important: Data Deletion Notice
+              {t('logout_notice_title')}
             </AlertDialogTitle>
           </div>
           <AlertDialogDescription className="text-slate-300 text-base leading-relaxed space-y-4 font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.7' }}>
             <p>
-              You are about to log out or close the application. Please be aware of the following:
+              {t('logout_notice_intro')}
             </p>
             
             <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-4 space-y-2">
-              <p className="font-semibold text-white">All session data will be permanently deleted:</p>
+              <p className="font-semibold text-white">{t('logout_notice_list_title')}</p>
               <ul className="list-disc list-inside space-y-1 text-slate-300 ml-2">
-                <li>Database connections and credentials</li>
-                <li>Query results and executed queries</li>
-                <li>Uploaded files and processed data</li>
-                <li>Chart configurations and visualizations</li>
-                <li>Any unsaved work or temporary data</li>
+                <li>{t('logout_notice_item_db_connections')}</li>
+                <li>{t('logout_notice_item_query_results')}</li>
+                <li>{t('logout_notice_item_uploaded_files')}</li>
+                <li>{t('logout_notice_item_charts')}</li>
+                <li>{t('logout_notice_item_unsaved_work')}</li>
               </ul>
             </div>
 
             <p className="text-amber-300 font-medium">
-              <strong>This action cannot be undone.</strong> All data will be immediately and permanently removed from your browser session. 
-              No data is stored on our servers, so recovery is not possible.
+              <strong>{t('logout_notice_irreversible_strong')}</strong> {t('logout_notice_irreversible_body')}
             </p>
 
             <p className="text-slate-400 text-sm">
-              If you have important work, please ensure you have downloaded or exported all necessary files and data before proceeding.
+              {t('logout_notice_reminder')}
             </p>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -57,13 +58,13 @@ export default function LogoutWarningModal({ open, onCancel, onConfirm }) {
             onClick={onCancel}
             className="bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white"
           >
-            Cancel
+            {t('common_cancel')}
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             className="bg-red-600 hover:bg-red-700 text-white"
           >
-            I Understand - Log Out
+            {t('logout_notice_confirm')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -24,6 +24,7 @@ import { meldraAi, backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useI18n } from '@/lib/i18n';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,6 +50,7 @@ class DashboardErrorBoundary extends React.Component {
   }
 
   render() {
+    const t = typeof this.props?.t === 'function' ? this.props.t : (k) => k;
     if (this.state.hasError) {
       return (
         <div className="min-h-screen bg-white dark:bg-slate-950">
@@ -57,16 +59,16 @@ class DashboardErrorBoundary extends React.Component {
               <div className="flex items-start gap-3">
                 <AlertCircle className="w-6 h-6 text-red-700 dark:text-red-400 mt-0.5" />
                 <div className="flex-1">
-                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">Something went wrong while rendering your dashboard</h2>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('dashboard_err_boundary_title')}</h2>
                   <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
                     {this.state.errorMessage}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-3">
-                    <Button onClick={() => window.location.reload()} variant="default">Reload</Button>
-                    <Button onClick={() => this.setState({ hasError: false, errorMessage: '' })} variant="outline">Try Again</Button>
+                    <Button onClick={() => window.location.reload()} variant="default">{t('common_reload')}</Button>
+                    <Button onClick={() => this.setState({ hasError: false, errorMessage: '' })} variant="outline">{t('common_try_again')}</Button>
                   </div>
                   <p className="mt-3 text-xs text-slate-600 dark:text-slate-400">
-                    If this happens right after uploading a spreadsheet, it usually means one of the chart widgets crashed. This screen prevents a blank page so you can recover.
+                    {t('dashboard_err_boundary_hint')}
                   </p>
                 </div>
               </div>
@@ -81,6 +83,7 @@ class DashboardErrorBoundary extends React.Component {
 }
 
 export default function Dashboard() {
+  const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const location = useLocation();
   const [data, setData] = useState(null);
@@ -304,21 +307,21 @@ export default function Dashboard() {
       (async () => {
         try {
           if (typeof universalAnalyze !== 'function') {
-            throw new Error('Universal analyze is not available in this build yet. Please hard refresh and try again.');
+            throw new Error(t('dashboard_universal_analyze_not_available'));
           }
           const res = await universalAnalyze(file);
           setUniversalAnalysis(res);
           sessionStorage.setItem('insightsheet_universal_analysis', JSON.stringify(res));
           pushActivity({
-            title: 'Universal Excel diagnostics',
-            detail: `${res?.status || 'success'} • ${res?.total_charts ?? 0} trusted chart(s)`,
+            title: t('dashboard_universal_excel_diagnostics'),
+            detail: t('dashboard_universal_status_charts', { status: res?.status || t('common_success'), charts: res?.total_charts ?? 0 }),
             badge: 'Overview',
           });
         } catch (e) {
-          const msg = e?.message || 'Universal analyze failed';
+          const msg = e?.message || t('dashboard_universal_analyze_failed');
           setUniversalError(msg);
           pushActivity({
-            title: 'Universal Excel diagnostics failed',
+            title: t('dashboard_universal_excel_diagnostics_failed'),
             detail: msg,
             badge: 'Overview',
           });
@@ -329,11 +332,12 @@ export default function Dashboard() {
     setTimeout(() => {
       setIsProcessing(false);
       setData(uploadedData);
+      setDisplayData(uploadedData);
       setFilename(file.name);
       setActiveSheet(uploadedData?.workbook?.activeSheet || (uploadedData?.workbook?.sheetNames || [])[0] || '');
       pushActivity({
-        title: 'Uploaded file',
-        detail: `${file.name} • ${uploadedData?.rows?.length ?? 0} rows`,
+        title: t('dashboard_uploaded_file'),
+        detail: t('dashboard_file_rows', { file: file.name, rows: uploadedData?.rows?.length ?? 0 }),
         badge: 'Overview',
       });
       addToHistory(uploadedData);
@@ -348,20 +352,24 @@ export default function Dashboard() {
     setUniversalError('');
     try {
       if (typeof universalAnalyze !== 'function') {
-        throw new Error('Universal analyze is not available in this build yet. Please hard refresh and try again.');
+        throw new Error(t('dashboard_universal_analyze_not_available'));
       }
       const res = await universalAnalyze(f, { recalculate: true, timeoutMs: 180000 });
       setUniversalAnalysis(res);
       sessionStorage.setItem('insightsheet_universal_analysis', JSON.stringify(res));
       pushActivity({
-        title: 'Universal Excel recalculation',
-        detail: `${res?.status || 'success'} • ${res?.total_charts ?? 0} trusted chart(s)`,
+        title: t('dashboard_universal_excel_recalculation'),
+        detail: t('dashboard_universal_status_charts', { status: res?.status || t('common_success'), charts: res?.total_charts ?? 0 }),
         badge: 'Overview',
       });
     } catch (e) {
-      const msg = e?.message || 'Recalculation failed';
+      const msg = e?.message || t('dashboard_universal_recalculation_failed');
       setUniversalError(msg);
-      pushActivity({ title: 'Universal Excel recalculation failed', detail: msg, badge: 'Overview' });
+      pushActivity({
+        title: t('dashboard_universal_excel_recalculation_failed'),
+        detail: msg,
+        badge: 'Overview',
+      });
     } finally {
       setUniversalRecalcLoading(false);
     }
@@ -375,16 +383,16 @@ export default function Dashboard() {
     setUniversalError('');
     try {
       if (typeof universalAnalyze !== 'function') {
-        throw new Error('Universal analyze is not available in this build yet. Please hard refresh and try again.');
+        throw new Error(t('dashboard_universal_analyze_not_available'));
       }
       const res = await universalAnalyze(f, { overrides, timeoutMs: 180000 });
       setUniversalAnalysis(res);
       sessionStorage.setItem('insightsheet_universal_analysis', JSON.stringify(res));
-      pushActivity({ title: 'Universal Excel clarification', detail: 'Applied user selections', badge: 'Overview' });
+      pushActivity({ title: t('dashboard_universal_excel_clarification'), detail: t('dashboard_applied_user_selections'), badge: 'Overview' });
     } catch (e) {
-      const msg = e?.message || 'Clarification failed';
+      const msg = e?.message || t('dashboard_universal_clarification_failed');
       setUniversalError(msg);
-      pushActivity({ title: 'Universal Excel clarification failed', detail: msg, badge: 'Overview' });
+      pushActivity({ title: t('dashboard_universal_excel_clarification_failed'), detail: msg, badge: 'Overview' });
     } finally {
       setUniversalRecalcLoading(false);
     }
@@ -403,8 +411,8 @@ export default function Dashboard() {
       setFilename(templateFilename);
       setActiveSheet(templateData?.workbook?.activeSheet || (templateData?.workbook?.sheetNames || [])[0] || '');
       pushActivity({
-        title: 'Loaded template',
-        detail: `${templateFilename} • ${templateData?.rows?.length ?? 0} rows`,
+        title: t('dashboard_loaded_template'),
+        detail: t('dashboard_file_rows', { file: templateFilename, rows: templateData?.rows?.length ?? 0 }),
         badge: 'Overview',
       });
       addToHistory(templateData);
@@ -434,14 +442,17 @@ export default function Dashboard() {
 
     if (deltaRows !== 0 || deltaCols !== 0) {
       pushActivity({
-        title: 'Dataset updated',
-        detail: `${deltaRows >= 0 ? '+' : ''}${deltaRows} rows, ${deltaCols >= 0 ? '+' : ''}${deltaCols} columns`,
+        title: t('dashboard_dataset_updated'),
+        detail: t('dashboard_dataset_delta_rows_cols', {
+          deltaRows: `${deltaRows >= 0 ? '+' : ''}${deltaRows}`,
+          deltaCols: `${deltaCols >= 0 ? '+' : ''}${deltaCols}`,
+        }),
         badge: activeTab === 'transform' ? 'Transform' : activeTab === 'ai' ? 'AI' : 'Cleaning',
       });
     } else {
       pushActivity({
-        title: 'Dataset updated',
-        detail: 'Values changed',
+        title: t('dashboard_dataset_updated'),
+        detail: t('dashboard_values_changed'),
         badge: activeTab === 'transform' ? 'Transform' : activeTab === 'ai' ? 'AI' : 'Cleaning',
       });
     }
@@ -455,7 +466,7 @@ export default function Dashboard() {
     const button = document.querySelector('[data-save-button]');
     if (button) {
       const originalText = button.textContent;
-      button.textContent = 'Saved!';
+      button.textContent = t('dashboard_saved');
       button.classList.add('bg-green-600');
       setTimeout(() => {
         button.textContent = originalText;
@@ -476,13 +487,13 @@ export default function Dashboard() {
       
       // Add title
       doc.setFontSize(18);
-      doc.text('Data Report', 14, 22);
+      doc.text(t('dashboard_data_report_title'), 14, 22);
       
       // Add filename and metadata
       doc.setFontSize(10);
-      doc.text(`File: ${filename}`, 14, 30);
-      doc.text(`Rows: ${data.rows.length} | Columns: ${data.headers.length}`, 14, 36);
-      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 42);
+      doc.text(t('dashboard_pdf_file', { filename }), 14, 30);
+      doc.text(t('dashboard_pdf_rows_columns', { rows: data.rows.length, cols: data.headers.length }), 14, 36);
+      doc.text(t('dashboard_pdf_generated', { timestamp: new Date().toLocaleString() }), 14, 42);
       
       // Add table
       const tableData = data.rows.map(row => 
@@ -506,7 +517,7 @@ export default function Dashboard() {
       doc.save(`${filename.replace(/\.[^/.]+$/, '')}_report.pdf`);
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      alert('Failed to export PDF. Please try again.');
+      alert(t('dashboard_err_export_pdf_failed'));
     }
   };
 
@@ -587,7 +598,7 @@ export default function Dashboard() {
   };
 
   const handleClearData = () => {
-    if (confirm('Clear all data and start over?')) {
+    if (confirm(t('dashboard_confirm_clear_all'))) {
       sessionStorage.removeItem('insightsheet_data');
       sessionStorage.removeItem('insightsheet_filename');
       setData(null);
@@ -611,28 +622,28 @@ export default function Dashboard() {
             
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#4169E1]/10 border border-[#4169E1]/40 rounded-full mb-6">
               <Shield className="w-4 h-4 text-[#4169E1]" />
-              <span className="text-sm text-slate-900 dark:text-slate-200 font-semibold">Privacy-First • Minimal Retention • Excel & CSV Support</span>
+              <span className="text-sm text-slate-900 dark:text-slate-200 font-semibold">{t('landing_badge')}</span>
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold mb-6 text-slate-900 dark:text-white leading-tight">
-              Transform Your Data
+              {t('landing_title')}
             </h1>
             
             <p className="text-xl md:text-2xl text-slate-700 dark:text-slate-300 max-w-3xl mx-auto mb-4 font-medium">
-              AI-powered analysis, instant cleanup, and beautiful visualizations
+              {t('landing_subtitle')}
             </p>
             
             <p className="text-lg text-slate-600 dark:text-slate-400 font-semibold">
-              meldra
+              {t('landing_brand')}
             </p>
 
             {/* Features */}
             <div className="flex flex-wrap justify-center gap-4 mt-8">
               {[
-                { icon: Gauge, text: 'Instant Processing', bg: 'bg-[#4169E1]/20', textColor: 'text-[#4169E1]' },
-                { icon: Brain, text: 'AI-Powered', bg: 'bg-purple-100 dark:bg-purple-900/30', textColor: 'text-purple-700 dark:text-purple-300' },
-                { icon: Lock, text: 'Privacy First', bg: 'bg-emerald-100 dark:bg-emerald-900/30', textColor: 'text-emerald-700 dark:text-emerald-300' },
-                { icon: TrendingUp, text: 'Smart Charts', bg: 'bg-orange-100 dark:bg-orange-900/30', textColor: 'text-orange-700 dark:text-orange-300' }
+                { icon: Gauge, text: t('landing_feature_instant_processing'), bg: 'bg-[#4169E1]/20', textColor: 'text-[#4169E1]' },
+                { icon: Brain, text: t('landing_feature_ai_powered'), bg: 'bg-purple-100 dark:bg-purple-900/30', textColor: 'text-purple-700 dark:text-purple-300' },
+                { icon: Lock, text: t('landing_feature_privacy_first'), bg: 'bg-emerald-100 dark:bg-emerald-900/30', textColor: 'text-emerald-700 dark:text-emerald-300' },
+                { icon: TrendingUp, text: t('landing_feature_smart_charts'), bg: 'bg-orange-100 dark:bg-orange-900/30', textColor: 'text-orange-700 dark:text-orange-300' }
               ].map((feature, idx) => (
                 <div key={idx} className={`flex items-center gap-2 px-4 py-2 ${feature.bg} ${feature.textColor} rounded-lg border border-current/20`}>
                   <feature.icon className="w-5 h-5" />
@@ -647,12 +658,12 @@ export default function Dashboard() {
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Quick Start with Templates
+                  {t('landing_templates_title')}
                 </h3>
                 <TemplateSelector onTemplateLoad={handleTemplateLoad} />
               </div>
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                Choose from pre-built templates for Sales, Finance, HR, and more to get started instantly.
+                {t('landing_templates_desc')}
               </p>
             </div>
           </div>
@@ -672,10 +683,9 @@ export default function Dashboard() {
               <div className="flex items-start gap-4">
                 <Shield className="w-6 h-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-1" />
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-emerald-300 mb-2">Privacy-First Architecture</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-emerald-300 mb-2">{t('landing_privacy_arch_title')}</h3>
                   <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
-                    All data processing happens in your browser. CSV files are parsed using native JavaScript - 
-                    no external libraries, no tracking. When server-side processing is needed, we aim to minimize what is stored and retain only operational metadata for reliability, security, and billing.
+                    {t('landing_privacy_arch_body')}
                   </p>
                 </div>
               </div>
@@ -687,15 +697,15 @@ export default function Dashboard() {
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-8 shadow-sm">
               <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
                 <FileText className="w-7 h-7 text-[#4169E1]" />
-                ✨ Now Supports Excel Files!
+                {t('landing_excel_support_title')}
               </h2>
               
               <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 mb-6">
-                <p className="text-emerald-700 dark:text-emerald-300 font-semibold mb-2">🎉 Direct Upload Support:</p>
+                <p className="text-emerald-700 dark:text-emerald-300 font-semibold mb-2">{t('landing_direct_upload_support_title')}</p>
                 <ul className="text-slate-700 dark:text-slate-300 text-sm space-y-1 ml-4">
-                  <li>✅ <strong>Excel:</strong> .XLSX, .XLS files (any size)</li>
-                  <li>✅ <strong>CSV:</strong> .CSV files</li>
-                  <li>✅ <strong>Export:</strong> Download as Excel or CSV format</li>
+                  <li>{t('landing_direct_upload_item_excel')}</li>
+                  <li>{t('landing_direct_upload_item_csv')}</li>
+                  <li>{t('landing_direct_upload_item_export')}</li>
                 </ul>
               </div>
 
@@ -705,8 +715,8 @@ export default function Dashboard() {
                     1
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Upload Excel Directly</h3>
-                    <p className="text-slate-600 dark:text-slate-400">Just drag & drop your .XLSX or .XLS file - no conversion needed!</p>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{t('landing_step_1_title')}</h3>
+                    <p className="text-slate-600 dark:text-slate-400">{t('landing_step_1_desc')}</p>
                   </div>
                 </div>
                 
@@ -715,8 +725,8 @@ export default function Dashboard() {
                     2
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Analyze & Transform</h3>
-                    <p className="text-slate-600 dark:text-slate-400">Use AI-powered tools to clean, analyze, and visualize your data</p>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{t('landing_step_2_title')}</h3>
+                    <p className="text-slate-600 dark:text-slate-400">{t('landing_step_2_desc')}</p>
                   </div>
                 </div>
                 
@@ -725,16 +735,16 @@ export default function Dashboard() {
                     3
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">Export Your Results</h3>
-                    <p className="text-slate-600 dark:text-slate-400">Download as Excel (.xlsx) or CSV - your choice!</p>
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{t('landing_step_3_title')}</h3>
+                    <p className="text-slate-600 dark:text-slate-400">{t('landing_step_3_desc')}</p>
                   </div>
                 </div>
               </div>
 
               <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
                 <p className="text-slate-700 dark:text-slate-300 text-sm">
-                  <strong>✨ No File Size Limits:</strong> Process files of any size!<br />
-                  <strong className="text-emerald-600 dark:text-emerald-400">🔒 Privacy First:</strong> Your files are never stored
+                  <strong>{t('landing_no_file_size_limits_title')}</strong> {t('landing_no_file_size_limits_desc')}<br />
+                  <strong className="text-emerald-600 dark:text-emerald-400">{t('landing_privacy_first_title')}</strong> {t('landing_privacy_first_desc')}
                 </p>
               </div>
             </div>
@@ -745,24 +755,24 @@ export default function Dashboard() {
   }
 
   return (
-    <DashboardErrorBoundary>
+    <DashboardErrorBoundary t={t}>
       <div className="min-h-screen bg-white dark:bg-slate-950">
         <div className="container mx-auto px-4 py-6">
           {/* Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{filename || 'Analysis Dashboard'}</h1>
+              <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{filename || t('dashboard_analysis_dashboard_title')}</h1>
               <p className="text-slate-600 dark:text-slate-400 flex items-center gap-2 flex-wrap">
                 <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                Analysis Dashboard • {(displayData || data).rows.length} rows • {(displayData || data).headers.length} columns
+                {t('dashboard_subtitle_rows_cols', { rows: (displayData || data).rows.length, cols: (displayData || data).headers.length })}
                 {displayData && displayData.rows.length !== data.rows.length && (
                   <span className="ml-2 px-2 py-1 bg-[#4169E1]/20 text-[#4169E1] text-sm rounded-full">
-                    Filtered: {data.rows.length - displayData.rows.length} hidden
+                    {t('dashboard_filtered_hidden', { hidden: data.rows.length - displayData.rows.length })}
                   </span>
                 )}
                 {cleanedRowCount > 0 && (
                   <span className="ml-2 px-2 py-1 bg-amber-500/20 text-amber-400 text-xs rounded-full">
-                    {cleanedRowCount} cleaned
+                    {t('dashboard_cleaned_count', { count: cleanedRowCount })}
                   </span>
                 )}
               </p>
@@ -802,7 +812,7 @@ export default function Dashboard() {
                 variant="outline"
                 size="sm"
                 className="rounded-none border-0 border-r border-slate-300 dark:border-slate-700"
-                title="Undo (Ctrl+Z)"
+                title={t('dashboard_undo_shortcut')}
               >
                 <Undo2 className="w-4 h-4" />
               </Button>
@@ -812,7 +822,7 @@ export default function Dashboard() {
                 variant="outline"
                 size="sm"
                 className="rounded-none border-0"
-                title="Redo (Ctrl+Y)"
+                title={t('dashboard_redo_shortcut')}
               >
                 <Redo2 className="w-4 h-4" />
               </Button>
@@ -824,10 +834,10 @@ export default function Dashboard() {
               variant="outline"
               className="border-slate-300 dark:border-slate-700"
               data-save-button
-              title="Save (Ctrl+S)"
+              title={t('dashboard_save_shortcut')}
             >
               <Save className="w-4 h-4 mr-2" />
-              Save
+              {t('common_save')}
             </Button>
 
             {/* Export Dropdown */}
@@ -835,24 +845,24 @@ export default function Dashboard() {
               <DropdownMenuTrigger asChild>
                 <Button
                   className="bg-[#4169E1] hover:bg-[#3659c7] text-white"
-                  title="Export (Ctrl+E)"
+                  title={t('dashboard_export_shortcut')}
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Export
+                  {t('common_export')}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => handleExport('pdf')}>
                   <FileDown className="w-4 h-4 mr-2" />
-                  Export as PDF
+                  {t('dashboard_export_as_pdf')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExport('excel')}>
                   <FileText className="w-4 h-4 mr-2" />
-                  Export as Excel (.xlsx)
+                  {t('dashboard_export_as_excel')}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExport('csv')}>
                   <FileText className="w-4 h-4 mr-2" />
-                  Export as CSV
+                  {t('dashboard_export_as_csv')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -863,7 +873,7 @@ export default function Dashboard() {
               className="border-slate-300 dark:border-slate-700"
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Clear All
+              {t('common_clear_all')}
             </Button>
           </div>
         </div>
@@ -874,12 +884,12 @@ export default function Dashboard() {
               <TooltipTrigger asChild>
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#4169E1]/30 bg-[#4169E1]/10 px-3 py-1 text-sm text-slate-900 dark:text-slate-100 cursor-help">
                   <AlertCircle className="w-4 h-4 text-[#4169E1]" />
-                  <span className="font-semibold">Privacy Mode</span>
+                  <span className="font-semibold">{t('dashboard_privacy_mode')}</span>
                   <Info className="w-3.5 h-3.5 text-slate-500" />
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-sm">
-                All data is processed locally in your browser. Nothing is stored on servers. Close this tab to permanently delete all data.
+                {t('dashboard_privacy_mode_tooltip')}
               </TooltipContent>
             </Tooltip>
 
@@ -887,12 +897,12 @@ export default function Dashboard() {
               <TooltipTrigger asChild>
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#4169E1]/30 bg-[#4169E1]/10 px-3 py-1 text-sm text-slate-900 dark:text-slate-100 cursor-help">
                   <Sparkles className="w-4 h-4 text-[#4169E1]" />
-                  <span className="font-semibold">AI Ops</span>
+                  <span className="font-semibold">{t('dashboard_ai_ops')}</span>
                   <Info className="w-3.5 h-3.5 text-slate-500" />
                 </div>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="max-w-sm">
-                Describe any operation in plain English and AI will execute it for you.
+                {t('dashboard_ai_ops_tooltip')}
               </TooltipContent>
             </Tooltip>
           </div>
@@ -902,16 +912,16 @@ export default function Dashboard() {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 p-1">
             <TabsTrigger value="overview" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
-              Overview
+              {t('dashboard_tab_overview')}
             </TabsTrigger>
             <TabsTrigger value="analysis" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
-              Analysis & Cleaning
+              {t('dashboard_tab_analysis_cleaning')}
             </TabsTrigger>
             <TabsTrigger value="transform" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
-              Transform Data
+              {t('dashboard_tab_transform')}
             </TabsTrigger>
             <TabsTrigger value="ai" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
-              AI Tools
+              {t('dashboard_tab_ai_tools')}
             </TabsTrigger>
           </TabsList>
 

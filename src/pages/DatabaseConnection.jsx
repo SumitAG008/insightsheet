@@ -16,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { backendApi } from '@/api/backendClient';
+import { useI18n } from '@/lib/i18n';
 
 const DB_TYPES = {
   postgresql: {
@@ -75,6 +76,7 @@ const DB_TYPES = {
 };
 
 export default function DatabaseConnection() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [dbType, setDbType] = useState('postgresql');
   const [connectionData, setConnectionData] = useState({});
@@ -124,7 +126,7 @@ export default function DatabaseConnection() {
       const response = await backendApi.db.testConnection(dbType, connectionData);
       
       if (response.success) {
-        toast.success('Connection successful!');
+        toast.success(t('db_connect_toast_connection_successful'));
         setIsConnected(true);
         const connId = response.connectionId || `conn_${Date.now()}`;
         setConnectionId(connId);
@@ -139,7 +141,7 @@ export default function DatabaseConnection() {
         await loadSchema();
       } else {
         setError(response.error || 'Connection failed');
-        toast.error('Connection failed');
+        toast.error(t('db_connect_toast_connection_failed'));
       }
     } catch (err) {
       const errorMsg = err.message || 'Failed to connect to database';
@@ -176,7 +178,7 @@ export default function DatabaseConnection() {
     setQueryResult(null);
     setSchema(null);
     setConnectionData({});
-    toast.success('Disconnected from database');
+    toast.success(t('db_connect_toast_disconnected'));
   };
 
   const toggleTable = (tableName) => {
@@ -222,10 +224,10 @@ export default function DatabaseConnection() {
           data: response.data || [],
           rowCount: response.rowCount || 0
         });
-        toast.success(`Query executed successfully. ${response.rowCount || 0} rows returned.`);
+        toast.success(t('db_connect_toast_query_executed', { rowCount: response.rowCount || 0 }));
       } else {
         setError(response.error || 'Query execution failed');
-        toast.error('Query execution failed');
+        toast.error(t('db_connect_toast_query_execution_failed'));
       }
     } catch (err) {
       const errorMsg = err.message || 'Failed to execute query';
@@ -249,10 +251,10 @@ export default function DatabaseConnection() {
             </div>
             <div>
               <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.03em' }}>
-                Database Connection
+                {t('db_connect_title')}
               </h1>
               <p className="text-lg text-slate-600 dark:text-slate-300 font-light" style={{ letterSpacing: '-0.01em' }}>
-                Connect to external databases, explore schemas, and execute queries
+                {t('db_connect_subtitle')}
               </p>
             </div>
           </div>
@@ -261,8 +263,7 @@ export default function DatabaseConnection() {
           <Alert className="bg-emerald-50 dark:bg-[#059669]/10 border-emerald-200 dark:border-[#059669]/40 mb-6">
             <AlertCircle className="h-5 w-5 text-emerald-600 dark:text-[#10b981]" />
             <AlertDescription className="text-slate-900 dark:text-slate-200">
-              <strong className="text-slate-900 dark:text-slate-100">Zero Storage Policy:</strong> All database connections and query results are stored only in your browser session. 
-              All data will be permanently deleted when you log out or close the application. No database credentials or data are stored on our servers.
+              <strong className="text-slate-900 dark:text-slate-100">{t('db_connect_zero_storage_title')}</strong> {t('db_connect_zero_storage_body')}
             </AlertDescription>
           </Alert>
         </div>
@@ -274,17 +275,17 @@ export default function DatabaseConnection() {
               <CardHeader>
                 <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                   <Plug className="w-5 h-5 text-[#4169E1]" />
-                  Connection Settings
+                  {t('db_connect_connection_settings_title')}
                 </CardTitle>
                 <CardDescription className="text-slate-600 dark:text-slate-300">
-                  Configure your database connection
+                  {t('db_connect_connection_settings_desc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {!isConnected ? (
                   <>
                     <div>
-                      <Label className="text-slate-700 dark:text-slate-300 mb-2 block">Database Type</Label>
+                      <Label className="text-slate-700 dark:text-slate-300 mb-2 block">{t('db_connect_database_type')}</Label>
                       <Select value={dbType} onValueChange={(value) => {
                         setDbType(value);
                         setConnectionData({});
@@ -363,12 +364,12 @@ export default function DatabaseConnection() {
                       {isConnecting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Connecting...
+                          {t('db_connect_connecting')}
                         </>
                       ) : (
                         <>
                           <Plug className="w-4 h-4 mr-2" />
-                          Test Connection
+                          {t('db_connect_test_connection')}
                         </>
                       )}
                     </Button>
@@ -378,7 +379,7 @@ export default function DatabaseConnection() {
                     <Alert className="bg-emerald-50 dark:bg-[#059669]/10 border-emerald-200 dark:border-[#059669]/40">
                       <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-[#10b981]" />
                       <AlertDescription className="text-slate-900 dark:text-slate-200 text-sm">
-                        Connected to {currentDbConfig.name}
+                        {t('db_connect_connected_to', { dbName: currentDbConfig.name })}
                       </AlertDescription>
                     </Alert>
                     
@@ -393,7 +394,7 @@ export default function DatabaseConnection() {
                       className="w-full border-red-300 dark:border-red-500/50 text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Disconnect
+                      {t('db_connect_disconnect')}
                     </Button>
                   </div>
                 )}
@@ -408,15 +409,15 @@ export default function DatabaseConnection() {
                 <TabsList className="grid w-full grid-cols-3 bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
                   <TabsTrigger value="schema" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
                     <Eye className="w-4 h-4 mr-2" />
-                    Schema
+                    {t('db_connect_tab_schema')}
                   </TabsTrigger>
                   <TabsTrigger value="query" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
                     <FileCode className="w-4 h-4 mr-2" />
-                    Query
+                    {t('db_connect_tab_query')}
                   </TabsTrigger>
                   <TabsTrigger value="data" className="data-[state=active]:bg-[#4169E1] data-[state=active]:text-white">
                     <Table className="w-4 h-4 mr-2" />
-                    Data
+                    {t('db_connect_tab_data')}
                   </TabsTrigger>
                 </TabsList>
 
@@ -425,7 +426,7 @@ export default function DatabaseConnection() {
                     <CardHeader>
                       <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                         <Database className="w-5 h-5 text-[#4169E1]" />
-                        Database Schema
+                        {t('db_connect_database_schema_title')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -470,7 +471,7 @@ export default function DatabaseConnection() {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-slate-600 dark:text-slate-400 text-center py-8">No tables found or schema not loaded</p>
+                        <p className="text-slate-600 dark:text-slate-400 text-center py-8">{t('db_connect_no_tables_found')}</p>
                       )}
                     </CardContent>
                   </Card>
@@ -481,14 +482,14 @@ export default function DatabaseConnection() {
                     <CardHeader>
                       <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                         <FileCode className="w-5 h-5 text-[#4169E1]" />
-                        SQL Query Editor
+                        {t('db_connect_sql_query_editor_title')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <Textarea
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Enter your SQL query here..."
+                        placeholder={t('db_connect_sql_query_placeholder')}
                         className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200 font-mono min-h-[200px]"
                       />
                       <Button
@@ -499,12 +500,12 @@ export default function DatabaseConnection() {
                         {isExecutingQuery ? (
                           <>
                             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Executing...
+                            {t('db_connect_executing')}
                           </>
                         ) : (
                           <>
                             <Play className="w-4 h-4 mr-2" />
-                            Execute Query
+                            {t('db_connect_execute_query')}
                           </>
                         )}
                       </Button>
@@ -512,7 +513,7 @@ export default function DatabaseConnection() {
                       {queryResult && (
                         <div className="mt-4">
                           <div className="mb-2 text-sm text-slate-700 dark:text-slate-300">
-                            {queryResult.rowCount} row(s) returned
+                            {t('db_connect_rows_returned', { rowCount: queryResult.rowCount })}
                           </div>
                           <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-auto max-h-[500px]">
                             <table className="w-full text-sm">
@@ -549,7 +550,7 @@ export default function DatabaseConnection() {
                     <CardHeader>
                       <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
                         <Table className="w-5 h-5 text-[#4169E1]" />
-                        Table Data
+                        {t('db_connect_table_data_title')}
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -580,7 +581,7 @@ export default function DatabaseConnection() {
                         </div>
                       ) : (
                         <p className="text-slate-600 dark:text-slate-400 text-center py-8">
-                          Select a table from the Schema tab to view its data
+                          {t('db_connect_select_table_to_view_data')}
                         </p>
                       )}
                     </CardContent>
@@ -592,7 +593,7 @@ export default function DatabaseConnection() {
                 <CardContent className="py-16 text-center">
                   <Database className="w-16 h-16 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
                   <p className="text-slate-600 dark:text-slate-400 text-lg">
-                    Connect to a database to explore schemas and execute queries
+                    {t('db_connect_empty_state')}
                   </p>
                 </CardContent>
               </Card>

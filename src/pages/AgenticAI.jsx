@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useI18n } from '@/lib/i18n';
 import {
   Brain, Sparkles, Loader2, CheckCircle, AlertCircle,
   Play, Eye, Download, Zap, Target, TrendingUp, Lightbulb, Upload, FileText, X, Shield
@@ -14,6 +15,7 @@ import { runCleanPipeline, getAutoFillOptions } from '@/lib/dataCleaning';
 import { applyTransform } from '@/lib/transformUtils';
 
 export default function AgenticAI() {
+  const { t } = useI18n();
   const [task, setTask] = useState('');
   const [agent, setAgent] = useState(null);
   const [thinking, setThinking] = useState(false);
@@ -82,24 +84,24 @@ export default function AgenticAI() {
 
   // EXAMPLE TASKS
   const EXAMPLE_TASKS = [
-    '📊 Analyze this data and find the top 3 insights',
-    '🧹 Clean the data: remove duplicates, fix missing values, standardize formats',
-    '📈 Find trends and predict next month\'s values',
-    '🔍 Identify anomalies and potential errors in the data',
-    '💡 Suggest 5 ways to improve this dataset',
-    '📧 Generate a professional report summary for stakeholders',
-    '🎯 Calculate key metrics: avg, median, mode, std deviation',
-    '⚠️ Find data quality issues and suggest fixes'
+    t('agentic_ai_example_1'),
+    t('agentic_ai_example_2'),
+    t('agentic_ai_example_3'),
+    t('agentic_ai_example_4'),
+    t('agentic_ai_example_5'),
+    t('agentic_ai_example_6'),
+    t('agentic_ai_example_7'),
+    t('agentic_ai_example_8')
   ];
 
   const runAgent = async () => {
     if (!task.trim()) {
-      alert('Please describe what you want the AI agent to do');
+      alert(t('agentic_ai_alert_describe_task'));
       return;
     }
 
     if (!data && !docFile) {
-      alert('Please upload a file first');
+      alert(t('agentic_ai_alert_upload_file_first'));
       return;
     }
 
@@ -121,13 +123,13 @@ export default function AgenticAI() {
             timestamp: new Date().toISOString(),
             task,
             plan: {
-              task_understood: `Document conversion to ${conv.outLabel}`,
-              steps: [{ step: 1, action: 'convert', description: `Convert uploaded document → ${conv.outLabel}`, reasoning: 'Use in-app converter with strict no-content-loss defaults' }],
+              task_understood: t('agentic_ai_doc_conversion_task_understood', { outLabel: conv.outLabel }),
+              steps: [{ step: 1, action: 'convert', description: t('agentic_ai_doc_conversion_step_desc', { outLabel: conv.outLabel }), reasoning: t('agentic_ai_doc_conversion_step_reasoning') }],
               estimated_time: 'N/A',
               confidence: 0.9,
             },
-            results: [{ step: 1, action: 'convert', description: `Convert uploaded document → ${conv.outLabel}`, success: true, output: `Conversion completed. Output: ${out.filename}` }],
-            finalReport: `Conversion completed. Click “Download Output” to save your file.`,
+            results: [{ step: 1, action: 'convert', description: t('agentic_ai_doc_conversion_step_desc', { outLabel: conv.outLabel }), success: true, output: t('agentic_ai_doc_conversion_completed_output', { filename: out.filename }) }],
+            finalReport: t('agentic_ai_doc_conversion_completed_report'),
             status: 'completed',
             download: { url, filename: out.filename },
           };
@@ -161,9 +163,9 @@ Respond in markdown with short headings.`;
           id: Date.now(),
           timestamp: new Date().toISOString(),
           task,
-          plan: { task_understood: 'Document analysis', steps: [{ step: 1, action: 'report', description: 'Analyze uploaded document', reasoning: 'Use extracted file context' }], estimated_time: 'N/A', confidence: resp?.ingestion ? 0.9 : 0.7 },
-          results: [{ step: 1, action: 'report', description: 'Analyze uploaded document', success: true, output: resp?.response || resp?.answer || 'Completed' }],
-          finalReport: resp?.response || resp?.answer || 'No response received.',
+          plan: { task_understood: t('agentic_ai_doc_analysis_task_understood'), steps: [{ step: 1, action: 'report', description: t('agentic_ai_doc_analysis_step_desc'), reasoning: t('agentic_ai_doc_analysis_step_reasoning') }], estimated_time: t('common_na'), confidence: resp?.ingestion ? 0.9 : 0.7 },
+          results: [{ step: 1, action: 'report', description: t('agentic_ai_doc_analysis_step_desc'), success: true, output: resp?.response || resp?.answer || t('agentic_ai_completed') }],
+          finalReport: resp?.response || resp?.answer || t('agentic_ai_no_response_received'),
           status: 'completed',
         };
 
@@ -243,7 +245,7 @@ Return JSON:
       const plan = planResponse;
       if (!plan || !plan.steps || !Array.isArray(plan.steps) || plan.steps.length === 0) {
         console.error('Invalid plan response:', planResponse);
-        throw new Error('Failed to generate execution plan. The AI response was invalid or incomplete. Please try again.');
+        throw new Error(t('agentic_ai_err_invalid_plan'));
       }
 
       setAgent({ phase: 'planning', plan });
@@ -278,7 +280,7 @@ Return JSON:
             stepResult = await executeReport(step, currentData);
             break;
           default:
-            stepResult = { success: true, output: 'Step completed' };
+            stepResult = { success: true, output: t('agentic_ai_step_completed') };
         }
         if (stepResult?.updatedData) currentData = stepResult.updatedData;
 
@@ -287,7 +289,7 @@ Return JSON:
           action: step.action,
           description: step.description,
           success: stepResult?.success !== false,
-          output: stepResult?.output ?? 'Step completed'
+          output: stepResult?.output ?? t('agentic_ai_step_completed')
         });
       }
 
@@ -436,14 +438,14 @@ Provide specific, actionable insights.`;
 
     return {
       success: true,
-      output: `Calculated statistics for ${numericColumns.length} numeric columns:\n${JSON.stringify(stats, null, 2)}`
+      output: t('agentic_ai_calc_stats_output', { count: numericColumns.length }) + `\n${JSON.stringify(stats, null, 2)}`
     };
   };
 
   const executeVisualize = async (step, data) => {
     return {
       success: true,
-      output: 'Visualization generated (chart data prepared for dashboard)'
+      output: t('agentic_ai_visualization_generated')
     };
   };
 
@@ -477,14 +479,14 @@ Create a clear, business-ready summary.`;
           </div>
           
           <h1 className="text-5xl font-bold text-slate-900 dark:text-white mb-2">
-            Agentic AI
+            {t('agentic_ai_title')}
           </h1>
           <p className="text-xl text-slate-600 dark:text-slate-400 mb-4">
-            Autonomous AI Agent • Plans → Executes → Reports
+            {t('agentic_ai_subtitle')}
           </p>
           <Badge className="bg-[#4169E1]/20 text-[#4169E1] border-[#4169E1]/50">
             <Sparkles className="w-4 h-4 mr-1" />
-            Self-Learning • Goal-Driven • Fully Autonomous
+            {t('agentic_ai_badge')}
           </Badge>
         </div>
 
@@ -492,13 +494,13 @@ Create a clear, business-ready summary.`;
         <Alert className="mb-8 bg-[#4169E1]/10 border-[#4169E1]/40">
           <Brain className="h-5 w-5 text-[#4169E1]" />
           <AlertDescription className="text-slate-700 dark:text-slate-300">
-            <strong className="text-[#4169E1]">What is Agentic AI?</strong><br />
-            Unlike regular AI that just answers questions, Agentic AI:
+            <strong className="text-[#4169E1]">{t('agentic_ai_what_is_title')}</strong><br />
+            {t('agentic_ai_what_is_intro')}
             <ul className="list-disc ml-5 mt-2 space-y-1">
-              <li>🎯 <strong>Plans</strong> its own steps to achieve your goal</li>
-              <li>🔄 <strong>Executes</strong> multiple actions autonomously</li>
-              <li>🧠 <strong>Learns</strong> from results and adapts</li>
-              <li>📊 <strong>Reports</strong> what it did and why</li>
+              <li>{t('agentic_ai_what_is_bullet_1')}</li>
+              <li>{t('agentic_ai_what_is_bullet_2')}</li>
+              <li>{t('agentic_ai_what_is_bullet_3')}</li>
+              <li>{t('agentic_ai_what_is_bullet_4')}</li>
             </ul>
           </AlertDescription>
         </Alert>
@@ -511,13 +513,13 @@ Create a clear, business-ready summary.`;
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <strong className="text-emerald-600 dark:text-emerald-400">Data Loaded:</strong> {sessionStorage.getItem('insightsheet_filename') || 'File'}
+                    <strong className="text-emerald-600 dark:text-emerald-400">{t('agentic_ai_data_loaded')}:</strong> {sessionStorage.getItem('insightsheet_filename') || t('common_file')}
                     <Badge className="bg-slate-900/5 dark:bg-white/10 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700">
-                      Local tabular
+                      {t('agentic_ai_badge_local_tabular')}
                     </Badge>
                   </div>
                   <span className="text-sm text-slate-500 dark:text-slate-400">
-                    ({data.rows.length} rows, {data.headers.length} columns)
+                    {t('agentic_ai_rows_cols', { rows: data.rows.length, cols: data.headers.length })}
                   </span>
                 </div>
                 <Button
@@ -532,7 +534,7 @@ Create a clear, business-ready summary.`;
                   className="border-slate-300 dark:border-slate-600"
                 >
                   <X className="w-4 h-4 mr-1" />
-                  Remove File
+                  {t('common_remove_file')}
                 </Button>
               </div>
             </AlertDescription>
@@ -544,13 +546,13 @@ Create a clear, business-ready summary.`;
               <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <strong className="text-emerald-600 dark:text-emerald-400">Document Loaded:</strong> {sessionStorage.getItem('insightsheet_filename') || docFile.name}
+                    <strong className="text-emerald-600 dark:text-emerald-400">{t('agentic_ai_document_loaded')}:</strong> {sessionStorage.getItem('insightsheet_filename') || docFile.name}
                     <Badge className="bg-slate-900/5 dark:bg-white/10 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700">
-                      Server-ingested document
+                      {t('agentic_ai_badge_server_ingested_document')}
                     </Badge>
                   </div>
                   <span className="text-sm text-slate-500 dark:text-slate-400">
-                    ({(docFile.size / 1024).toFixed(2)} KB)
+                    {t('agentic_ai_doc_size_kb', { kb: (docFile.size / 1024).toFixed(2) })}
                   </span>
                 </div>
                 <Button
@@ -565,7 +567,7 @@ Create a clear, business-ready summary.`;
                   className="border-slate-300 dark:border-slate-600"
                 >
                   <X className="w-4 h-4 mr-1" />
-                  Remove File
+                  {t('common_remove_file')}
                 </Button>
               </div>
             </AlertDescription>
@@ -574,10 +576,10 @@ Create a clear, business-ready summary.`;
           <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-sm">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
               <Upload className="w-5 h-5 text-[#4169E1]" />
-              Upload Your Data File
+              {t('agentic_ai_upload_title')}
             </h2>
             <p className="text-slate-600 dark:text-slate-400 mb-4">
-              Upload CSV/Excel for local analysis, or upload PDF/Word/PPT/Markdown for server-side AI ingestion.
+              {t('agentic_ai_upload_desc')}
             </p>
             <FileUploadZone
               onFileUpload={(file, uploadedData) => {
@@ -600,7 +602,7 @@ Create a clear, business-ready summary.`;
             <div className="mt-4 text-base text-slate-600 dark:text-slate-400">
               <p className="flex items-center gap-2">
                 <Shield className="w-4 h-4" />
-                <span>CSV/Excel is processed locally. Documents are sent for AI ingestion and not stored.</span>
+                <span>{t('agentic_ai_upload_privacy_note')}</span>
               </p>
             </div>
           </div>
@@ -610,11 +612,11 @@ Create a clear, business-ready summary.`;
         <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-sm">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
             <Target className="w-5 h-5 text-[#4169E1]" />
-            What would you like the AI agent to do?
+            {t('agentic_ai_task_prompt')}
           </h2>
 
           <Textarea
-            placeholder="Example: Analyze my sales data, find top performing products, and create a report with recommendations..."
+            placeholder={t('agentic_ai_task_placeholder')}
             value={task}
             onChange={(e) => setTask(e.target.value)}
             className="bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-slate-400 min-h-[120px] mb-4"
@@ -623,7 +625,7 @@ Create a clear, business-ready summary.`;
 
           <div className="flex flex-wrap gap-2 mb-4">
             <Lightbulb className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-1" />
-            <span className="text-sm text-slate-600 dark:text-slate-400 font-semibold">Quick Examples:</span>
+            <span className="text-sm text-slate-600 dark:text-slate-400 font-semibold">{t('agentic_ai_quick_examples')}</span>
           </div>
 
           <div className="grid md:grid-cols-2 gap-2 mb-6">
@@ -647,19 +649,19 @@ Create a clear, business-ready summary.`;
             {thinking ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Agent Running...
+                {t('agentic_ai_agent_running')}
               </>
             ) : (
               <>
                 <Play className="w-5 h-5 mr-2" />
-                Deploy AI Agent
+                {t('agentic_ai_deploy_button')}
               </>
             )}
           </Button>
 
           {!data && !docFile && (
             <p className="text-amber-600 dark:text-amber-400 text-base mt-3 text-center">
-              ⚠️ Please upload a CSV file first to use the AI agent
+              {t('agentic_ai_upload_warning')}
             </p>
           )}
         </div>
@@ -669,7 +671,7 @@ Create a clear, business-ready summary.`;
           <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 mb-6 shadow-sm">
             <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
               <Eye className="w-5 h-5 text-[#4169E1]" />
-              Agent Execution
+              {t('agentic_ai_execution_title')}
             </h2>
 
             {/* Planning Phase */}
@@ -677,24 +679,24 @@ Create a clear, business-ready summary.`;
               <div className="space-y-4">
                 <div className="flex items-center gap-3 mb-4">
                   <Loader2 className="w-6 h-6 text-[#4169E1] animate-spin" />
-                  <span className="text-lg font-semibold text-[#4169E1]">Planning Strategy...</span>
+                  <span className="text-lg font-semibold text-[#4169E1]">{t('agentic_ai_planning_strategy')}</span>
                 </div>
 
                 <div className="bg-[#4169E1]/10 border border-[#4169E1]/40 rounded-lg p-4">
                   <p className="text-slate-900 dark:text-white mb-3">
-                    <strong>Understanding:</strong> {agent.plan?.task_understood || 'Analyzing task...'}
+                    <strong>{t('agentic_ai_understanding_label')}</strong> {agent.plan?.task_understood || t('agentic_ai_analyzing_task')}
                   </p>
                   <p className="text-slate-600 dark:text-slate-400 text-base mb-2">
-                    <strong>Estimated Time:</strong> {agent.plan?.estimated_time || 'Calculating...'} • 
-                    <strong className="ml-2">Confidence:</strong> {agent.plan?.confidence ? `${(agent.plan.confidence * 100).toFixed(0)}%` : 'N/A'}
+                    <strong>{t('agentic_ai_estimated_time_label')}</strong> {agent.plan?.estimated_time || t('agentic_ai_calculating')} • 
+                    <strong className="ml-2">{t('agentic_ai_confidence_label')}</strong> {agent.plan?.confidence ? `${(agent.plan.confidence * 100).toFixed(0)}%` : t('common_na')}
                   </p>
 
                   <div className="mt-4">
-                    <p className="text-base font-semibold text-[#4169E1] mb-2">Execution Plan:</p>
+                    <p className="text-base font-semibold text-[#4169E1] mb-2">{t('agentic_ai_execution_plan_label')}</p>
                     <ol className="space-y-2">
                       {agent.plan?.steps?.map((step, idx) => (
                         <li key={idx} className="text-base text-slate-700 dark:text-slate-300">
-                          <span className="font-bold text-[#4169E1]">Step {step.step}:</span> {step.description}
+                          <span className="font-bold text-[#4169E1]">{t('agentic_ai_step_n', { step: step.step })}</span> {step.description}
                           <p className="text-sm text-slate-500 dark:text-slate-500 ml-4 mt-1">💭 {step.reasoning}</p>
                         </li>
                       ))}
@@ -711,7 +713,7 @@ Create a clear, business-ready summary.`;
                   <div className="flex items-center gap-3">
                     <Zap className="w-6 h-6 text-amber-400 animate-bounce" />
                     <span className="text-lg font-semibold text-amber-400">
-                      Executing Step {agent.currentStep} of {agent.totalSteps}
+                      {t('agentic_ai_executing_step_of', { current: agent.currentStep, total: agent.totalSteps })}
                     </span>
                   </div>
                   <Badge className="bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300">
@@ -759,37 +761,37 @@ Create a clear, business-ready summary.`;
               <div className="space-y-6">
                 <div className="flex items-center gap-3 mb-4">
                   <CheckCircle className="w-8 h-8 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">Task Completed Successfully!</span>
+                  <span className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{t('agentic_ai_task_completed')}</span>
                 </div>
 
                 {/* Execution Summary */}
                 <div className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 rounded-lg p-6">
-                  <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-400 mb-4">📊 Execution Summary</h3>
+                  <h3 className="text-lg font-bold text-emerald-700 dark:text-emerald-400 mb-4">{t('agentic_ai_execution_summary')}</h3>
                   
                   <div className="grid md:grid-cols-3 gap-4 mb-4">
                     <div className="bg-white dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Total Steps</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('agentic_ai_total_steps')}</p>
                       <p className="text-2xl font-bold text-slate-900 dark:text-white">{agent.results.length}</p>
                     </div>
                     <div className="bg-white dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Success Rate</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('agentic_ai_success_rate')}</p>
                       <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">100%</p>
                     </div>
                     <div className="bg-white dark:bg-slate-800/50 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">Actions Taken</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('agentic_ai_actions_taken')}</p>
                       <p className="text-2xl font-bold text-[#4169E1]">{agent.results.filter(r => r.success).length}</p>
                     </div>
                   </div>
 
                   {/* Detailed Results */}
                   <div className="space-y-3 mb-6">
-                    <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">Detailed Results:</h4>
+                    <h4 className="text-base font-bold text-slate-900 dark:text-white mb-2">{t('agentic_ai_detailed_results')}</h4>
                     {agent.results.map((result, idx) => (
                       <div key={idx} className="bg-white dark:bg-slate-800/50 rounded-lg p-4 border border-slate-200 dark:border-slate-700">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
                             <Badge className="bg-[#4169E1]/20 text-[#4169E1]">
-                              Step {result.step}
+                              {t('agentic_ai_step_badge', { step: result.step })}
                             </Badge>
                             <span className="text-slate-900 dark:text-white font-semibold">{result.description}</span>
                           </div>
@@ -804,7 +806,7 @@ Create a clear, business-ready summary.`;
                   <div className="bg-[#4169E1]/10 border border-[#4169E1]/40 rounded-lg p-6">
                     <h4 className="text-lg font-bold text-[#4169E1] mb-3 flex items-center gap-2">
                       <TrendingUp className="w-5 h-5" />
-                      Final Report
+                      {t('agentic_ai_final_report')}
                     </h4>
                     <div className="prose prose-sm max-w-none">
                       <pre className="whitespace-pre-wrap text-slate-700 dark:text-slate-300 leading-relaxed">
@@ -825,7 +827,7 @@ Create a clear, business-ready summary.`;
                         }}
                       >
                         <Download className="w-4 h-4 mr-2" />
-                        Download Output
+                        {t('agentic_ai_download_output')}
                       </Button>
                     )}
                     <Button
@@ -841,14 +843,14 @@ Create a clear, business-ready summary.`;
                       }}
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      Download Report
+                      {t('agentic_ai_download_report')}
                     </Button>
                     <Button
                       variant="outline"
                       className="border-slate-200 dark:border-slate-700"
                       onClick={() => setAgent(null)}
                     >
-                      Run Another Task
+                      {t('agentic_ai_run_another_task')}
                     </Button>
                   </div>
                 </div>
@@ -860,7 +862,7 @@ Create a clear, business-ready summary.`;
               <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
-                  <span className="text-2xl font-bold text-red-600 dark:text-red-400">Execution Error</span>
+                  <span className="text-2xl font-bold text-red-600 dark:text-red-400">{t('agentic_ai_execution_error')}</span>
                 </div>
                 <p className="text-slate-700 dark:text-slate-300 mb-4">{agent.error}</p>
                 <Button
@@ -868,7 +870,7 @@ Create a clear, business-ready summary.`;
                   variant="outline"
                   className="border-red-300 dark:border-red-500/50 text-red-600 dark:text-red-400"
                 >
-                  Try Again
+                  {t('common_try_again')}
                 </Button>
               </div>
             )}
@@ -878,7 +880,7 @@ Create a clear, business-ready summary.`;
         {/* Execution History */}
         {history.length > 0 && (
           <div className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">📜 Recent Agent Executions</h2>
+            <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-4">{t('agentic_ai_recent_executions')}</h2>
             <div className="space-y-3">
               {history.slice(0, 5).map((execution, idx) => (
                 <div
@@ -891,12 +893,12 @@ Create a clear, business-ready summary.`;
                       <p className="text-slate-900 dark:text-white font-semibold mb-1">{execution.task}</p>
                       <p className="text-sm text-slate-600 dark:text-slate-400">
                         {new Date(execution.timestamp).toLocaleString()} • 
-                        {execution.results.length} steps completed
+                        {t('agentic_ai_steps_completed', { count: execution.results.length })}
                       </p>
                     </div>
                     <Badge className="bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
                       <CheckCircle className="w-3 h-3 mr-1" />
-                      Success
+                      {t('common_success_label')}
                     </Badge>
                   </div>
                 </div>

@@ -16,8 +16,10 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Download, Sparkles, FileSpreadsheet, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n';
 
 export default function PLBuilder() {
+  const { t } = useI18n();
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -34,20 +36,20 @@ export default function PLBuilder() {
   });
 
   const examplePrompts = [
-    "Create monthly P&L for 2024 with revenue, cost of goods sold, and operating expenses",
-    "Build quarterly profit and loss statement for Q1-Q4 2024 with sales, marketing, and R&D costs",
-    "Generate annual P&L with department-wise breakdown and net profit calculation",
-    "Create a simple monthly P&L with revenue and expenses for a small business",
+    t('pl_builder_example_prompt_1'),
+    t('pl_builder_example_prompt_2'),
+    t('pl_builder_example_prompt_3'),
+    t('pl_builder_example_prompt_4'),
   ];
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      toast.error('Please enter a description for your P&L statement');
+      toast.error(t('pl_builder_toast_enter_description'));
       return;
     }
 
     if (!backendConnected) {
-      const msg = backendError || 'Backend server is not connected. Please try again after the backend is online.';
+      const msg = backendError || t('pl_builder_backend_not_connected');
       setError(msg);
       toast.error(msg);
       return;
@@ -66,13 +68,13 @@ export default function PLBuilder() {
         : await backendApi.files.generatePL(prompt, context);
 
       if (!blob || typeof blob.size !== 'number' || blob.size <= 0) {
-        throw new Error('P&L generation returned an empty file. Please try again or check backend logs.');
+        throw new Error(t('pl_builder_err_empty_file'));
       }
 
       const ct = String(blob.type || '').toLowerCase();
       const isExcel = ct.includes('spreadsheetml') || ct.includes('ms-excel') || ct === 'application/octet-stream' || ct === '';
       if (!isExcel) {
-        throw new Error('P&L generation did not return an Excel file. Please check backend configuration/deployment.');
+        throw new Error(t('pl_builder_err_not_excel'));
       }
       
       // Create download link
@@ -85,14 +87,14 @@ export default function PLBuilder() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      toast.success('P&L statement generated and downloaded!');
+      toast.success(t('pl_builder_toast_generated_downloaded'));
       setPrompt('');
       setFile(null);
       setPreview(null);
       setPreviewError(null);
       setSelectedCandidateId('');
     } catch (err) {
-      const msg = err?.message ? String(err.message) : 'Failed to generate P&L statement';
+      const msg = err?.message ? String(err.message) : t('pl_builder_err_generate_failed');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -114,7 +116,7 @@ export default function PLBuilder() {
         setSelectedCandidateId(res.candidate_id || '');
       }
       if (!res?.ok) {
-        setPreviewError(res?.message || 'Could not detect a P&L table in this workbook');
+        setPreviewError(res?.message || t('pl_builder_preview_not_detected'));
       }
     } catch (err) {
       setPreviewError(err.message);
@@ -145,7 +147,7 @@ export default function PLBuilder() {
         setBackendError(null);
       } catch (err) {
         setBackendConnected(false);
-        setBackendError('Backend server is not connected. Please ensure the backend is deployed and running.');
+        setBackendError(t('file_analyzer_err_backend_not_connected'));
       }
     };
     checkBackend();
@@ -164,10 +166,9 @@ export default function PLBuilder() {
   return (
     <div className="container mx-auto p-6 max-w-4xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">P&L Builder</h1>
+        <h1 className="text-3xl font-bold mb-2">{t('pl_builder_title')}</h1>
         <p className="text-muted-foreground">
-          Generate professional Profit & Loss statements from natural language. 
-          Just describe what you need, and we'll create a fully formatted Excel file with formulas and charts.
+          {t('pl_builder_subtitle')}
         </p>
       </div>
 
@@ -175,7 +176,7 @@ export default function PLBuilder() {
         <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Backend Connection Required:</strong> {backendError || 'The backend server is not reachable. This feature requires a connected backend. Please check your backend deployment or contact support.'}
+            <strong>{t('common_backend_connection_required')}</strong> {backendError || t('common_backend_server_not_reachable')}
           </AlertDescription>
         </Alert>
       )}
@@ -184,18 +185,18 @@ export default function PLBuilder() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
-            Describe Your P&L Statement
+            {t('pl_builder_describe_title')}
           </CardTitle>
           <CardDescription>
-            Use natural language to describe the profit and loss statement you want to create
+            {t('pl_builder_describe_desc')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <Label htmlFor="prompt">What kind of P&L statement do you need?</Label>
+            <Label htmlFor="prompt">{t('pl_builder_prompt_label')}</Label>
             <Textarea
               id="prompt"
-              placeholder="Example: Create monthly P&L for 2024 with revenue, expenses, and net profit..."
+              placeholder={t('pl_builder_prompt_placeholder')}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={4}
@@ -204,7 +205,7 @@ export default function PLBuilder() {
           </div>
 
           <div>
-            <Label htmlFor="pl-file">Optional: attach a source document</Label>
+            <Label htmlFor="pl-file">{t('pl_builder_attach_optional')}</Label>
             <input
               id="pl-file"
               type="file"
@@ -215,7 +216,7 @@ export default function PLBuilder() {
             />
             {file && (
               <div className="text-xs text-muted-foreground mt-1">
-                Attached: {file.name}
+                {t('pl_builder_attached')} {file.name}
               </div>
             )}
           </div>
@@ -230,16 +231,16 @@ export default function PLBuilder() {
                   disabled={loading}
                 />
                 <div className="space-y-1">
-                  <Label htmlFor="llm-headers-only">Optional: AI assist (headers only)</Label>
+                  <Label htmlFor="llm-headers-only">{t('pl_builder_ai_assist_headers_only')}</Label>
                   <div className="text-xs text-muted-foreground">
-                    Improves ordering/categorization using only labels (no values). File data is not stored.
+                    {t('pl_builder_ai_assist_headers_only_desc')}
                   </div>
                 </div>
               </div>
 
               <div className="rounded-md border p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-medium">Extraction Preview</div>
+                  <div className="text-sm font-medium">{t('pl_builder_extraction_preview')}</div>
                   <Button
                     type="button"
                     variant="outline"
@@ -247,7 +248,7 @@ export default function PLBuilder() {
                     onClick={handlePreview}
                     disabled={previewLoading || loading}
                   >
-                    {previewLoading ? 'Analyzing…' : 'Refresh preview'}
+                    {previewLoading ? t('common_analyzing') : t('pl_builder_refresh_preview')}
                   </Button>
                 </div>
 
@@ -259,13 +260,13 @@ export default function PLBuilder() {
                   <div className="mt-2 text-sm text-muted-foreground space-y-1">
                     {Array.isArray(preview.candidates) && preview.candidates.length > 1 && (
                       <div className="space-y-1">
-                        <div className="text-xs text-muted-foreground">Choose detected statement</div>
+                        <div className="text-xs text-muted-foreground">{t('pl_builder_choose_detected_statement')}</div>
                         <Select
                           value={selectedCandidateId}
                           onValueChange={(v) => setSelectedCandidateId(v)}
                         >
                           <SelectTrigger className="h-8">
-                            <SelectValue placeholder="Select candidate" />
+                            <SelectValue placeholder={t('pl_builder_select_candidate')} />
                           </SelectTrigger>
                           <SelectContent>
                             {preview.candidates.map((c) => (
@@ -277,14 +278,14 @@ export default function PLBuilder() {
                         </Select>
                       </div>
                     )}
-                    <div>Periods detected: {preview.period_count}</div>
-                    <div>Line items detected: {preview.line_item_count}</div>
-                    <div>Non-zero cells: {preview.nonzero_cells}</div>
+                    <div>{t('pl_builder_periods_detected', { count: preview.period_count })}</div>
+                    <div>{t('pl_builder_line_items_detected', { count: preview.line_item_count })}</div>
+                    <div>{t('pl_builder_nonzero_cells', { count: preview.nonzero_cells })}</div>
                     {typeof preview.confidence === 'number' && (
-                      <div>Confidence: {Math.round(preview.confidence * 100)}%</div>
+                      <div>{t('pl_builder_confidence_pct', { pct: Math.round(preview.confidence * 100) })}</div>
                     )}
                     {preview.recommendation && (
-                      <div>Recommendation: {String(preview.recommendation)}</div>
+                      <div>{t('pl_builder_recommendation')}: {String(preview.recommendation)}</div>
                     )}
                     {Array.isArray(preview.reasons) && preview.reasons.length > 0 && (
                       <div className="text-xs text-muted-foreground">
@@ -304,24 +305,24 @@ export default function PLBuilder() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="company">Company Name (Optional)</Label>
+              <Label htmlFor="company">{t('pl_builder_company_name_optional')}</Label>
               <Input
                 id="company"
                 type="text"
                 value={context.company_name}
                 onChange={(e) => setContext({ ...context, company_name: e.target.value })}
-                placeholder="My Company"
+                placeholder={t('pl_builder_company_placeholder')}
                 className="mt-2"
               />
             </div>
             <div>
-              <Label htmlFor="currency">Currency</Label>
+              <Label htmlFor="currency">{t('pl_builder_currency')}</Label>
               <Select
                 value={context.currency}
                 onValueChange={(v) => setContext({ ...context, currency: v })}
               >
                 <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select currency" />
+                  <SelectValue placeholder={t('pl_builder_select_currency')} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="USD">USD ($)</SelectItem>
@@ -332,18 +333,18 @@ export default function PLBuilder() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="period">Period Type</Label>
+              <Label htmlFor="period">{t('pl_builder_period_type')}</Label>
               <Select
                 value={context.period_type}
                 onValueChange={(v) => setContext({ ...context, period_type: v })}
               >
                 <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Select period" />
+                  <SelectValue placeholder={t('pl_builder_select_period')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
+                  <SelectItem value="monthly">{t('pl_builder_period_monthly')}</SelectItem>
+                  <SelectItem value="quarterly">{t('pl_builder_period_quarterly')}</SelectItem>
+                  <SelectItem value="yearly">{t('pl_builder_period_yearly')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -364,12 +365,12 @@ export default function PLBuilder() {
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating P&L Statement...
+                {t('pl_builder_generating')}
               </>
             ) : (
               <>
                 <FileSpreadsheet className="mr-2 h-4 w-4" />
-                Generate P&L Statement
+                {t('pl_builder_generate')}
               </>
             )}
           </Button>
@@ -378,9 +379,9 @@ export default function PLBuilder() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Example Prompts</CardTitle>
+          <CardTitle>{t('pl_builder_example_prompts_title')}</CardTitle>
           <CardDescription>
-            Click on any example to use it as a starting point
+            {t('pl_builder_example_prompts_desc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -405,13 +406,13 @@ export default function PLBuilder() {
               <Download className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h3 className="font-semibold mb-1">What You'll Get</h3>
+              <h3 className="font-semibold mb-1">{t('pl_builder_what_you_get')}</h3>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Fully formatted Excel file with professional styling</li>
-                <li>• Automatic formulas for calculations (SUM, subtraction, etc.)</li>
-                <li>• Charts and visualizations</li>
-                <li>• Ready-to-use structure with revenue and expense categories</li>
-                <li>• No data stored - file downloads immediately</li>
+                <li>{t('pl_builder_benefit_1')}</li>
+                <li>{t('pl_builder_benefit_2')}</li>
+                <li>{t('pl_builder_benefit_3')}</li>
+                <li>{t('pl_builder_benefit_4')}</li>
+                <li>{t('pl_builder_benefit_5')}</li>
               </ul>
             </div>
           </div>

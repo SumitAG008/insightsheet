@@ -5,8 +5,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, TrendingUp, BarChart3 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n';
 
 export default function FileAnalyzer() {
+  const { t } = useI18n();
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState(null);
@@ -17,7 +19,7 @@ export default function FileAnalyzer() {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
       if (!selectedFile.name.match(/\.(xlsx|xls|csv)$/i)) {
-        toast.error('Please upload an Excel or CSV file');
+        toast.error(t('file_analyzer_toast_upload_excel_csv'));
         return;
       }
       setFile(selectedFile);
@@ -34,13 +36,13 @@ export default function FileAnalyzer() {
       setAnalysis(null);
       setError(null);
     } else {
-      toast.error('Please drop an Excel or CSV file');
+      toast.error(t('file_analyzer_toast_drop_excel_csv'));
     }
   };
 
   const handleAnalyze = async () => {
     if (!file) {
-      toast.error('Please select a file first');
+      toast.error(t('file_analyzer_toast_select_file_first'));
       return;
     }
 
@@ -50,10 +52,10 @@ export default function FileAnalyzer() {
     try {
       const result = await backendApi.files.analyzeFile(file);
       setAnalysis(result);
-      toast.success('File analyzed successfully!');
+      toast.success(t('file_analyzer_toast_analyzed_success'));
     } catch (err) {
       setError(err.message);
-      toast.error(err.message || 'Failed to analyze file');
+      toast.error(err.message || t('file_analyzer_toast_analyzed_failed'));
     } finally {
       setLoading(false);
     }
@@ -77,15 +79,15 @@ export default function FileAnalyzer() {
       try {
         const API_URL = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8001' : '');
         if (!API_URL) {
-          throw new Error('API URL not configured');
+          throw new Error(t('file_analyzer_err_api_url_not_configured'));
         }
         const response = await fetch(`${API_URL}/api/health`, { method: 'GET' });
-        if (!response.ok) throw new Error('Backend not responding');
+        if (!response.ok) throw new Error(t('file_analyzer_err_backend_not_responding'));
         setBackendConnected(true);
         setBackendError(null);
       } catch (err) {
         setBackendConnected(false);
-        setBackendError('Backend server is not connected. Please ensure the backend is deployed and running.');
+        setBackendError(t('file_analyzer_err_backend_not_connected'));
       }
     };
     checkBackend();
@@ -94,10 +96,9 @@ export default function FileAnalyzer() {
   return (
     <div className="container mx-auto p-6 max-w-6xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">File Analyzer</h1>
+        <h1 className="text-3xl font-bold mb-2">{t('file_analyzer_title')}</h1>
         <p className="text-muted-foreground">
-          Upload an Excel or CSV file to get AI-powered insights about its structure, 
-          data quality, and suggested operations. Understand your data instantly!
+          {t('file_analyzer_subtitle')}
         </p>
       </div>
 
@@ -105,7 +106,7 @@ export default function FileAnalyzer() {
         <Alert variant="destructive" className="mb-6">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Backend Connection Required:</strong> {backendError || 'The backend server is not reachable. This feature requires a connected backend. Please check your backend deployment or contact support.'}
+            <strong>{t('common_backend_connection_required')}</strong> {backendError || t('common_backend_server_not_reachable')}
           </AlertDescription>
         </Alert>
       )}
@@ -114,10 +115,10 @@ export default function FileAnalyzer() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5" />
-            Upload Your File
+            {t('file_analyzer_upload_title')}
           </CardTitle>
           <CardDescription>
-            Supports .xlsx, .xls, and .csv files of any size
+            {t('file_analyzer_upload_desc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -149,14 +150,14 @@ export default function FileAnalyzer() {
                     setAnalysis(null);
                   }}
                 >
-                  Remove File
+                  {t('common_remove_file')}
                 </Button>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
-                <p className="font-semibold">Drop your file here</p>
-                <p className="text-sm text-muted-foreground">or click to browse</p>
+                <p className="text-lg font-semibold">{t('common_drop_file_here')}</p>
+                <p className="text-muted-foreground">{t('common_or_click_to_browse')}</p>
               </div>
             )}
           </div>
@@ -171,12 +172,12 @@ export default function FileAnalyzer() {
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Analyzing File...
+                  {t('file_analyzer_analyzing_file')}
                 </>
               ) : (
                 <>
                   <BarChart3 className="mr-2 h-4 w-4" />
-                  Analyze File
+                  {t('file_analyzer_analyze_file')}
                 </>
               )}
             </Button>
@@ -195,27 +196,27 @@ export default function FileAnalyzer() {
           {/* Overall Summary */}
           <Card>
             <CardHeader>
-              <CardTitle>Overall Summary</CardTitle>
+              <CardTitle>{t('common_overview')}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                  <p className="text-sm text-muted-foreground">File Type</p>
+                  <p className="text-sm text-muted-foreground">{t('file_analyzer_file_type')}</p>
                   <p className="text-2xl font-bold">{analysis.file_type}</p>
                 </div>
                 <div className="p-4 bg-green-50 dark:bg-green-950 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Sheets</p>
+                  <p className="text-sm text-muted-foreground">{t('common_sheets')}</p>
                   <p className="text-2xl font-bold">{analysis.sheet_count}</p>
                 </div>
                 <div className="p-4 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                  <p className="text-sm text-muted-foreground">Total Rows</p>
+                  <p className="text-sm text-muted-foreground">{t('file_analyzer_total_rows')}</p>
                   <p className="text-2xl font-bold">
                     {analysis.overall_summary?.total_rows?.toLocaleString() || 'N/A'}
                   </p>
                 </div>
                 {analysis.overall_summary?.overall_data_quality_score != null && (
                   <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg">
-                    <p className="text-sm text-muted-foreground">Data Quality Score (ML)</p>
+                    <p className="text-sm text-muted-foreground">{t('file_analyzer_data_quality_score_ml')}</p>
                     <p className="text-2xl font-bold">{analysis.overall_summary.overall_data_quality_score}/100</p>
                   </div>
                 )}
@@ -224,30 +225,30 @@ export default function FileAnalyzer() {
           </Card>
 
           {/* AI Summary */}
-          {analysis.sheets?.[0]?.ai_summary && (
-            <Card>
+          {analysis.sheets?.length > 0 && (
+            <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  AI Insights
+                  <BarChart3 className="h-5 w-5" />
+                  {t('common_overview')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <h3 className="font-semibold mb-2">Data Type</h3>
+                  <h3 className="font-semibold mb-2">{t('file_analyzer_data_type')}</h3>
                   <p className="text-muted-foreground">
                     {analysis.sheets[0].ai_summary.data_type}
                   </p>
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2">Summary</h3>
+                  <h3 className="font-semibold mb-2">{t('common_summary')}</h3>
                   <p className="text-muted-foreground">
                     {analysis.sheets[0].ai_summary.summary}
                   </p>
                 </div>
                 {analysis.sheets[0].ai_summary.key_insights && (
                   <div>
-                    <h3 className="font-semibold mb-2">Key Insights</h3>
+                    <h3 className="font-semibold mb-2">{t('common_key_insights')}</h3>
                     <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                       {analysis.sheets[0].ai_summary.key_insights.map((insight, idx) => (
                         <li key={idx}>{insight}</li>
@@ -267,7 +268,7 @@ export default function FileAnalyzer() {
                 <CardDescription className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <span>{sheet.row_count} rows × {sheet.column_count} columns</span>
                   {sheet.data_quality_score != null && (
-                    <span className="text-amber-600 dark:text-amber-400">Data quality: {sheet.data_quality_score}/100</span>
+                    <span className="text-amber-600 dark:text-amber-400">{t('file_analyzer_data_quality_score')}: {sheet.data_quality_score}/100</span>
                   )}
                 </CardDescription>
               </CardHeader>
@@ -275,7 +276,7 @@ export default function FileAnalyzer() {
                 {/* Outliers (ML - IQR) */}
                 {sheet.outliers?.by_column?.length > 0 && (
                   <div>
-                    <h3 className="font-semibold mb-2">Outliers (IQR)</h3>
+                    <h3 className="font-semibold mb-2">{t('file_analyzer_outliers_iqr')}</h3>
                     <div className="space-y-2">
                       {sheet.outliers.by_column.map((o, i) => (
                         <div key={i} className="p-2 rounded bg-amber-50 dark:bg-amber-950/50 text-sm">
@@ -293,7 +294,7 @@ export default function FileAnalyzer() {
                   <div>
                     <h3 className="font-semibold mb-2 flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4 text-amber-500" />
-                      Data Quality Issues
+                      {t('file_analyzer_data_quality_issues')}
                     </h3>
                     <div className="space-y-2">
                       {sheet.quality_issues.map((issue, idx) => (
@@ -308,13 +309,13 @@ export default function FileAnalyzer() {
                 {/* Column Analysis */}
                 {sheet.columns && sheet.columns.length > 0 && (
                   <div>
-                    <h3 className="font-semibold mb-2">Columns</h3>
+                    <h3 className="font-semibold mb-2">{t('common_columns')}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                       {sheet.columns.slice(0, 10).map((col, idx) => (
                         <div key={idx} className="p-3 border rounded-lg">
                           <p className="font-medium">{col.name}</p>
                           <p className="text-sm text-muted-foreground">
-                            Type: {col.type} • {col.null_percentage?.toFixed(1)}% missing
+                            {t('file_analyzer_col_type')} {col.type} • {col.null_percentage?.toFixed(1)}% {t('file_analyzer_missing')}
                           </p>
                         </div>
                       ))}
@@ -327,7 +328,7 @@ export default function FileAnalyzer() {
                   <div>
                     <h3 className="font-semibold mb-2 flex items-center gap-2">
                       <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      Recommendations
+                      {t('common_recommendations')}
                     </h3>
                     <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                       {analysis.recommendations.map((rec, idx) => (
@@ -349,10 +350,9 @@ export default function FileAnalyzer() {
               <FileSpreadsheet className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
-              <h3 className="font-semibold mb-1">Privacy First</h3>
+              <h3 className="font-semibold mb-1">{t('common_privacy_first')}</h3>
               <p className="text-sm text-muted-foreground">
-                Your file is analyzed in real-time and never stored on our servers. 
-                All processing happens instantly and your data remains completely private.
+                {t('file_analyzer_privacy_note')}
               </p>
             </div>
           </div>

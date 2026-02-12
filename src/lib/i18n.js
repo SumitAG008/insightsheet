@@ -60,6 +60,510 @@ const DICTIONARY = {
     password_title: 'Change Password',
     password_email: 'Email',
     password_send_reset: 'Send Reset Email',
+
+    common_backend_connection_required: 'Backend Connection Required:',
+    common_backend_server_not_reachable: 'The backend server is not reachable. This feature requires a connected backend. Please check your backend deployment or contact support.',
+    common_remove_file: 'Remove File',
+    common_drop_file_here: 'Drop your file here',
+    common_or_click_to_browse: 'or click to browse',
+    common_analyzing: 'Analyzing…',
+    common_clear: 'Clear',
+    common_overview: 'Overview',
+    common_summary: 'Summary',
+    common_key_insights: 'Key Insights',
+    common_columns: 'Columns',
+    common_recommendations: 'Recommendations',
+    common_privacy_first: 'Privacy First',
+    common_import: 'Import',
+    common_export: 'Export',
+    common_failed_to_read_file: 'Failed to read file',
+    common_sheets: 'Sheets',
+
+    file_analyzer_title: 'File Analyzer',
+    file_analyzer_subtitle: 'Upload an Excel or CSV file to get AI-powered insights about its structure, data quality, and suggested operations. Understand your data instantly!',
+    file_analyzer_toast_upload_excel_csv: 'Please upload an Excel or CSV file',
+    file_analyzer_toast_drop_excel_csv: 'Please drop an Excel or CSV file',
+    file_analyzer_toast_select_file_first: 'Please select a file first',
+    file_analyzer_toast_analyzed_success: 'File analyzed successfully!',
+    file_analyzer_toast_analyzed_failed: 'Failed to analyze file',
+    file_analyzer_err_api_url_not_configured: 'API URL not configured',
+    file_analyzer_err_backend_not_responding: 'Backend not responding',
+    file_analyzer_err_backend_not_connected: 'Backend server is not connected. Please ensure the backend is deployed and running.',
+    file_analyzer_upload_title: 'Upload Your File',
+    file_analyzer_upload_desc: 'Supports .xlsx, .xls, and .csv files of any size',
+    file_analyzer_analyzing_file: 'Analyzing File…',
+    file_analyzer_analyze_file: 'Analyze File',
+    file_analyzer_analyze_cta: 'Analyze File',
+    file_analyzer_file_type: 'File Type',
+    file_analyzer_total_rows: 'Total Rows',
+    file_analyzer_data_quality_score_ml: 'Data Quality Score (ML)',
+    file_analyzer_data_quality_score: 'Data quality',
+    file_analyzer_data_type: 'Data Type',
+    file_analyzer_outliers_iqr: 'Outliers (IQR)',
+    file_analyzer_data_quality_issues: 'Data Quality Issues',
+    file_analyzer_col_type: 'Type:',
+    file_analyzer_missing: 'missing',
+    file_analyzer_privacy_note: 'Your file is analyzed in real-time and never stored on our servers. All processing happens instantly and your data remains completely private.',
+
+    db_schema_title: 'Data Model Creator',
+    db_schema_subtitle: 'Design database schemas visually with AI-powered assistance',
+    db_schema_add_table: 'Add Table',
+    db_schema_import_from_db_connect: 'From DB Connect',
+    db_schema_import_from_mysql: 'From MySQL',
+    db_schema_import_from_postgresql: 'From PostgreSQL',
+    db_schema_import_from_sql_server: 'From SQL Server',
+    db_schema_import_from_snowflake: 'From Snowflake',
+    db_schema_import_from_oracle: 'From Oracle SQL',
+    db_schema_import_from_rails: 'From Rails (schema.rb)',
+    db_schema_import_from_csv: 'From CSV',
+    db_schema_import_from_json: 'From JSON',
+    db_schema_tab_visual_canvas: 'Visual Canvas',
+    db_schema_tab_table_designer: 'Table Designer',
+    db_schema_tab_relationships: 'Relationships',
+    db_schema_tab_sql_generator: 'SQL Generator',
+    db_schema_tables_count: '{count} Tables',
+    db_schema_relationships_count: '{count} Relationships',
+    db_schema_columns_count: '{count} Columns',
+    db_schema_confirm_clear_schema: 'Are you sure you want to clear the entire schema?',
+    db_schema_imported_from_db_connect_name: 'Imported from DB Connect',
+    db_schema_toast_new_table_added: 'New table added',
+    db_schema_toast_table_deleted: 'Table deleted',
+    db_schema_toast_relationship_added: 'Relationship added',
+    db_schema_toast_relationship_deleted: 'Relationship deleted',
+    db_schema_toast_schema_exported_json: 'Schema exported as JSON',
+    db_schema_toast_data_file_detected_converting: 'Data file detected. Converting to schema…',
+    db_schema_toast_xml_file_detected_converting: 'XML file detected. Converting to schema…',
+    db_schema_toast_schema_imported: 'Schema imported: {tableCount} table(s), {columnCount} columns, {relCount} relationships',
+    db_schema_toast_failed_to_import: 'Failed to import: {message}',
+    db_schema_toast_schema_cleared: 'Schema cleared',
+    db_schema_toast_ai_schema_applied: 'AI-generated schema applied',
+    db_schema_err_connect_in_db_connect_first: 'Connect to a database in DB Connect first, then try again.',
+    db_schema_err_invalid_db_connect_session: 'Invalid DB Connect session. Reconnect in DB Connect and try again.',
+    db_schema_err_no_active_connection: 'No active connection. Open DB Connect, run Test Connection, then try again.',
+    db_schema_err_failed_to_fetch_schema: 'Failed to fetch schema',
+    db_schema_err_failed_import_from_db_connect: 'Failed to import schema from DB Connect',
+
+    db_connect_title: 'Database Connection',
+    db_connect_subtitle: 'Connect to external databases, explore schemas, and execute queries',
+    db_connect_zero_storage_title: 'Zero Storage Policy:',
+    db_connect_zero_storage_body: 'All database connections and query results are stored only in your browser session. All data will be permanently deleted when you log out or close the application. No database credentials or data are stored on our servers.',
+    db_connect_connection_settings_title: 'Connection Settings',
+    db_connect_connection_settings_desc: 'Configure your database connection',
+    db_connect_database_type: 'Database Type',
+    db_connect_connecting: 'Connecting…',
+    db_connect_test_connection: 'Test Connection',
+    db_connect_connected_to: 'Connected to {dbName}',
+    db_connect_disconnect: 'Disconnect',
+    db_connect_tab_schema: 'Schema',
+    db_connect_tab_query: 'Query',
+    db_connect_tab_data: 'Data',
+    db_connect_database_schema_title: 'Database Schema',
+    db_connect_no_tables_found: 'No tables found or schema not loaded',
+    db_connect_sql_query_editor_title: 'SQL Query Editor',
+    db_connect_sql_query_placeholder: 'Enter your SQL query here…',
+    db_connect_executing: 'Executing…',
+    db_connect_execute_query: 'Execute Query',
+    db_connect_rows_returned: '{rowCount} row(s) returned',
+    db_connect_table_data_title: 'Table Data',
+    db_connect_select_table_to_view_data: 'Select a table from the Schema tab to view its data',
+    db_connect_empty_state: 'Connect to a database to explore schemas and execute queries',
+    db_connect_toast_connection_successful: 'Connection successful!',
+    db_connect_toast_connection_failed: 'Connection failed',
+    db_connect_toast_disconnected: 'Disconnected from database',
+    db_connect_toast_query_executed: 'Query executed successfully. {rowCount} rows returned.',
+    db_connect_toast_query_execution_failed: 'Query execution failed',
+
+    pl_builder_title: 'P&L Builder',
+    pl_builder_subtitle: "Generate professional Profit & Loss statements from natural language. Just describe what you need, and we'll create a fully formatted Excel file with formulas and charts.",
+    pl_builder_toast_enter_description: 'Please enter a description for your P&L statement',
+    pl_builder_backend_not_connected: 'Backend server is not connected. Please try again after the backend is online.',
+    pl_builder_err_empty_file: 'P&L generation returned an empty file. Please try again or check backend logs.',
+    pl_builder_err_not_excel: 'P&L generation did not return an Excel file. Please check backend configuration/deployment.',
+    pl_builder_toast_generated_downloaded: 'P&L statement generated and downloaded!',
+    pl_builder_err_generate_failed: 'Failed to generate P&L statement',
+    pl_builder_preview_not_detected: 'Could not detect a P&L table in this workbook',
+    pl_builder_describe_title: 'Describe Your P&L Statement',
+    pl_builder_describe_desc: 'Use natural language to describe the profit and loss statement you want to create',
+    pl_builder_prompt_label: 'What kind of P&L statement do you need?',
+    pl_builder_prompt_placeholder: 'Example: Create monthly P&L for 2024 with revenue, expenses, and net profit…',
+    pl_builder_attach_optional: 'Optional: attach a source document',
+    pl_builder_attached: 'Attached:',
+    pl_builder_ai_assist_headers_only: 'Optional: AI assist (headers only)',
+    pl_builder_ai_assist_headers_only_desc: 'Improves ordering/categorization using only labels (no values). File data is not stored.',
+    pl_builder_extraction_preview: 'Extraction Preview',
+    pl_builder_refresh_preview: 'Refresh preview',
+    pl_builder_choose_detected_statement: 'Choose detected statement',
+    pl_builder_select_candidate: 'Select candidate',
+    pl_builder_periods_detected: 'Periods detected: {count}',
+    pl_builder_line_items_detected: 'Line items detected: {count}',
+    pl_builder_nonzero_cells: 'Non-zero cells: {count}',
+    pl_builder_confidence_pct: 'Confidence: {pct}%',
+    pl_builder_recommendation: 'Recommendation',
+    pl_builder_company_name_optional: 'Company Name (Optional)',
+    pl_builder_company_placeholder: 'My Company',
+    pl_builder_currency: 'Currency',
+    pl_builder_select_currency: 'Select currency',
+    pl_builder_period_type: 'Period Type',
+    pl_builder_select_period: 'Select period',
+    pl_builder_period_monthly: 'Monthly',
+    pl_builder_period_quarterly: 'Quarterly',
+    pl_builder_period_yearly: 'Yearly',
+    pl_builder_generating: 'Generating P&L Statement…',
+    pl_builder_generate: 'Generate P&L Statement',
+    pl_builder_example_prompts_title: 'Example Prompts',
+    pl_builder_example_prompts_desc: 'Click on any example to use it as a starting point',
+    pl_builder_what_you_get: "What You'll Get",
+    pl_builder_benefit_1: '• Fully formatted Excel file with professional styling',
+    pl_builder_benefit_2: '• Automatic formulas for calculations (SUM, subtraction, etc.)',
+    pl_builder_benefit_3: '• Charts and visualizations',
+    pl_builder_benefit_4: '• Ready-to-use structure with revenue and expense categories',
+    pl_builder_benefit_5: '• No data stored - file downloads immediately',
+    pl_builder_example_prompt_1: 'Create monthly P&L for 2024 with revenue, cost of goods sold, and operating expenses',
+    pl_builder_example_prompt_2: 'Build quarterly profit and loss statement for Q1-Q4 2024 with sales, marketing, and R&D costs',
+    pl_builder_example_prompt_3: 'Generate annual P&L with department-wise breakdown and net profit calculation',
+    pl_builder_example_prompt_4: 'Create a simple monthly P&L with revenue and expenses for a small business',
+
+    common_close: 'Close',
+    common_send: 'Send',
+    common_attached: 'Attached',
+
+    support_chat_title: 'Meldra Support',
+    support_chat_sign_in_required: 'Sign in required',
+    support_chat_please_log_in: 'Please log in to use the support assistant.',
+    support_chat_go_to_login: 'Go to Login',
+    support_chat_helper_text: 'Ask about API keys, limits, onboarding, and common troubleshooting.',
+    support_chat_empty_prompt: 'What can I help you with?',
+    support_chat_thinking: 'Thinking…',
+    support_chat_placeholder: 'Type your question…',
+    support_chat_no_response: 'Sorry — no response received.',
+    support_chat_failed: 'Sorry — support chat failed.',
+    support_chat_aria_open: 'Open support chat',
+    support_chat_aria_close: 'Close support chat',
+
+    common_reload: 'Reload',
+    common_try_again: 'Try Again',
+    common_save: 'Save',
+    common_export: 'Export',
+    common_clear_all: 'Clear All',
+    common_success: 'success',
+
+    landing_badge: 'Privacy-First • Minimal Retention • Excel & CSV Support',
+    landing_title: 'Transform Your Data',
+    landing_subtitle: 'AI-powered analysis, instant cleanup, and beautiful visualizations',
+    landing_brand: 'meldra',
+    landing_feature_instant_processing: 'Instant Processing',
+    landing_feature_ai_powered: 'AI-Powered',
+    landing_feature_privacy_first: 'Privacy First',
+    landing_feature_smart_charts: 'Smart Charts',
+    landing_templates_title: 'Quick Start with Templates',
+    landing_templates_desc: 'Choose from pre-built templates for Sales, Finance, HR, and more to get started instantly.',
+    landing_privacy_arch_title: 'Privacy-First Architecture',
+    landing_privacy_arch_body: 'All data processing happens in your browser. CSV files are parsed using native JavaScript - no external libraries, no tracking. When server-side processing is needed, we aim to minimize what is stored and retain only operational metadata for reliability, security, and billing.',
+    landing_excel_support_title: '✨ Now Supports Excel Files!',
+    landing_direct_upload_support_title: '🎉 Direct Upload Support:',
+    landing_direct_upload_item_excel: '✅ Excel: .XLSX, .XLS files (any size)',
+    landing_direct_upload_item_csv: '✅ CSV: .CSV files',
+    landing_direct_upload_item_export: '✅ Export: Download as Excel or CSV format',
+    landing_step_1_title: 'Upload Excel Directly',
+    landing_step_1_desc: 'Just drag & drop your .XLSX or .XLS file - no conversion needed!',
+    landing_step_2_title: 'Analyze & Transform',
+    landing_step_2_desc: 'Use AI-powered tools to clean, analyze, and visualize your data',
+    landing_step_3_title: 'Export Your Results',
+    landing_step_3_desc: 'Download as Excel (.xlsx) or CSV - your choice!',
+    landing_no_file_size_limits_title: '✨ No File Size Limits:',
+    landing_no_file_size_limits_desc: 'Process files of any size!',
+    landing_privacy_first_title: '🔒 Privacy First:',
+    landing_privacy_first_desc: 'Your files are never stored',
+
+    dashboard_err_boundary_title: 'Something went wrong while rendering your dashboard',
+    dashboard_err_boundary_hint: 'If this happens right after uploading a spreadsheet, it usually means one of the chart widgets crashed. This screen prevents a blank page so you can recover.',
+    dashboard_confirm_clear_all: 'Clear all data and start over?',
+    dashboard_err_export_pdf_failed: 'Failed to export PDF. Please try again.',
+    dashboard_universal_analyze_not_available: 'Universal analyze is not available in this build yet. Please hard refresh and try again.',
+    dashboard_universal_excel_diagnostics: 'Excel diagnostics',
+    dashboard_universal_excel_diagnostics_failed: 'Excel diagnostics failed',
+    dashboard_universal_analyze_failed: 'Universal analyze failed',
+    dashboard_uploaded_file: 'Uploaded file',
+    dashboard_universal_excel_recalculation: 'Excel recalculation',
+    dashboard_universal_excel_recalculation_failed: 'Excel recalculation failed',
+    dashboard_universal_recalculation_failed: 'Recalculation failed',
+    dashboard_universal_excel_clarification: 'Excel clarification',
+    dashboard_universal_excel_clarification_failed: 'Excel clarification failed',
+    dashboard_applied_user_selections: 'Applied user selections',
+    dashboard_universal_status_charts: '{status} • {charts} trusted chart(s)',
+    dashboard_analysis_dashboard_title: 'Analysis Dashboard',
+    dashboard_subtitle_rows_cols: 'Analysis Dashboard • {rows} rows • {cols} columns',
+    dashboard_filtered_hidden: 'Filtered: {hidden} hidden',
+    dashboard_cleaned_count: '{count} cleaned',
+    dashboard_undo_shortcut: 'Undo (Ctrl+Z)',
+    dashboard_redo_shortcut: 'Redo (Ctrl+Y)',
+    dashboard_save_shortcut: 'Save (Ctrl+S)',
+    dashboard_export_shortcut: 'Export (Ctrl+E)',
+    dashboard_export_as_pdf: 'Export as PDF',
+    dashboard_export_as_excel: 'Export as Excel (.xlsx)',
+    dashboard_export_as_csv: 'Export as CSV',
+    dashboard_privacy_mode: 'Privacy Mode',
+    dashboard_privacy_mode_tooltip: 'All data is processed locally in your browser. Nothing is stored on servers. Close this tab to permanently delete all data.',
+    dashboard_ai_ops: 'AI Ops',
+    dashboard_ai_ops_tooltip: 'Describe any operation in plain English and AI will execute it for you.',
+    dashboard_tab_overview: 'Overview',
+    dashboard_tab_analysis_cleaning: 'Analysis & Cleaning',
+    dashboard_tab_transform: 'Transform Data',
+    dashboard_tab_ai_tools: 'AI Tools',
+    dashboard_universal_clarification_failed: 'Clarification failed',
+    dashboard_loaded_template: 'Loaded template',
+    dashboard_file_rows: '{file} • {rows} rows',
+    dashboard_dataset_updated: 'Dataset updated',
+    dashboard_dataset_delta_rows_cols: '{deltaRows} rows, {deltaCols} columns',
+    dashboard_values_changed: 'Values changed',
+    dashboard_saved: 'Saved!',
+    dashboard_data_report_title: 'Data Report',
+    dashboard_pdf_file: 'File: {filename}',
+    dashboard_pdf_rows_columns: 'Rows: {rows} | Columns: {cols}',
+    dashboard_pdf_generated: 'Generated: {timestamp}',
+
+    settings_select_language_placeholder: 'Select language',
+    settings_language_option_en: 'English (Default)',
+    settings_language_option_de: 'Deutsch (German)',
+    settings_language_option_fr: 'Français (French)',
+    settings_placeholder_your_brand: 'Your brand',
+    settings_placeholder_logo_url: 'https://.../logo.png',
+    settings_placeholder_primary_color: '#0ea5e9',
+    settings_select_theme_placeholder: 'Select theme',
+    settings_theme_system: 'System',
+    settings_theme_light: 'Light',
+    settings_theme_dark: 'Dark',
+    settings_placeholder_email: 'you@company.com',
+
+    reconciliation_title: 'Reconciliation',
+    reconciliation_subtitle: 'Reconcile two datasets by key and amount. Output includes matched keys, mismatches, missing rows, and totals.',
+    reconciliation_upload_2_files: 'Upload 2 files',
+    reconciliation_supported_formats: 'Supported: .xlsx, .xls, .csv, .tsv',
+    reconciliation_left_file: 'Left file',
+    reconciliation_right_file: 'Right file',
+    reconciliation_mapping: 'Mapping',
+    reconciliation_how_this_works: 'How this works',
+    reconciliation_mapping_tooltip: 'Exact key match. Amounts are summed per key on each side, then variance is computed.',
+    reconciliation_left_key_column: 'Left key column',
+    reconciliation_right_key_column: 'Right key column',
+    reconciliation_left_amount_column: 'Left amount column',
+    reconciliation_right_amount_column: 'Right amount column',
+    reconciliation_placeholder_left_key: 'e.g. Invoice Number',
+    reconciliation_placeholder_right_key: 'e.g. Invoice No',
+    reconciliation_placeholder_left_amount: 'e.g. Total',
+    reconciliation_placeholder_right_amount: 'e.g. Amount',
+    reconciliation_excel_type_columns_hint: 'For Excel files, type column names exactly as they appear.',
+    reconciliation_tolerance: 'Tolerance',
+    reconciliation_tolerance_placeholder: '0',
+    reconciliation_tolerance_help: 'Variance within tolerance is treated as matched.',
+    reconciliation_preview: 'Preview',
+    reconciliation_previewing: 'Previewing…',
+    reconciliation_reconciling: 'Reconciling…',
+    reconciliation_reconcile_download: 'Reconcile & Download',
+    reconciliation_metric_matched: 'Matched',
+    reconciliation_metric_mismatch: 'Mismatch',
+    reconciliation_metric_missing_left: 'Missing left',
+    reconciliation_metric_missing_right: 'Missing right',
+    reconciliation_metric_total_keys: 'Total keys',
+    reconciliation_total_left: 'Left total',
+    reconciliation_total_right: 'Right total',
+    reconciliation_total_variance: 'Variance total',
+    reconciliation_privacy_title: 'Privacy',
+    reconciliation_privacy_body: 'Files are processed in-memory and not stored. Reconciliation is deterministic (exact key match). For fuzzy matching/AI-assisted mapping, we can add an optional toggle next.',
+    reconciliation_err_preview_failed: 'Preview failed',
+    reconciliation_err_empty_file: 'Reconcile returned an empty file',
+    reconciliation_err_reconcile_failed: 'Reconcile failed',
+    reconciliation_download_filename: 'reconciliation_report.xlsx',
+    reconciliation_toast_downloaded: 'Reconciliation report downloaded',
+    agentic_ai_title: 'Agentic AI',
+    agentic_ai_subtitle: 'Autonomous AI Agent • Plans → Executes → Reports',
+    agentic_ai_badge: 'Self-Learning • Goal-Driven • Fully Autonomous',
+    agentic_ai_what_is_title: 'What is Agentic AI?',
+    agentic_ai_what_is_intro: 'Unlike regular AI that just answers questions, Agentic AI:',
+    agentic_ai_what_is_bullet_1: '🎯 Plans its own steps to achieve your goal',
+    agentic_ai_what_is_bullet_2: '🔄 Executes multiple actions autonomously',
+    agentic_ai_what_is_bullet_3: '🧠 Learns from results and adapts',
+    agentic_ai_what_is_bullet_4: '📊 Reports what it did and why',
+    agentic_ai_data_loaded: 'Data Loaded',
+    agentic_ai_document_loaded: 'Document Loaded',
+    agentic_ai_badge_local_tabular: 'Local tabular',
+    agentic_ai_badge_server_ingested_document: 'Server-ingested document',
+    agentic_ai_rows_cols: '({rows} rows, {cols} columns)',
+    agentic_ai_doc_size_kb: '({kb} KB)',
+    agentic_ai_upload_title: 'Upload Your Data File',
+    agentic_ai_upload_desc: 'Upload CSV/Excel for local analysis, or upload PDF/Word/PPT/Markdown for server-side AI ingestion.',
+    agentic_ai_upload_privacy_note: 'CSV/Excel is processed locally. Documents are sent for AI ingestion and not stored.',
+    agentic_ai_task_prompt: 'What would you like the AI agent to do?',
+    agentic_ai_task_placeholder: 'Example: Analyze my sales data, find top performing products, and create a report with recommendations...',
+    agentic_ai_quick_examples: 'Quick Examples:',
+    agentic_ai_agent_running: 'Agent Running...',
+    agentic_ai_deploy_button: 'Deploy AI Agent',
+    agentic_ai_upload_warning: '⚠️ Please upload a CSV file first to use the AI agent',
+    agentic_ai_execution_title: 'Agent Execution',
+    agentic_ai_planning_strategy: 'Planning Strategy...',
+    agentic_ai_understanding_label: 'Understanding:',
+    agentic_ai_analyzing_task: 'Analyzing task...',
+    agentic_ai_estimated_time_label: 'Estimated Time:',
+    agentic_ai_confidence_label: 'Confidence:',
+    agentic_ai_calculating: 'Calculating...',
+    agentic_ai_execution_plan_label: 'Execution Plan:',
+    agentic_ai_step_n: 'Step {step}:',
+    agentic_ai_executing_step_of: 'Executing Step {current} of {total}',
+    agentic_ai_task_completed: 'Task Completed Successfully!',
+    agentic_ai_execution_summary: '📊 Execution Summary',
+    agentic_ai_total_steps: 'Total Steps',
+    agentic_ai_success_rate: 'Success Rate',
+    agentic_ai_actions_taken: 'Actions Taken',
+    agentic_ai_detailed_results: 'Detailed Results:',
+    agentic_ai_step_badge: 'Step {step}',
+    agentic_ai_final_report: 'Final Report',
+    agentic_ai_download_output: 'Download Output',
+    agentic_ai_download_report: 'Download Report',
+    agentic_ai_run_another_task: 'Run Another Task',
+    agentic_ai_execution_error: 'Execution Error',
+    agentic_ai_recent_executions: '📜 Recent Agent Executions',
+    agentic_ai_steps_completed: '{count} steps completed',
+    agentic_ai_alert_describe_task: 'Please describe what you want the AI agent to do',
+    agentic_ai_alert_upload_file_first: 'Please upload a file first',
+    agentic_ai_err_invalid_plan: 'Failed to generate execution plan. The AI response was invalid or incomplete. Please try again.',
+    agentic_ai_step_completed: 'Step completed',
+    agentic_ai_calc_stats_output: 'Calculated statistics for {count} numeric columns:',
+    agentic_ai_visualization_generated: 'Visualization generated (chart data prepared for dashboard)',
+    agentic_ai_doc_conversion_task_understood: 'Document conversion to {outLabel}',
+    agentic_ai_doc_conversion_step_desc: 'Convert uploaded document → {outLabel}',
+    agentic_ai_doc_conversion_step_reasoning: 'Use in-app converter with strict no-content-loss defaults',
+    agentic_ai_doc_conversion_completed_output: 'Conversion completed. Output: {filename}',
+    agentic_ai_doc_conversion_completed_report: 'Conversion completed. Click “Download Output” to save your file.',
+    agentic_ai_doc_analysis_task_understood: 'Document analysis',
+    agentic_ai_doc_analysis_step_desc: 'Analyze uploaded document',
+    agentic_ai_doc_analysis_step_reasoning: 'Use extracted file context',
+    agentic_ai_completed: 'Completed',
+    agentic_ai_no_response_received: 'No response received.',
+    agentic_ai_example_1: '📊 Analyze this data and find the top 3 insights',
+    agentic_ai_example_2: '🧹 Clean the data: remove duplicates, fix missing values, standardize formats',
+    agentic_ai_example_3: "📈 Find trends and predict next month's values",
+    agentic_ai_example_4: '🔍 Identify anomalies and potential errors in the data',
+    agentic_ai_example_5: '💡 Suggest 5 ways to improve this dataset',
+    agentic_ai_example_6: '📧 Generate a professional report summary for stakeholders',
+    agentic_ai_example_7: '🎯 Calculate key metrics: avg, median, mode, std deviation',
+    agentic_ai_example_8: '⚠️ Find data quality issues and suggest fixes',
+
+    common_na: 'N/A',
+    common_success_label: 'Success',
+    common_file: 'File',
+
+    faq_title: 'FAQ',
+    faq_subtitle: 'Definitions and expectations for the main tabs and features.',
+    faq_back_to_dashboard: 'Back to Dashboard',
+    faq_back_aria: 'Back to Dashboard',
+    faq_search_placeholder: "Search FAQ (e.g. 'blocked', 'overview', 'conversion')",
+    faq_no_results: 'No results.',
+
+    'faq_item_auto-standardize_title': 'What is Auto-Standardize?',
+    'faq_item_auto-standardize_body': `Auto-Standardize cleans and normalizes a spreadsheet into a consistent, analysis-ready Excel output.
+
+It is deterministic (repeatable) and focuses on safe operations like:
+- Normalizing headers (snake_case and unique)
+- Parsing common number formats (currency, commas, parentheses)
+- Parsing common date formats (when safe)
+- Removing exact duplicate rows (optional)
+
+Privacy: the file is processed in-memory and the content is not stored. We may store minimal operational metadata (account/usage logs).`,
+    faq_item_reconciliation_title: 'What is Reconciliation and how does it work?',
+    faq_item_reconciliation_body: `Reconciliation compares two datasets by a Key column (like Invoice Number) and an Amount column.
+
+How it works:
+- It matches rows by exact key value
+- It sums amounts per key on each side (to handle duplicates)
+- It computes variance = left_total - right_total per key
+- It produces an Excel report with:
+  - Summary (all keys)
+  - Mismatches
+  - Missing on Left / Missing on Right
+
+Tolerance: you can set a numeric tolerance so small differences are treated as matched.
+
+Limitations (current): matching is exact-key only. Fuzzy matching and AI-assisted mapping can be added as an optional mode.`,
+    faq_item_overview_title: 'What is the Dashboard Overview tab?',
+    faq_item_overview_body: `Overview is your executive summary.
+
+It shows:
+- KPIs (totals, averages, distributions) from your current dataset
+- A small set of charts chosen from your data
+- A "Trusted from Excel (Strict Correctness)" panel when you upload Excel, which only renders charts that can be justified from real sheet structure (no fake trends).`,
+    'faq_item_trusted-excel_title': 'What does "Trusted from Excel (Strict Correctness)" mean?',
+    'faq_item_trusted-excel_body': `It means meldra will only display charts when it can prove the X-axis and values are real.
+
+Examples:
+- A monthly sheet (Jan-25…Dec-25) will show a 12-point trend.
+- A random row index will NOT be used as a timeline.
+
+If structure is unclear, meldra asks for clarification instead of guessing.`,
+    'faq_item_universal-analyze_title': 'What is Universal Analyze (Excel Intelligence)?',
+    'faq_item_universal-analyze_body': `Universal Analyze inspects an uploaded Excel workbook and tries to detect:
+- Tables/regions inside each sheet
+- Header row (especially month/quarter/year headers)
+- Category rows (e.g., salesperson/product)
+- Value cells
+
+It returns:
+- Diagnostics (formula cache risk)
+- Sheet insights (pattern/tier/confidence)
+- Trusted chart-ready aggregates (when confidence is high)`,
+    faq_item_blocked_title: 'What does it mean when my Excel is "blocked"?',
+    faq_item_blocked_body: `Blocked means formulas exist but cached results appear missing, so showing charts would be misleading.
+
+How to fix:
+- Open the workbook in Excel
+- Let it calculate
+- Save
+- Re-upload
+
+Alternative: Copy → Paste Special → Values, then save as a new file and upload it.`,
+    faq_item_clarify_title: 'What does "needs clarification" mean?',
+    faq_item_clarify_body: `It means meldra detected structure but needs you to confirm which row is the header and where data starts.
+
+In Overview → Trusted from Excel:
+- Choose the sheet
+- Enter the header row number (the row with month/period labels)
+- Enter the data start row number
+- Click "Apply & re-analyze"`,
+    'faq_item_file-analysis_title': 'What can I do in File Analysis?',
+    'faq_item_file-analysis_body': `File Analysis is for understanding a file quickly.
+
+You can:
+- Upload a file and get a preview
+- Extract key text/structure (depending on file type)
+- Run analysis workflows that summarize or prepare data for downstream steps
+
+If you want charts and interactive exploration, use Dashboard.`,
+    'faq_item_doc-conversion_title': 'What can I do in Doc Conversion?',
+    'faq_item_doc-conversion_body': `Doc Conversion converts documents into usable outputs.
+
+Typical uses:
+- PDF/DOC/PPT conversions
+- OCR extraction for scanned documents
+- Exporting to formats you can edit
+
+Note: Some conversions render pages as images, so charts/text may not be editable unless the converter reconstructs shapes and data.`,
+    'faq_item_ai-assistant_title': 'What is the AI Assistant tab for?',
+    'faq_item_ai-assistant_body': `AI Assistant helps you ask questions and generate outputs from your current dataset.
+
+Use it to:
+- Ask business questions in natural language
+- Get explanations and suggestions
+- Generate formulas or transformations
+
+Always review outputs before sharing externally.`,
+    'faq_item_data-schema_title': 'What is Data & Schema used for?',
+    'faq_item_data-schema_body': `Data & Schema helps you understand table structure and relationships.
+
+Use it to:
+- Inspect columns/types
+- Import schema and relationships
+- Generate SQL/model mappings
+
+This is most useful when connecting to databases or building a reusable data model.`,
   },
   de: {
     nav_dashboard: 'Dashboard',
@@ -118,6 +622,451 @@ const DICTIONARY = {
     password_title: 'Passwort ändern',
     password_email: 'E-Mail',
     password_send_reset: 'Reset-E-Mail senden',
+
+    common_backend_connection_required: 'Backend-Verbindung erforderlich:',
+    common_backend_server_not_reachable: 'Der Backend-Server ist nicht erreichbar. Diese Funktion erfordert ein verbundenes Backend. Bitte überprüfe das Backend-Deployment oder kontaktiere den Support.',
+    common_remove_file: 'Datei entfernen',
+    common_drop_file_here: 'Datei hier ablegen',
+    common_or_click_to_browse: 'oder klicken, um auszuwählen',
+    common_analyzing: 'Analysiere…',
+    common_clear: 'Leeren',
+    common_overview: 'Übersicht',
+    common_summary: 'Zusammenfassung',
+    common_key_insights: 'Wichtigste Erkenntnisse',
+    common_columns: 'Spalten',
+    common_recommendations: 'Empfehlungen',
+    common_privacy_first: 'Datenschutz zuerst',
+    common_import: 'Importieren',
+    common_export: 'Exportieren',
+    common_failed_to_read_file: 'Datei konnte nicht gelesen werden',
+    common_sheets: 'Blätter',
+
+    common_na: 'k. A.',
+    common_success_label: 'Erfolg',
+    common_file: 'Datei',
+
+    agentic_ai_title: 'Agentische KI',
+    agentic_ai_subtitle: 'Autonomer KI-Agent • Plant → Führt aus → Berichtet',
+    agentic_ai_badge: 'Selbstlernend • Zielorientiert • Vollautonom',
+    agentic_ai_what_is_title: 'Was ist agentische KI?',
+    agentic_ai_what_is_intro: 'Im Gegensatz zu normaler KI, die nur Fragen beantwortet, kann agentische KI:',
+    agentic_ai_what_is_bullet_1: '🎯 Eigene Schritte planen, um dein Ziel zu erreichen',
+    agentic_ai_what_is_bullet_2: '🔄 Mehrere Aktionen autonom ausführen',
+    agentic_ai_what_is_bullet_3: '🧠 Aus Ergebnissen lernen und sich anpassen',
+    agentic_ai_what_is_bullet_4: '📊 Berichten, was sie getan hat und warum',
+    agentic_ai_data_loaded: 'Daten geladen',
+    agentic_ai_document_loaded: 'Dokument geladen',
+    agentic_ai_badge_local_tabular: 'Lokal (Tabellen)',
+    agentic_ai_badge_server_ingested_document: 'Server-injiziertes Dokument',
+    agentic_ai_rows_cols: '({rows} Zeilen, {cols} Spalten)',
+    agentic_ai_doc_size_kb: '({kb} KB)',
+    agentic_ai_upload_title: 'Daten-Datei hochladen',
+    agentic_ai_upload_desc: 'Lade CSV/Excel für lokale Analyse hoch oder PDF/Word/PPT/Markdown für serverseitige KI-Ingestion.',
+    agentic_ai_upload_privacy_note: 'CSV/Excel wird lokal verarbeitet. Dokumente werden zur KI-Ingestion gesendet und nicht gespeichert.',
+    agentic_ai_task_prompt: 'Was soll der KI-Agent tun?',
+    agentic_ai_task_placeholder: 'Beispiel: Analysiere meine Verkaufsdaten, finde Top-Produkte und erstelle einen Bericht mit Empfehlungen…',
+    agentic_ai_quick_examples: 'Schnellbeispiele:',
+    agentic_ai_agent_running: 'Agent läuft…',
+    agentic_ai_deploy_button: 'KI-Agent starten',
+    agentic_ai_upload_warning: '⚠️ Bitte zuerst eine CSV-Datei hochladen, um den KI-Agenten zu nutzen',
+    agentic_ai_execution_title: 'Agent-Ausführung',
+    agentic_ai_planning_strategy: 'Strategie wird geplant…',
+    agentic_ai_understanding_label: 'Verständnis:',
+    agentic_ai_analyzing_task: 'Aufgabe wird analysiert…',
+    agentic_ai_estimated_time_label: 'Geschätzte Zeit:',
+    agentic_ai_confidence_label: 'Konfidenz:',
+    agentic_ai_calculating: 'Wird berechnet…',
+    agentic_ai_execution_plan_label: 'Ausführungsplan:',
+    agentic_ai_step_n: 'Schritt {step}:',
+    agentic_ai_executing_step_of: 'Führe Schritt {current} von {total} aus',
+    agentic_ai_task_completed: 'Aufgabe erfolgreich abgeschlossen!',
+    agentic_ai_execution_summary: '📊 Ausführungsübersicht',
+    agentic_ai_total_steps: 'Schritte gesamt',
+    agentic_ai_success_rate: 'Erfolgsquote',
+    agentic_ai_actions_taken: 'Ausgeführte Aktionen',
+    agentic_ai_detailed_results: 'Detaillierte Ergebnisse:',
+    agentic_ai_step_badge: 'Schritt {step}',
+    agentic_ai_final_report: 'Abschlussbericht',
+    agentic_ai_download_output: 'Ausgabe herunterladen',
+    agentic_ai_download_report: 'Bericht herunterladen',
+    agentic_ai_run_another_task: 'Neue Aufgabe starten',
+    agentic_ai_execution_error: 'Ausführungsfehler',
+    agentic_ai_recent_executions: '📜 Letzte Agent-Ausführungen',
+    agentic_ai_steps_completed: '{count} Schritt(e) abgeschlossen',
+    agentic_ai_alert_describe_task: 'Bitte beschreibe, was der KI-Agent tun soll',
+    agentic_ai_alert_upload_file_first: 'Bitte zuerst eine Datei hochladen',
+    agentic_ai_err_invalid_plan: 'Ausführungsplan konnte nicht erstellt werden. Die KI-Antwort war ungültig oder unvollständig. Bitte erneut versuchen.',
+    agentic_ai_step_completed: 'Schritt abgeschlossen',
+    agentic_ai_calc_stats_output: 'Statistiken für {count} numerische Spalten berechnet:',
+    agentic_ai_visualization_generated: 'Visualisierung erstellt (Diagrammdaten für Dashboard vorbereitet)',
+    agentic_ai_doc_conversion_task_understood: 'Dokumentkonvertierung zu {outLabel}',
+    agentic_ai_doc_conversion_step_desc: 'Hochgeladenes Dokument → {outLabel} konvertieren',
+    agentic_ai_doc_conversion_step_reasoning: 'In-App-Konverter mit strikten, sicheren Standardeinstellungen verwenden',
+    agentic_ai_doc_conversion_completed_output: 'Konvertierung abgeschlossen. Ausgabe: {filename}',
+    agentic_ai_doc_conversion_completed_report: 'Konvertierung abgeschlossen. Klicke „Ausgabe herunterladen“, um die Datei zu speichern.',
+    agentic_ai_doc_analysis_task_understood: 'Dokumentanalyse',
+    agentic_ai_doc_analysis_step_desc: 'Hochgeladenes Dokument analysieren',
+    agentic_ai_doc_analysis_step_reasoning: 'Extrahierten Dateikontext verwenden',
+    agentic_ai_completed: 'Abgeschlossen',
+    agentic_ai_no_response_received: 'Keine Antwort erhalten.',
+    agentic_ai_example_1: '📊 Analysiere diese Daten und finde die Top-3-Erkenntnisse',
+    agentic_ai_example_2: '🧹 Daten bereinigen: Duplikate entfernen, fehlende Werte korrigieren, Formate standardisieren',
+    agentic_ai_example_3: '📈 Trends finden und die Werte für den nächsten Monat vorhersagen',
+    agentic_ai_example_4: '🔍 Anomalien und potenzielle Fehler in den Daten identifizieren',
+
+    agentic_ai_example_5: '💡 5 Möglichkeiten vorschlagen, dieses Dataset zu verbessern',
+    agentic_ai_example_6: '📧 Professionelle Zusammenfassung für Stakeholder erstellen',
+    agentic_ai_example_7: '🎯 Kennzahlen berechnen: Durchschnitt, Median, Modus, Standardabweichung',
+    agentic_ai_example_8: '⚠️ Datenqualitätsprobleme finden und Fixes vorschlagen',
+
+    faq_title: 'FAQ',
+    faq_subtitle: 'Definitionen und Erwartungen für die wichtigsten Tabs und Funktionen.',
+    faq_back_to_dashboard: 'Zurück zum Dashboard',
+    faq_back_aria: 'Zurück zum Dashboard',
+    faq_search_placeholder: "FAQ durchsuchen (z. B. 'blocked', 'overview', 'conversion')",
+    faq_no_results: 'Keine Ergebnisse.',
+
+    'faq_item_auto-standardize_title': 'Was ist Auto-Standardize?',
+    'faq_item_auto-standardize_body': `Auto-Standardize bereinigt und normalisiert eine Tabelle zu einer konsistenten, analysefertigen Excel-Ausgabe.
+
+Die Verarbeitung ist deterministisch (wiederholbar) und konzentriert sich auf sichere Schritte wie:
+- Überschriften normalisieren (snake_case und eindeutig)
+- Gängige Zahlenformate parsen (Währung, Tausendertrennzeichen, Klammern)
+- Gängige Datumsformate parsen (wenn sicher)
+- Exakte doppelte Zeilen entfernen (optional)
+
+Datenschutz: Die Datei wird im Arbeitsspeicher verarbeitet und nicht gespeichert. Wir können minimale operative Metadaten speichern (Konto-/Nutzungslogs).`,
+    faq_item_reconciliation_title: 'Was ist Abstimmung und wie funktioniert sie?',
+    faq_item_reconciliation_body: `Abstimmung vergleicht zwei Datensätze anhand einer Schlüsselspalte (z. B. Rechnungsnummer) und einer Betragsspalte.
+
+So funktioniert es:
+- Zeilen werden per exaktem Schlüsselwert gematcht
+- Beträge werden pro Schlüssel je Seite summiert (um Duplikate zu berücksichtigen)
+- Varianz = left_total - right_total wird pro Schlüssel berechnet
+- Es wird ein Excel-Report erstellt mit:
+  - Zusammenfassung (alle Schlüssel)
+  - Abweichungen
+  - Fehlt links / Fehlt rechts
+
+Toleranz: Du kannst eine numerische Toleranz setzen, damit kleine Abweichungen als übereinstimmend gelten.
+
+Einschränkungen (aktuell): Nur exakter Schlüsselabgleich. Fuzzy Matching und KI-gestützte Zuordnung können optional ergänzt werden.`,
+    faq_item_overview_title: 'Was ist der Tab „Übersicht“ im Dashboard?',
+    faq_item_overview_body: `Übersicht ist deine Executive Summary.
+
+Sie zeigt:
+- KPIs (Summen, Mittelwerte, Verteilungen) aus deinem aktuellen Datensatz
+- Eine kleine Auswahl an Diagrammen aus deinen Daten
+- Ein Panel „Trusted from Excel (Strict Correctness)“, wenn du Excel hochlädst. Es rendert nur Diagramme, die aus echter Tabellenstruktur begründet werden können (keine erfundenen Trends).`,
+    'faq_item_trusted-excel_title': 'Was bedeutet „Trusted from Excel (Strict Correctness)“?',
+    'faq_item_trusted-excel_body': `Das bedeutet: meldra zeigt Diagramme nur dann, wenn es beweisen kann, dass X-Achse und Werte real sind.
+
+Beispiele:
+- Ein Monats-Sheet (Jan-25…Dez-25) zeigt einen Trend mit 12 Punkten.
+- Ein zufälliger Zeilenindex wird NICHT als Timeline verwendet.
+
+Wenn die Struktur unklar ist, fragt meldra nach Klärung statt zu raten.`,
+    'faq_item_universal-analyze_title': 'Was ist Universal Analyze (Excel Intelligence)?',
+    'faq_item_universal-analyze_body': `Universal Analyze untersucht eine hochgeladene Excel-Arbeitsmappe und versucht zu erkennen:
+- Tabellen/Regionen pro Sheet
+- Kopfzeile (insbesondere Monat/Quartal/Jahr-Header)
+- Kategoriezeilen (z. B. Vertriebler/Produkt)
+- Wertzellen
+
+Es liefert:
+- Diagnosen (Risiko durch Formel-Cache)
+- Sheet-Insights (Pattern/Tier/Konfidenz)
+- Vertrauenswürdige, chartfähige Aggregate (bei hoher Konfidenz)`,
+    faq_item_blocked_title: 'Was bedeutet es, wenn mein Excel „blocked“ ist?',
+    faq_item_blocked_body: `„Blocked“ bedeutet: Formeln sind vorhanden, aber zwischengespeicherte Ergebnisse scheinen zu fehlen – Diagramme wären irreführend.
+
+So behebst du es:
+- Datei in Excel öffnen
+- Berechnen lassen
+- Speichern
+- Erneut hochladen
+
+Alternative: Kopieren → Inhalte einfügen → Werte, dann als neue Datei speichern und hochladen.`,
+    faq_item_clarify_title: 'Was bedeutet „needs clarification“?',
+    faq_item_clarify_body: `Das bedeutet: meldra hat Struktur erkannt, benötigt aber deine Bestätigung, welche Zeile die Kopfzeile ist und wo die Daten beginnen.
+
+In Übersicht → Trusted from Excel:
+- Sheet auswählen
+- Kopfzeilen-Zeile angeben (Zeile mit Monats-/Periodenlabels)
+- Startzeile der Daten angeben
+- „Apply & re-analyze“ klicken`,
+    'faq_item_file-analysis_title': 'Was kann ich in der Dateianalyse machen?',
+    'faq_item_file-analysis_body': `Die Dateianalyse dient dazu, eine Datei schnell zu verstehen.
+
+Du kannst:
+- Eine Datei hochladen und eine Vorschau erhalten
+- Schlüsseltext/Struktur extrahieren (je nach Dateityp)
+- Analyse-Workflows ausführen, die zusammenfassen oder Daten für nachgelagerte Schritte vorbereiten
+
+Wenn du Diagramme und interaktive Exploration möchtest, nutze das Dashboard.`,
+    'faq_item_doc-conversion_title': 'Was kann ich in Doc Conversion machen?',
+    'faq_item_doc-conversion_body': `Doc Conversion konvertiert Dokumente in nutzbare Outputs.
+
+Typische Anwendungen:
+- PDF/DOC/PPT-Konvertierungen
+- OCR für gescannte Dokumente
+- Export in bearbeitbare Formate
+
+Hinweis: Manche Konvertierungen rendern Seiten als Bilder, daher sind Diagramme/Text ggf. nicht editierbar, außer der Konverter rekonstruiert Formen und Daten.`,
+    'faq_item_ai-assistant_title': 'Wofür ist der Tab „KI-Assistent“?',
+    'faq_item_ai-assistant_body': `Der KI-Assistent hilft dir, Fragen zu stellen und Outputs aus deinem aktuellen Datensatz zu generieren.
+
+Nutze ihn für:
+- Business-Fragen in natürlicher Sprache
+- Erklärungen und Vorschläge
+- Formeln oder Transformationen
+
+Outputs immer prüfen, bevor du sie extern teilst.`,
+    'faq_item_data-schema_title': 'Wofür wird „Daten & Schema“ verwendet?',
+    'faq_item_data-schema_body': `Daten & Schema hilft dir, Tabellenstruktur und Beziehungen zu verstehen.
+
+Nutze es für:
+- Spalten/Typen prüfen
+- Schema und Beziehungen importieren
+- SQL-/Modell-Mappings generieren
+
+Das ist besonders nützlich bei Datenbankverbindungen oder beim Aufbau eines wiederverwendbaren Datenmodells.`,
+    file_analyzer_toast_analyzed_failed: 'Dateianalyse fehlgeschlagen',
+    file_analyzer_err_api_url_not_configured: 'API-URL ist nicht konfiguriert',
+    file_analyzer_err_backend_not_responding: 'Backend antwortet nicht',
+    file_analyzer_err_backend_not_connected: 'Backend-Server ist nicht verbunden. Bitte stelle sicher, dass das Backend bereitgestellt ist und läuft.',
+    file_analyzer_upload_title: 'Datei hochladen',
+    file_analyzer_upload_desc: 'Unterstützt .xlsx, .xls und .csv (beliebige Größe)',
+    file_analyzer_analyzing_file: 'Datei wird analysiert…',
+    file_analyzer_analyze_file: 'Datei analysieren',
+    file_analyzer_analyze_cta: 'Datei analysieren',
+    file_analyzer_file_type: 'Dateityp',
+    file_analyzer_total_rows: 'Zeilen gesamt',
+    file_analyzer_data_quality_score_ml: 'Datenqualitäts-Score (ML)',
+    file_analyzer_data_quality_score: 'Datenqualität',
+    file_analyzer_data_type: 'Datentyp',
+    file_analyzer_outliers_iqr: 'Ausreißer (IQR)',
+    file_analyzer_data_quality_issues: 'Probleme mit der Datenqualität',
+    file_analyzer_col_type: 'Typ:',
+    file_analyzer_missing: 'fehlend',
+    file_analyzer_privacy_note: 'Deine Datei wird in Echtzeit analysiert und nie auf unseren Servern gespeichert. Die Verarbeitung erfolgt sofort und deine Daten bleiben vollständig privat.',
+
+    db_schema_title: 'Datenmodell-Editor',
+    db_schema_subtitle: 'Entwirf Datenbankschemata visuell mit KI-gestützter Unterstützung',
+    db_schema_add_table: 'Tabelle hinzufügen',
+    db_schema_import_from_db_connect: 'Aus DB Connect',
+    db_schema_import_from_mysql: 'Aus MySQL',
+    db_schema_import_from_postgresql: 'Aus PostgreSQL',
+    db_schema_import_from_sql_server: 'Aus SQL Server',
+    db_schema_import_from_snowflake: 'Aus Snowflake',
+    db_schema_import_from_oracle: 'Aus Oracle SQL',
+    db_schema_import_from_rails: 'Aus Rails (schema.rb)',
+    db_schema_import_from_csv: 'Aus CSV',
+    db_schema_import_from_json: 'Aus JSON',
+    db_schema_tab_visual_canvas: 'Visuelle Leinwand',
+    db_schema_tab_table_designer: 'Tabellen-Designer',
+    db_schema_tab_relationships: 'Beziehungen',
+    db_schema_tab_sql_generator: 'SQL-Generator',
+    db_schema_tables_count: '{count} Tabellen',
+    db_schema_relationships_count: '{count} Beziehungen',
+    db_schema_columns_count: '{count} Spalten',
+    db_schema_confirm_clear_schema: 'Möchtest du das gesamte Schema wirklich löschen?',
+    db_schema_imported_from_db_connect_name: 'Aus DB Connect importiert',
+    db_schema_toast_new_table_added: 'Neue Tabelle hinzugefügt',
+    db_schema_toast_table_deleted: 'Tabelle gelöscht',
+    db_schema_toast_relationship_added: 'Beziehung hinzugefügt',
+    db_schema_toast_relationship_deleted: 'Beziehung gelöscht',
+    db_schema_toast_schema_exported_json: 'Schema als JSON exportiert',
+    db_schema_toast_data_file_detected_converting: 'Datendatei erkannt. Schema wird erstellt…',
+    db_schema_toast_xml_file_detected_converting: 'XML-Datei erkannt. Schema wird erstellt…',
+    db_schema_toast_schema_imported: 'Schema importiert: {tableCount} Tabelle(n), {columnCount} Spalten, {relCount} Beziehung(en)',
+    db_schema_toast_failed_to_import: 'Import fehlgeschlagen: {message}',
+    db_schema_toast_schema_cleared: 'Schema geleert',
+    db_schema_toast_ai_schema_applied: 'KI-generiertes Schema angewendet',
+    db_schema_err_connect_in_db_connect_first: 'Verbinde dich zuerst in DB Connect mit einer Datenbank und versuche es dann erneut.',
+    db_schema_err_invalid_db_connect_session: 'Ungültige DB-Connect-Sitzung. Bitte erneut verbinden und nochmal versuchen.',
+    db_schema_err_no_active_connection: 'Keine aktive Verbindung. Öffne DB Connect, führe „Verbindung testen“ aus und versuche es erneut.',
+    db_schema_err_failed_to_fetch_schema: 'Schema konnte nicht abgerufen werden',
+    db_schema_err_failed_import_from_db_connect: 'Import aus DB Connect ist fehlgeschlagen',
+
+    db_connect_title: 'Datenbankverbindung',
+    db_connect_subtitle: 'Verbinde dich mit externen Datenbanken, erkunde Schemata und führe Abfragen aus',
+    db_connect_zero_storage_title: 'Keine Speicherung:',
+    db_connect_zero_storage_body: 'Alle Datenbankverbindungen und Abfrageergebnisse werden nur in deiner Browser-Sitzung gespeichert. Alle Daten werden dauerhaft gelöscht, wenn du dich abmeldest oder die Anwendung schließt. Keine Zugangsdaten oder Daten werden auf unseren Servern gespeichert.',
+    db_connect_connection_settings_title: 'Verbindungseinstellungen',
+    db_connect_connection_settings_desc: 'Konfiguriere deine Datenbankverbindung',
+    db_connect_database_type: 'Datenbanktyp',
+    db_connect_connecting: 'Verbinde…',
+    db_connect_test_connection: 'Verbindung testen',
+    db_connect_connected_to: 'Verbunden mit {dbName}',
+    db_connect_disconnect: 'Trennen',
+    db_connect_tab_schema: 'Schema',
+    db_connect_tab_query: 'Abfrage',
+    db_connect_tab_data: 'Daten',
+    db_connect_database_schema_title: 'Datenbankschema',
+    db_connect_no_tables_found: 'Keine Tabellen gefunden oder Schema nicht geladen',
+    db_connect_sql_query_editor_title: 'SQL-Abfrageeditor',
+    db_connect_sql_query_placeholder: 'SQL-Abfrage hier eingeben…',
+    db_connect_executing: 'Wird ausgeführt…',
+    db_connect_execute_query: 'Abfrage ausführen',
+    db_connect_rows_returned: '{rowCount} Zeile(n) zurückgegeben',
+    db_connect_table_data_title: 'Tabellendaten',
+    db_connect_select_table_to_view_data: 'Wähle im Tab „Schema“ eine Tabelle aus, um die Daten anzuzeigen',
+    db_connect_empty_state: 'Verbinde dich mit einer Datenbank, um Schemata zu erkunden und Abfragen auszuführen',
+    db_connect_toast_connection_successful: 'Verbindung erfolgreich!',
+    db_connect_toast_connection_failed: 'Verbindung fehlgeschlagen',
+    db_connect_toast_disconnected: 'Datenbankverbindung getrennt',
+    db_connect_toast_query_executed: 'Abfrage erfolgreich ausgeführt. {rowCount} Zeile(n) zurückgegeben.',
+    db_connect_toast_query_execution_failed: 'Abfrageausführung fehlgeschlagen',
+
+    pl_builder_title: 'GuV-Generator',
+    pl_builder_subtitle: 'Erstelle professionelle Gewinn- und Verlustrechnungen aus natürlicher Sprache. Beschreibe einfach, was du brauchst – wir erzeugen eine vollständig formatierte Excel-Datei mit Formeln und Diagrammen.',
+    pl_builder_toast_enter_description: 'Bitte gib eine Beschreibung für deine GuV ein',
+    pl_builder_backend_not_connected: 'Backend-Server ist nicht verbunden. Bitte versuche es erneut, sobald das Backend online ist.',
+    pl_builder_err_empty_file: 'Die GuV-Erstellung hat eine leere Datei zurückgegeben. Bitte erneut versuchen oder Backend-Logs prüfen.',
+    pl_builder_err_not_excel: 'Die GuV-Erstellung hat keine Excel-Datei zurückgegeben. Bitte Backend-Konfiguration/Deployment prüfen.',
+    pl_builder_toast_generated_downloaded: 'GuV wurde erstellt und heruntergeladen!',
+    pl_builder_err_generate_failed: 'GuV konnte nicht erstellt werden',
+    pl_builder_preview_not_detected: 'In dieser Arbeitsmappe konnte keine GuV-Tabelle erkannt werden',
+    pl_builder_describe_title: 'Beschreibe deine GuV',
+    pl_builder_describe_desc: 'Nutze natürliche Sprache, um die gewünschte Gewinn- und Verlustrechnung zu beschreiben',
+    pl_builder_prompt_label: 'Welche Art von GuV benötigst du?',
+    pl_builder_prompt_placeholder: 'Beispiel: Erstelle monatliche GuV für 2024 mit Umsatz, Ausgaben und Nettogewinn…',
+    pl_builder_attach_optional: 'Optional: Quelldokument anhängen',
+    pl_builder_attached: 'Angehängt:',
+    pl_builder_ai_assist_headers_only: 'Optional: KI-Unterstützung (nur Überschriften)',
+    pl_builder_ai_assist_headers_only_desc: 'Verbessert Reihenfolge/Kategorisierung nur anhand von Bezeichnungen (keine Werte). Dateidaten werden nicht gespeichert.',
+    pl_builder_extraction_preview: 'Extraktionsvorschau',
+    pl_builder_refresh_preview: 'Vorschau aktualisieren',
+    pl_builder_choose_detected_statement: 'Erkannte GuV auswählen',
+    pl_builder_select_candidate: 'Auswahl treffen',
+    pl_builder_periods_detected: 'Zeiträume erkannt: {count}',
+    pl_builder_line_items_detected: 'Positionen erkannt: {count}',
+    pl_builder_nonzero_cells: 'Zellen mit Werten: {count}',
+    pl_builder_confidence_pct: 'Konfidenz: {pct}%',
+    pl_builder_recommendation: 'Empfehlung',
+    pl_builder_company_name_optional: 'Unternehmensname (optional)',
+    pl_builder_company_placeholder: 'Mein Unternehmen',
+    pl_builder_currency: 'Währung',
+    pl_builder_select_currency: 'Währung wählen',
+    pl_builder_period_type: 'Zeitraumtyp',
+    pl_builder_select_period: 'Zeitraum wählen',
+    pl_builder_period_monthly: 'Monatlich',
+    pl_builder_period_quarterly: 'Quartalsweise',
+    pl_builder_period_yearly: 'Jährlich',
+    pl_builder_generating: 'GuV wird erstellt…',
+    pl_builder_generate: 'GuV erstellen',
+    pl_builder_example_prompts_title: 'Beispiel-Prompts',
+    pl_builder_example_prompts_desc: 'Klicke auf ein Beispiel, um es als Ausgangspunkt zu verwenden',
+    pl_builder_what_you_get: 'Was du erhältst',
+    pl_builder_benefit_1: '• Vollständig formatierte Excel-Datei mit professionellem Styling',
+    pl_builder_benefit_2: '• Automatische Formeln für Berechnungen (SUMME, Subtraktion usw.)',
+    pl_builder_benefit_3: '• Diagramme und Visualisierungen',
+    pl_builder_benefit_4: '• Sofort nutzbare Struktur mit Umsatz- und Kostenkategorien',
+    pl_builder_benefit_5: '• Keine Datenspeicherung – Datei wird sofort heruntergeladen',
+    pl_builder_example_prompt_1: 'Erstelle monatliche GuV für 2024 mit Umsatz, Wareneinsatz und Betriebskosten',
+    pl_builder_example_prompt_2: 'Erstelle quartalsweise GuV für Q1–Q4 2024 mit Vertrieb, Marketing und F&E-Kosten',
+    pl_builder_example_prompt_3: 'Erstelle jährliche GuV mit Abteilungsaufschlüsselung und Nettogewinnberechnung',
+    pl_builder_example_prompt_4: 'Erstelle eine einfache monatliche GuV mit Umsatz und Ausgaben für ein kleines Unternehmen',
+
+    common_close: 'Schließen',
+    common_send: 'Senden',
+    common_attached: 'Angehängt',
+
+    support_chat_title: 'Meldra Support',
+    support_chat_sign_in_required: 'Anmeldung erforderlich',
+    support_chat_please_log_in: 'Bitte melde dich an, um den Support-Assistenten zu nutzen.',
+    support_chat_go_to_login: 'Zum Login',
+    support_chat_helper_text: 'Frage nach API-Schlüsseln, Limits, Onboarding und gängigen Problemlösungen.',
+    support_chat_empty_prompt: 'Womit kann ich dir helfen?',
+    support_chat_thinking: 'Denke nach…',
+    support_chat_placeholder: 'Gib deine Frage ein…',
+    support_chat_no_response: 'Entschuldigung — keine Antwort erhalten.',
+    support_chat_failed: 'Entschuldigung — Support-Chat fehlgeschlagen.',
+    support_chat_aria_open: 'Support-Chat öffnen',
+    support_chat_aria_close: 'Support-Chat schließen',
+
+    common_reload: 'Neu laden',
+    common_try_again: 'Erneut versuchen',
+    common_save: 'Speichern',
+    common_export: 'Exportieren',
+    common_clear_all: 'Alles löschen',
+    common_success: 'erfolgreich',
+
+    landing_badge: 'Datenschutz zuerst • Minimale Speicherung • Excel- & CSV-Unterstützung',
+    landing_title: 'Transformiere deine Daten',
+    landing_subtitle: 'KI-gestützte Analyse, sofortige Bereinigung und schöne Visualisierungen',
+    landing_brand: 'meldra',
+    landing_feature_instant_processing: 'Sofortige Verarbeitung',
+    landing_feature_ai_powered: 'KI-gestützt',
+    landing_feature_privacy_first: 'Datenschutz zuerst',
+    landing_feature_smart_charts: 'Intelligente Diagramme',
+    landing_templates_title: 'Schnellstart mit Vorlagen',
+    landing_templates_desc: 'Wähle aus fertigen Vorlagen für Vertrieb, Finanzen, HR und mehr, um sofort loszulegen.',
+    landing_privacy_arch_title: 'Privacy-First-Architektur',
+    landing_privacy_arch_body: 'Die gesamte Datenverarbeitung findet in deinem Browser statt. CSV-Dateien werden mit nativem JavaScript verarbeitet – ohne externe Bibliotheken und ohne Tracking. Wenn serverseitige Verarbeitung nötig ist, minimieren wir die Speicherung und behalten nur operative Metadaten für Zuverlässigkeit, Sicherheit und Abrechnung.',
+    landing_excel_support_title: '✨ Unterstützt jetzt Excel-Dateien!',
+    landing_direct_upload_support_title: '🎉 Direkter Upload:',
+    landing_direct_upload_item_excel: '✅ Excel: .XLSX, .XLS Dateien (beliebige Größe)',
+    landing_direct_upload_item_csv: '✅ CSV: .CSV Dateien',
+    landing_direct_upload_item_export: '✅ Export: Download als Excel- oder CSV-Format',
+    landing_step_1_title: 'Excel direkt hochladen',
+    landing_step_1_desc: 'Einfach deine .XLSX- oder .XLS-Datei per Drag & Drop hochladen – keine Konvertierung nötig!',
+    landing_step_2_title: 'Analysieren & transformieren',
+    landing_step_2_desc: 'Nutze KI-Tools zum Bereinigen, Analysieren und Visualisieren deiner Daten',
+    landing_step_3_title: 'Ergebnisse exportieren',
+    landing_step_3_desc: 'Als Excel (.xlsx) oder CSV herunterladen – ganz wie du willst!',
+    landing_no_file_size_limits_title: '✨ Keine Dateigrößenlimits:',
+    landing_no_file_size_limits_desc: 'Verarbeite Dateien jeder Größe!',
+    landing_privacy_first_title: '🔒 Datenschutz zuerst:',
+    landing_privacy_first_desc: 'Deine Dateien werden nie gespeichert',
+
+    dashboard_err_boundary_title: 'Beim Rendern deines Dashboards ist etwas schiefgelaufen',
+    dashboard_err_boundary_hint: 'Wenn das direkt nach dem Upload passiert, ist vermutlich ein Diagramm-Widget abgestürzt. Dieser Bildschirm verhindert eine leere Seite, damit du dich erholen kannst.',
+    dashboard_confirm_clear_all: 'Alle Daten löschen und neu starten?',
+    dashboard_err_export_pdf_failed: 'PDF-Export fehlgeschlagen. Bitte erneut versuchen.',
+    dashboard_universal_analyze_not_available: 'Universal Analyze ist in diesem Build noch nicht verfügbar. Bitte hart aktualisieren und erneut versuchen.',
+    dashboard_universal_excel_diagnostics: 'Excel-Diagnose',
+    dashboard_universal_excel_diagnostics_failed: 'Excel-Diagnose fehlgeschlagen',
+    dashboard_universal_analyze_failed: 'Universal Analyze fehlgeschlagen',
+    dashboard_uploaded_file: 'Datei hochgeladen',
+    dashboard_universal_excel_recalculation: 'Excel-Neuberechnung',
+    dashboard_universal_excel_recalculation_failed: 'Excel-Neuberechnung fehlgeschlagen',
+    dashboard_universal_recalculation_failed: 'Neuberechnung fehlgeschlagen',
+    dashboard_universal_excel_clarification: 'Excel-Klärung',
+    dashboard_universal_excel_clarification_failed: 'Excel-Klärung fehlgeschlagen',
+    dashboard_applied_user_selections: 'Benutzerauswahl angewendet',
+    dashboard_universal_status_charts: '{status} • {charts} vertrauenswürdige(s) Diagramm(e)',
+    dashboard_analysis_dashboard_title: 'Analyse-Dashboard',
+    dashboard_subtitle_rows_cols: 'Analyse-Dashboard • {rows} Zeilen • {cols} Spalten',
+    dashboard_filtered_hidden: 'Gefiltert: {hidden} ausgeblendet',
+    dashboard_cleaned_count: '{count} bereinigt',
+    dashboard_undo_shortcut: 'Rückgängig (Strg+Z)',
+    dashboard_redo_shortcut: 'Wiederholen (Strg+Y)',
+    dashboard_save_shortcut: 'Speichern (Strg+S)',
+    dashboard_export_shortcut: 'Export (Strg+E)',
+    dashboard_export_as_pdf: 'Als PDF exportieren',
+    dashboard_export_as_excel: 'Als Excel (.xlsx) exportieren',
+    dashboard_export_as_csv: 'Als CSV exportieren',
+    dashboard_privacy_mode: 'Privatsphäre-Modus',
+    dashboard_privacy_mode_tooltip: 'Alle Daten werden lokal in deinem Browser verarbeitet. Nichts wird auf Servern gespeichert. Schließe diesen Tab, um alle Daten dauerhaft zu löschen.',
+    dashboard_ai_ops: 'KI-Operationen',
+    dashboard_ai_ops_tooltip: 'Beschreibe eine Operation in normalem Deutsch – die KI führt sie für dich aus.',
+    dashboard_tab_overview: 'Übersicht',
+    dashboard_tab_analysis_cleaning: 'Analyse & Bereinigung',
+    dashboard_tab_transform: 'Daten transformieren',
+    dashboard_tab_ai_tools: 'KI-Tools',
+    dashboard_universal_clarification_failed: 'Klärung fehlgeschlagen',
+    dashboard_loaded_template: 'Vorlage geladen',
+    dashboard_file_rows: '{file} • {rows} Zeilen',
+    dashboard_dataset_updated: 'Datensatz aktualisiert',
+    dashboard_dataset_delta_rows_cols: '{deltaRows} Zeilen, {deltaCols} Spalten',
+    dashboard_values_changed: 'Werte geändert',
+    dashboard_saved: 'Gespeichert!',
+    dashboard_data_report_title: 'Datenbericht',
+    dashboard_pdf_file: 'Datei: {filename}',
+    dashboard_pdf_rows_columns: 'Zeilen: {rows} | Spalten: {cols}',
+    dashboard_pdf_generated: 'Erstellt: {timestamp}',
   },
   fr: {
     nav_dashboard: 'Tableau de bord',
@@ -176,8 +1125,521 @@ const DICTIONARY = {
     password_title: 'Changer le mot de passe',
     password_email: 'E-mail',
     password_send_reset: 'Envoyer un e-mail de réinitialisation',
+
+    common_backend_connection_required: 'Connexion au backend requise :',
+    common_backend_server_not_reachable: 'Le serveur backend est injoignable. Cette fonctionnalité nécessite un backend connecté. Veuillez vérifier le déploiement du backend ou contacter le support.',
+    common_remove_file: 'Retirer le fichier',
+    common_drop_file_here: 'Déposez votre fichier ici',
+    common_or_click_to_browse: 'ou cliquez pour parcourir',
+    common_analyzing: 'Analyse…',
+    common_clear: 'Effacer',
+    common_overview: 'Aperçu',
+    common_summary: 'Résumé',
+    common_key_insights: 'Points clés',
+    common_columns: 'Colonnes',
+    common_recommendations: 'Recommandations',
+    common_privacy_first: 'Confidentialité d’abord',
+    common_import: 'Importer',
+    common_export: 'Exporter',
+    common_failed_to_read_file: 'Impossible de lire le fichier',
+    common_sheets: 'Feuilles',
+
+    file_analyzer_title: 'Analyseur de fichiers',
+    file_analyzer_subtitle: 'Téléchargez un fichier Excel ou CSV pour obtenir des insights basés sur l’IA sur sa structure, la qualité des données et les opérations recommandées. Comprenez vos données instantanément !',
+    file_analyzer_toast_upload_excel_csv: 'Veuillez télécharger un fichier Excel ou CSV',
+    file_analyzer_toast_drop_excel_csv: 'Veuillez déposer un fichier Excel ou CSV',
+    file_analyzer_toast_select_file_first: 'Veuillez d’abord sélectionner un fichier',
+    file_analyzer_toast_analyzed_success: 'Fichier analysé avec succès !',
+    file_analyzer_toast_analyzed_failed: 'Échec de l’analyse du fichier',
+    file_analyzer_err_api_url_not_configured: 'URL API non configurée',
+    file_analyzer_err_backend_not_responding: 'Le backend ne répond pas',
+    file_analyzer_err_backend_not_connected: 'Le serveur backend n’est pas connecté. Veuillez vous assurer que le backend est déployé et en cours d’exécution.',
+    file_analyzer_upload_title: 'Télécharger votre fichier',
+    file_analyzer_upload_desc: 'Prend en charge .xlsx, .xls et .csv (toute taille)',
+    file_analyzer_analyzing_file: 'Analyse du fichier…',
+    file_analyzer_analyze_file: 'Analyser le fichier',
+    file_analyzer_analyze_cta: 'Analyser le fichier',
+    file_analyzer_file_type: 'Type de fichier',
+    file_analyzer_total_rows: 'Total des lignes',
+    file_analyzer_data_quality_score_ml: 'Score de qualité des données (ML)',
+    file_analyzer_data_quality_score: 'Qualité des données',
+    file_analyzer_data_type: 'Type de données',
+    file_analyzer_outliers_iqr: 'Valeurs aberrantes (IQR)',
+    file_analyzer_data_quality_issues: 'Problèmes de qualité des données',
+    file_analyzer_col_type: 'Type :',
+    file_analyzer_missing: 'manquantes',
+    file_analyzer_privacy_note: 'Votre fichier est analysé en temps réel et n’est jamais stocké sur nos serveurs. Tout le traitement est immédiat et vos données restent totalement privées.',
+
+    db_schema_title: 'Créateur de modèle de données',
+    db_schema_subtitle: 'Concevez des schémas de base de données visuellement avec une assistance IA',
+    db_schema_add_table: 'Ajouter une table',
+    db_schema_import_from_db_connect: 'Depuis DB Connect',
+    db_schema_import_from_mysql: 'Depuis MySQL',
+    db_schema_import_from_postgresql: 'Depuis PostgreSQL',
+    db_schema_import_from_sql_server: 'Depuis SQL Server',
+    db_schema_import_from_snowflake: 'Depuis Snowflake',
+    db_schema_import_from_oracle: 'Depuis Oracle SQL',
+    db_schema_import_from_rails: 'Depuis Rails (schema.rb)',
+    db_schema_import_from_csv: 'Depuis CSV',
+    db_schema_import_from_json: 'Depuis JSON',
+    db_schema_tab_visual_canvas: 'Canvas visuel',
+    db_schema_tab_table_designer: 'Concepteur de tables',
+    db_schema_tab_relationships: 'Relations',
+    db_schema_tab_sql_generator: 'Générateur SQL',
+    db_schema_tables_count: '{count} tables',
+    db_schema_relationships_count: '{count} relations',
+    db_schema_columns_count: '{count} colonnes',
+    db_schema_confirm_clear_schema: 'Voulez-vous vraiment effacer tout le schéma ?',
+    db_schema_imported_from_db_connect_name: 'Importé depuis DB Connect',
+    db_schema_toast_new_table_added: 'Nouvelle table ajoutée',
+    db_schema_toast_table_deleted: 'Table supprimée',
+    db_schema_toast_relationship_added: 'Relation ajoutée',
+    db_schema_toast_relationship_deleted: 'Relation supprimée',
+    db_schema_toast_schema_exported_json: 'Schéma exporté en JSON',
+    db_schema_toast_data_file_detected_converting: 'Fichier de données détecté. Conversion en schéma…',
+    db_schema_toast_xml_file_detected_converting: 'Fichier XML détecté. Conversion en schéma…',
+    db_schema_toast_schema_imported: 'Schéma importé : {tableCount} table(s), {columnCount} colonnes, {relCount} relation(s)',
+    db_schema_toast_failed_to_import: 'Échec de l’import : {message}',
+    db_schema_toast_schema_cleared: 'Schéma effacé',
+    db_schema_toast_ai_schema_applied: 'Schéma généré par IA appliqué',
+    db_schema_err_connect_in_db_connect_first: 'Connectez-vous d’abord à une base de données dans DB Connect, puis réessayez.',
+    db_schema_err_invalid_db_connect_session: 'Session DB Connect invalide. Reconnectez-vous dans DB Connect puis réessayez.',
+    db_schema_err_no_active_connection: 'Aucune connexion active. Ouvrez DB Connect, lancez « Tester la connexion », puis réessayez.',
+    db_schema_err_failed_to_fetch_schema: 'Échec de récupération du schéma',
+    db_schema_err_failed_import_from_db_connect: 'Échec de l’import du schéma depuis DB Connect',
+
+    db_connect_title: 'Connexion à la base de données',
+    db_connect_subtitle: 'Connectez-vous à des bases externes, explorez les schémas et exécutez des requêtes',
+    db_connect_zero_storage_title: 'Politique de zéro stockage :',
+    db_connect_zero_storage_body: 'Toutes les connexions et les résultats de requêtes sont stockés uniquement dans votre session navigateur. Toutes les données seront supprimées définitivement lors de la déconnexion ou de la fermeture de l’application. Aucun identifiant ni donnée n’est stocké sur nos serveurs.',
+    db_connect_connection_settings_title: 'Paramètres de connexion',
+    db_connect_connection_settings_desc: 'Configurez votre connexion à la base de données',
+    db_connect_database_type: 'Type de base de données',
+    db_connect_connecting: 'Connexion…',
+    db_connect_test_connection: 'Tester la connexion',
+    db_connect_connected_to: 'Connecté à {dbName}',
+    db_connect_disconnect: 'Déconnecter',
+    db_connect_tab_schema: 'Schéma',
+    db_connect_tab_query: 'Requête',
+    db_connect_tab_data: 'Données',
+    db_connect_database_schema_title: 'Schéma de la base',
+    db_connect_no_tables_found: 'Aucune table trouvée ou schéma non chargé',
+    db_connect_sql_query_editor_title: 'Éditeur de requêtes SQL',
+    db_connect_sql_query_placeholder: 'Saisissez votre requête SQL ici…',
+    db_connect_executing: 'Exécution…',
+    db_connect_execute_query: 'Exécuter la requête',
+    db_connect_rows_returned: '{rowCount} ligne(s) retournée(s)',
+    db_connect_table_data_title: 'Données de la table',
+    db_connect_select_table_to_view_data: 'Sélectionnez une table dans l’onglet Schéma pour afficher ses données',
+    db_connect_empty_state: 'Connectez-vous à une base pour explorer les schémas et exécuter des requêtes',
+    db_connect_toast_connection_successful: 'Connexion réussie !',
+    db_connect_toast_connection_failed: 'Échec de la connexion',
+    db_connect_toast_disconnected: 'Déconnecté de la base de données',
+    db_connect_toast_query_executed: 'Requête exécutée avec succès. {rowCount} ligne(s) retournée(s).',
+    db_connect_toast_query_execution_failed: 'Échec de l’exécution de la requête',
+
+    pl_builder_title: 'Générateur P&L',
+    pl_builder_subtitle: 'Générez des comptes de résultat (P&L) professionnels à partir du langage naturel. Décrivez simplement votre besoin et nous créerons un fichier Excel entièrement formaté avec formules et graphiques.',
+    pl_builder_toast_enter_description: 'Veuillez saisir une description pour votre P&L',
+    pl_builder_backend_not_connected: 'Le serveur backend n’est pas connecté. Veuillez réessayer lorsque le backend est en ligne.',
+    pl_builder_err_empty_file: 'La génération du P&L a renvoyé un fichier vide. Veuillez réessayer ou vérifier les logs du backend.',
+    pl_builder_err_not_excel: 'La génération du P&L n’a pas renvoyé un fichier Excel. Veuillez vérifier la configuration/le déploiement du backend.',
+    pl_builder_toast_generated_downloaded: 'P&L généré et téléchargé !',
+    pl_builder_err_generate_failed: 'Échec de génération du P&L',
+    pl_builder_preview_not_detected: 'Impossible de détecter un tableau P&L dans ce classeur',
+    pl_builder_describe_title: 'Décrivez votre P&L',
+    pl_builder_describe_desc: 'Utilisez le langage naturel pour décrire le compte de résultat que vous souhaitez créer',
+    pl_builder_prompt_label: 'Quel type de P&L souhaitez-vous ?',
+    pl_builder_prompt_placeholder: 'Exemple : Créer un P&L mensuel 2024 avec revenus, dépenses et profit net…',
+    pl_builder_attach_optional: 'Optionnel : joindre un document source',
+    pl_builder_attached: 'Pièce jointe :',
+    pl_builder_ai_assist_headers_only: 'Optionnel : assistance IA (en-têtes uniquement)',
+    pl_builder_ai_assist_headers_only_desc: 'Améliore l’ordre/la catégorisation en utilisant uniquement les libellés (sans valeurs). Les données ne sont pas stockées.',
+    pl_builder_extraction_preview: 'Aperçu de l’extraction',
+    pl_builder_refresh_preview: 'Rafraîchir l’aperçu',
+    pl_builder_choose_detected_statement: 'Choisir l’état détecté',
+    pl_builder_select_candidate: 'Sélectionner',
+    pl_builder_periods_detected: 'Périodes détectées : {count}',
+    pl_builder_line_items_detected: 'Lignes détectées : {count}',
+    pl_builder_nonzero_cells: 'Cellules non nulles : {count}',
+    pl_builder_confidence_pct: 'Confiance : {pct}%',
+    pl_builder_recommendation: 'Recommandation',
+    pl_builder_company_name_optional: 'Nom de l’entreprise (optionnel)',
+    pl_builder_company_placeholder: 'Mon entreprise',
+    pl_builder_currency: 'Devise',
+    pl_builder_select_currency: 'Choisir une devise',
+    pl_builder_period_type: 'Type de période',
+    pl_builder_select_period: 'Choisir une période',
+    pl_builder_period_monthly: 'Mensuel',
+    pl_builder_period_quarterly: 'Trimestriel',
+    pl_builder_period_yearly: 'Annuel',
+    pl_builder_generating: 'Génération du P&L…',
+    pl_builder_generate: 'Générer le P&L',
+    pl_builder_example_prompts_title: 'Exemples de prompts',
+    pl_builder_example_prompts_desc: 'Cliquez sur un exemple pour l’utiliser comme point de départ',
+    pl_builder_what_you_get: 'Ce que vous obtenez',
+    pl_builder_benefit_1: '• Fichier Excel entièrement formaté avec un style professionnel',
+    pl_builder_benefit_2: '• Formules automatiques pour les calculs (SOMME, soustraction, etc.)',
+    pl_builder_benefit_3: '• Graphiques et visualisations',
+    pl_builder_benefit_4: '• Structure prête à l’emploi avec catégories de revenus et dépenses',
+    pl_builder_benefit_5: '• Aucune donnée stockée — téléchargement immédiat',
+    pl_builder_example_prompt_1: 'Créer un P&L mensuel 2024 avec revenus, coût des ventes et charges d’exploitation',
+    pl_builder_example_prompt_2: 'Construire un compte de résultat trimestriel Q1–Q4 2024 avec ventes, marketing et R&D',
+    pl_builder_example_prompt_3: 'Générer un P&L annuel avec ventilation par département et calcul du profit net',
+    pl_builder_example_prompt_4: 'Créer un P&L mensuel simple avec revenus et dépenses pour une petite entreprise',
+
+    common_close: 'Fermer',
+    common_send: 'Envoyer',
+    common_attached: 'Pièce jointe',
+
+    support_chat_title: 'Support Meldra',
+    support_chat_sign_in_required: 'Connexion requise',
+    support_chat_please_log_in: 'Veuillez vous connecter pour utiliser l’assistant support.',
+    support_chat_go_to_login: 'Aller à la connexion',
+    support_chat_helper_text: 'Demandez des infos sur les clés API, limites, onboarding et dépannage.',
+    support_chat_empty_prompt: 'Comment puis-je vous aider ?',
+    support_chat_thinking: 'Réflexion…',
+    support_chat_placeholder: 'Tapez votre question…',
+    support_chat_no_response: 'Désolé — aucune réponse reçue.',
+    support_chat_failed: 'Désolé — échec du chat support.',
+    support_chat_aria_open: 'Ouvrir le chat support',
+    support_chat_aria_close: 'Fermer le chat support',
+
+    common_reload: 'Recharger',
+    common_try_again: 'Réessayer',
+    common_save: 'Enregistrer',
+    common_export: 'Exporter',
+    common_clear_all: 'Tout effacer',
+    common_success: 'succès',
+
+    landing_badge: 'Confidentialité d’abord • Rétention minimale • Support Excel & CSV',
+    landing_title: 'Transformez vos données',
+    landing_subtitle: 'Analyse IA, nettoyage instantané et belles visualisations',
+    landing_brand: 'meldra',
+    landing_feature_instant_processing: 'Traitement instantané',
+    landing_feature_ai_powered: 'Propulsé par l’IA',
+    landing_feature_privacy_first: 'Confidentialité d’abord',
+    landing_feature_smart_charts: 'Graphiques intelligents',
+    landing_templates_title: 'Démarrage rapide avec des modèles',
+    landing_templates_desc: 'Choisissez parmi des modèles prêts à l’emploi (Ventes, Finance, RH, etc.) pour démarrer immédiatement.',
+    landing_privacy_arch_title: 'Architecture « Privacy-First »',
+    landing_privacy_arch_body: 'Tout le traitement des données se fait dans votre navigateur. Les fichiers CSV sont analysés avec du JavaScript natif — pas de bibliothèques externes, pas de suivi. Quand un traitement côté serveur est nécessaire, nous minimisons ce qui est stocké et conservons uniquement des métadonnées opérationnelles pour la fiabilité, la sécurité et la facturation.',
+    landing_excel_support_title: '✨ Prend désormais en charge Excel !',
+    landing_direct_upload_support_title: '🎉 Téléversement direct :',
+    landing_direct_upload_item_excel: '✅ Excel : fichiers .XLSX, .XLS (toute taille)',
+    landing_direct_upload_item_csv: '✅ CSV : fichiers .CSV',
+    landing_direct_upload_item_export: '✅ Export : télécharger en Excel ou CSV',
+    landing_step_1_title: 'Téléverser Excel directement',
+    landing_step_1_desc: 'Glissez-déposez votre fichier .XLSX ou .XLS — aucune conversion nécessaire !',
+    landing_step_2_title: 'Analyser & transformer',
+    landing_step_2_desc: 'Utilisez des outils IA pour nettoyer, analyser et visualiser vos données',
+    landing_step_3_title: 'Exporter vos résultats',
+    landing_step_3_desc: 'Téléchargez en Excel (.xlsx) ou CSV — à vous de choisir !',
+    landing_no_file_size_limits_title: '✨ Aucune limite de taille :',
+    landing_no_file_size_limits_desc: 'Traitez des fichiers de toute taille !',
+    landing_privacy_first_title: '🔒 Confidentialité :',
+    landing_privacy_first_desc: 'Vos fichiers ne sont jamais stockés',
+
+    dashboard_err_boundary_title: 'Une erreur est survenue lors du rendu de votre tableau de bord',
+    dashboard_err_boundary_hint: 'Si cela arrive juste après un téléversement, un widget de graphique a probablement planté. Cet écran évite une page blanche pour vous permettre de récupérer.',
+    dashboard_confirm_clear_all: 'Effacer toutes les données et recommencer ?',
+    dashboard_err_export_pdf_failed: 'Échec de l’export PDF. Veuillez réessayer.',
+    dashboard_universal_analyze_not_available: 'Universal analyze n’est pas encore disponible dans ce build. Faites un rechargement forcé et réessayez.',
+    dashboard_universal_excel_diagnostics: 'Diagnostic Excel',
+    dashboard_universal_excel_diagnostics_failed: 'Échec du diagnostic Excel',
+    dashboard_universal_analyze_failed: 'Échec de l’analyse universelle',
+    dashboard_uploaded_file: 'Fichier téléversé',
+    dashboard_universal_excel_recalculation: 'Recalcul Excel',
+    dashboard_universal_excel_recalculation_failed: 'Échec du recalcul Excel',
+    dashboard_universal_recalculation_failed: 'Échec du recalcul',
+    dashboard_universal_excel_clarification: 'Clarification Excel',
+    dashboard_universal_excel_clarification_failed: 'Échec de la clarification Excel',
+    dashboard_applied_user_selections: 'Sélections utilisateur appliquées',
+    dashboard_universal_status_charts: '{status} • {charts} graphique(s) fiable(s)',
+    dashboard_analysis_dashboard_title: 'Tableau de bord d’analyse',
+    dashboard_subtitle_rows_cols: 'Tableau de bord d’analyse • {rows} lignes • {cols} colonnes',
+    dashboard_filtered_hidden: 'Filtré : {hidden} masqué(s)',
+    dashboard_cleaned_count: '{count} nettoyé(s)',
+    dashboard_undo_shortcut: 'Annuler (Ctrl+Z)',
+    dashboard_redo_shortcut: 'Rétablir (Ctrl+Y)',
+    dashboard_save_shortcut: 'Enregistrer (Ctrl+S)',
+    dashboard_export_shortcut: 'Exporter (Ctrl+E)',
+    dashboard_export_as_pdf: 'Exporter en PDF',
+    dashboard_export_as_excel: 'Exporter en Excel (.xlsx)',
+    dashboard_export_as_csv: 'Exporter en CSV',
+    dashboard_privacy_mode: 'Mode confidentialité',
+    dashboard_privacy_mode_tooltip: 'Toutes les données sont traitées localement dans votre navigateur. Rien n’est stocké sur des serveurs. Fermez cet onglet pour supprimer définitivement toutes les données.',
+    dashboard_ai_ops: 'Ops IA',
+    dashboard_ai_ops_tooltip: 'Décrivez une opération en langage naturel et l’IA l’exécutera pour vous.',
+    dashboard_tab_overview: 'Aperçu',
+    dashboard_tab_analysis_cleaning: 'Analyse & nettoyage',
+    dashboard_tab_transform: 'Transformer les données',
+    dashboard_tab_ai_tools: 'Outils IA',
+    dashboard_universal_clarification_failed: 'Échec de la clarification',
+    dashboard_loaded_template: 'Modèle chargé',
+    dashboard_file_rows: '{file} • {rows} lignes',
+    dashboard_dataset_updated: 'Jeu de données mis à jour',
+    dashboard_dataset_delta_rows_cols: '{deltaRows} lignes, {deltaCols} colonnes',
+    dashboard_values_changed: 'Valeurs modifiées',
+    dashboard_saved: 'Enregistré !',
+    dashboard_data_report_title: 'Rapport de données',
+    dashboard_pdf_file: 'Fichier : {filename}',
+    dashboard_pdf_rows_columns: 'Lignes : {rows} | Colonnes : {cols}',
+    dashboard_pdf_generated: 'Généré : {timestamp}',
+
+    settings_select_language_placeholder: 'Choisir la langue',
+    settings_language_option_en: 'English (par défaut)',
+    settings_language_option_de: 'Deutsch (allemand)',
+    settings_language_option_fr: 'Français',
+    settings_placeholder_your_brand: 'Votre marque',
+    settings_placeholder_logo_url: 'https://.../logo.png',
+    settings_placeholder_primary_color: '#0ea5e9',
+    settings_select_theme_placeholder: 'Choisir un thème',
+    settings_theme_system: 'Système',
+    settings_theme_light: 'Clair',
+    settings_theme_dark: 'Sombre',
+    settings_placeholder_email: 'vous@entreprise.com',
+
+    reconciliation_title: 'Rapprochement',
+    reconciliation_subtitle: 'Rapprochez deux jeux de données par clé et montant. La sortie inclut les correspondances, écarts, lignes manquantes et totaux.',
+    reconciliation_upload_2_files: 'Téléverser 2 fichiers',
+    reconciliation_supported_formats: 'Pris en charge : .xlsx, .xls, .csv, .tsv',
+    reconciliation_left_file: 'Fichier gauche',
+    reconciliation_right_file: 'Fichier droit',
+    reconciliation_mapping: 'Correspondance',
+    reconciliation_how_this_works: 'Comment ça marche',
+    reconciliation_mapping_tooltip: 'Correspondance exacte des clés. Les montants sont additionnés par clé de chaque côté, puis la variance est calculée.',
+    reconciliation_left_key_column: 'Colonne clé (gauche)',
+    reconciliation_right_key_column: 'Colonne clé (droite)',
+    reconciliation_left_amount_column: 'Colonne montant (gauche)',
+    reconciliation_right_amount_column: 'Colonne montant (droite)',
+    reconciliation_placeholder_left_key: 'ex. Numéro de facture',
+    reconciliation_placeholder_right_key: 'ex. N° facture',
+    reconciliation_placeholder_left_amount: 'ex. Total',
+    reconciliation_placeholder_right_amount: 'ex. Montant',
+    reconciliation_excel_type_columns_hint: 'Pour les fichiers Excel, saisissez les noms de colonnes exactement tels qu’ils apparaissent.',
+    reconciliation_tolerance: 'Tolérance',
+    reconciliation_tolerance_placeholder: '0',
+    reconciliation_tolerance_help: 'Une variance dans la tolérance est considérée comme correspondante.',
+    reconciliation_preview: 'Aperçu',
+    reconciliation_previewing: 'Aperçu…',
+    reconciliation_reconciling: 'Rapprochement…',
+    reconciliation_reconcile_download: 'Rapprocher & télécharger',
+    reconciliation_metric_matched: 'Correspondances',
+    reconciliation_metric_mismatch: 'Écarts',
+    reconciliation_metric_missing_left: 'Manquant à gauche',
+    reconciliation_metric_missing_right: 'Manquant à droite',
+    reconciliation_metric_total_keys: 'Clés totales',
+    reconciliation_total_left: 'Total gauche',
+    reconciliation_total_right: 'Total droit',
+    reconciliation_total_variance: 'Variance totale',
+    reconciliation_privacy_title: 'Confidentialité',
+    reconciliation_privacy_body: 'Les fichiers sont traités en mémoire et ne sont pas stockés. Le rapprochement est déterministe (clé exacte). Le fuzzy matching/le mapping assisté par IA peut être ajouté en option ensuite.',
+    reconciliation_err_preview_failed: 'Échec de l’aperçu',
+    reconciliation_err_empty_file: 'Le rapprochement a renvoyé un fichier vide',
+    reconciliation_err_reconcile_failed: 'Échec du rapprochement',
+    reconciliation_download_filename: 'rapport_rapprochement.xlsx',
+    reconciliation_toast_downloaded: 'Rapport de rapprochement téléchargé',
+
+    common_na: 'N/A',
+    common_success_label: 'Succès',
+    common_file: 'Fichier',
+
+    agentic_ai_title: 'IA agentique',
+    agentic_ai_subtitle: 'Agent IA autonome • Planifie → Exécute → Rapporte',
+    agentic_ai_badge: 'Auto-apprentissage • Orienté objectifs • Totalement autonome',
+    agentic_ai_what_is_title: 'Qu’est-ce que l’IA agentique ?',
+    agentic_ai_what_is_intro: 'Contrairement à une IA classique qui répond seulement, l’IA agentique :',
+    agentic_ai_what_is_bullet_1: '🎯 Planifie ses propres étapes pour atteindre votre objectif',
+    agentic_ai_what_is_bullet_2: '🔄 Exécute plusieurs actions de façon autonome',
+    agentic_ai_what_is_bullet_3: '🧠 Apprend des résultats et s’adapte',
+    agentic_ai_what_is_bullet_4: '📊 Explique ce qu’elle a fait et pourquoi',
+    agentic_ai_data_loaded: 'Données chargées',
+    agentic_ai_document_loaded: 'Document chargé',
+    agentic_ai_badge_local_tabular: 'Tabulaire local',
+    agentic_ai_badge_server_ingested_document: 'Document ingéré côté serveur',
+    agentic_ai_rows_cols: '({rows} lignes, {cols} colonnes)',
+    agentic_ai_doc_size_kb: '({kb} KB)',
+    agentic_ai_upload_title: 'Téléverser votre fichier',
+    agentic_ai_upload_desc: 'Téléversez CSV/Excel pour une analyse locale, ou PDF/Word/PPT/Markdown pour une ingestion IA côté serveur.',
+    agentic_ai_upload_privacy_note: 'CSV/Excel est traité localement. Les documents sont envoyés pour ingestion IA et ne sont pas stockés.',
+    agentic_ai_task_prompt: 'Que souhaitez-vous que l’agent IA fasse ?',
+    agentic_ai_task_placeholder: 'Exemple : analyser mes ventes, trouver les meilleurs produits et créer un rapport avec des recommandations…',
+    agentic_ai_quick_examples: 'Exemples rapides :',
+    agentic_ai_agent_running: 'Agent en cours…',
+    agentic_ai_deploy_button: 'Déployer l’agent IA',
+    agentic_ai_upload_warning: '⚠️ Veuillez d’abord téléverser un fichier CSV pour utiliser l’agent IA',
+    agentic_ai_execution_title: 'Exécution de l’agent',
+    agentic_ai_planning_strategy: 'Planification de la stratégie…',
+    agentic_ai_understanding_label: 'Compréhension :',
+    agentic_ai_analyzing_task: 'Analyse de la tâche…',
+    agentic_ai_estimated_time_label: 'Temps estimé :',
+    agentic_ai_confidence_label: 'Confiance :',
+    agentic_ai_calculating: 'Calcul…',
+    agentic_ai_execution_plan_label: 'Plan d’exécution :',
+    agentic_ai_step_n: 'Étape {step} :',
+    agentic_ai_executing_step_of: 'Exécution de l’étape {current} sur {total}',
+    agentic_ai_task_completed: 'Tâche terminée avec succès !',
+    agentic_ai_execution_summary: '📊 Résumé d’exécution',
+    agentic_ai_total_steps: 'Étapes totales',
+    agentic_ai_success_rate: 'Taux de réussite',
+    agentic_ai_actions_taken: 'Actions effectuées',
+    agentic_ai_detailed_results: 'Résultats détaillés :',
+    agentic_ai_step_badge: 'Étape {step}',
+    agentic_ai_final_report: 'Rapport final',
+    agentic_ai_download_output: 'Télécharger la sortie',
+    agentic_ai_download_report: 'Télécharger le rapport',
+    agentic_ai_run_another_task: 'Lancer une autre tâche',
+    agentic_ai_execution_error: 'Erreur d’exécution',
+    agentic_ai_recent_executions: '📜 Exécutions récentes',
+    agentic_ai_steps_completed: '{count} étape(s) terminée(s)',
+    agentic_ai_alert_describe_task: 'Veuillez décrire ce que vous voulez que l’agent IA fasse',
+    agentic_ai_alert_upload_file_first: 'Veuillez d’abord téléverser un fichier',
+    agentic_ai_err_invalid_plan: 'Impossible de générer le plan d’exécution. La réponse de l’IA était invalide ou incomplète. Veuillez réessayer.',
+    agentic_ai_step_completed: 'Étape terminée',
+    agentic_ai_calc_stats_output: 'Statistiques calculées pour {count} colonnes numériques :',
+    agentic_ai_visualization_generated: 'Visualisation générée (données de graphique préparées pour le tableau de bord)',
+    agentic_ai_doc_conversion_task_understood: 'Conversion du document vers {outLabel}',
+    agentic_ai_doc_conversion_step_desc: 'Convertir le document téléversé → {outLabel}',
+    agentic_ai_doc_conversion_step_reasoning: 'Utiliser le convertisseur intégré avec des réglages stricts sans perte',
+    agentic_ai_doc_conversion_completed_output: 'Conversion terminée. Sortie : {filename}',
+    agentic_ai_doc_conversion_completed_report: 'Conversion terminée. Cliquez sur « Télécharger la sortie » pour enregistrer votre fichier.',
+    agentic_ai_doc_analysis_task_understood: 'Analyse de document',
+    agentic_ai_doc_analysis_step_desc: 'Analyser le document téléversé',
+    agentic_ai_doc_analysis_step_reasoning: 'Utiliser le contexte de fichier extrait',
+    agentic_ai_completed: 'Terminé',
+    agentic_ai_no_response_received: 'Aucune réponse reçue.',
+    agentic_ai_example_1: '📊 Analyser ces données et trouver les 3 principaux insights',
+    agentic_ai_example_2: '🧹 Nettoyer les données : supprimer les doublons, corriger les valeurs manquantes, standardiser les formats',
+    agentic_ai_example_3: '📈 Trouver des tendances et prédire les valeurs du mois prochain',
+    agentic_ai_example_4: '🔍 Identifier les anomalies et erreurs potentielles dans les données',
+    agentic_ai_example_5: '💡 Suggérer 5 façons d’améliorer ce jeu de données',
+    agentic_ai_example_6: '📧 Générer un résumé professionnel pour les parties prenantes',
+    agentic_ai_example_7: '🎯 Calculer des métriques clés : moyenne, médiane, mode, écart-type',
+    agentic_ai_example_8: '⚠️ Détecter des problèmes de qualité des données et proposer des corrections',
+
+    faq_title: 'FAQ',
+    faq_subtitle: 'Définitions et attentes pour les principaux onglets et fonctionnalités.',
+    faq_back_to_dashboard: 'Retour au tableau de bord',
+    faq_back_aria: 'Retour au tableau de bord',
+    faq_search_placeholder: "Rechercher dans la FAQ (ex. 'blocked', 'overview', 'conversion')",
+    faq_no_results: 'Aucun résultat.',
+
+    'faq_item_auto-standardize_title': 'Qu’est-ce que Auto-Standardize ?',
+    'faq_item_auto-standardize_body': `Auto-Standardize nettoie et normalise une feuille de calcul en une sortie Excel cohérente, prête pour l’analyse.
+
+Le processus est déterministe (répétable) et se concentre sur des opérations sûres comme :
+- Normaliser les en-têtes (snake_case et uniques)
+- Analyser des formats numériques courants (devise, séparateurs, parenthèses)
+- Analyser des formats de date courants (si sûr)
+- Supprimer les doublons exacts (optionnel)
+
+Confidentialité : le fichier est traité en mémoire et son contenu n’est pas stocké. Nous pouvons conserver des métadonnées opérationnelles minimales (compte/usage).`,
+    faq_item_reconciliation_title: 'Qu’est-ce que le rapprochement et comment cela fonctionne ?',
+    faq_item_reconciliation_body: `Le rapprochement compare deux jeux de données par une colonne Clé (ex. numéro de facture) et une colonne Montant.
+
+Fonctionnement :
+- Correspondance par valeur de clé exacte
+- Somme des montants par clé de chaque côté (pour gérer les doublons)
+- Variance = left_total - right_total par clé
+- Génère un rapport Excel avec :
+  - Résumé (toutes les clés)
+  - Écarts
+  - Manquant à gauche / Manquant à droite
+
+Tolérance : vous pouvez définir une tolérance numérique afin que de petites différences soient considérées comme correspondantes.
+
+Limites (actuel) : correspondance par clé exacte uniquement. Le fuzzy matching et le mapping assisté par IA peuvent être ajoutés en option.`,
+    faq_item_overview_title: 'Qu’est-ce que l’onglet Aperçu du tableau de bord ?',
+    faq_item_overview_body: `Aperçu est votre résumé exécutif.
+
+Il affiche :
+- KPI (totaux, moyennes, distributions) à partir de votre jeu de données
+- Un petit ensemble de graphiques choisis depuis vos données
+- Un panneau "Trusted from Excel (Strict Correctness)" lors de l’upload Excel, qui n’affiche que des graphiques justifiables depuis la structure réelle (pas de tendances inventées).`,
+    'faq_item_trusted-excel_title': 'Que signifie « Trusted from Excel (Strict Correctness) » ?',
+    'faq_item_trusted-excel_body': `Cela signifie que meldra n’affiche des graphiques que lorsqu’il peut prouver que l’axe X et les valeurs sont réels.
+
+Exemples :
+- Une feuille mensuelle (janv. 25…déc. 25) montre une tendance sur 12 points.
+- Un index de lignes aléatoire ne sera PAS utilisé comme timeline.
+
+Si la structure est incertaine, meldra demande une clarification au lieu de deviner.`,
+    'faq_item_universal-analyze_title': 'Qu’est-ce que Universal Analyze (Excel Intelligence) ?',
+    'faq_item_universal-analyze_body': `Universal Analyze inspecte un classeur Excel téléversé et tente de détecter :
+- Tables/régions dans chaque feuille
+- Ligne d’en-têtes (surtout mois/trimestre/année)
+- Lignes de catégories (ex. commercial/produit)
+- Cellules de valeurs
+
+Il renvoie :
+- Diagnostics (risque lié au cache des formules)
+- Insights par feuille (pattern/niveau/confiance)
+- Agrégats fiables prêts pour les graphiques (si confiance élevée)`,
+    faq_item_blocked_title: 'Que signifie un Excel « blocked » ?',
+    faq_item_blocked_body: `« Blocked » signifie que des formules existent mais que les résultats en cache semblent absents, ce qui rendrait les graphiques trompeurs.
+
+Correctif :
+- Ouvrir le classeur dans Excel
+- Laisser calculer
+- Enregistrer
+- Re-téléverser
+
+Alternative : Copier → Collage spécial → Valeurs, puis enregistrer et téléverser un nouveau fichier.`,
+    faq_item_clarify_title: 'Que signifie « needs clarification » ?',
+    faq_item_clarify_body: `Cela signifie que meldra a détecté une structure mais a besoin que vous confirmiez quelle ligne est l’en-tête et où les données commencent.
+
+Dans Aperçu → Trusted from Excel :
+- Choisir la feuille
+- Saisir le numéro de ligne des en-têtes (mois/périodes)
+- Saisir la ligne de début des données
+- Cliquer sur « Apply & re-analyze »`,
+    'faq_item_file-analysis_title': 'Que puis-je faire dans Analyse de fichiers ?',
+    'faq_item_file-analysis_body': `Analyse de fichiers sert à comprendre rapidement un fichier.
+
+Vous pouvez :
+- Téléverser un fichier et obtenir un aperçu
+- Extraire du texte/une structure (selon le type)
+- Lancer des workflows qui résument ou préparent les données
+
+Pour les graphiques et l’exploration interactive, utilisez le tableau de bord.`,
+    'faq_item_doc-conversion_title': 'Que puis-je faire dans Conversion de documents ?',
+    'faq_item_doc-conversion_body': `La conversion de documents transforme des fichiers en sorties exploitables.
+
+Usages typiques :
+- Conversions PDF/DOC/PPT
+- OCR pour documents scannés
+- Export vers des formats éditables
+
+Note : certaines conversions rendent les pages en images ; le texte/les graphiques peuvent ne pas être éditables, sauf reconstruction par le convertisseur.`,
+    'faq_item_ai-assistant_title': 'À quoi sert l’onglet Assistant IA ?',
+    'faq_item_ai-assistant_body': `L’Assistant IA vous aide à poser des questions et générer des sorties à partir de votre jeu de données.
+
+Utilisez-le pour :
+- Poser des questions métier en langage naturel
+- Obtenir des explications et suggestions
+- Générer des formules ou transformations
+
+Vérifiez toujours les sorties avant de les partager.`,
+    'faq_item_data-schema_title': 'À quoi servent Données & Schéma ?',
+    'faq_item_data-schema_body': `Données & Schéma vous aide à comprendre la structure et les relations.
+
+Utilisez-le pour :
+- Inspecter colonnes/types
+- Importer schéma et relations
+- Générer des mappings SQL/modèle
+
+Utile surtout lors de connexions à des bases ou pour construire un modèle réutilisable.`,
   },
 };
+
+function interpolate(template, params) {
+  if (!params || typeof template !== 'string') return template;
+  return template.replace(/\{(\w+)\}/g, (_, k) => {
+    const v = params[k];
+    return v == null ? `{${k}}` : String(v);
+  });
+}
 
 function safeGetStoredLanguage() {
   try {
@@ -221,9 +1683,10 @@ export function LanguageProvider({ children }) {
   }, []);
 
   const t = useCallback(
-    (key) => {
+    (key, params) => {
       const dict = DICTIONARY[language] || DICTIONARY.en;
-      return dict[key] || DICTIONARY.en[key] || key;
+      const raw = dict[key] || DICTIONARY.en[key] || key;
+      return interpolate(raw, params);
     },
     [language]
   );

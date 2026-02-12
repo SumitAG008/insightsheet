@@ -4,145 +4,41 @@ import { createPageUrl } from '@/utils';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Logo from '@/components/branding/Logo';
+import { useI18n } from '@/lib/i18n';
 
 const FAQ_ITEMS = [
   {
     id: 'auto-standardize',
-    title: 'What is Auto-Standardize?',
-    body: `Auto-Standardize cleans and normalizes a spreadsheet into a consistent, analysis-ready Excel output.
-
-It is deterministic (repeatable) and focuses on safe operations like:
-- Normalizing headers (snake_case and unique)
-- Parsing common number formats (currency, commas, parentheses)
-- Parsing common date formats (when safe)
-- Removing exact duplicate rows (optional)
-
-Privacy: the file is processed in-memory and the content is not stored. We may store minimal operational metadata (account/usage logs).`,
   },
   {
     id: 'reconciliation',
-    title: 'What is Reconciliation and how does it work?',
-    body: `Reconciliation compares two datasets by a Key column (like Invoice Number) and an Amount column.
-
-How it works:
-- It matches rows by exact key value
-- It sums amounts per key on each side (to handle duplicates)
-- It computes variance = left_total - right_total per key
-- It produces an Excel report with:
-  - Summary (all keys)
-  - Mismatches
-  - Missing on Left / Missing on Right
-
-Tolerance: you can set a numeric tolerance so small differences are treated as matched.
-
-Limitations (current): matching is exact-key only. Fuzzy matching and AI-assisted mapping can be added as an optional mode.`,
   },
   {
     id: 'overview',
-    title: 'What is the Dashboard Overview tab?',
-    body: `Overview is your executive summary.
-
-It shows:
-- KPIs (totals, averages, distributions) from your current dataset
-- A small set of charts chosen from your data
-- A "Trusted from Excel (Strict Correctness)" panel when you upload Excel, which only renders charts that can be justified from real sheet structure (no fake trends).`,
   },
   {
     id: 'trusted-excel',
-    title: 'What does "Trusted from Excel (Strict Correctness)" mean?',
-    body: `It means meldra will only display charts when it can prove the X-axis and values are real.
-
-Examples:
-- A monthly sheet (Jan-25…Dec-25) will show a 12-point trend.
-- A random row index will NOT be used as a timeline.
-
-If structure is unclear, meldra asks for clarification instead of guessing.`,
   },
   {
     id: 'universal-analyze',
-    title: 'What is Universal Analyze (Excel Intelligence)?',
-    body: `Universal Analyze inspects an uploaded Excel workbook and tries to detect:
-- Tables/regions inside each sheet
-- Header row (especially month/quarter/year headers)
-- Category rows (e.g., salesperson/product)
-- Value cells
-
-It returns:
-- Diagnostics (formula cache risk)
-- Sheet insights (pattern/tier/confidence)
-- Trusted chart-ready aggregates (when confidence is high)`,
   },
   {
     id: 'blocked',
-    title: 'What does it mean when my Excel is "blocked"?',
-    body: `Blocked means formulas exist but cached results appear missing, so showing charts would be misleading.
-
-How to fix:
-- Open the workbook in Excel
-- Let it calculate
-- Save
-- Re-upload
-
-Alternative: Copy → Paste Special → Values, then save as a new file and upload it.`,
   },
   {
     id: 'clarify',
-    title: 'What does "needs clarification" mean?',
-    body: `It means meldra detected structure but needs you to confirm which row is the header and where data starts.
-
-In Overview → Trusted from Excel:
-- Choose the sheet
-- Enter the header row number (the row with month/period labels)
-- Enter the data start row number
-- Click "Apply & re-analyze"`,
   },
   {
     id: 'file-analysis',
-    title: 'What can I do in File Analysis?',
-    body: `File Analysis is for understanding a file quickly.
-
-You can:
-- Upload a file and get a preview
-- Extract key text/structure (depending on file type)
-- Run analysis workflows that summarize or prepare data for downstream steps
-
-If you want charts and interactive exploration, use Dashboard.`,
   },
   {
     id: 'doc-conversion',
-    title: 'What can I do in Doc Conversion?',
-    body: `Doc Conversion converts documents into usable outputs.
-
-Typical uses:
-- PDF/DOC/PPT conversions
-- OCR extraction for scanned documents
-- Exporting to formats you can edit
-
-Note: Some conversions render pages as images, so charts/text may not be editable unless the converter reconstructs shapes and data.`,
   },
   {
     id: 'ai-assistant',
-    title: 'What is the AI Assistant tab for?',
-    body: `AI Assistant helps you ask questions and generate outputs from your current dataset.
-
-Use it to:
-- Ask business questions in natural language
-- Get explanations and suggestions
-- Generate formulas or transformations
-
-Always review outputs before sharing externally.`,
   },
   {
     id: 'data-schema',
-    title: 'What is Data & Schema used for?',
-    body: `Data & Schema helps you understand table structure and relationships.
-
-Use it to:
-- Inspect columns/types
-- Import schema and relationships
-- Generate SQL/model mappings
-
-This is most useful when connecting to databases or building a reusable data model.`,
   },
 ];
 
@@ -213,16 +109,25 @@ function renderFaqBody(body) {
 }
 
 export default function Faq() {
+  const { t } = useI18n();
   const [q, setQ] = useState('');
+
+  const localizedFaqItems = useMemo(() => {
+    return FAQ_ITEMS.map((x) => ({
+      ...x,
+      title: t(`faq_item_${x.id}_title`),
+      body: t(`faq_item_${x.id}_body`),
+    }));
+  }, [t]);
 
   const filtered = useMemo(() => {
     const nq = normalize(q);
-    if (!nq) return FAQ_ITEMS;
-    return FAQ_ITEMS.filter((x) => {
+    if (!nq) return localizedFaqItems;
+    return localizedFaqItems.filter((x) => {
       const hay = normalize(`${x.title}\n${x.body}`);
       return hay.includes(nq);
     });
-  }, [q]);
+  }, [q, localizedFaqItems]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-white dark:from-slate-950 dark:via-slate-950 dark:to-slate-950">
@@ -232,7 +137,7 @@ export default function Faq() {
             <Link
               to={createPageUrl('Dashboard')}
               className="inline-flex items-center"
-              aria-label="Back to Dashboard"
+              aria-label={t('faq_back_aria')}
             >
               <Logo size="small" showText />
             </Link>
@@ -241,7 +146,7 @@ export default function Faq() {
               to={createPageUrl('Dashboard')}
               className="text-sm font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
             >
-              Back to Dashboard
+              {t('faq_back_to_dashboard')}
             </Link>
           </div>
 
@@ -253,10 +158,10 @@ export default function Faq() {
                     className="text-4xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white"
                     style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.03em' }}
                   >
-                    FAQ
+                    {t('faq_title')}
                   </h1>
                   <p className="text-base md:text-lg text-slate-600 dark:text-slate-300 mt-2 font-medium">
-                    Definitions and expectations for the main tabs and features.
+                    {t('faq_subtitle')}
                   </p>
                 </div>
               </div>
@@ -265,7 +170,7 @@ export default function Faq() {
                 <Input
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Search FAQ (e.g. 'blocked', 'overview', 'conversion')"
+                  placeholder={t('faq_search_placeholder')}
                   className="h-11 text-base bg-white/80 dark:bg-slate-950/40"
                 />
               </div>
@@ -295,7 +200,7 @@ export default function Faq() {
             ))}
 
             {filtered.length === 0 ? (
-              <div className="text-sm text-slate-600 dark:text-slate-400">No results.</div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">{t('faq_no_results')}</div>
             ) : null}
           </div>
         </div>

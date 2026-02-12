@@ -3,8 +3,10 @@ import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import { backendApi, meldraAi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { useI18n } from '@/lib/i18n';
 
 export default function SupportChatWidget({ page, className }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
@@ -42,10 +44,16 @@ export default function SupportChatWidget({ page, className }) {
       const res = file
         ? await backendApi.support.chatWithFile(text, file, { page: pageCtx })
         : await backendApi.support.chat(text, { page: pageCtx });
-      setMessages(prev => [...prev, { role: 'assistant', content: normalizeAssistantText(res?.answer || 'Sorry — no response received.') }]);
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', content: normalizeAssistantText(res?.answer || t('support_chat_no_response')) },
+      ]);
       setFile(null);
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'assistant', content: normalizeAssistantText(e?.message || 'Sorry — support chat failed.') }]);
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', content: normalizeAssistantText(e?.message || t('support_chat_failed')) },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -64,12 +72,12 @@ export default function SupportChatWidget({ page, className }) {
         {open && (
           <div className="mb-4 w-[360px] max-w-[calc(100vw-3rem)] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Meldra Support</div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('support_chat_title')}</div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 className="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
-                aria-label="Close"
+                aria-label={t('common_close')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -77,24 +85,24 @@ export default function SupportChatWidget({ page, className }) {
 
             {!isAuthed ? (
               <div className="p-4">
-                <div className="text-sm text-slate-700 dark:text-slate-200 font-medium">Sign in required</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Please log in to use the support assistant.</div>
+                <div className="text-sm text-slate-700 dark:text-slate-200 font-medium">{t('support_chat_sign_in_required')}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('support_chat_please_log_in')}</div>
                 <div className="mt-3">
                   <Button onClick={() => meldraAi?.auth?.redirectToLogin?.()} className="w-full bg-blue-600 hover:bg-blue-700">
-                    Go to Login
+                    {t('support_chat_go_to_login')}
                   </Button>
                 </div>
               </div>
             ) : (
               <>
                 <div className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
-                  Ask about API keys, limits, onboarding, and common troubleshooting.
+                  {t('support_chat_helper_text')}
                 </div>
 
                 <div className="px-4 pb-3 max-h-[280px] overflow-auto space-y-3">
                   {messages.length === 0 ? (
                     <div className="text-sm text-slate-600 dark:text-slate-300">
-                      What can I help you with?
+                      {t('support_chat_empty_prompt')}
                     </div>
                   ) : (
                     messages.map((m, idx) => (
@@ -114,7 +122,7 @@ export default function SupportChatWidget({ page, className }) {
                   {loading && (
                     <div className="mr-auto max-w-[85%] rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-3 py-2 text-sm flex items-center gap-2">
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      Thinking…
+                      {t('support_chat_thinking')}
                     </div>
                   )}
                 </div>
@@ -124,7 +132,7 @@ export default function SupportChatWidget({ page, className }) {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type your question…"
+                    placeholder={t('support_chat_placeholder')}
                     className="min-h-[70px] bg-white dark:bg-slate-900"
                     disabled={loading}
                   />
@@ -138,14 +146,14 @@ export default function SupportChatWidget({ page, className }) {
                     />
                     {file && (
                       <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                        Attached: {file.name}
+                        {t('common_attached')}: {file.name}
                       </div>
                     )}
                   </div>
                   <div className="mt-2 flex justify-end">
                     <Button onClick={handleSend} disabled={loading || !input.trim()} className="bg-blue-600 hover:bg-blue-700">
                       <Send className="w-4 h-4 mr-2" />
-                      Send
+                      {t('common_send')}
                     </Button>
                   </div>
                 </div>
@@ -158,7 +166,7 @@ export default function SupportChatWidget({ page, className }) {
           type="button"
           onClick={() => setOpen(v => !v)}
           className="w-12 h-12 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg flex items-center justify-center"
-          aria-label={open ? 'Close support chat' : 'Open support chat'}
+          aria-label={open ? t('support_chat_aria_close') : t('support_chat_aria_open')}
         >
           {open ? <X className="w-5 h-5" /> : <MessageCircle className="w-5 h-5" />}
         </button>

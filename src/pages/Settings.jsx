@@ -129,7 +129,7 @@ export default function Settings() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile_full_name')}</label>
-                <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Your name" />
+                <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder={t('settings_placeholder_your_name')} />
               </div>
             </div>
 
@@ -165,12 +165,12 @@ export default function Settings() {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select language" />
+                  <SelectValue placeholder={t('settings_select_language_placeholder')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="en">English (Default)</SelectItem>
-                  <SelectItem value="de">Deutsch (German)</SelectItem>
-                  <SelectItem value="fr">Français (French)</SelectItem>
+                  <SelectItem value="en">{t('settings_language_option_en')}</SelectItem>
+                  <SelectItem value="de">{t('settings_language_option_de')}</SelectItem>
+                  <SelectItem value="fr">{t('settings_language_option_fr')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -201,29 +201,29 @@ export default function Settings() {
             <div className="grid md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('branding_brand_name')}</label>
-                <Input value={brandName} onChange={(e) => setBrandName(e.target.value)} placeholder="Your brand" />
+                <Input value={brandName} onChange={(e) => setBrandName(e.target.value)} placeholder={t('settings_placeholder_your_brand')} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('branding_logo_url')}</label>
-                <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://.../logo.png" />
+                <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder={t('settings_placeholder_logo_url')} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('branding_primary_color')}</label>
                 <div className="flex items-center gap-3">
                   <Input type="color" value={primaryColor || '#0ea5e9'} onChange={(e) => setPrimaryColor(e.target.value)} className="w-16 h-10 p-1" />
-                  <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder="#0ea5e9" />
+                  <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder={t('settings_placeholder_primary_color')} />
                 </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('branding_theme')}</label>
                 <Select value={theme} onValueChange={setTheme}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select theme" />
+                    <SelectValue placeholder={t('settings_select_theme_placeholder')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="system">System</SelectItem>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
+                    <SelectItem value="system">{t('settings_theme_system')}</SelectItem>
+                    <SelectItem value="light">{t('settings_theme_light')}</SelectItem>
+                    <SelectItem value="dark">{t('settings_theme_dark')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -272,7 +272,7 @@ export default function Settings() {
           <CardContent className="space-y-4">
             <div className="max-w-md">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('password_email')}</label>
-              <Input value={passwordEmail} onChange={(e) => setPasswordEmail(e.target.value)} placeholder="you@company.com" />
+              <Input value={passwordEmail} onChange={(e) => setPasswordEmail(e.target.value)} placeholder={t('settings_placeholder_email')} />
             </div>
 
             <div className="flex gap-3">

@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Loader2, GitCompareArrows, Download, Info } from 'lucide-react';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n';
 
 function splitCsvLine(line) {
   // minimal CSV splitting (handles quoted commas)
@@ -47,6 +48,7 @@ async function tryExtractHeaders(file) {
 }
 
 export default function Reconciliation() {
+  const { t } = useI18n();
   const [leftFile, setLeftFile] = useState(null);
   const [rightFile, setRightFile] = useState(null);
 
@@ -139,7 +141,7 @@ export default function Reconciliation() {
       );
       setPreview(res);
     } catch (e) {
-      const msg = e?.message ? String(e.message) : 'Preview failed';
+      const msg = e?.message ? String(e.message) : t('reconciliation_err_preview_failed');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -166,21 +168,21 @@ export default function Reconciliation() {
       );
 
       if (!blob || typeof blob.size !== 'number' || blob.size <= 0) {
-        throw new Error('Reconcile returned an empty file');
+        throw new Error(t('reconciliation_err_empty_file'));
       }
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'reconciliation_report.xlsx';
+      a.download = t('reconciliation_download_filename');
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
 
-      toast.success('Reconciliation report downloaded');
+      toast.success(t('reconciliation_toast_downloaded'));
     } catch (e) {
-      const msg = e?.message ? String(e.message) : 'Reconcile failed';
+      const msg = e?.message ? String(e.message) : t('reconciliation_err_reconcile_failed');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -214,7 +216,7 @@ export default function Reconciliation() {
           <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
         )}
         {!has ? (
-          <div className="text-xs text-muted-foreground">For Excel files, type column names exactly as they appear.</div>
+          <div className="text-xs text-muted-foreground">{t('reconciliation_excel_type_columns_hint')}</div>
         ) : null}
       </div>
     );
@@ -223,9 +225,9 @@ export default function Reconciliation() {
   return (
     <div className="container mx-auto p-6 max-w-5xl">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Reconciliation</h1>
+        <h1 className="text-3xl font-bold mb-2">{t('reconciliation_title')}</h1>
         <p className="text-muted-foreground">
-          Reconcile two datasets by key and amount. Output includes matched keys, mismatches, missing rows, and totals.
+          {t('reconciliation_subtitle')}
         </p>
       </div>
 
@@ -233,14 +235,14 @@ export default function Reconciliation() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <GitCompareArrows className="h-5 w-5" />
-            Upload 2 files
+            {t('reconciliation_upload_2_files')}
           </CardTitle>
-          <CardDescription>Supported: .xlsx, .xls, .csv, .tsv</CardDescription>
+          <CardDescription>{t('reconciliation_supported_formats')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Left file</Label>
+              <Label>{t('reconciliation_left_file')}</Label>
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv,.tsv"
@@ -250,7 +252,7 @@ export default function Reconciliation() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Right file</Label>
+              <Label>{t('reconciliation_right_file')}</Label>
               <input
                 type="file"
                 accept=".xlsx,.xls,.csv,.tsv"
@@ -264,60 +266,60 @@ export default function Reconciliation() {
           <TooltipProvider>
             <div className="rounded-xl border p-4 bg-white/60 dark:bg-slate-900/30 space-y-4">
               <div className="flex items-center justify-between gap-4">
-                <div className="text-sm font-semibold">Mapping</div>
+                <div className="text-sm font-semibold">{t('reconciliation_mapping')}</div>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button type="button" className="inline-flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
                       <Info className="h-4 w-4" />
-                      How this works
+                      {t('reconciliation_how_this_works')}
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Exact key match. Amounts are summed per key on each side, then variance is computed.
+                    {t('reconciliation_mapping_tooltip')}
                   </TooltipContent>
                 </Tooltip>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <HeaderPicker
-                  title="Left key column"
+                  title={t('reconciliation_left_key_column')}
                   headers={leftHeaders}
                   value={leftKeyCol}
                   onChange={setLeftKeyCol}
-                  placeholder="e.g. Invoice Number"
+                  placeholder={t('reconciliation_placeholder_left_key')}
                 />
                 <HeaderPicker
-                  title="Right key column"
+                  title={t('reconciliation_right_key_column')}
                   headers={rightHeaders}
                   value={rightKeyCol}
                   onChange={setRightKeyCol}
-                  placeholder="e.g. Invoice No"
+                  placeholder={t('reconciliation_placeholder_right_key')}
                 />
                 <HeaderPicker
-                  title="Left amount column"
+                  title={t('reconciliation_left_amount_column')}
                   headers={leftHeaders}
                   value={leftAmountCol}
                   onChange={setLeftAmountCol}
-                  placeholder="e.g. Total"
+                  placeholder={t('reconciliation_placeholder_left_amount')}
                 />
                 <HeaderPicker
-                  title="Right amount column"
+                  title={t('reconciliation_right_amount_column')}
                   headers={rightHeaders}
                   value={rightAmountCol}
                   onChange={setRightAmountCol}
-                  placeholder="e.g. Amount"
+                  placeholder={t('reconciliation_placeholder_right_amount')}
                 />
               </div>
 
               <div className="space-y-2 max-w-xs">
-                <Label>Tolerance</Label>
+                <Label>{t('reconciliation_tolerance')}</Label>
                 <Input
                   value={tolerance}
                   onChange={(e) => setTolerance(e.target.value)}
-                  placeholder="0"
+                  placeholder={t('reconciliation_tolerance_placeholder')}
                   inputMode="decimal"
                 />
-                <div className="text-xs text-muted-foreground">Variance within tolerance is treated as matched.</div>
+                <div className="text-xs text-muted-foreground">{t('reconciliation_tolerance_help')}</div>
               </div>
             </div>
           </TooltipProvider>
@@ -327,10 +329,10 @@ export default function Reconciliation() {
               {previewLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Previewing…
+                  {t('reconciliation_previewing')}
                 </>
               ) : (
-                'Preview'
+                t('reconciliation_preview')
               )}
             </Button>
 
@@ -338,12 +340,12 @@ export default function Reconciliation() {
               {downloadLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Reconciling…
+                  {t('reconciliation_reconciling')}
                 </>
               ) : (
                 <>
                   <Download className="mr-2 h-4 w-4" />
-                  Reconcile & Download
+                  {t('reconciliation_reconcile_download')}
                 </>
               )}
             </Button>
@@ -357,41 +359,41 @@ export default function Reconciliation() {
 
           {preview ? (
             <div className="rounded-xl border p-4 bg-white/60 dark:bg-slate-900/30">
-              <div className="text-sm font-semibold">Preview</div>
+              <div className="text-sm font-semibold">{t('reconciliation_preview')}</div>
               <div className="mt-2 grid grid-cols-1 md:grid-cols-5 gap-3 text-sm">
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">Matched</div>
+                  <div className="text-xs text-muted-foreground">{t('reconciliation_metric_matched')}</div>
                   <div className="font-semibold">{preview?.counts?.matched ?? '-'}</div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">Mismatch</div>
+                  <div className="text-xs text-muted-foreground">{t('reconciliation_metric_mismatch')}</div>
                   <div className="font-semibold">{preview?.counts?.mismatch ?? '-'}</div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">Missing left</div>
+                  <div className="text-xs text-muted-foreground">{t('reconciliation_metric_missing_left')}</div>
                   <div className="font-semibold">{preview?.counts?.missing_on_left ?? '-'}</div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">Missing right</div>
+                  <div className="text-xs text-muted-foreground">{t('reconciliation_metric_missing_right')}</div>
                   <div className="font-semibold">{preview?.counts?.missing_on_right ?? '-'}</div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">Total keys</div>
+                  <div className="text-xs text-muted-foreground">{t('reconciliation_metric_total_keys')}</div>
                   <div className="font-semibold">{preview?.counts?.total_keys ?? '-'}</div>
                 </div>
               </div>
 
               <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">Left total</div>
+                  <div className="text-xs text-muted-foreground">{t('reconciliation_total_left')}</div>
                   <div className="font-semibold">{preview?.totals?.left_total ?? '-'}</div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">Right total</div>
+                  <div className="text-xs text-muted-foreground">{t('reconciliation_total_right')}</div>
                   <div className="font-semibold">{preview?.totals?.right_total ?? '-'}</div>
                 </div>
                 <div className="rounded-lg border p-3">
-                  <div className="text-xs text-muted-foreground">Variance total</div>
+                  <div className="text-xs text-muted-foreground">{t('reconciliation_total_variance')}</div>
                   <div className="font-semibold">{preview?.totals?.variance_total ?? '-'}</div>
                 </div>
               </div>
@@ -407,9 +409,9 @@ export default function Reconciliation() {
       <Card className="bg-blue-50 dark:bg-blue-950">
         <CardContent className="pt-6">
           <div className="text-sm text-slate-700 dark:text-slate-200">
-            <div className="font-semibold mb-1">Privacy</div>
+            <div className="font-semibold mb-1">{t('reconciliation_privacy_title')}</div>
             <div className="text-xs text-slate-600 dark:text-slate-300">
-              Files are processed in-memory and not stored. Reconciliation is deterministic (exact key match). For fuzzy matching/AI-assisted mapping, we can add an optional toggle next.
+              {t('reconciliation_privacy_body')}
             </div>
           </div>
         </CardContent>

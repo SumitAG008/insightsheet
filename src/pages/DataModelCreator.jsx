@@ -19,8 +19,10 @@ import SchemaImporter from '@/components/datamodel/SchemaImporter';
 import { meldraAi } from '@/api/meldraClient';
 import { backendApi } from '@/api/backendClient';
 import { jsonToSchema, xmlToSchema, autoConvertToSchema } from '@/utils/schemaConverter';
+import { useI18n } from '@/lib/i18n';
 
 export default function DataModelCreator() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [schema, setSchema] = useState({
@@ -71,7 +73,7 @@ export default function DataModelCreator() {
       tables: [...prev.tables, newTable]
     }));
     setSelectedTable(newTable.id);
-    toast.success('New table added');
+    toast.success(t('db_schema_toast_new_table_added'));
   };
 
   const handleUpdateTable = (tableId, updates) => {
@@ -94,7 +96,7 @@ export default function DataModelCreator() {
     if (selectedTable === tableId) {
       setSelectedTable(null);
     }
-    toast.success('Table deleted');
+    toast.success(t('db_schema_toast_table_deleted'));
   };
 
   const handleAddRelationship = (relationship) => {
@@ -105,7 +107,7 @@ export default function DataModelCreator() {
         ...relationship
       }]
     }));
-    toast.success('Relationship added');
+    toast.success(t('db_schema_toast_relationship_added'));
   };
 
   const handleDeleteRelationship = (relationshipId) => {
@@ -113,7 +115,7 @@ export default function DataModelCreator() {
       ...prev,
       relationships: prev.relationships.filter(r => r.id !== relationshipId)
     }));
-    toast.success('Relationship deleted');
+    toast.success(t('db_schema_toast_relationship_deleted'));
   };
 
   const handleExportJSON = () => {
@@ -125,7 +127,7 @@ export default function DataModelCreator() {
     link.download = `${schema.name.replace(/\s+/g, '_')}.json`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success('Schema exported as JSON');
+    toast.success(t('db_schema_toast_schema_exported_json'));
   };
 
   const handleImportJSON = (event) => {
@@ -177,7 +179,7 @@ export default function DataModelCreator() {
           } else if (Array.isArray(parsed) || (typeof parsed === 'object' && parsed !== null)) {
             // It's data - convert to schema
             importedSchema = autoConvertToSchema(parsed, filename);
-            toast.info('Data file detected. Converting to schema...');
+            toast.info(t('db_schema_toast_data_file_detected_converting'));
           } else {
             throw new Error('Invalid file format');
           }
@@ -185,7 +187,7 @@ export default function DataModelCreator() {
           // Try XML
           if (filename.endsWith('.xml') || fileContent.trim().startsWith('<?xml')) {
             importedSchema = xmlToSchema(fileContent);
-            toast.info('XML file detected. Converting to schema...');
+            toast.info(t('db_schema_toast_xml_file_detected_converting'));
           } else {
             throw parseError;
           }
@@ -204,32 +206,32 @@ export default function DataModelCreator() {
         const columnCount = importedSchema.tables.reduce((sum, t) => sum + t.columns.length, 0);
         const relCount = importedSchema.relationships.length;
         
-        toast.success(`Schema imported: ${tableCount} table(s), ${columnCount} columns, ${relCount} relationships`);
+        toast.success(t('db_schema_toast_schema_imported', { tableCount, columnCount, relCount }));
         
         // Reset file input so same file can be imported again
         event.target.value = '';
       } catch (error) {
         console.error('Import error:', error);
-        toast.error(`Failed to import: ${error.message}`);
+        toast.error(t('db_schema_toast_failed_to_import', { message: error.message }));
         event.target.value = '';
       }
     };
     reader.onerror = () => {
-      toast.error('Failed to read file');
+      toast.error(t('common_failed_to_read_file'));
       event.target.value = '';
     };
     reader.readAsText(file);
   };
 
   const handleClearSchema = () => {
-    if (confirm('Are you sure you want to clear the entire schema?')) {
+    if (confirm(t('db_schema_confirm_clear_schema'))) {
       setSchema({
         name: 'Untitled Schema',
         tables: [],
         relationships: []
       });
       setSelectedTable(null);
-      toast.success('Schema cleared');
+      toast.success(t('db_schema_toast_schema_cleared'));
     }
   };
 
@@ -238,7 +240,7 @@ export default function DataModelCreator() {
       ...prev,
       ...aiSchema
     }));
-    toast.success('AI-generated schema applied');
+    toast.success(t('db_schema_toast_ai_schema_applied'));
   };
 
   const handleImportFromSQL = (importedSchema, appendMode) => {
@@ -258,30 +260,30 @@ export default function DataModelCreator() {
     const tableCount = importedSchema.tables.length;
     const columnCount = importedSchema.tables.reduce((sum, t) => sum + t.columns.length, 0);
     const relCount = importedSchema.relationships.length;
-    toast.success(`Schema imported: ${tableCount} table(s), ${columnCount} columns, ${relCount} relationships`);
+    toast.success(t('db_schema_toast_schema_imported', { tableCount, columnCount, relCount }));
   };
 
   const handleImportFromDBConnect = async () => {
     const raw = sessionStorage.getItem('db_connection');
     if (!raw) {
-      toast.error('Connect to a database in DB Connect first, then try again.');
+      toast.error(t('db_schema_err_connect_in_db_connect_first'));
       return;
     }
     let conn;
     try {
       conn = JSON.parse(raw);
     } catch {
-      toast.error('Invalid DB Connect session. Reconnect in DB Connect and try again.');
+      toast.error(t('db_schema_err_invalid_db_connect_session'));
       return;
     }
     if (!conn.connectionId || !conn.dbType) {
-      toast.error('No active connection. Open DB Connect, run Test Connection, then try again.');
+      toast.error(t('db_schema_err_no_active_connection'));
       return;
     }
     try {
       const res = await backendApi.db.getSchema(conn.connectionId, conn.dbType);
       if (!res.success) {
-        toast.error(res.error || 'Failed to fetch schema');
+        toast.error(res.error || t('db_schema_err_failed_to_fetch_schema'));
         return;
       }
       const rawTables = res.tables || [];
@@ -323,14 +325,14 @@ export default function DataModelCreator() {
       });
 
       const importedSchema = {
-        name: 'Imported from DB Connect',
+        name: t('db_schema_imported_from_db_connect_name'),
         tables,
         relationships
       };
       handleImportFromSQL(importedSchema, false);
     } catch (err) {
       console.error('Import from DB Connect:', err);
-      toast.error(err.message || 'Failed to import schema from DB Connect');
+      toast.error(err.message || t('db_schema_err_failed_import_from_db_connect'));
     }
   };
 
@@ -346,10 +348,10 @@ export default function DataModelCreator() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-                  Data Model Creator
+                  {t('db_schema_title')}
                 </h1>
                 <p className="text-slate-600 dark:text-slate-400 text-sm">
-                  Design database schemas visually with AI-powered assistance
+                  {t('db_schema_subtitle')}
                 </p>
               </div>
             </div>
@@ -361,53 +363,53 @@ export default function DataModelCreator() {
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Add Table
+                {t('db_schema_add_table')}
               </Button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" type="button">
                     <Upload className="w-4 h-4 mr-2" />
-                    Import
+                    {t('common_import')}
                     <ChevronDown className="w-4 h-4 ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-white dark:bg-slate-800 w-56">
                   <DropdownMenuItem onClick={handleImportFromDBConnect}>
                     <Plug className="w-4 h-4 mr-2" />
-                    From DB Connect
+                    {t('db_schema_import_from_db_connect')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('mysql'); setShowSchemaImporter(true); }}>
                     <FileCode className="w-4 h-4 mr-2" />
-                    From MySQL
+                    {t('db_schema_import_from_mysql')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('postgresql'); setShowSchemaImporter(true); }}>
                     <FileCode className="w-4 h-4 mr-2" />
-                    From PostgreSQL
+                    {t('db_schema_import_from_postgresql')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('mssql'); setShowSchemaImporter(true); }}>
                     <FileCode className="w-4 h-4 mr-2" />
-                    From SQL Server
+                    {t('db_schema_import_from_sql_server')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('snowflake'); setShowSchemaImporter(true); }}>
                     <FileCode className="w-4 h-4 mr-2" />
-                    From Snowflake
+                    {t('db_schema_import_from_snowflake')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('oracle'); setShowSchemaImporter(true); }}>
                     <FileCode className="w-4 h-4 mr-2" />
-                    From Oracle SQL
+                    {t('db_schema_import_from_oracle')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('rails'); setShowSchemaImporter(true); }}>
                     <FileCode className="w-4 h-4 mr-2" />
-                    From Rails (schema.rb)
+                    {t('db_schema_import_from_rails')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => { setSelectedImportType('csv'); setShowSchemaImporter(true); }}>
                     <FileText className="w-4 h-4 mr-2" />
-                    From CSV
+                    {t('db_schema_import_from_csv')}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => importJsonInputRef.current?.click()}>
                     <FileText className="w-4 h-4 mr-2" />
-                    From JSON
+                    {t('db_schema_import_from_json')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -426,7 +428,7 @@ export default function DataModelCreator() {
                 variant="outline"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Export
+                {t('common_export')}
               </Button>
 
               <Button
@@ -435,17 +437,17 @@ export default function DataModelCreator() {
                 className="text-[#059669] hover:text-[#047857] border-[#059669]/50 hover:bg-[#059669]/5"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Clear
+                {t('common_clear')}
               </Button>
             </div>
           </div>
 
           {/* Schema Info */}
           <div className="flex items-center gap-6 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-900/80 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-            <span className="font-semibold">{schema.tables.length} Tables</span>
-            <span className="font-semibold">{schema.relationships.length} Relationships</span>
+            <span className="font-semibold">{t('db_schema_tables_count', { count: schema.tables.length })}</span>
+            <span className="font-semibold">{t('db_schema_relationships_count', { count: schema.relationships.length })}</span>
             <span className="font-semibold">
-              {schema.tables.reduce((sum, t) => sum + t.columns.length, 0)} Columns
+              {t('db_schema_columns_count', { count: schema.tables.reduce((sum, t) => sum + t.columns.length, 0) })}
             </span>
           </div>
         </div>
@@ -455,22 +457,22 @@ export default function DataModelCreator() {
           <TabsList className="bg-slate-100 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700">
             <TabsTrigger value="canvas">
               <Database className="w-4 h-4 mr-2" />
-              Visual Canvas
+              {t('db_schema_tab_visual_canvas')}
             </TabsTrigger>
             <TabsTrigger value="tables">
               <FileCode className="w-4 h-4 mr-2" />
-              Table Designer
+              {t('db_schema_tab_table_designer')}
             </TabsTrigger>
             <TabsTrigger value="relationships">
-              Relationships
+              {t('db_schema_tab_relationships')}
             </TabsTrigger>
             <TabsTrigger value="sql">
               <FileCode className="w-4 h-4 mr-2" />
-              SQL Generator
+              {t('db_schema_tab_sql_generator')}
             </TabsTrigger>
             <TabsTrigger value="ai" className="font-semibold">
               <Sparkles className="w-4 h-4 mr-2 text-blue-500" />
-              AI Assistant
+              {t('nav_ai_assistant')}
             </TabsTrigger>
           </TabsList>
 

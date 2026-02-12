@@ -2,7 +2,7 @@
  * developer.meldra.ai API client — for external/API use only.
  *
  * Used when calling Meldra from your own apps (requires Meldra API key via developer.meldra.ai).
- * The in-app Document Converter and ZIP Cleaner do NOT use this module; they use the main
+ * The in-app Document Converter and FileName Cleaner do NOT use this module; they use the main
  * backend with your Meldra login (JWT) and require no API key.
  * Base URL: VITE_MELDRA_DEVELOPER_API_URL or https://api.developer.meldra.ai
  */
@@ -87,7 +87,7 @@ export async function convertPdfToPpt(file, apiKey = getApiKey()) {
 }
 
 /**
- * ZIP Cleaner via developer.meldra.ai. Requires Meldra API key (paid).
+ * FileName Cleaner via developer.meldra.ai. Requires Meldra API key (paid).
  * @param {File} file - .zip
  * @param {object} [options] - { allowedCharacters, replacementCharacter, ... }
  * @param {string} [apiKey] - defaults to localStorage meldra_api_key

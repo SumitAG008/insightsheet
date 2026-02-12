@@ -191,7 +191,7 @@ export default function SecurityDashboard() {
             <Key className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Meldra API Key (for external API only)
           </CardTitle>
-          <p className={`text-sm ${subtleTextClass}`}>Only for calling Meldra from your own apps or developer.meldra.ai. In-app Document Converter and ZIP Cleaner use your Meldra login only; they do <strong>not</strong> use or require this key.</p>
+          <p className={`text-sm ${subtleTextClass}`}>Only for calling Meldra from your own apps or developer.meldra.ai. In-app Document Converter and FileName Cleaner use your Meldra login only; they do <strong>not</strong> use or require this key.</p>
         </CardHeader>
         <CardContent className="space-y-3">
           {meldraKeySet && !meldraKeyInput ? (

@@ -134,7 +134,7 @@ curl -X POST "https://api.developer.meldra.ai/v1/convert/pdf-to-doc" \\
     author: 'Meldra Team',
     category: 'api-docs',
     summary:
-      'Discover Meldra API capabilities: document conversion (PDF, DOC, PPT), ZIP cleaning, and platform features like authentication, rate limits, and usage tracking.',
+      'Discover Meldra API capabilities: document conversion (PDF, DOC, PPT), FileName Cleaner, and platform features like authentication, rate limits, and usage tracking.',
     image: '/api-blog-3.jpg',
     readMore: true,
     content: `
@@ -156,9 +156,9 @@ Share decks without requiring PowerPoint.
 ### PDF → PPTX
 Convert PDFs into slides (typically one slide per page).
 
-## ZIP file cleaning
+## FileName Cleaner
 
-Clean and sanitize ZIP file contents by:
+Clean and sanitize file names inside ZIP archives by:
 
 - Removing or replacing invalid characters
 - Enforcing filename length limits
@@ -181,7 +181,7 @@ Clean and sanitize ZIP file contents by:
     author: 'Meldra Team',
     category: 'updates',
     summary:
-      "We're excited to announce Meldra API v1.0—document conversion endpoints (PDF↔DOCX, PPTX↔PDF, PDF→PPTX) plus ZIP file cleaning. Here's what shipped and what's next.",
+      "We're excited to announce Meldra API v1.0—document conversion endpoints (PDF↔DOCX, PPTX↔PDF, PDF→PPTX) plus FileName Cleaner. Here's what shipped and what's next.",
     image: '/api-blog-4.jpg',
     readMore: true,
     content: `
@@ -198,9 +198,9 @@ We’re shipping **Meldra API v1.0**—a set of endpoints that help teams automa
 - PPT/PPTX → PDF
 - PDF → PPTX
 
-### ZIP cleaning endpoint
+### FileName Cleaner endpoint
 
-ZIP archives from customers often contain filenames that break downstream systems (Windows/macOS differences, invalid characters, unicode edge-cases, very long paths). The ZIP cleaning endpoint:
+ZIP archives from customers often contain filenames that break downstream systems (Windows/macOS differences, invalid characters, unicode edge-cases, very long paths). The FileName Cleaner endpoint:
 
 - Normalizes filenames
 - Removes or replaces invalid characters

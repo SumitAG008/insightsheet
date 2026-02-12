@@ -568,10 +568,10 @@ export default function FilenameCleaner() {
             </div>
           </div>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
-            Enhanced File Processor
+            FileName Cleaner
           </h1>
           <p className="text-slate-200 text-base md:text-lg font-medium" style={{ letterSpacing: '-0.01em' }}>
-            Process ZIP files with advanced Unicode and character replacement support
+            Clean and standardize file names inside ZIP archives (no file content changes)
           </p>
         </div>
 
@@ -611,7 +611,7 @@ export default function FilenameCleaner() {
         <Alert className="mb-6 bg-slate-800/80 border-slate-600/50">
           <Lock className="h-5 w-5 text-slate-400" />
           <AlertDescription className="text-slate-300">
-            <strong className="text-slate-200">Meldra API:</strong> ZIP Cleaner and PDF↔DOC can also run via the Meldra API with a paid key. In-app ZIP Cleaner works without a key. For API access, add a key in <Link to="/security" className="underline text-blue-400 hover:text-blue-300">Security → Meldra API Key</Link>. <Link to="/developers" className="underline text-blue-400 hover:text-blue-300">developer.meldra.ai</Link>.
+            <strong className="text-slate-200">Meldra API:</strong> FileName Cleaner and PDF↔DOC can also run via the Meldra API with a paid key. In-app FileName Cleaner works without a key. For API access, add a key in <Link to="/security" className="underline text-blue-400 hover:text-blue-300">Security → Meldra API Key</Link>. <Link to="/developers" className="underline text-blue-400 hover:text-blue-300">developer.meldra.ai</Link>.
           </AlertDescription>
         </Alert>
 

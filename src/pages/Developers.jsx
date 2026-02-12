@@ -130,11 +130,11 @@ const ENDPOINTS = [
   { 
     method: 'POST', 
     path: '/v1/zip/clean', 
-    name: 'ZIP Cleaner', 
+    name: 'FileName Cleaner', 
     body: 'file: ZIP (multipart/form-data), options: JSON (optional)', 
     Icon: FileArchive, 
     id: 'zip-clean',
-    description: 'Clean ZIP file names (sanitize characters, remove spaces, enforce length limits)',
+    description: 'Clean file names inside a ZIP archive (sanitize characters, remove spaces, enforce length limits)',
     requestExample: `curl -X POST "https://api.developer.meldra.ai/v1/zip/clean" \\
   -H "X-API-Key: your_api_key_here" \\
   -F "file=@archive.zip" \\
@@ -259,7 +259,7 @@ export default function Developers({ isApiDeveloperDomain = false }) {
                   <FileText className="w-4 h-4" /> Document Conversion
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-slate-700 focus:bg-blue-50 focus:text-blue-600 cursor-pointer" onSelect={(e) => { e.preventDefault(); scrollTo('zip-clean'); }}>
-                  <FileArchive className="w-4 h-4" /> ZIP Cleaner
+                  <FileArchive className="w-4 h-4" /> FileName Cleaner
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -290,7 +290,7 @@ export default function Developers({ isApiDeveloperDomain = false }) {
           Build with Meldra APIs
         </h1>
         <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-4">
-          Document conversion (PDF, DOC, PPT) and ZIP Cleaner. Use in your apps with a paid Meldra API key. Self-service and enterprise options.
+          Document conversion (PDF, DOC, PPT) and FileName Cleaner. Use in your apps with a paid Meldra API key. Self-service and enterprise options.
         </p>
         <p className="text-slate-500 text-sm max-w-xl mx-auto">
           Whether you are a developer, a startup, or an established product, Meldra APIs let you add conversion and file-cleaning to your stack quickly.
@@ -443,7 +443,7 @@ export default function Developers({ isApiDeveloperDomain = false }) {
                 <div className="grid sm:grid-cols-2 gap-4 text-slate-600 text-sm">
                   <div>
                     <p className="font-medium text-slate-800">In the Meldra app</p>
-                    <p>Document Converter and ZIP Cleaner work with your <strong>Meldra login</strong>. No API key.</p>
+                    <p>Document Converter and FileName Cleaner work with your <strong>Meldra login</strong>. No API key.</p>
                     <span className="flex items-center gap-1 text-blue-600 mt-1"><CheckCircle className="w-4 h-4" /> No API key required</span>
                   </div>
                   <div>
@@ -642,10 +642,10 @@ export default function Developers({ isApiDeveloperDomain = false }) {
                 </div>
               </div>
               <div>
-                <h3 className="font-semibold text-slate-900 mb-3">ZIP File Cleaning</h3>
+                <h3 className="font-semibold text-slate-900 mb-3">FileName Cleaner</h3>
                 <div className="bg-white p-4 rounded-lg border border-slate-200">
                   <p className="text-slate-600 text-sm mb-2">
-                    Clean and sanitize ZIP file contents by removing or replacing invalid characters in filenames, enforcing length limits, standardizing naming conventions, and handling special characters for cross-platform compatibility.
+                    FileName Cleaner cleans and sanitizes file names inside a ZIP archive (it does not edit file contents). Use it to remove or replace invalid characters, enforce length limits, standardize naming conventions, and handle special characters for cross-platform compatibility.
                   </p>
                   <p className="text-slate-500 text-xs mb-2"><strong>Features:</strong></p>
                   <ul className="text-slate-600 text-sm space-y-1 list-disc list-inside ml-2">
@@ -785,7 +785,7 @@ export default function Developers({ isApiDeveloperDomain = false }) {
                   <p className="font-semibold text-blue-600 mb-2">v1.0</p>
                   <ul className="text-slate-600 text-sm space-y-1 list-disc list-inside">
                     <li>PDF → DOC, DOC → PDF, PPT → PDF, PDF → PPT</li>
-                    <li>ZIP Cleaner with optional options JSON</li>
+                    <li>FileName Cleaner with optional options JSON</li>
                     <li>X-API-Key authentication</li>
                   </ul>
                 </div>

@@ -74,11 +74,11 @@ const ENDPOINTS = [
   },
   {
     id: 'zip-clean',
-    name: 'ZIP Cleaner',
+    name: 'FileName Cleaner',
     method: 'POST',
     path: '/v1/zip/clean',
     icon: FileArchive,
-    description: 'Clean ZIP file names',
+    description: 'Clean file names inside a ZIP archive',
     acceptFile: '.zip',
   },
   {
@@ -427,6 +427,9 @@ export default function ApiTestingConsole() {
               value={jsonPayload}
               onChange={(e) => setJsonPayload(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              Cleans/sanitizes filenames inside the ZIP (does not change file contents).
+            </p>
           </div>
         )}
 

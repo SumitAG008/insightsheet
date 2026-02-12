@@ -368,7 +368,7 @@ CMD ["python", "app.py"]`;
                     <li>Upload.jsx - CSV upload page</li>
                     <li>Dashboard.jsx - Analysis dashboard</li>
                     <li>ExcelToPPT.jsx - Excel converter page</li>
-                    <li>FilenameCleaner.jsx - ZIP cleaner</li>
+                    <li>FilenameCleaner.jsx - FileName Cleaner</li>
                     <li>PDFEditor.jsx - PDF forms</li>
                     <li>Pricing.jsx - Pricing page</li>
                     <li>Privacy.jsx & Disclaimer.jsx - Legal pages</li>

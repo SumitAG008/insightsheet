@@ -96,6 +96,21 @@ export function setUserPreferences(email, patch) {
   } catch {
     // ignore
   }
+
+  try {
+    window.dispatchEvent(
+      new CustomEvent('prefs:changed', {
+        detail: {
+          email: email || 'anon',
+          patch: patch || {},
+          next,
+        },
+      })
+    );
+  } catch {
+    // ignore
+  }
+
   return next;
 }
 

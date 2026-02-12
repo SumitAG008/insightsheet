@@ -24,9 +24,11 @@ import { clearAllAppSessionData } from '@/utils/clearAppData';
 import CookieConsent from '@/components/CookieConsent';
 import SupportChatWidget from '@/components/SupportChatWidget';
 import OnboardingAssistantModal from '@/components/onboarding/OnboardingAssistantModal';
-import { applyPreferences, getUserPreferences } from '@/lib/userPreferences';
+import { applyPreferences, applyPrimaryColor, applyTheme, getUserPreferences } from '@/lib/userPreferences';
+import { useI18n } from '@/lib/i18n';
 
 export default function Layout({ children, currentPageName }) {
+  const { t } = useI18n();
   const location = useLocation();
   const isHome = currentPageName === 'Dashboard';
   const navigate = useNavigate();
@@ -93,6 +95,45 @@ export default function Layout({ children, currentPageName }) {
   React.useEffect(() => {
     loadUser();
   }, [loadUser]);
+
+  useEffect(() => {
+    const applyFromPrefs = (email) => {
+      try {
+        const prefs = applyPreferences(email);
+        setBrandPrefs({ brandName: prefs.brandName || null, logoUrl: prefs.logoUrl || null });
+        try {
+          applyTheme(prefs.theme);
+          if (prefs.primaryColor) applyPrimaryColor(prefs.primaryColor);
+        } catch {
+          // ignore
+        }
+      } catch {
+        try {
+          const prefs = getUserPreferences(email);
+          setBrandPrefs({ brandName: prefs.brandName || null, logoUrl: prefs.logoUrl || null });
+          try {
+            applyTheme(prefs.theme);
+            if (prefs.primaryColor) applyPrimaryColor(prefs.primaryColor);
+          } catch {
+            // ignore
+          }
+        } catch {
+          setBrandPrefs({ brandName: null, logoUrl: null });
+        }
+      }
+    };
+
+    const email = user?.email || 'anon';
+    applyFromPrefs(email);
+
+    const onPrefsChanged = (e) => {
+      const nextEmail = e?.detail?.email || user?.email || 'anon';
+      applyFromPrefs(nextEmail);
+    };
+
+    window.addEventListener('prefs:changed', onPrefsChanged);
+    return () => window.removeEventListener('prefs:changed', onPrefsChanged);
+  }, [user?.email]);
 
   useEffect(() => {
     if (!user?.email) return;
@@ -257,16 +298,16 @@ export default function Layout({ children, currentPageName }) {
                         }`}
                       >
                         <LayoutDashboard className="w-4 h-4" />
-                        <span>Dashboard</span>
+                        <span>{t('nav_dashboard')}</span>
                         <ChevronDown className="w-4 h-4 opacity-70" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="min-w-[220px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Dashboard</DropdownMenuLabel>
+                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_dashboard')}</DropdownMenuLabel>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('Dashboard')} className="flex items-center gap-2 cursor-pointer">
                           <LayoutDashboard className="w-4 h-4" />
-                          Overview
+                          {t('nav_overview')}
                         </Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -284,34 +325,34 @@ export default function Layout({ children, currentPageName }) {
                         }`}
                       >
                         <BarChart3 className="w-4 h-4" />
-                        <span>File Analysis</span>
+                        <span>{t('nav_file_analysis')}</span>
                         <ChevronDown className="w-4 h-4 opacity-70" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="min-w-[200px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">File Analysis</DropdownMenuLabel>
+                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_file_analysis')}</DropdownMenuLabel>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('FileAnalyzer')} className="flex items-center gap-2 cursor-pointer">
                           <BarChart3 className="w-4 h-4" />
-                          Analyzer
+                          {t('nav_analyzer')}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('AutoStandardize')} className="flex items-center gap-2 cursor-pointer">
                           <Sparkles className="w-4 h-4" />
-                          Auto-Standardize
+                          {t('nav_auto_standardize')}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('Reconciliation')} className="flex items-center gap-2 cursor-pointer">
                           <GitCompareArrows className="w-4 h-4" />
-                          Reconciliation
+                          {t('nav_reconciliation')}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('PLBuilder')} className="flex items-center gap-2 cursor-pointer">
                           <FileSpreadsheet className="w-4 h-4" />
-                          P&L Builder
+                          {t('nav_pl_builder')}
                         </Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -327,7 +368,7 @@ export default function Layout({ children, currentPageName }) {
                     }`}
                   >
                     <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : 'text-blue-500'}`} />
-                    <span>AI Assistant</span>
+                    <span>{t('nav_ai_assistant')}</span>
                   </Link>
 
                   {/* Data & Schema — group */}
@@ -342,22 +383,22 @@ export default function Layout({ children, currentPageName }) {
                         }`}
                       >
                         <Database className="w-4 h-4" />
-                        <span>Data & Schema</span>
+                        <span>{t('nav_data_schema')}</span>
                         <ChevronDown className="w-4 h-4 opacity-70" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="min-w-[200px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Data & Schema</DropdownMenuLabel>
+                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_data_schema')}</DropdownMenuLabel>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('DataModelCreator')} className="flex items-center gap-2 cursor-pointer">
                           <Database className="w-4 h-4" />
-                          DB Schema
+                          {t('nav_db_schema')}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('DatabaseConnection')} className="flex items-center gap-2 cursor-pointer">
                           <Plug className="w-4 h-4" />
-                          DB Connect
+                          {t('nav_db_connect')}
                         </Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -375,34 +416,34 @@ export default function Layout({ children, currentPageName }) {
                         }`}
                       >
                         <FileText className="w-4 h-4" />
-                        <span>File Conversion</span>
+                        <span>{t('nav_file_conversion')}</span>
                         <ChevronDown className="w-4 h-4 opacity-70" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start" className="min-w-[200px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">File Conversion</DropdownMenuLabel>
+                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_file_conversion')}</DropdownMenuLabel>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('FileToPPT')} className="flex items-center gap-2 cursor-pointer">
                           <FileText className="w-4 h-4" />
-                          Excel to PPT
+                          {t('nav_excel_to_ppt')}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('OCRConverter')} className="flex items-center gap-2 cursor-pointer">
                           <ScanLine className="w-4 h-4" />
-                          OCR to DOC/PDF
+                          {t('nav_ocr_to_doc_pdf')}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('PdfDocConverter')} className="flex items-center gap-2 cursor-pointer">
                           <FileType className="w-4 h-4" />
-                          Document Converter (PDF / DOC / PPT)
+                          {t('nav_document_converter')}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('FilenameCleaner')} className="flex items-center gap-2 cursor-pointer">
                           <FileArchive className="w-4 h-4" />
-                          ZIP Cleaner
+                          {t('nav_zip_cleaner')}
                         </Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -419,7 +460,7 @@ export default function Layout({ children, currentPageName }) {
                     title="developer.meldra.ai – API docs"
                   >
                     <Code className={`w-4 h-4 ${location.pathname.toLowerCase() === '/developers' ? 'text-white' : ''}`} />
-                    <span>Developers</span>
+                    <span>{t('nav_developers')}</span>
                   </Link>
                 </>
               ) : (
@@ -433,7 +474,7 @@ export default function Layout({ children, currentPageName }) {
                   }`}
                 >
                   <DollarSign className="w-4 h-4" />
-                  <span>Pricing</span>
+                  <span>{t('nav_pricing')}</span>
                 </Link>
               )}
 
@@ -502,27 +543,27 @@ export default function Layout({ children, currentPageName }) {
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-[220px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">Account</DropdownMenuLabel>
+                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_account')}</DropdownMenuLabel>
                       <DropdownMenuItem onClick={openOnboarding} className="flex items-center gap-2 cursor-pointer">
                         <HelpCircle className="w-4 h-4" />
-                        Onboarding
+                        {t('nav_onboarding')}
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('Settings')} className="flex items-center gap-2 cursor-pointer">
                           <SettingsIcon className="w-4 h-4" />
-                          Settings
+                          {t('nav_settings')}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <Link to={createPageUrl('Security')} className="flex items-center gap-2 cursor-pointer">
                           <Shield className="w-4 h-4" />
-                          Security
+                          {t('nav_security')}
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={handleLogoutClick} className="flex items-center gap-2 cursor-pointer">
                         <LogOut className="w-4 h-4" />
-                        Logout
+                        {t('nav_logout')}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -532,7 +573,7 @@ export default function Layout({ children, currentPageName }) {
                   to="/Login"
                   className="ml-4 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all shadow-md hover:shadow-lg font-semibold"
                 >
-                  Login
+                  {t('nav_login')}
                 </Link>
               )}
             </div>
@@ -551,7 +592,7 @@ export default function Layout({ children, currentPageName }) {
             <div className="md:hidden border-t border-slate-200 dark:border-slate-800 py-4 space-y-1">
               {user && user.email ? (
                 <>
-                  <p className="px-4 pt-1 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dashboard</p>
+                  <p className="px-4 pt-1 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_dashboard')}</p>
                   <Link 
                     to={createPageUrl('Dashboard')}
                     onClick={() => setMobileMenuOpen(false)}
@@ -562,50 +603,50 @@ export default function Layout({ children, currentPageName }) {
                     }`}
                   >
                     <LayoutDashboard className="w-4 h-4" />
-                    <span>Dashboard</span>
+                    <span>{t('nav_dashboard')}</span>
                   </Link>
 
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">File Analysis</p>
+                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_file_analysis')}</p>
                   <Link to={createPageUrl('FileAnalyzer')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FileAnalyzer')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <BarChart3 className="w-4 h-4" /> <span>Analyzer</span>
+                    <BarChart3 className="w-4 h-4" /> <span>{t('nav_analyzer')}</span>
                   </Link>
                   <Link to={createPageUrl('AutoStandardize')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('AutoStandardize')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <Sparkles className="w-4 h-4" /> <span>Auto-Standardize</span>
+                    <Sparkles className="w-4 h-4" /> <span>{t('nav_auto_standardize')}</span>
                   </Link>
                   <Link to={createPageUrl('Reconciliation')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('Reconciliation')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <GitCompareArrows className="w-4 h-4" /> <span>Reconciliation</span>
+                    <GitCompareArrows className="w-4 h-4" /> <span>{t('nav_reconciliation')}</span>
                   </Link>
                   <Link to={createPageUrl('PLBuilder')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('PLBuilder')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <FileSpreadsheet className="w-4 h-4" /> <span>P&L Builder</span>
+                    <FileSpreadsheet className="w-4 h-4" /> <span>{t('nav_pl_builder')}</span>
                   </Link>
 
                   <Link to={createPageUrl('AgenticAI')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-semibold text-sm ${isActive(createPageUrl('AgenticAI')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg' : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : 'text-blue-500'}`} /> <span>AI Assistant</span>
+                    <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : 'text-blue-500'}`} /> <span>{t('nav_ai_assistant')}</span>
                   </Link>
 
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Data & Schema</p>
+                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_data_schema')}</p>
                   <Link to={createPageUrl('DataModelCreator')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('DataModelCreator')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <Database className="w-4 h-4" /> <span>DB Schema</span>
+                    <Database className="w-4 h-4" /> <span>{t('nav_db_schema')}</span>
                   </Link>
                   <Link to={createPageUrl('DatabaseConnection')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('DatabaseConnection')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <Plug className="w-4 h-4" /> <span>DB Connect</span>
+                    <Plug className="w-4 h-4" /> <span>{t('nav_db_connect')}</span>
                   </Link>
 
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">File Conversion</p>
+                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_file_conversion')}</p>
                   <Link to={createPageUrl('FileToPPT')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FileToPPT')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <FileText className="w-4 h-4" /> <span>Excel to PPT</span>
+                    <FileText className="w-4 h-4" /> <span>{t('nav_excel_to_ppt')}</span>
                   </Link>
                   <Link to={createPageUrl('OCRConverter')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('OCRConverter')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <ScanLine className="w-4 h-4" /> <span>OCR to DOC/PDF</span>
+                    <ScanLine className="w-4 h-4" /> <span>{t('nav_ocr_to_doc_pdf')}</span>
                   </Link>
                   <Link to={createPageUrl('PdfDocConverter')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('PdfDocConverter')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <FileType className="w-4 h-4" /> <span>Document Converter (PDF / DOC / PPT)</span>
+                    <FileType className="w-4 h-4" /> <span>{t('nav_document_converter')}</span>
                   </Link>
                   <Link to={createPageUrl('FilenameCleaner')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FilenameCleaner')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <FileArchive className="w-4 h-4" /> <span>ZIP Cleaner</span>
+                    <FileArchive className="w-4 h-4" /> <span>{t('nav_zip_cleaner')}</span>
                   </Link>
                   <Link to="/developers" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
-                    <Code className="w-4 h-4" /> <span>Developers</span>
+                    <Code className="w-4 h-4" /> <span>{t('nav_developers')}</span>
                   </Link>
                   <div className="pt-2 border-t border-slate-200 dark:border-slate-800 mt-2 space-y-2">
                     <Link
@@ -614,7 +655,7 @@ export default function Layout({ children, currentPageName }) {
                       className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm"
                     >
                       <SettingsIcon className="w-4 h-4" />
-                      <span>Settings</span>
+                      <span>{t('nav_settings')}</span>
                     </Link>
                     <button
                       type="button"
@@ -625,7 +666,7 @@ export default function Layout({ children, currentPageName }) {
                       className="w-full text-left flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm"
                     >
                       <HelpCircle className="w-4 h-4" />
-                      <span>Onboarding</span>
+                      <span>{t('nav_onboarding')}</span>
                     </button>
                     <Link
                       to={createPageUrl('Security')}
@@ -633,7 +674,7 @@ export default function Layout({ children, currentPageName }) {
                       className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm"
                     >
                       <Shield className="w-4 h-4" />
-                      <span>Security</span>
+                      <span>{t('nav_security')}</span>
                     </Link>
                     <button
                       onClick={() => {
@@ -642,7 +683,7 @@ export default function Layout({ children, currentPageName }) {
                       }}
                       className="w-full flex items-center gap-2 px-4 py-2.5 rounded-lg text-white bg-[#059669] hover:bg-[#047857] font-semibold text-sm"
                     >
-                      Logout
+                      {t('nav_logout')}
                     </button>
                   </div>
                 </>
@@ -657,7 +698,7 @@ export default function Layout({ children, currentPageName }) {
                   }`}
                 >
                   <DollarSign className="w-4 h-4" />
-                  <span>Pricing</span>
+                  <span>{t('nav_pricing')}</span>
                 </Link>
               )}
             </div>
@@ -681,35 +722,35 @@ export default function Layout({ children, currentPageName }) {
         <div className="container mx-auto px-4 py-8">
           <div className="grid md:grid-cols-3 gap-8 items-start">
             <div className="min-w-0">
-              <Logo size="medium" showText={true} style={{ color: 'inherit' }} lowercaseM />
+              <Logo size="medium" showText={true} style={{ color: 'inherit' }} lowercaseM brandName={brandPrefs.brandName} logoUrl={brandPrefs.logoUrl} />
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 font-light" style={{ fontFamily: "'Inter', sans-serif", letterSpacing: '-0.01em' }}>
-                Privacy-first data & file management
+                {t('footer_tagline')}
               </p>
             </div>
 
             <div className="min-w-0">
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">Legal</h3>
+              <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">{t('footer_legal')}</h3>
               <div className="space-y-3">
                 <Link 
                   to={createPageUrl('Privacy')}
                   className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
                 >
                   <Shield className="w-4 h-4 flex-shrink-0" />
-                  <span>Privacy Policy</span>
+                  <span>{t('footer_privacy_policy')}</span>
                 </Link>
                 <Link
                   to="/faq"
                   className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
                 >
                   <MessageSquareText className="w-4 h-4 flex-shrink-0" />
-                  <span>FAQ</span>
+                  <span>{t('footer_faq')}</span>
                 </Link>
                 <Link 
                   to={createPageUrl('Disclaimer')}
                   className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
                 >
                   <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-                  <span>Disclaimer & Terms</span>
+                  <span>{t('footer_disclaimer_terms')}</span>
                 </Link>
               </div>
             </div>
@@ -718,12 +759,12 @@ export default function Layout({ children, currentPageName }) {
               <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 h-full">
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-                  <span className="font-semibold text-slate-900 dark:text-slate-100 text-sm">Privacy First</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{t('footer_privacy_first')}</span>
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                  100% browser processing<br />
-                  Zero data storage<br />
-                  No tracking
+                  {t('footer_privacy_line1')}<br />
+                  {t('footer_privacy_line2')}<br />
+                  {t('footer_privacy_line3')}
                 </p>
               </div>
             </div>

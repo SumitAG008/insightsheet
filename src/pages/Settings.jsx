@@ -7,22 +7,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { backendApi } from '@/api/backendClient';
 import { applyPreferences, applyPrimaryColor, applyTheme, getUserPreferences, setUserPreferences } from '@/lib/userPreferences';
+import { useI18n } from '@/lib/i18n';
 
 const LANG_KEY = 'app:language';
 
 export default function Settings() {
+  const { language, setLanguage, t } = useI18n();
   const [user, setUser] = useState(null);
   const userEmail = useMemo(() => user?.email || 'anon', [user?.email]);
   const [profileName, setProfileName] = useState('');
   const [profileStatus, setProfileStatus] = useState('');
-
-  const [language, setLanguage] = useState(() => {
-    try {
-      return localStorage.getItem(LANG_KEY) || 'en';
-    } catch {
-      return 'en';
-    }
-  });
   const [languageStatus, setLanguageStatus] = useState('');
 
   const [passwordEmail, setPasswordEmail] = useState('');
@@ -69,9 +63,9 @@ export default function Settings() {
     try {
       localStorage.setItem(LANG_KEY, language);
       setUserPreferences(userEmail, { language });
-      setLanguageStatus('Saved.');
+      setLanguageStatus(t('language_saved'));
     } catch {
-      setLanguageStatus('Failed to save language preference.');
+      setLanguageStatus(t('language_failed'));
     }
   };
 
@@ -117,30 +111,30 @@ export default function Settings() {
     <div className="min-h-screen bg-white dark:bg-slate-950 py-12">
       <div className="container mx-auto px-4 max-w-5xl space-y-8">
         <div>
-          <h1 className="text-4xl font-bold text-slate-900 dark:text-white">Settings</h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-2">Manage your profile, language, and password.</p>
+          <h1 className="text-4xl font-bold text-slate-900 dark:text-white">{t('settings_title')}</h1>
+          <p className="text-slate-600 dark:text-slate-400 mt-2">{t('settings_subtitle')}</p>
         </div>
 
         <Card className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border-slate-200 dark:border-slate-700/50 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
-              <User className="w-5 h-5" /> Profile
+              <User className="w-5 h-5" /> {t('profile_title')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile_email')}</label>
                 <Input value={user?.email || ''} readOnly className="bg-slate-50 dark:bg-slate-950" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full name</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('profile_full_name')}</label>
                 <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Your name" />
               </div>
             </div>
 
             <div className="flex gap-3">
-              <Button onClick={saveProfile} className="bg-blue-600 hover:bg-blue-700">Save Profile</Button>
+              <Button onClick={saveProfile} className="bg-blue-600 hover:bg-blue-700">{t('profile_save')}</Button>
             </div>
 
             {profileStatus ? (
@@ -152,13 +146,24 @@ export default function Settings() {
         <Card className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border-slate-200 dark:border-slate-700/50 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
-              <Globe className="w-5 h-5" /> Language
+              <Globe className="w-5 h-5" /> {t('language_title')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="max-w-sm">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">App language</label>
-              <Select value={language} onValueChange={setLanguage}>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('language_app_language')}</label>
+              <Select
+                value={language}
+                onValueChange={(v) => {
+                  setLanguage(v);
+                  setLanguageStatus('');
+                  try {
+                    setUserPreferences(userEmail, { language: v });
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select language" />
                 </SelectTrigger>
@@ -166,15 +171,12 @@ export default function Settings() {
                   <SelectItem value="en">English (Default)</SelectItem>
                   <SelectItem value="de">Deutsch (German)</SelectItem>
                   <SelectItem value="fr">Français (French)</SelectItem>
-                  <SelectItem value="es">Español (Spanish)</SelectItem>
-                  <SelectItem value="pt">Português (Portuguese)</SelectItem>
-                  <SelectItem value="it">Italiano (Italian)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="flex gap-3">
-              <Button onClick={saveLanguage} className="bg-blue-600 hover:bg-blue-700">Save Language</Button>
+              <Button onClick={saveLanguage} className="bg-blue-600 hover:bg-blue-700">{t('language_save')}</Button>
             </div>
 
             {languageStatus ? (
@@ -183,7 +185,7 @@ export default function Settings() {
 
             <Alert className="bg-amber-50 border-amber-200">
               <AlertDescription className="text-amber-700">
-                Language preference is saved now. Full UI translation will be applied in the next step.
+                {t('language_note')}
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -192,28 +194,28 @@ export default function Settings() {
         <Card className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border-slate-200 dark:border-slate-700/50 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
-              <Paintbrush className="w-5 h-5" /> Branding & Theme
+              <Paintbrush className="w-5 h-5" /> {t('branding_title')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Brand name</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('branding_brand_name')}</label>
                 <Input value={brandName} onChange={(e) => setBrandName(e.target.value)} placeholder="Your brand" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Logo URL (optional)</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('branding_logo_url')}</label>
                 <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://.../logo.png" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Primary color</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('branding_primary_color')}</label>
                 <div className="flex items-center gap-3">
                   <Input type="color" value={primaryColor || '#0ea5e9'} onChange={(e) => setPrimaryColor(e.target.value)} className="w-16 h-10 p-1" />
                   <Input value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} placeholder="#0ea5e9" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Theme</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('branding_theme')}</label>
                 <Select value={theme} onValueChange={setTheme}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select theme" />
@@ -228,7 +230,7 @@ export default function Settings() {
             </div>
 
             <div className="flex gap-3">
-              <Button onClick={saveBrandingTheme} className="bg-blue-600 hover:bg-blue-700">Save Branding</Button>
+              <Button onClick={saveBrandingTheme} className="bg-blue-600 hover:bg-blue-700">{t('branding_save')}</Button>
               <Button
                 variant="outline"
                 onClick={() => {
@@ -245,7 +247,7 @@ export default function Settings() {
                   setBrandingStatus('Reset to defaults.');
                 }}
               >
-                Reset
+                {t('branding_reset')}
               </Button>
             </div>
 
@@ -255,7 +257,7 @@ export default function Settings() {
 
             <Alert className="bg-blue-50 border-blue-200">
               <AlertDescription className="text-slate-700">
-                Branding and theme settings are saved locally in your browser.
+                {t('branding_note')}
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -264,17 +266,17 @@ export default function Settings() {
         <Card className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border-slate-200 dark:border-slate-700/50 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
-              <KeyRound className="w-5 h-5" /> Change Password
+              <KeyRound className="w-5 h-5" /> {t('password_title')}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="max-w-md">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('password_email')}</label>
               <Input value={passwordEmail} onChange={(e) => setPasswordEmail(e.target.value)} placeholder="you@company.com" />
             </div>
 
             <div className="flex gap-3">
-              <Button onClick={sendPasswordReset} className="bg-blue-600 hover:bg-blue-700">Send Reset Email</Button>
+              <Button onClick={sendPasswordReset} className="bg-blue-600 hover:bg-blue-700">{t('password_send_reset')}</Button>
             </div>
 
             {passwordStatus ? (

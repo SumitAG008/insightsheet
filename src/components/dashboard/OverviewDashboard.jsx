@@ -8,6 +8,7 @@ import { BarChart as RechartsBarChart, Bar, LineChart as RechartsLineChart, Line
 import { Activity, AlertCircle, BarChart3, Download, FileDown, LineChart, PieChart, Sparkles } from 'lucide-react';
 import { bestColumnsForOverview, buildArrowTable, computeArrowKPIs, computePnLFromTable, detectFinanceColumns, groupSumTopN, inferColumns, numericHistogram } from '@/lib/arrowAnalytics';
 import { parseDateSmart, parsePeriodString } from '@/lib/dateParsing';
+import { useI18n } from '@/lib/i18n';
 
 const CHART_COLORS = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#06B6D4', '#EF4444', '#F472B6'];
 
@@ -152,6 +153,7 @@ export default function OverviewDashboard({
   onUniversalClarify,
   universalRecalcLoading,
 }) {
+  const { t } = useI18n();
   const rootRef = useRef(null);
   const [exporting, setExporting] = useState(false);
   const [excelHelpOpen, setExcelHelpOpen] = useState(false);
@@ -299,16 +301,16 @@ export default function OverviewDashboard({
     <div ref={rootRef} id="overview-root" className="space-y-6">
       {!data ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
-          <div className="text-lg font-bold text-slate-900 dark:text-white">Upload a spreadsheet to see your Overview</div>
+          <div className="text-lg font-bold text-slate-900 dark:text-white">{t('overview_empty_title')}</div>
           <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-            Once you upload a file, this page will show KPIs, trends, and (when possible) an auto-detected P&amp;L summary.
+            {t('overview_empty_body')}
           </div>
         </div>
       ) : null}
       {(universalError || universalAnalysis) ? (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4">
           <div className="flex items-center justify-between gap-3 mb-2">
-            <div className="text-sm font-bold text-slate-900 dark:text-white">Trusted from Excel (Strict Correctness)</div>
+            <div className="text-sm font-bold text-slate-900 dark:text-white">{t('overview_trusted_from_excel_title')}</div>
             <div className="flex items-center gap-2">
               <Dialog open={excelHelpOpen} onOpenChange={setExcelHelpOpen}>
                 <DialogTrigger asChild>
@@ -318,7 +320,7 @@ export default function OverviewDashboard({
                     size="sm"
                     className="border-slate-300 dark:border-slate-700"
                   >
-                    Help
+                    {t('common_help')}
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="max-w-2xl">

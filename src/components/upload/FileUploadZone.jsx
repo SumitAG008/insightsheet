@@ -3,8 +3,10 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Upload, FileSpreadsheet, Loader2, CheckCircle, Info, AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { meldraAi } from '@/api/meldraClient';
+import { useI18n } from '@/lib/i18n';
 
 export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFormats }) {
+  const { t } = useI18n();
   const [isDragging, setIsDragging] = useState(false);
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [processingStatus, setProcessingStatus] = useState('');
@@ -137,12 +139,12 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
         },
         complete: () => {
           if (!headers || rows.length === 0) {
-            reject(new Error('No data found in CSV. Please check the file format.'));
+            reject(new Error(t('upload_no_data_found', { formats: formats.join(', ')})));
             return;
           }
           resolve({ headers, rows, raw: null });
         },
-        error: (err) => reject(new Error(err?.message || 'Failed to parse CSV')),
+        error: (err) => reject(new Error(t('upload_csv_parse_error', { error: err?.message || 'Failed to parse CSV'}))),
       });
     });
   };
@@ -154,7 +156,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
       reader.onload = (e) => {
         try {
           if (!window.XLSX) {
-            reject(new Error('Excel library not loaded yet. Please try again in a moment.'));
+            reject(new Error(t('upload_excel_library_not_loaded')));
             return;
           }
 
@@ -328,7 +330,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
           const firstSheetName = sheetNames[0];
           const first = sheets[firstSheetName];
           if (!first || !first.rows || first.rows.length === 0) {
-            reject(new Error('Excel file is empty'));
+            reject(new Error(t('upload_excel_file_empty')));
             return;
           }
 
@@ -343,24 +345,24 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
             },
           });
         } catch (err) {
-          reject(new Error('Failed to parse Excel file: ' + err.message));
+          reject(new Error(t('upload_failed_to_parse_excel', { message: err.message })));
         }
       };
       
-      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.onerror = () => reject(new Error(t('common_failed_to_read_file')));
       reader.readAsArrayBuffer(file);
     });
   };
 
   const processFile = useCallback(async (file) => {
     setUploadedFileName(file.name);
-    setProcessingStatus('Checking file size...');
+    setProcessingStatus(t('upload_status_checking_file_size'));
     
     try {
       if (!planLoaded) {
-        setProcessingStatus('Loading plan...');
+        setProcessingStatus(t('upload_status_loading_plan'));
         await loadUserAndSubscription();
-        setProcessingStatus('Checking file size...');
+        setProcessingStatus(t('upload_status_checking_file_size'));
       }
 
       // Check file size limit
@@ -368,19 +370,23 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
       const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
       
       if (fileSizeMB > maxSize) {
-        throw new Error(`File size (${fileSizeMB.toFixed(1)}MB) exceeds your plan limit of ${maxSize}MB. ${maxSize === 10 ? 'Upgrade to Premium for unlimited file size!' : ''}`);
+        throw new Error(t('upload_err_file_size_exceeds_limit', {
+          fileSizeMB: fileSizeMB.toFixed(1),
+          maxSize,
+          upgradeHint: maxSize === 10 ? t('upload_err_upgrade_hint_premium_unlimited') : '',
+        }));
       }
       
       const ext = file.name.split('.').pop().toLowerCase();
       
-      setProcessingStatus('Reading file...');
+      setProcessingStatus(t('upload_status_reading_file'));
       
       let data;
       if (ext === 'csv') {
-        setProcessingStatus('Parsing CSV...');
+        setProcessingStatus(t('upload_status_parsing_csv'));
         data = await parseCSVFile(file);
       } else if (ext === 'xlsx' || ext === 'xls') {
-        setProcessingStatus('Parsing Excel...');
+        setProcessingStatus(t('upload_status_parsing_excel'));
         data = await parseExcel(file);
       } else {
         // Non-tabular formats are handled by server-side ingestion in the calling page.
@@ -393,11 +399,11 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
         setProcessingStatus('');
         onFileUpload(file, data);
       } else {
-        throw new Error('No data found in file. Please check the file format.');
+        throw new Error(t('upload_err_no_data_found'));
       }
     } catch (error) {
       console.error('Error processing file:', error);
-      alert(`Error: ${error.message}`);
+      alert(t('upload_err_alert', { message: error.message }));
       setUploadedFileName('');
       setProcessingStatus('');
     }
@@ -414,7 +420,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
       if (allowed.includes(ext)) {
         processFile(file);
       } else {
-        alert(`Please upload supported files only (${formats.join(', ')})`);
+        alert(t('upload_err_supported_files_only', { formats: formats.join(', ') }));
       }
     }
   }, [processFile, formats]);
@@ -427,7 +433,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
       if (allowed.includes(ext)) {
         processFile(file);
       } else {
-        alert(`Please upload supported files only (${formats.join(', ')})`);
+        alert(t('upload_err_supported_files_only', { formats: formats.join(', ') }));
         e.target.value = '';
       }
     }
@@ -452,7 +458,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
         <Alert className="mb-6 bg-slate-100 border-slate-200 dark:bg-slate-900 dark:border-slate-800">
           <Info className="h-4 w-4 text-slate-500" />
           <AlertDescription className="text-slate-700 dark:text-slate-300">
-            <strong className="font-bold text-base">Checking your plan…</strong>
+            <strong className="font-bold text-base">{t('upload_checking_plan')}</strong>
           </AlertDescription>
         </Alert>
       ) : (
@@ -460,13 +466,13 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
           <Info className={`h-4 w-4 ${subscription?.plan === 'premium' ? 'text-[#4169E1]' : 'text-amber-600 dark:text-amber-400'}`} />
           <AlertDescription className={subscription?.plan === 'premium' ? 'text-slate-900 dark:text-slate-200' : 'text-slate-700 dark:text-slate-300'}>
             <strong className={`font-bold text-base ${subscription?.plan === 'premium' ? 'text-slate-900 dark:text-slate-100' : 'text-amber-700 dark:text-amber-300'}`}>
-              {subscription?.plan === 'premium' ? '✨ Premium: Unlimited file size!' : `⚠️ File Size Limit: ${maxSize}MB`}
+              {subscription?.plan === 'premium' ? t('upload_plan_premium_unlimited_title') : t('upload_plan_file_size_limit_title', { maxSize })}
             </strong>
             <br />
             <span className={`text-base font-semibold ${subscription?.plan === 'premium' ? 'text-slate-800 dark:text-slate-300' : ''}`}>
               {subscription?.plan === 'premium' 
-                ? 'You can upload files up to 500MB with your Premium plan.'
-                : 'Free plan limited to 10MB. Upgrade to Premium for unlimited size!'}
+                ? t('upload_plan_premium_desc', { maxSize })
+                : t('upload_plan_free_desc', { maxSize })}
             </span>
           </AlertDescription>
         </Alert>
@@ -503,9 +509,9 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
                   <div className="absolute inset-0 bg-[#4169E1]/20 rounded-full blur-xl animate-pulse" />
                 </div>
                 <h3 className="text-2xl font-bold text-[#4169E1] mb-2">
-                  {processingStatus || 'Processing Your File...'}
+                  {processingStatus || t('upload_processing_your_file')}
                 </h3>
-                <p className="text-slate-200 font-medium text-base">Analyzing data structure and preparing workspace</p>
+                <p className="text-slate-200 font-medium text-base">{t('upload_processing_subtitle')}</p>
               </>
             ) : uploadedFileName ? (
               <>
@@ -513,7 +519,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
                   <CheckCircle className="w-20 h-20 text-emerald-500" />
                   <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-xl animate-pulse" />
                 </div>
-                <h3 className="text-2xl font-bold text-emerald-300 mb-2">File Uploaded Successfully!</h3>
+                <h3 className="text-2xl font-bold text-emerald-300 mb-2">{t('upload_file_uploaded_successfully')}</h3>
                 <p className="text-slate-200 font-medium">{uploadedFileName}</p>
               </>
             ) : (
@@ -524,11 +530,11 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
                 </div>
                 
                 <h3 className="text-3xl font-bold text-white mb-4">
-                  Drop your file here
+                  {t('common_drop_file_here')}
                 </h3>
                 
                 <p className="text-slate-200 font-semibold text-lg mb-8 max-w-md">
-                  or <span className="text-[#4169E1] font-bold underline cursor-pointer">browse files</span>
+                  {t('upload_or')} <span className="text-[#4169E1] font-bold underline cursor-pointer">{t('upload_browse_files')}</span>
                 </p>
                 
                 <div className="flex flex-wrap justify-center gap-3 text-base mb-6">
@@ -538,11 +544,14 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
                 </div>
                 
                 <p className="text-slate-300 font-medium text-sm mb-2">
-                  100% browser-based • No server upload • Instant processing
+                  {t('upload_browser_based_note')}
                 </p>
                 {planLoaded ? (
                   <p className="text-slate-200 font-semibold text-base">
-                    Max {maxSize}MB {subscription?.plan !== 'premium' && '(Free Plan)'}
+                    {t('upload_max_size_line', {
+                      maxSize,
+                      suffix: subscription?.plan !== 'premium' ? ` ${t('upload_free_plan_suffix')}` : '',
+                    })}
                   </p>
                 ) : null}
               </>

@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Filter, Search, X, Plus } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 export default function AdvancedFilter({ data, onFilteredData }) {
+  const { t } = useI18n();
   const [filters, setFilters] = useState([]);
   const [globalSearch, setGlobalSearch] = useState('');
   const [searchOperator, setSearchOperator] = useState('AND');
@@ -109,10 +111,10 @@ export default function AdvancedFilter({ data, onFilteredData }) {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
           <Filter className="w-5 h-5 text-blue-300" />
-          Advanced Filter & Search
+          {t('advanced_filter_title')}
           {activeFiltersCount > 0 && (
             <Badge className="bg-blue-600 text-white ml-2">
-              {activeFiltersCount} active
+              {t('advanced_filter_active_badge', { count: activeFiltersCount })}
             </Badge>
           )}
         </h2>
@@ -122,7 +124,7 @@ export default function AdvancedFilter({ data, onFilteredData }) {
             className="bg-blue-600 hover:bg-blue-700 text-white"
             size="sm"
           >
-            Apply Filters
+            {t('advanced_filter_apply_filters')}
           </Button>
           <Button
             onClick={clearFilters}
@@ -130,7 +132,7 @@ export default function AdvancedFilter({ data, onFilteredData }) {
             size="sm"
             className="bg-black/40 border-blue-700/60 text-white font-bold hover:bg-black/55"
           >
-            Clear
+            {t('common_clear')}
           </Button>
         </div>
       </div>
@@ -139,12 +141,12 @@ export default function AdvancedFilter({ data, onFilteredData }) {
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-2">
           <Search className="w-4 h-4 text-blue-200/70" />
-          <label className="text-sm font-medium text-blue-100">Global Search</label>
+          <label className="text-sm font-medium text-blue-100">{t('advanced_filter_global_search')}</label>
         </div>
         <div className="flex gap-2">
           <Input
             type="text"
-            placeholder="Search across all columns..."
+            placeholder={t('advanced_filter_global_search_placeholder')}
             value={globalSearch}
             onChange={(e) => setGlobalSearch(e.target.value)}
             className="bg-blue-800/40 border-blue-700/50 text-blue-50 placeholder:text-blue-200/50"
@@ -154,8 +156,8 @@ export default function AdvancedFilter({ data, onFilteredData }) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="AND">All words (AND)</SelectItem>
-              <SelectItem value="OR">Any word (OR)</SelectItem>
+              <SelectItem value="AND">{t('advanced_filter_operator_and')}</SelectItem>
+              <SelectItem value="OR">{t('advanced_filter_operator_or')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -164,7 +166,7 @@ export default function AdvancedFilter({ data, onFilteredData }) {
       {/* Column Filters */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-bold text-blue-50">Column Filters</label>
+          <label className="text-sm font-bold text-blue-50">{t('advanced_filter_column_filters')}</label>
           <Button
             onClick={addFilter}
             variant="outline"
@@ -172,13 +174,13 @@ export default function AdvancedFilter({ data, onFilteredData }) {
             className="bg-black/40 border-blue-700/60 text-white font-bold hover:bg-black/55"
           >
             <Plus className="w-4 h-4 mr-1" />
-            Add Filter
+            {t('advanced_filter_add_filter')}
           </Button>
         </div>
 
         {filters.length === 0 && (
           <p className="text-sm text-blue-200/70 text-center py-4">
-            No filters added. Click "Add Filter" to create column-specific filters.
+            {t('advanced_filter_empty')}
           </p>
         )}
 
@@ -192,7 +194,7 @@ export default function AdvancedFilter({ data, onFilteredData }) {
               onValueChange={(value) => updateFilter(filter.id, 'column', value)}
             >
               <SelectTrigger className="w-40 bg-blue-900/40 border-blue-700/50 text-blue-50">
-                <SelectValue placeholder="Column" />
+                <SelectValue placeholder={t('common_column')} />
               </SelectTrigger>
               <SelectContent>
                 {data.headers.map(header => (
@@ -209,22 +211,22 @@ export default function AdvancedFilter({ data, onFilteredData }) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="contains">Contains</SelectItem>
-                <SelectItem value="not_contains">Not Contains</SelectItem>
-                <SelectItem value="equals">Equals</SelectItem>
-                <SelectItem value="not_equals">Not Equals</SelectItem>
-                <SelectItem value="starts_with">Starts With</SelectItem>
-                <SelectItem value="ends_with">Ends With</SelectItem>
-                <SelectItem value="greater_than">Greater Than</SelectItem>
-                <SelectItem value="less_than">Less Than</SelectItem>
-                <SelectItem value="greater_equal">Greater or Equal</SelectItem>
-                <SelectItem value="less_equal">Less or Equal</SelectItem>
+                <SelectItem value="contains">{t('advanced_filter_op_contains')}</SelectItem>
+                <SelectItem value="not_contains">{t('advanced_filter_op_not_contains')}</SelectItem>
+                <SelectItem value="equals">{t('advanced_filter_op_equals')}</SelectItem>
+                <SelectItem value="not_equals">{t('advanced_filter_op_not_equals')}</SelectItem>
+                <SelectItem value="starts_with">{t('advanced_filter_op_starts_with')}</SelectItem>
+                <SelectItem value="ends_with">{t('advanced_filter_op_ends_with')}</SelectItem>
+                <SelectItem value="greater_than">{t('advanced_filter_op_greater_than')}</SelectItem>
+                <SelectItem value="less_than">{t('advanced_filter_op_less_than')}</SelectItem>
+                <SelectItem value="greater_equal">{t('advanced_filter_op_greater_equal')}</SelectItem>
+                <SelectItem value="less_equal">{t('advanced_filter_op_less_equal')}</SelectItem>
               </SelectContent>
             </Select>
 
             <Input
               type="text"
-              placeholder="Value"
+              placeholder={t('common_value')}
               value={filter.value}
               onChange={(e) => updateFilter(filter.id, 'value', e.target.value)}
               className="flex-1 bg-blue-900/40 border-blue-700/50 text-blue-50 placeholder:text-blue-200/50"

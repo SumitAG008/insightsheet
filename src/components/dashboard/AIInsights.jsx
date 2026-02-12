@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Loader2, Lightbulb, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useI18n } from '@/lib/i18n';
 
 export default function AIInsights({ data }) {
+  const { t } = useI18n();
   const [customPrompt, setCustomPrompt] = useState('');
   const [insights, setInsights] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -77,7 +79,7 @@ Provide detailed answer based on the data.`;
       
       setInsights({ type, content: response });
     } catch {
-      setInsights({ type, content: 'Error analyzing data. Please try again.' });
+      setInsights({ type, content: t('ai_insights_error_analyzing') });
     }
     
     setIsAnalyzing(false);
@@ -91,7 +93,7 @@ Provide detailed answer based on the data.`;
       <div className="relative bg-blue-900/80 backdrop-blur-xl border border-blue-700/40 rounded-2xl p-6">
         <h2 className="text-xl font-bold text-white flex items-center gap-2 mb-6">
           <Sparkles className="w-5 h-5 text-purple-400" />
-          AI Analysis
+          {t('ai_insights_title')}
         </h2>
 
         <div className="space-y-3 mb-6">
@@ -105,7 +107,7 @@ Provide detailed answer based on the data.`;
             ) : (
               <TrendingUp className="w-4 h-4 mr-2" />
             )}
-            Explain My Sheet
+            {t('ai_insights_explain_my_sheet')}
           </Button>
 
           <Button
@@ -118,14 +120,14 @@ Provide detailed answer based on the data.`;
             ) : (
               <Lightbulb className="w-4 h-4 mr-2" />
             )}
-            Formula Suggestions
+            {t('ai_insights_formula_suggestions')}
           </Button>
         </div>
 
         <div className="border-t border-blue-700/40 pt-6">
-          <label className="text-sm text-white font-semibold mb-2 block">Custom Question</label>
+          <label className="text-sm text-white font-semibold mb-2 block">{t('ai_insights_custom_question')}</label>
           <Textarea
-            placeholder="Ask anything about your data..."
+            placeholder={t('ai_insights_custom_placeholder')}
             value={customPrompt}
             onChange={(e) => setCustomPrompt(e.target.value)}
             className="bg-blue-800/40 border-blue-700/50 text-blue-50 placeholder:text-blue-200/50 mb-3"
@@ -139,12 +141,12 @@ Provide detailed answer based on the data.`;
             {isAnalyzing && activeAnalysis === 'custom' ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Analyzing...
+                {t('ai_insights_analyzing')}
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4 mr-2" />
-                Ask AI
+                {t('ai_insights_ask_ai')}
               </>
             )}
           </Button>
@@ -154,7 +156,7 @@ Provide detailed answer based on the data.`;
           <div className="mt-6 p-4 bg-blue-800/30 border border-blue-700/40 rounded-lg">
             <div className="flex items-center gap-2 mb-3">
               <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30">
-                {insights.type === 'summary' ? 'Summary' : insights.type === 'formula' ? 'Formulas' : 'Custom Analysis'}
+                {insights.type === 'summary' ? t('ai_insights_badge_summary') : insights.type === 'formula' ? t('ai_insights_badge_formulas') : t('ai_insights_badge_custom')}
               </Badge>
             </div>
             <div className="text-sm text-blue-50 whitespace-pre-wrap leading-relaxed">

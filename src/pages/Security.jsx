@@ -31,19 +31,19 @@ export default function Security() {
 
         {/* Trust Badges */}
         <div className="flex flex-wrap justify-center gap-3 mb-12">
-          <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-sm py-2 px-4">
+          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30 text-sm font-semibold py-2 px-4">
             <CheckCircle className="w-4 h-4 mr-2" />
             GDPR-Ready
           </Badge>
-          <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 text-sm py-2 px-4">
+          <Badge className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/30 text-sm font-semibold py-2 px-4">
             <CheckCircle className="w-4 h-4 mr-2" />
             Privacy-Ready
           </Badge>
-          <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 text-sm py-2 px-4">
+          <Badge className="bg-violet-50 text-violet-700 border-violet-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30 text-sm font-semibold py-2 px-4">
             <CheckCircle className="w-4 h-4 mr-2" />
             No File Retention by Default
           </Badge>
-          <Badge className="bg-pink-500/20 text-pink-300 border-pink-500/30 text-sm py-2 px-4">
+          <Badge className="bg-slate-50 text-slate-800 border-slate-200 dark:bg-pink-500/20 dark:text-pink-300 dark:border-pink-500/30 text-sm font-semibold py-2 px-4">
             <Lock className="w-4 h-4 mr-2" />
             Encrypted in Transit
           </Badge>

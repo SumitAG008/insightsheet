@@ -21,6 +21,7 @@ import {
   Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   ReferenceLine
 } from 'recharts';
+import { useI18n } from '@/lib/i18n';
 
 const CHART_COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#06B6D4', '#F472B6'];
 
@@ -77,6 +78,7 @@ const CHART_CATEGORIES = {
 };
 
 export default function EnhancedChartPanel({ data }) {
+  const { t } = useI18n();
   const [selectedCategory, setSelectedCategory] = useState('stakeholder');
   const [chartType, setChartType] = useState('line');
   const [xColumn, setXColumn] = useState('');
@@ -147,7 +149,7 @@ export default function EnhancedChartPanel({ data }) {
     });
 
     if (validDataCount === 0) {
-      setError('No valid data found. Please check your column selections.');
+      setError(t('enhanced_charts_error_no_valid_data'));
       return null;
     }
 
@@ -180,7 +182,7 @@ export default function EnhancedChartPanel({ data }) {
       const max = Math.max(...values);
       const bins = 10;
       if (!isFinite(min) || !isFinite(max)) {
-        setError('Histogram needs numeric values. Please check your Y column.');
+        setError(t('enhanced_charts_error_histogram_needs_numeric'));
         return null;
       }
 
@@ -215,7 +217,7 @@ export default function EnhancedChartPanel({ data }) {
 
     if (type === 'variance_column' || type === 'variance_waterfall') {
       if (!yColumn2) {
-        setError('This chart requires Y-Axis 2 (Second Value).');
+        setError(t('enhanced_charts_error_requires_y2'));
         return null;
       }
 
@@ -306,7 +308,7 @@ export default function EnhancedChartPanel({ data }) {
         })
         .filter(Boolean);
       if (mapped.length === 0) {
-        setError('Log charts require positive numeric values (> 0).');
+        setError(t('enhanced_charts_error_log_needs_positive'));
         return null;
       }
       chartDataArray = mapped;
@@ -345,7 +347,7 @@ export default function EnhancedChartPanel({ data }) {
 
     if (type === 'gantt') {
       if (!yColumn2) {
-        setError('Gantt chart requires Y-Axis 2 (Second Value) as Duration (or End).');
+        setError(t('enhanced_charts_error_gantt_requires_y2'));
         return null;
       }
       chartDataArray = chartDataArray.map(item => {
@@ -403,7 +405,7 @@ export default function EnhancedChartPanel({ data }) {
       });
 
       if (chartDataArray.length === 0) {
-        setError('Box & Whisker needs at least one category and numeric values.');
+        setError(t('enhanced_charts_error_box_whisker_needs_data'));
         return null;
       }
 
@@ -453,18 +455,18 @@ export default function EnhancedChartPanel({ data }) {
     setError('');
     
     if (!xColumn) {
-      setError('Please select X-Axis (Category) column');
+      setError(t('enhanced_charts_error_select_x'));
       return;
     }
     if (!yColumn) {
-      setError('Please select Y-Axis (Value) column');
+      setError(t('enhanced_charts_error_select_y'));
       return;
     }
 
     try {
       const processed = processChartData(chartType);
       if (!processed || processed.length === 0) {
-        setError('Unable to generate chart. Please check your data.');
+        setError(t('enhanced_charts_error_unable_to_generate'));
         setChartData(null);
         return;
       }
@@ -472,7 +474,7 @@ export default function EnhancedChartPanel({ data }) {
       setError('');
     } catch (err) {
       console.error('Chart generation error:', err);
-      setError('Error generating chart. Please try different columns.');
+      setError(t('enhanced_charts_error_generating_try_different'));
       setChartData(null);
     }
   };
@@ -491,11 +493,11 @@ export default function EnhancedChartPanel({ data }) {
       
       // Add chart data sheet
       const wsData = XLSX.utils.json_to_sheet(chartData);
-      XLSX.utils.book_append_sheet(wb, wsData, 'Chart Data');
+      XLSX.utils.book_append_sheet(wb, wsData, t('enhanced_charts_sheet_chart_data'));
       
       // Add original data sheet
       const wsOriginal = XLSX.utils.json_to_sheet(data.rows);
-      XLSX.utils.book_append_sheet(wb, wsOriginal, 'Source Data');
+      XLSX.utils.book_append_sheet(wb, wsOriginal, t('enhanced_charts_sheet_source_data'));
       
       // Generate Excel file
       const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -503,7 +505,7 @@ export default function EnhancedChartPanel({ data }) {
       saveAs(blob, `chart_${chartType}_${Date.now()}.xlsx`);
     } catch (error) {
       console.error('Excel export error:', error);
-      alert('Failed to export to Excel. Please try again.');
+      alert(t('enhanced_charts_export_excel_failed'));
     } finally {
       setIsExporting(false);
     }
@@ -521,7 +523,7 @@ export default function EnhancedChartPanel({ data }) {
       // Capture chart as image
       const chartContainer = document.querySelector('.recharts-wrapper');
       if (!chartContainer) {
-        alert('Chart not found. Please generate a chart first.');
+        alert(t('enhanced_charts_chart_not_found'));
         setIsExporting(false);
         return;
       }
@@ -543,19 +545,19 @@ export default function EnhancedChartPanel({ data }) {
             properties: {},
             children: [
               new Paragraph({
-                text: `Chart Report: ${CHART_CATEGORIES[selectedCategory].charts.find(c => c.id === chartType)?.name || chartType}`,
+                text: t('enhanced_charts_word_chart_report', { chartName: CHART_CATEGORIES[selectedCategory].charts.find(c => c.id === chartType)?.name || chartType }),
                 heading: 'Heading1',
                 alignment: AlignmentType.CENTER,
               }),
               new Paragraph({
-                text: `Generated: ${new Date().toLocaleString()}`,
+                text: t('enhanced_charts_word_generated', { timestamp: new Date().toLocaleString() }),
                 alignment: AlignmentType.CENTER,
               }),
               new Paragraph({ text: '' }), // Spacing
               new Paragraph({
                 children: [
                   new Paragraph({
-                    text: 'Chart Image',
+                    text: t('enhanced_charts_word_chart_image'),
                     alignment: AlignmentType.CENTER,
                   }),
                 ],
@@ -563,14 +565,14 @@ export default function EnhancedChartPanel({ data }) {
               // Add chart image (simplified - would need proper image embedding)
               new Paragraph({ text: '' }),
               new Paragraph({
-                text: 'Chart Data',
+                text: t('enhanced_charts_sheet_chart_data'),
                 heading: 'Heading2',
               }),
               new Table({
                 rows: [
                   new TableRow({
                     children: [
-                      new TableCell({ children: [new Paragraph('Category')] }),
+                      new TableCell({ children: [new Paragraph(t('enhanced_charts_word_category'))] }),
                       new TableCell({ children: [new Paragraph(yColumn)] }),
                       ...(yColumn2 ? [new TableCell({ children: [new Paragraph(yColumn2)] })] : []),
                     ],
@@ -597,7 +599,7 @@ export default function EnhancedChartPanel({ data }) {
       });
     } catch (error) {
       console.error('Word export error:', error);
-      alert('Failed to export to Word. Please try again.');
+      alert(t('enhanced_charts_export_word_failed'));
       setIsExporting(false);
     }
   };
@@ -613,7 +615,7 @@ export default function EnhancedChartPanel({ data }) {
       
       const chartContainer = document.querySelector('.recharts-wrapper');
       if (!chartContainer) {
-        alert('Chart not found. Please generate a chart first.');
+        alert(t('enhanced_charts_chart_not_found'));
         setIsExporting(false);
         return;
       }
@@ -629,7 +631,7 @@ export default function EnhancedChartPanel({ data }) {
       });
     } catch (error) {
       console.error('PNG export error:', error);
-      alert('Failed to export as PNG. Please try again.');
+      alert(t('enhanced_charts_export_png_failed'));
       setIsExporting(false);
     }
   };
@@ -760,8 +762,8 @@ export default function EnhancedChartPanel({ data }) {
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
               <Bar dataKey="base" stackId="a" fill="transparent" />
-              <Bar dataKey="pos" name="Increase" stackId="a" fill="#10B981" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="neg" name="Decrease" stackId="a" fill="#EF4444" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="pos" name={t('enhanced_charts_label_increase')} stackId="a" fill="#10B981" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="neg" name={t('enhanced_charts_label_decrease')} stackId="a" fill="#EF4444" radius={[6, 6, 0, 0]} />
               <ReferenceLine y={0} stroke="#94a3b8" opacity={0.5} />
             </RechartsBarChart>
           </ResponsiveContainer>
@@ -799,7 +801,7 @@ export default function EnhancedChartPanel({ data }) {
               <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
-              <Bar dataKey="variance" name="Variance" radius={[6, 6, 0, 0]}>
+              <Bar dataKey="variance" name={t('enhanced_charts_label_variance')} radius={[6, 6, 0, 0]}>
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={(Number(entry.variance) || 0) >= 0 ? '#10B981' : '#EF4444'} />
                 ))}
@@ -819,8 +821,8 @@ export default function EnhancedChartPanel({ data }) {
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
               <Bar dataKey="base" stackId="a" fill="transparent" />
-              <Bar dataKey="pos" name="Favorable" stackId="a" fill="#10B981" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="neg" name="Unfavorable" stackId="a" fill="#EF4444" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="pos" name={t('enhanced_charts_label_favorable')} stackId="a" fill="#10B981" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="neg" name={t('enhanced_charts_label_unfavorable')} stackId="a" fill="#EF4444" radius={[6, 6, 0, 0]} />
               <ReferenceLine y={0} stroke="#94a3b8" opacity={0.5} />
             </RechartsBarChart>
           </ResponsiveContainer>
@@ -836,7 +838,7 @@ export default function EnhancedChartPanel({ data }) {
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
               <Line type="monotone" dataKey={yColumn} name={yColumn} stroke={primaryColor} strokeWidth={3} dot={{ fill: primaryColor, r: 5 }} />
-              <Line type="monotone" dataKey="ma" name="Moving Avg" stroke={secondaryColor} strokeWidth={3} dot={false} />
+              <Line type="monotone" dataKey="ma" name={t('enhanced_charts_label_moving_avg')} stroke={secondaryColor} strokeWidth={3} dot={false} />
             </RechartsLineChart>
           </ResponsiveContainer>
         );
@@ -883,7 +885,7 @@ export default function EnhancedChartPanel({ data }) {
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
               <ReferenceLine y={0} stroke="#94a3b8" opacity={0.5} />
-              <Line type="monotone" dataKey="cusum" name="CUSUM" stroke={secondaryColor} strokeWidth={3} dot={{ fill: secondaryColor, r: 5 }} />
+              <Line type="monotone" dataKey="cusum" name={t('enhanced_charts_label_cusum')} stroke={secondaryColor} strokeWidth={3} dot={{ fill: secondaryColor, r: 5 }} />
             </RechartsLineChart>
           </ResponsiveContainer>
         );
@@ -897,7 +899,7 @@ export default function EnhancedChartPanel({ data }) {
               <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
-              <Line type="monotone" dataKey="cumulative" name="Cumulative" stroke={primaryColor} strokeWidth={3} dot={{ fill: primaryColor, r: 5 }} />
+              <Line type="monotone" dataKey="cumulative" name={t('enhanced_charts_label_cumulative')} stroke={primaryColor} strokeWidth={3} dot={{ fill: primaryColor, r: 5 }} />
             </RechartsLineChart>
           </ResponsiveContainer>
         );
@@ -927,7 +929,7 @@ export default function EnhancedChartPanel({ data }) {
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
               <Bar dataKey="ganttStart" stackId="a" fill="transparent" />
-              <Bar dataKey="ganttDuration" name="Duration" stackId="a" fill={primaryColor} radius={[0, 8, 8, 0]} />
+              <Bar dataKey="ganttDuration" name={t('enhanced_charts_label_duration')} stackId="a" fill={primaryColor} radius={[0, 8, 8, 0]} />
             </RechartsBarChart>
           </ResponsiveContainer>
         );
@@ -958,7 +960,7 @@ export default function EnhancedChartPanel({ data }) {
               <YAxis stroke="#cbd5e1" style={{ fontSize: '13px', fill: '#cbd5e1' }} />
               <Tooltip content={<CustomTooltip />} />
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
-              <Bar dataKey="count" name="Count" fill={primaryColor} radius={[6, 6, 0, 0]} />
+              <Bar dataKey="count" name={t('enhanced_charts_label_count')} fill={primaryColor} radius={[6, 6, 0, 0]} />
             </RechartsBarChart>
           </ResponsiveContainer>
         );
@@ -1008,11 +1010,11 @@ export default function EnhancedChartPanel({ data }) {
                     return (
                       <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-lg">
                         <p className="text-white font-semibold mb-1">{d.fullName || d.name}</p>
-                        <p className="text-slate-300 text-sm">Min: <span className="text-white">{Number(d.min).toFixed(2)}</span></p>
-                        <p className="text-slate-300 text-sm">Q1: <span className="text-white">{Number(d.q1).toFixed(2)}</span></p>
-                        <p className="text-slate-300 text-sm">Median: <span className="text-white">{Number(d.median).toFixed(2)}</span></p>
-                        <p className="text-slate-300 text-sm">Q3: <span className="text-white">{Number(d.q3).toFixed(2)}</span></p>
-                        <p className="text-slate-300 text-sm">Max: <span className="text-white">{Number(d.max).toFixed(2)}</span></p>
+                        <p className="text-slate-300 text-sm">{t('enhanced_charts_box_min')}: <span className="text-white">{Number(d.min).toFixed(2)}</span></p>
+                        <p className="text-slate-300 text-sm">{t('enhanced_charts_box_q1')}: <span className="text-white">{Number(d.q1).toFixed(2)}</span></p>
+                        <p className="text-slate-300 text-sm">{t('enhanced_charts_box_median')}: <span className="text-white">{Number(d.median).toFixed(2)}</span></p>
+                        <p className="text-slate-300 text-sm">{t('enhanced_charts_box_q3')}: <span className="text-white">{Number(d.q3).toFixed(2)}</span></p>
+                        <p className="text-slate-300 text-sm">{t('enhanced_charts_box_max')}: <span className="text-white">{Number(d.max).toFixed(2)}</span></p>
                       </div>
                     );
                   }
@@ -1022,16 +1024,12 @@ export default function EnhancedChartPanel({ data }) {
               <Legend wrapperStyle={{ paddingTop: '20px' }} />
               {/* IQR box (q1 -> q3) */}
               <Bar dataKey="q3" stackId="a" fill="transparent" />
-              <Bar dataKey="iqr" stackId="a" name="IQR" fill={primaryColor} radius={[6, 6, 6, 6]} />
+              <Bar dataKey="iqr" stackId="a" name={t('enhanced_charts_label_iqr')} fill={primaryColor} radius={[6, 6, 6, 6]} />
               {/* Median line */}
-              <Line type="monotone" dataKey="median" name="Median" stroke={secondaryColor} strokeWidth={3} dot={false} />
+              <Line type="monotone" dataKey="median" name={t('enhanced_charts_box_median')} stroke={secondaryColor} strokeWidth={3} dot={false} />
               {/* Whiskers */}
-              {chartData.map((entry, index) => (
-                <g key={`bw-${index}`}>
-                  <ReferenceLine x={entry.name} y={entry.min} stroke="#94a3b8" strokeDasharray="2 2" opacity={0.8} />
-                  <ReferenceLine x={entry.name} y={entry.max} stroke="#94a3b8" strokeDasharray="2 2" opacity={0.8} />
-                </g>
-              ))}
+              <Line type="monotone" dataKey="min" name={t('enhanced_charts_box_min')} stroke="#94a3b8" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="max" name={t('enhanced_charts_box_max')} stroke="#94a3b8" strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         );
@@ -1165,7 +1163,7 @@ export default function EnhancedChartPanel({ data }) {
         return (
           <div className="text-center py-20 text-slate-400">
             <AlertCircle className="w-12 h-12 mx-auto mb-3" />
-            <p>Chart type "{chartType}" is coming soon!</p>
+            <p>{t('enhanced_charts_chart_type_coming_soon', { chartType })}</p>
           </div>
         );
     }
@@ -1176,14 +1174,14 @@ export default function EnhancedChartPanel({ data }) {
       <div className="bg-blue-900/80 backdrop-blur-xl border border-blue-700/40 rounded-2xl p-6">
         <h2 className="text-xl font-bold text-indigo-200 flex items-center gap-2 mb-4">
           <BarChart3 className="w-5 h-5 text-indigo-400" />
-          Enhanced Charts
+          {t('enhanced_charts_title')}
         </h2>
         <div className="text-center py-8 text-blue-200/70">
           <AlertCircle className="w-12 h-12 mx-auto mb-3 text-yellow-500" />
           <p className="text-sm">
             {numericColumns.length === 0 
-              ? 'No numeric columns found. Charts need at least one column with numbers.' 
-              : 'No text columns found. Charts need at least one column with categories.'}
+              ? t('enhanced_charts_no_numeric_columns')
+              : t('enhanced_charts_no_text_columns')}
           </p>
         </div>
       </div>
@@ -1198,21 +1196,21 @@ export default function EnhancedChartPanel({ data }) {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold text-indigo-200 flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-indigo-400" />
-          Enhanced Charts
+          {t('enhanced_charts_title')}
         </h2>
         {chartData && (
           <div className="flex gap-2">
             <Button onClick={exportToExcel} variant="outline" size="sm" className="border-green-500/50 bg-green-500/10 hover:bg-green-500/20 text-green-300" disabled={isExporting}>
               <FileSpreadsheet className="w-4 h-4 mr-2" />
-              Excel
+              {t('enhanced_charts_export_excel')}
             </Button>
             <Button onClick={exportToWord} variant="outline" size="sm" className="border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300" disabled={isExporting}>
               <FileText className="w-4 h-4 mr-2" />
-              Word
+              {t('enhanced_charts_export_word')}
             </Button>
             <Button onClick={exportAsPNG} variant="outline" size="sm" className="border-emerald-500/50 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300" disabled={isExporting}>
               <Download className="w-4 h-4 mr-2" />
-              PNG
+              {t('common_png')}
             </Button>
           </div>
         )}
@@ -1229,7 +1227,7 @@ export default function EnhancedChartPanel({ data }) {
                 className="text-blue-100 font-bold data-[state=active]:bg-blue-600 data-[state=active]:text-white"
               >
                 <Icon className="w-4 h-4 mr-2" />
-                {category.name}
+                {key === 'stakeholder' ? t('enhanced_charts_category_core_pnl') : key === 'forecasting' ? t('enhanced_charts_category_forecasting') : t('enhanced_charts_category_analytics')}
               </TabsTrigger>
             );
           })}
@@ -1270,11 +1268,11 @@ export default function EnhancedChartPanel({ data }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="text-sm text-blue-100 mb-2 block font-medium">
-              X-Axis (Category) <span className="text-red-400">*</span>
+              {t('enhanced_charts_x_axis_label')} <span className="text-red-400">*</span>
             </label>
             <Select value={xColumn || ''} onValueChange={setXColumn}>
               <SelectTrigger className="bg-blue-800/40 border-blue-700/50 text-blue-50 h-10">
-                <SelectValue placeholder="Select category column" />
+                <SelectValue placeholder={t('enhanced_charts_select_category_column')} />
               </SelectTrigger>
               <SelectContent>
                 {categoricalColumns.map(col => (
@@ -1286,11 +1284,11 @@ export default function EnhancedChartPanel({ data }) {
 
           <div>
             <label className="text-sm text-blue-100 mb-2 block font-medium">
-              Y-Axis (Value) <span className="text-red-400">*</span>
+              {t('enhanced_charts_y_axis_label')} <span className="text-red-400">*</span>
             </label>
             <Select value={yColumn || ''} onValueChange={setYColumn}>
               <SelectTrigger className="bg-blue-900/40 border-blue-800/50 text-blue-50 h-10">
-                <SelectValue placeholder="Select numeric column" />
+                <SelectValue placeholder={t('enhanced_charts_select_numeric_column')} />
               </SelectTrigger>
               <SelectContent>
                 {numericColumns.map(col => (
@@ -1304,11 +1302,11 @@ export default function EnhancedChartPanel({ data }) {
         {(chartType === 'multiline' || chartType === 'combo' || chartType === 'stacked_column' || chartType === 'stacked_100' || chartType === 'error_bars' || chartType === 'variance_column' || chartType === 'variance_waterfall' || chartType === 'gantt' || chartType === 'bubble') && (
           <div>
             <label className="text-sm text-blue-100 mb-2 block font-medium">
-              {chartType === 'error_bars' ? 'Error Value (Optional)' : 'Y-Axis 2 (Second Value)'}
+              {chartType === 'error_bars' ? t('enhanced_charts_error_value_optional') : t('enhanced_charts_y2_label')}
             </label>
             <Select value={yColumn2 || ''} onValueChange={setYColumn2}>
               <SelectTrigger className="bg-blue-900/40 border-blue-800/50 text-blue-50 h-10">
-                <SelectValue placeholder={chartType === 'error_bars' ? 'Select error column (or leave empty for auto-calculated)' : 'Select second numeric column'} />
+                <SelectValue placeholder={chartType === 'error_bars' ? t('enhanced_charts_select_error_column_optional') : t('enhanced_charts_select_second_numeric_column')} />
               </SelectTrigger>
               <SelectContent>
                 {numericColumns.filter(col => col !== yColumn).map(col => (
@@ -1318,7 +1316,7 @@ export default function EnhancedChartPanel({ data }) {
             </Select>
             {chartType === 'error_bars' && (
               <p className="text-xs text-blue-200/60 mt-1">
-                Optional: Select a column with error values. If not provided, standard deviation will be calculated automatically.
+                {t('enhanced_charts_error_bars_hint')}
               </p>
             )}
           </div>
@@ -1337,7 +1335,7 @@ export default function EnhancedChartPanel({ data }) {
           className="w-full bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 font-semibold h-11"
         >
           <TrendingUp className="w-4 h-4 mr-2" />
-          Generate Chart
+          {t('enhanced_charts_generate_chart')}
         </Button>
       </div>
 

@@ -85,14 +85,19 @@ export default function SecurityDashboard() {
     setMeldraKeyInput('');
   };
 
+  const cardClass = 'bg-white border-slate-200 dark:bg-slate-900/80 dark:backdrop-blur-xl dark:border-slate-700/50';
+  const cardTitleClass = 'text-slate-900 dark:text-white';
+  const subtleTextClass = 'text-slate-600 dark:text-slate-400';
+  const bodyTextClass = 'text-slate-700 dark:text-slate-300';
+
   return (
     <div className="space-y-6">
       {/* Security Score */}
-      <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+      <Card className={cardClass}>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-white flex items-center gap-2">
-              <Shield className="w-5 h-5 text-blue-400" />
+            <CardTitle className={`${cardTitleClass} flex items-center gap-2`}>
+              <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               Security Score
             </CardTitle>
             <Badge className={getSecurityScoreBadge(securityScore)}>
@@ -118,22 +123,26 @@ export default function SecurityDashboard() {
                 {securityScore}%
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
               <div className="flex items-center gap-2">
                 {user?.mfa_enabled ? (
-                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                  <XCircle className="w-4 h-4 text-red-400" />
+                  <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
                 )}
-                <span className="text-slate-300">2FA Enabled</span>
+                <span className={bodyTextClass}>Authenticator 2FA</span>
               </div>
               <div className="flex items-center gap-2">
                 {user?.is_verified ? (
-                  <CheckCircle className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                  <XCircle className="w-4 h-4 text-red-400" />
+                  <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
                 )}
-                <span className="text-slate-300">Email Verified</span>
+                <span className={bodyTextClass}>Email Verified</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span className={bodyTextClass}>Email login code (required)</span>
               </div>
             </div>
           </div>
@@ -142,26 +151,26 @@ export default function SecurityDashboard() {
 
       {/* Current Session */}
       {sessionInfo && (
-        <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+        <Card className={cardClass}>
           <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-400" />
+            <CardTitle className={`${cardTitleClass} flex items-center gap-2`}>
+              <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               Current Session
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">Session Duration:</span>
-              <span className="text-white font-semibold">{sessionInfo.duration} minutes</span>
+              <span className={subtleTextClass}>Session Duration:</span>
+              <span className="text-slate-900 dark:text-white font-semibold">{sessionInfo.duration} minutes</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-400">Login Time:</span>
-              <span className="text-white font-semibold">{sessionInfo.loginTime}</span>
+              <span className={subtleTextClass}>Login Time:</span>
+              <span className="text-slate-900 dark:text-white font-semibold">{sessionInfo.loginTime}</span>
             </div>
-            <div className="pt-2 border-t border-slate-700">
+            <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
               <Button
                 variant="outline"
-                className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10"
+                className="w-full border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10"
                 onClick={() => {
                   meldraAi.auth.logout();
                   window.location.href = '/Login';
@@ -176,13 +185,13 @@ export default function SecurityDashboard() {
       )}
 
       {/* Meldra API Key — only for external/API use (developer.meldra.ai). In-app never needs this. */}
-      <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+      <Card className={cardClass}>
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Key className="w-5 h-5 text-blue-400" />
+          <CardTitle className={`${cardTitleClass} flex items-center gap-2`}>
+            <Key className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Meldra API Key (for external API only)
           </CardTitle>
-          <p className="text-sm text-slate-400">Only for calling Meldra from your own apps or developer.meldra.ai. In-app Document Converter and ZIP Cleaner use your Meldra login only; they do <strong>not</strong> use or require this key.</p>
+          <p className={`text-sm ${subtleTextClass}`}>Only for calling Meldra from your own apps or developer.meldra.ai. In-app Document Converter and ZIP Cleaner use your Meldra login only; they do <strong>not</strong> use or require this key.</p>
         </CardHeader>
         <CardContent className="space-y-3">
           {meldraKeySet && !meldraKeyInput ? (
@@ -197,7 +206,7 @@ export default function SecurityDashboard() {
                 placeholder="Meldra API key"
                 value={meldraKeyInput}
                 onChange={(e) => setMeldraKeyInput(e.target.value)}
-                className="bg-slate-800 border-slate-600 text-slate-100 placeholder:text-slate-500"
+                className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-500"
               />
               <div className="flex gap-2">
                 <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={saveMeldraKey} disabled={!meldraKeyInput.trim()}>
@@ -214,49 +223,49 @@ export default function SecurityDashboard() {
 
       {/* Security Features */}
       <div className="grid md:grid-cols-2 gap-4">
-        <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+        <Card className={cardClass}>
           <CardHeader>
-            <CardTitle className="text-white text-lg flex items-center gap-2">
-              <Lock className="w-5 h-5 text-purple-400" />
+            <CardTitle className={`${cardTitleClass} text-lg flex items-center gap-2`}>
+              <Lock className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               Password Security
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-slate-300">
+          <CardContent className={`space-y-2 text-sm ${bodyTextClass}`}>
             <p>✅ Passwords are hashed with bcrypt</p>
             <p>✅ Minimum 8 characters required</p>
             <p>✅ Must include uppercase, lowercase, number, and special character</p>
-            <Button variant="outline" className="w-full mt-4 border-slate-700 text-slate-300">
+            <Button variant="outline" className="w-full mt-4 border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300">
               Change Password
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+        <Card className={cardClass}>
           <CardHeader>
-            <CardTitle className="text-white text-lg flex items-center gap-2">
-              <Smartphone className="w-5 h-5 text-blue-400" />
-              Two-Factor Authentication
+            <CardTitle className={`${cardTitleClass} text-lg flex items-center gap-2`}>
+              <Smartphone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              Authenticator App 2FA
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {user?.mfa_enabled ? (
               <>
-                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                <Badge className="bg-emerald-500/20 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30">
                   <CheckCircle className="w-3 h-3 mr-1" />
                   Enabled
                 </Badge>
-                <p className="text-sm text-slate-300">Your account is protected with 2FA</p>
-                <Button variant="outline" className="w-full border-slate-700 text-slate-300">
+                <p className={`text-sm ${bodyTextClass}`}>Your account is protected with an authenticator app</p>
+                <Button variant="outline" className="w-full border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-300">
                   Manage 2FA
                 </Button>
               </>
             ) : (
               <>
-                <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30">
+                <Badge className="bg-amber-500/20 text-amber-800 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30">
                   <AlertTriangle className="w-3 h-3 mr-1" />
                   Not Enabled
                 </Badge>
-                <p className="text-sm text-slate-300">Enable 2FA for additional security</p>
+                <p className={`text-sm ${bodyTextClass}`}>Optional: enable an authenticator app for extra protection</p>
                 <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                   Enable 2FA
                 </Button>
@@ -267,34 +276,34 @@ export default function SecurityDashboard() {
       </div>
 
       {/* Security Recommendations */}
-      <Card className="bg-slate-900/80 backdrop-blur-xl border-slate-700/50">
+      <Card className={cardClass}>
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Activity className="w-5 h-5 text-blue-400" />
+          <CardTitle className={`${cardTitleClass} flex items-center gap-2`}>
+            <Activity className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             Security Recommendations
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {!user?.mfa_enabled && (
-              <Alert className="bg-amber-500/10 border-amber-500/30">
-                <AlertTriangle className="h-4 w-4 text-amber-400" />
-                <AlertDescription className="text-amber-300">
-                  <strong>Enable Two-Factor Authentication</strong> to significantly improve your account security.
+              <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30">
+                <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                <AlertDescription className="text-amber-900 dark:text-amber-300">
+                  <strong>Enable authenticator 2FA</strong> to significantly improve your account security.
                 </AlertDescription>
               </Alert>
             )}
             {!user?.is_verified && (
-              <Alert className="bg-amber-500/10 border-amber-500/30">
-                <AlertTriangle className="h-4 w-4 text-amber-400" />
-                <AlertDescription className="text-amber-300">
+              <Alert className="bg-amber-50 border-amber-200 dark:bg-amber-500/10 dark:border-amber-500/30">
+                <AlertTriangle className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                <AlertDescription className="text-amber-900 dark:text-amber-300">
                   <strong>Verify your email address</strong> to complete account setup.
                 </AlertDescription>
               </Alert>
             )}
-            <Alert className="bg-blue-500/10 border-blue-500/30">
-              <CheckCircle className="h-4 w-4 text-blue-400" />
-              <AlertDescription className="text-blue-300">
+            <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/30">
+              <CheckCircle className="h-4 w-4 text-blue-700 dark:text-blue-400" />
+              <AlertDescription className="text-blue-900 dark:text-blue-300">
                 <strong>Best Practices:</strong> Use a unique password, logout on shared devices, and review login history regularly.
               </AlertDescription>
             </Alert>

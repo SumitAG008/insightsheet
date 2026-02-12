@@ -1207,35 +1207,71 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
     html_content = f"""
     <!DOCTYPE html>
     <html>
-    <body style="font-family: Arial, sans-serif;">
-        <h2>Login verification code</h2>
-        <p>Use this code to complete your login to <strong>insight.meldra.ai</strong>:</p>
-        <div style="font-size: 28px; letter-spacing: 6px; font-weight: 700;">{otp}</div>
-        <p>This code expires in {int(expires_minutes)} minutes.</p>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>{subject}</title>
+      <style>
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #0f172a; margin: 0; padding: 0; background-color: #f1f5f9; }}
+        .container {{ max-width: 600px; margin: 20px auto; background: #ffffff; border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; }}
+        .header {{ background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: #ffffff; padding: 24px 28px; }}
+        .header h1 {{ margin: 0; font-size: 18px; font-weight: 700; }}
+        .content {{ padding: 28px; }}
+        .code {{ font-size: 32px; letter-spacing: 10px; font-weight: 800; color: #0f172a; background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px 16px; border-radius: 10px; text-align: center; }}
+        .note {{ margin-top: 18px; padding: 12px 14px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; color: #1e3a8a; font-size: 13px; }}
+        .footer {{ padding: 18px 28px; background: #f8fafc; border-top: 1px solid #e2e8f0; color: #475569; font-size: 12px; }}
+        .muted {{ color: #64748b; font-size: 13px; }}
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Login verification code</h1>
+        </div>
+        <div class="content">
+          <p>Use this code to complete your login to <strong>insight.meldra.ai</strong>:</p>
+          <div class="code">{otp}</div>
+          <p class="muted" style="margin-top: 14px;">This code expires in <strong>{int(expires_minutes)} minutes</strong>.</p>
+          <div class="note">
+            <strong>Security tip:</strong> Never share this code. Meldra support will never ask for it.
+          </div>
+        </div>
+        <div class="footer">
+          <p><strong>Meldra</strong> • This is an automated email. Please do not reply.</p>
+        </div>
+      </div>
     </body>
     </html>
     """
 
     text_content = (
         f"Your Meldra login code: {otp}\n\n"
-        f"This code expires in {int(expires_minutes)} minutes.\n"
+        f"Use this code to complete your login to insight.meldra.ai.\n"
+        f"This code expires in {int(expires_minutes)} minutes.\n\n"
+        f"Security tip: Never share this code.\n"
     )
 
     if resend_api_key and RESEND_AVAILABLE:
         try:
             resend.api_key = resend_api_key
-            configured_from = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "onboarding@resend.dev"))
+            configured_from = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "hello@meldra.ai"))
             if any(domain in configured_from.lower() for domain in ["@gmail.com", "@outlook.com", "@hotmail.com", "@yahoo.com", "@icloud.com"]):
                 from_email = "onboarding@resend.dev"
             else:
                 from_email = configured_from
             try:
                 resend.Emails.send({
-                    "from": from_email,
+                    "from": f"Meldra <{from_email}>",
                     "to": [email],
                     "subject": subject,
                     "html": html_content,
                     "text": text_content,
+                    "reply_to": "hello@meldra.ai",
+                    "headers": {
+                        "X-Mailer": "Meldra Email Service",
+                        "X-Entity-Ref-ID": "meldra-login-otp",
+                        "List-Unsubscribe": "<https://insight.meldra.ai/unsubscribe>",
+                    },
                 })
                 logger.info(f"✅ Login OTP email sent via Resend to {email}")
                 return True
@@ -1243,11 +1279,17 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
                 if "not verified" in str(resend_error).lower() and from_email != "onboarding@resend.dev":
                     from_email = "onboarding@resend.dev"
                     resend.Emails.send({
-                        "from": from_email,
+                        "from": f"Meldra <{from_email}>",
                         "to": [email],
                         "subject": subject,
                         "html": html_content,
                         "text": text_content,
+                        "reply_to": "hello@meldra.ai",
+                        "headers": {
+                            "X-Mailer": "Meldra Email Service",
+                            "X-Entity-Ref-ID": "meldra-login-otp",
+                            "List-Unsubscribe": "<https://insight.meldra.ai/unsubscribe>",
+                        },
                     })
                     logger.info(f"✅ Login OTP email sent via Resend (test email) to {email}")
                     return True
@@ -1269,6 +1311,10 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
         message["Subject"] = subject
         message["From"] = f"Meldra <{smtp_from_email}>"
         message["To"] = email
+        message["Reply-To"] = "hello@meldra.ai"
+        message["List-Unsubscribe"] = "<https://insight.meldra.ai/unsubscribe>"
+        message["X-Mailer"] = "Meldra Email Service"
+        message["X-Entity-Ref-ID"] = "meldra-login-otp"
         message.attach(MIMEText(text_content, "plain"))
         message.attach(MIMEText(html_content, "html"))
         await aiosmtplib.send(

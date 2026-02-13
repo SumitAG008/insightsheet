@@ -2,13 +2,23 @@
 import React, { useState, useEffect } from 'react';
 import { meldraAi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
-import { Check, Crown, Sparkles, Zap, Star, CreditCard, AlertCircle, BarChart3, Brain, Database, FileSpreadsheet, FileText, Shield, ArrowRight, TrendingUp, FileCheck, Lock } from 'lucide-react';
+import Logo from '@/components/branding/Logo';
+import { ArrowRight, Mail, Send, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function Pricing() {
   const [user, setUser] = useState(null);
-  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    company: '',
+    useType: 'individual',
+    users: '',
+    dataSources: '',
+    requirements: '',
+    timeline: 'this_week',
+  });
 
   useEffect(() => {
     loadUser();
@@ -23,94 +33,29 @@ export default function Pricing() {
     }
   };
 
-  // Show both tiers on landing page
-  const plans = [
-    {
-      id: 'free',
-      name: 'Free',
-      price: 0,
-      priceDisplay: '£0',
-      period: 'forever',
-      icon: Sparkles,
-      color: 'from-gray-600 to-gray-700',
-      features: [
-        '20 jobs per month',
-        '2 questions per day',
-        'Basic chart types',
-        'Basic clean & filter',
-        'Export to CSV',
-        'Files up to 10MB',
-      ]
-    },
-    {
-      id: 'premium_quarterly',
-      name: 'Premium',
-      price: 19,
-      priceDisplay: '£19',
-      period: '/month',
-      totalDisplay: '£57 billed quarterly',
-      savings: '5% off',
-      icon: Crown,
-      color: 'from-teal-600 to-sky-600',
-      popular: true,
-      features: [
-        '200MB file size limit',
-        '200 jobs',
-        '300 questions per month',
-        '400 chart types per month',
-        'Clean & reshape data without formulas',
-        'AI suggests formulas when you need them',
-        'Priority support',
-        'Export to Excel, Word, PDF, and more',
-        'Import Excel and CSV directly'
-      ]
-    },
-    {
-      id: 'premium_yearly',
-      name: 'Premium',
-      price: 18,
-      priceDisplay: '£18',
-      period: '/month',
-      totalDisplay: '£216 billed annually',
-      savings: '10% off',
-      icon: Crown,
-      color: 'from-teal-600 to-sky-600',
-      features: [
-        '500MB file size limit',
-        '400 jobs',
-        '400 questions per month',
-        '500 chart types per month',
-        'Clean & reshape data without formulas',
-        'AI suggests formulas when you need them',
-        'Priority support',
-        'Export to Excel, Word, PDF, and more',
-        'Import Excel and CSV directly'
-      ]
-    },
-  ];
-
-  const handleSubscribe = (plan) => {
-    if (plan.id === 'free') {
-      alert('You\'re already on the free plan!');
-      return;
-    }
-
-    if (!user) {
-      alert('Please login first');
-      return;
-    }
-
-    setSelectedPlan({ ...plan });
+  const openPricingEmail = () => {
+    const to = 'pricing@meldra.ai';
+    const subject = encodeURIComponent('Meldra pricing request');
+    const lines = [
+      'Hello Meldra Team,',
+      '',
+      'Please share pricing for the following:',
+      '',
+      `Name: ${form.firstName} ${form.lastName}`.trim(),
+      `Email: ${form.email}`.trim(),
+      `Company/Organization: ${form.company || '(not provided)'}`,
+      `Use type: ${form.useType}`,
+      `Estimated users: ${form.users || '(not provided)'}`,
+      `Data sources/files: ${form.dataSources || '(not provided)'}`,
+      `Requirements: ${form.requirements || '(not provided)'}`,
+      `Timeline: ${form.timeline}`,
+      '',
+      'Thank you,',
+      `${form.firstName} ${form.lastName}`.trim(),
+    ];
+    const body = encodeURIComponent(lines.join('\n'));
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
   };
-
-  const features = [
-    { icon: BarChart3, title: 'Ask Your Data Questions', description: 'Upload Excel or CSV and ask in plain English. Get answers and charts. Export to PDF, Excel, or Word for your report or deck.' },
-    { icon: Brain, title: 'AI That Does the Steps for You', description: 'Tell it what you need—e.g. clean, chart, export to PowerPoint. It runs the steps so you don’t have to.' },
-    { icon: Database, title: 'Design How Your Tables Connect', description: 'Draw how your database tables link. AI helps. Export the structure for your tech team.' },
-    { icon: FileSpreadsheet, title: 'P&L From a Sentence', description: 'Describe your P&L in words. Get numbers and charts. Use it for month-end or board packs.' },
-    { icon: FileText, title: 'Excel to PowerPoint', description: 'Turn your Excel sheet into slides with charts and tables. One flow from data to deck.' },
-    { icon: Shield, title: 'We Don’t Store Your Data', description: 'Everything runs on your device. Your files never sit on our servers. You stay in control.' }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
@@ -123,184 +68,169 @@ export default function Pricing() {
               Back to Home
             </Button>
           </a>
-          <div />
+          <Logo size="small" showText />
         </div>
 
         <div className="text-center mb-6">
           <Badge className="mb-4 border border-blue-200 bg-blue-50 text-blue-700">
             <Star className="w-4 h-4 mr-1" />
-            Choose Your Plan
+            Pricing
           </Badge>
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-            Simple, Transparent Pricing
+            Simple, Transparent Access
           </h2>
           <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-6">
-            Start free. Upgrade when you need bigger files and more reports.
+            Start free today. For larger teams, higher volumes, and custom workflows, request pricing.
           </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a
+              href={user ? '/' : '/register'}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg text-center transition-all"
+            >
+              Get Started Free
+            </a>
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto border-slate-300 text-slate-700 hover:bg-white"
+              onClick={() => document.getElementById('pricing-request')?.scrollIntoView({ behavior: 'smooth' })}
+            >
+              Request Pricing
+            </Button>
+          </div>
         </div>
 
-        <Alert className="mb-4 max-w-4xl mx-auto bg-blue-50 border-blue-200">
-          <AlertCircle className="h-5 w-5 text-blue-600" />
-          <AlertDescription className="text-blue-800">
-            <strong>Coming Soon:</strong> Stripe payment integration is being set up. Premium subscriptions will be available soon. 
-            For now, you can enjoy all features with the free tier.
-          </AlertDescription>
-        </Alert>
+        {/* Pricing request */}
+        <section id="pricing-request" className="mt-10 max-w-4xl mx-auto">
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
+            <h3 className="text-2xl font-bold text-slate-900">Request pricing</h3>
+            <p className="text-slate-600 mt-2">
+              For individuals, small teams, and enterprise. Tell us what you need and we will respond by email within 24 hours with pricing guidance and a simple ROI estimate.
+            </p>
 
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mt-0 pt-4">
-          {plans.map((plan) => (
-            <div
-              key={plan.id}
-              className={`relative ${plan.popular ? 'md:scale-105 z-10' : ''}`}
-            >
-              {plan.popular && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-                  <Badge className="text-white px-4 py-1 bg-blue-600 shadow">
-                    Most Popular
-                  </Badge>
-                </div>
-              )}
+            <div className="mt-4 bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <p className="text-slate-700 text-sm">
+                Prefer email? Send a request to{' '}
+                <a className="text-blue-700 underline" href="mailto:pricing@meldra.ai">pricing@meldra.ai</a>{' '}
+                with your name, email, estimated users, and what you are trying to automate.
+              </p>
+            </div>
 
-              <div className="relative group h-full">
-                <div
-                  className={`relative bg-white/80 backdrop-blur border rounded-2xl p-8 h-full flex flex-col shadow-sm transition-shadow group-hover:shadow-md ${
-                    plan.popular ? 'border-blue-200 ring-2 ring-blue-200' : 'border-slate-200'
-                  }`}
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700">First name</label>
+                <input
+                  value={form.firstName}
+                  onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Last name</label>
+                <input
+                  value={form.lastName}
+                  onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Email</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Company / Organization (optional)</label>
+                <input
+                  value={form.company}
+                  onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-slate-700">Use type</label>
+                <select
+                  value={form.useType}
+                  onChange={(e) => setForm((f) => ({ ...f, useType: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white"
                 >
-                  <div className="text-center mb-6">
-                    <plan.icon className="w-12 h-12 mx-auto mb-4 text-blue-600" />
-                    <h3 className="text-2xl font-bold text-slate-900 mb-2">{plan.name}</h3>
-                    <div className="flex items-baseline justify-center gap-2">
-                      <span className="text-4xl font-bold text-slate-900">{plan.priceDisplay}</span>
-                      <span className="text-slate-600">{plan.period}</span>
-                    </div>
-                    {plan.totalDisplay && (
-                      <p className="text-sm text-slate-600 mt-2">{plan.totalDisplay}</p>
-                    )}
-                    {plan.savings && (
-                      <Badge className="mt-2 bg-blue-100 text-blue-600">
-                        {plan.savings}
-                      </Badge>
-                    )}
-                  </div>
+                  <option value="individual">Individual</option>
+                  <option value="small_team">Small team</option>
+                  <option value="company">Company</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Estimated users (optional)</label>
+                <input
+                  value={form.users}
+                  onChange={(e) => setForm((f) => ({ ...f, users: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                  placeholder="e.g. 1, 5, 25, 200"
+                />
+              </div>
 
-                  <ul className="space-y-3 mb-8 flex-grow">
-                    {plan.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-3">
-                        <Check className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                        <span className="text-slate-600 text-sm">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-slate-700">Data sources / file types (optional)</label>
+                <input
+                  value={form.dataSources}
+                  onChange={(e) => setForm((f) => ({ ...f, dataSources: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2"
+                  placeholder="e.g. Excel, CSV, PDFs, ZIPs, monthly reports"
+                />
+              </div>
 
-                  {plan.id === 'free' ? (
-                    !user ? (
-                      <a
-                        href="/register"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2"
-                      >
-                        <Sparkles className="w-4 h-4" />
-                        Get Started Free
-                      </a>
-                    ) : (
-                      <Button className="w-full bg-slate-200 hover:bg-slate-300 text-slate-700">
-                        Current Plan
-                      </Button>
-                    )
-                  ) : (
-                    !user ? (
-                      <div className="space-y-2">
-                        <a
-                          href="/register"
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-center transition-all flex items-center justify-center gap-2 block"
-                        >
-                          <CreditCard className="w-4 h-4" />
-                          Sign Up for Premium
-                        </a>
-                        <p className="text-xs text-slate-500 text-center">
-                          Stripe integration coming soon
-                        </p>
-                      </div>
-                    ) : (
-                      <Button
-                        onClick={() => handleSubscribe(plan)}
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold"
-                      >
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        Subscribe Now
-                      </Button>
-                    )
-                  )}
-                </div>
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-slate-700">What do you want to automate?</label>
+                <textarea
+                  value={form.requirements}
+                  onChange={(e) => setForm((f) => ({ ...f, requirements: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 min-h-[120px]"
+                  placeholder="Describe your workflow (cleaning, transformations, exports, conversions, volume, frequency)."
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="text-sm font-medium text-slate-700">Timeline</label>
+                <select
+                  value={form.timeline}
+                  onChange={(e) => setForm((f) => ({ ...f, timeline: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 bg-white"
+                >
+                  <option value="this_week">This week</option>
+                  <option value="this_month">This month</option>
+                  <option value="this_quarter">This quarter</option>
+                  <option value="exploring">Just exploring</option>
+                </select>
               </div>
             </div>
-          ))}
-        </div>
 
-        {selectedPlan && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-8 max-w-md w-full border border-slate-200 shadow-xl">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">
-                Subscribe to {selectedPlan.name}
-              </h2>
-              <p className="text-slate-600 mb-2">
-                {selectedPlan.priceDisplay}{selectedPlan.period}
-              </p>
-              <p className="text-slate-500 text-sm mb-6">
-                {selectedPlan.totalDisplay}
-                {selectedPlan.id === 'premium_yearly' && (
-                  <span className="block text-blue-600 mt-1">
-                    ✓ Auto-renews annually after first year
-                  </span>
-                )}
-              </p>
-              <Alert className="mb-6 bg-blue-50 border-blue-200">
-                <AlertCircle className="h-5 w-5 text-blue-600" />
-                <AlertDescription className="text-blue-800 text-sm">
-                  Stripe payment integration is currently being set up. Premium subscriptions will be available soon. 
-                  In the meantime, enjoy all features with the free tier!
-                </AlertDescription>
-              </Alert>
+            <div className="mt-6 flex flex-col sm:flex-row gap-3">
               <Button
-                onClick={() => setSelectedPlan(null)}
-                variant="outline"
-                className="w-full mt-4 border-slate-300 text-slate-700 hover:bg-slate-50"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                onClick={() => openPricingEmail()}
+                disabled={!String(form.email || '').trim()}
               >
-                Cancel
+                <Send className="w-4 h-4 mr-2" />
+                Send pricing request
               </Button>
+              <a
+                href="mailto:pricing@meldra.ai"
+                className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-white"
+              >
+                <Mail className="w-4 h-4" />
+                Email pricing@meldra.ai
+              </a>
             </div>
-          </div>
-        )}
 
-        <div className="mt-16 max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-slate-900 text-center mb-8">
-            Why upgrade to Premium?
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
-              <Zap className="w-10 h-10 mb-4 text-blue-600" />
-              <h3 className="text-lg font-bold text-slate-900 mb-2">No Limits on What You Can Do</h3>
-              <p className="text-slate-600 text-sm">
-                Bigger files, more jobs, unlimited questions to your data. No need to hold back.
-              </p>
-            </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
-              <Crown className="w-10 h-10 mb-4 text-blue-600" />
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Full Excel In &amp; Out</h3>
-              <p className="text-slate-600 text-sm">
-                Import Excel directly. Export to Excel, Word, and PDF for your reports and decks.
-              </p>
-            </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
-              <Star className="w-10 h-10 mb-4 text-blue-600" />
-              <h3 className="text-lg font-bold text-slate-900 mb-2">Save When You Pay Ahead</h3>
-              <p className="text-slate-600 text-sm">
-                5% off quarterly, 10% off yearly. Fewer renewals, more value.
-              </p>
-            </div>
+            <p className="text-xs text-slate-500 mt-3">
+              If you want, we can include a short ROI estimate and offer a quick onboarding call to help you evaluate Meldra.
+            </p>
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );

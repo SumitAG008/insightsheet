@@ -44,7 +44,7 @@ from sqlalchemy import func, and_
 import httpx
 
 # Import local modules
-from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, ConsentLog, ApiKey, ApiKeyIssuanceLog, ApiUsage, ApiBilling, SubscriptionEventLog, LoginOtpChallenge, LearningSignal, init_db
+from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, PlaywrightJob, ConsentLog, ApiKey, ApiKeyIssuanceLog, ApiUsage, ApiBilling, SubscriptionEventLog, LoginOtpChallenge, LearningSignal, init_db
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -96,6 +96,7 @@ from app.services.watermark_service import (
     watermark_xlsx_bytes,
 )
 from PIL import Image
+from app.services.playwright_books_scraper import scrape_books_to_scrape_csv
 
 
 def _ascii_safe_filename(name: str) -> str:
@@ -804,6 +805,234 @@ async def startup_event():
     asyncio.create_task(_background_free_trial_lifecycle())
 
 
+def _playwright_temp_ttl_seconds() -> int:
+    try:
+        ttl_raw = os.getenv("PLAYWRIGHT_TEMP_TTL_SECONDS", "900").strip()
+        ttl_seconds = int(ttl_raw) if ttl_raw else 900
+    except Exception:
+        ttl_seconds = 900
+    return max(60, min(ttl_seconds, 24 * 60 * 60))
+
+
+def _playwright_temp_prefix() -> str:
+    return os.getenv("PLAYWRIGHT_TEMP_DIR_PREFIX", "meldra_pw_").strip() or "meldra_pw_"
+
+
+def _playwright_temp_base_dir() -> str:
+    return os.getenv("PLAYWRIGHT_TEMP_DIR", "").strip() or tempfile.gettempdir()
+
+
+def _start_playwright_sweeper_thread() -> None:
+    ttl_seconds = _playwright_temp_ttl_seconds()
+    tmp_prefix = _playwright_temp_prefix()
+
+    def _sweep_once() -> None:
+        base_dir = _playwright_temp_base_dir()
+        now = time.time()
+        try:
+            entries = os.listdir(base_dir)
+        except Exception:
+            return
+        for name in entries:
+            if not name.startswith(tmp_prefix):
+                continue
+            path = os.path.join(base_dir, name)
+            try:
+                st = os.stat(path)
+            except Exception:
+                continue
+            age = now - float(getattr(st, "st_mtime", now))
+            if age < ttl_seconds:
+                continue
+            try:
+                if os.path.isdir(path):
+                    shutil.rmtree(path, ignore_errors=True)
+                else:
+                    os.remove(path)
+            except Exception:
+                pass
+
+    def _loop() -> None:
+        while True:
+            try:
+                _sweep_once()
+            except Exception:
+                pass
+            time.sleep(min(120, max(30, ttl_seconds // 4)))
+
+    threading.Thread(target=_loop, daemon=True).start()
+
+
+_start_playwright_sweeper_thread()
+
+
+def _enforce_playwright_entitlement(subscription: Optional[Subscription]) -> None:
+    allow_free = (os.getenv("PLAYWRIGHT_CONNECTORS_ALLOW_FREE", "").strip().lower() in ("1", "true", "yes"))
+    if allow_free:
+        return
+    if not subscription or (subscription.plan or "").lower() != "premium":
+        raise HTTPException(status_code=403, detail="Playwright web connectors are available on Premium plans only")
+
+
+def _create_playwright_job_id() -> str:
+    return uuid.uuid4().hex
+
+
+def _playwright_job_expires_at(now: datetime) -> datetime:
+    return now + timedelta(seconds=_playwright_temp_ttl_seconds())
+
+
+def _run_books_to_scrape_job(job_id: str) -> None:
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        job = db.query(PlaywrightJob).filter(PlaywrightJob.job_id == job_id).first()
+        if not job:
+            return
+
+        job.status = "running"
+        job.updated_date = datetime.utcnow()
+        db.commit()
+
+        cfg = {}
+        try:
+            cfg = json.loads(job.config_json) if job.config_json else {}
+        except Exception:
+            cfg = {}
+
+        max_pages = int(cfg.get("max_pages") or 1)
+        timeout_ms = int(cfg.get("timeout_ms") or 25000)
+
+        tmp_dir = tempfile.mkdtemp(prefix=_playwright_temp_prefix(), dir=_playwright_temp_base_dir())
+        csv_path = os.path.join(tmp_dir, f"books_to_scrape_{job_id}.csv")
+
+        report = scrape_books_to_scrape_csv(
+            output_csv_path=csv_path,
+            max_pages=max_pages,
+            timeout_ms=timeout_ms,
+        )
+
+        job.csv_path = csv_path
+        job.report_json = json.dumps(report)
+        job.status = "succeeded"
+        job.error_message = None
+        job.expires_at = _playwright_job_expires_at(datetime.utcnow())
+        job.updated_date = datetime.utcnow()
+        db.commit()
+    except Exception as e:
+        try:
+            job = db.query(PlaywrightJob).filter(PlaywrightJob.job_id == job_id).first()
+            if job:
+                job.status = "failed"
+                job.error_message = str(e)
+                job.updated_date = datetime.utcnow()
+                job.expires_at = _playwright_job_expires_at(datetime.utcnow())
+                db.commit()
+        except Exception:
+            pass
+    finally:
+        db.close()
+
+
+@app.post("/api/connectors/playwright/books/run", response_model=PlaywrightRunResponse)
+async def run_playwright_books_connector(
+    payload: PlaywrightBooksRunRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    _enforce_playwright_entitlement(subscription)
+
+    job_id = _create_playwright_job_id()
+    now = datetime.utcnow()
+    job = PlaywrightJob(
+        job_id=job_id,
+        user_email=current_user["email"],
+        connector="books_to_scrape",
+        status="queued",
+        config_json=json.dumps({"max_pages": payload.max_pages, "timeout_ms": payload.timeout_ms}),
+        expires_at=_playwright_job_expires_at(now),
+    )
+    db.add(job)
+    db.commit()
+
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, _run_books_to_scrape_job, job_id)
+    return {"job_id": job_id}
+
+
+@app.get("/api/connectors/playwright/jobs/{job_id}", response_model=PlaywrightJobStatusResponse)
+async def get_playwright_job_status(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    job = db.query(PlaywrightJob).filter(PlaywrightJob.job_id == job_id).first()
+    if not job or job.user_email != current_user["email"]:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.expires_at and job.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="Job expired")
+
+    report = None
+    if job.report_json:
+        try:
+            report = json.loads(job.report_json)
+        except Exception:
+            report = None
+
+    return {
+        "job_id": job.job_id,
+        "connector": job.connector,
+        "status": job.status,
+        "report": report,
+        "error_message": job.error_message,
+        "expires_at": job.expires_at.isoformat() + "Z" if job.expires_at else None,
+    }
+
+
+@app.get("/api/connectors/playwright/jobs/{job_id}/download")
+async def download_playwright_job_artifact(
+    job_id: str,
+    type: str = Query("csv"),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    job = db.query(PlaywrightJob).filter(PlaywrightJob.job_id == job_id).first()
+    if not job or job.user_email != current_user["email"]:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.expires_at and job.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="Job expired")
+    if job.status != "succeeded":
+        raise HTTPException(status_code=400, detail="Job not completed")
+
+    if type == "report":
+        if not job.report_json:
+            raise HTTPException(status_code=404, detail="Report not available")
+        try:
+            return JSONResponse(content=json.loads(job.report_json))
+        except Exception:
+            return JSONResponse(content={"detail": "Invalid report"}, status_code=500)
+
+    if type != "csv":
+        raise HTTPException(status_code=400, detail="Invalid type")
+
+    if not job.csv_path or not os.path.exists(job.csv_path):
+        raise HTTPException(status_code=404, detail="CSV not available")
+
+    def _iterfile():
+        with open(job.csv_path, "rb") as f:
+            while True:
+                chunk = f.read(1024 * 256)
+                if not chunk:
+                    break
+                yield chunk
+
+    filename = f"books_to_scrape_{job.job_id}.csv"
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(_iterfile(), media_type="text/csv", headers=headers)
+
+
 # Pydantic Models
 class UserRegister(BaseModel):
     email: EmailStr
@@ -819,6 +1048,24 @@ class UserLogin(BaseModel):
 class LoginOtpVerifyRequest(BaseModel):
     challenge_id: str
     otp: str
+
+
+class PlaywrightBooksRunRequest(BaseModel):
+    max_pages: int = Field(..., ge=1, le=200)
+    timeout_ms: int = Field(..., ge=5000, le=120000)
+
+
+class PlaywrightRunResponse(BaseModel):
+    job_id: str
+
+
+class PlaywrightJobStatusResponse(BaseModel):
+    job_id: str
+    connector: str
+    status: str
+    report: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    expires_at: Optional[str] = None
 
 
 class LearningSignalIn(BaseModel):

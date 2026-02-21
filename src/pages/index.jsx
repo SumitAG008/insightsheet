@@ -48,6 +48,8 @@ import DatabaseConnection from "./DatabaseConnection";
 import Settings from "./Settings";
 import AutoStandardize from "./AutoStandardize";
 import Reconciliation from "./Reconciliation";
+import PlaywrightConnector from "./PlaywrightConnector";
+
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
 import Faq from "./Faq";
@@ -100,6 +102,8 @@ const PAGES = {
 
     Settings: Settings,
 
+    PlaywrightConnector: PlaywrightConnector,
+    
 }
 
 function _getCurrentPage(url) {
@@ -251,6 +255,9 @@ function PagesContent() {
 
                 <Route path="/Reconciliation" element={<ProtectedRoute><Reconciliation /></ProtectedRoute>} />
                 <Route path="/reconciliation" element={<ProtectedRoute><Reconciliation /></ProtectedRoute>} />
+
+                <Route path="/PlaywrightConnector" element={<ProtectedRoute><PlaywrightConnector /></ProtectedRoute>} />
+                <Route path="/playwrightconnector" element={<ProtectedRoute><PlaywrightConnector /></ProtectedRoute>} />
 
             </Routes>
         </Layout>

@@ -128,8 +128,8 @@ export default function PlaywrightConnector() {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Web Automation (Playwright)</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
+        <h1 className="text-2xl font-bold text-blue-700 dark:text-blue-300">Web Automation (Playwright)</h1>
+        <p className="text-sm text-blue-700/80 dark:text-blue-300/80 mt-1">
           BooksToScrape connector demo. No credentials. Exports a CSV and a small JSON report.
         </p>
       </div>

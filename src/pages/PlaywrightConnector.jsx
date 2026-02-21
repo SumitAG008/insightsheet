@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 function getApiBase() {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) return import.meta.env.VITE_API_URL;
@@ -17,8 +19,25 @@ function getToken() {
 
 export default function PlaywrightConnector() {
   const apiBase = useMemo(() => getApiBase(), []);
+  const [connector, setConnector] = useState('books');
   const [maxPages, setMaxPages] = useState('2');
   const [timeoutMs, setTimeoutMs] = useState('25000');
+  const [startUrl, setStartUrl] = useState('https://webscraper.io/test-sites/e-commerce/static');
+  const [customUrl, setCustomUrl] = useState('https://webscraper.io/test-sites/e-commerce/static');
+  const [itemSelector, setItemSelector] = useState('div.thumbnail');
+  const [fieldsJson, setFieldsJson] = useState(
+    JSON.stringify(
+      {
+        title: 'a.title',
+        price: 'h4.price',
+        description: 'p.description',
+        product_url: 'a.title@href',
+      },
+      null,
+      2
+    )
+  );
+  const [maxItems, setMaxItems] = useState('50');
   const [jobId, setJobId] = useState('');
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -36,25 +55,71 @@ export default function PlaywrightConnector() {
 
     const mp = Number(maxPages);
     const tm = Number(timeoutMs);
-    if (!mp || mp <= 0) {
-      toast.error('Max pages must be greater than 0');
-      return;
-    }
     if (!tm || tm < 5000) {
       toast.error('Timeout must be at least 5000ms');
       return;
     }
 
+    if (connector !== 'custom') {
+      if (!mp || mp <= 0) {
+        toast.error('Max pages must be greater than 0');
+        return;
+      }
+    }
+
     setLoading(true);
     setStatus(null);
     try {
-      const res = await fetch(`${apiBase}/api/connectors/playwright/books/run`, {
+      let endpoint = `${apiBase}/api/connectors/playwright/books/run`;
+      let body = { max_pages: mp, timeout_ms: tm };
+
+      if (connector === 'webscraper') {
+        endpoint = `${apiBase}/api/connectors/playwright/webscraper/ecommerce/run`;
+        body = { max_pages: mp, timeout_ms: tm, start_url: (startUrl || '').trim() || undefined };
+      } else if (connector === 'custom') {
+        const mi = Number(maxItems);
+        if (!mi || mi <= 0) {
+          toast.error('Max items must be greater than 0');
+          return;
+        }
+        if (!customUrl || !customUrl.trim()) {
+          toast.error('URL is required');
+          return;
+        }
+        if (!itemSelector || !itemSelector.trim()) {
+          toast.error('Item selector is required');
+          return;
+        }
+
+        let fields;
+        try {
+          fields = JSON.parse(fieldsJson);
+        } catch {
+          toast.error('Fields JSON is invalid');
+          return;
+        }
+        if (!fields || typeof fields !== 'object' || Array.isArray(fields) || Object.keys(fields).length === 0) {
+          toast.error('Fields JSON must be a non-empty object');
+          return;
+        }
+
+        endpoint = `${apiBase}/api/connectors/playwright/custom/run`;
+        body = {
+          url: customUrl.trim(),
+          item_selector: itemSelector.trim(),
+          fields,
+          max_items: mi,
+          timeout_ms: tm,
+        };
+      }
+
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ max_pages: mp, timeout_ms: tm }),
+        body: JSON.stringify(body),
       });
       const text = await res.text();
       let data;
@@ -113,7 +178,8 @@ export default function PlaywrightConnector() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = kind === 'csv' ? `books_to_scrape_${jobId}.csv` : `books_to_scrape_${jobId}_report.json`;
+      const connectorName = (status?.connector || connector || 'playwright').toString();
+      a.download = kind === 'csv' ? `${connectorName}_${jobId}.csv` : `${connectorName}_${jobId}_report.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -129,25 +195,70 @@ export default function PlaywrightConnector() {
     <div className="p-6 max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-blue-700 dark:text-blue-300">Web Automation (Playwright)</h1>
-        <p className="text-sm text-blue-700/80 dark:text-blue-300/80 mt-1">
-          BooksToScrape connector demo. No credentials. Exports a CSV and a small JSON report.
-        </p>
+        <p className="text-sm text-blue-700/80 dark:text-blue-300/80 mt-1">Run web automation jobs and export CSV/JSON artifacts.</p>
       </div>
 
       <Card className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
+            <label className="text-sm font-medium">Connector</label>
+            <Select value={connector} onValueChange={setConnector}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select connector" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="books">BooksToScrape (preset)</SelectItem>
+                <SelectItem value="webscraper">WebScraper E‑Commerce (preset)</SelectItem>
+                <SelectItem value="custom">Custom URL (advanced)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
             <label className="text-sm font-medium">Max pages (required)</label>
-            <Input value={maxPages} onChange={(e) => setMaxPages(e.target.value)} placeholder="e.g. 2" />
+            <Input value={maxPages} onChange={(e) => setMaxPages(e.target.value)} placeholder="e.g. 2" disabled={connector === 'custom'} />
           </div>
           <div>
             <label className="text-sm font-medium">Timeout ms (required)</label>
             <Input value={timeoutMs} onChange={(e) => setTimeoutMs(e.target.value)} placeholder="e.g. 25000" />
           </div>
-          <div className="flex items-end gap-2">
-            <Button onClick={run} disabled={loading}>Run</Button>
-            <Button variant="secondary" onClick={refresh} disabled={loading || !jobId}>Refresh</Button>
+        </div>
+
+        {connector === 'webscraper' ? (
+          <div className="mt-4">
+            <label className="text-sm font-medium">Start URL (optional)</label>
+            <Input value={startUrl} onChange={(e) => setStartUrl(e.target.value)} placeholder="https://webscraper.io/test-sites/e-commerce/static" />
+            <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">Defaults to webscraper.io static e-commerce test site.</div>
           </div>
+        ) : null}
+
+        {connector === 'custom' ? (
+          <div className="mt-4 grid grid-cols-1 gap-4">
+            <div>
+              <label className="text-sm font-medium">URL (required)</label>
+              <Input value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} placeholder="https://..." />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Item selector (required)</label>
+              <Input value={itemSelector} onChange={(e) => setItemSelector(e.target.value)} placeholder="e.g. div.thumbnail" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Max items (required)</label>
+              <Input value={maxItems} onChange={(e) => setMaxItems(e.target.value)} placeholder="e.g. 50" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Fields JSON (required)</label>
+              <Textarea value={fieldsJson} onChange={(e) => setFieldsJson(e.target.value)} className="font-mono" />
+              <div className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                Example: {'{'}"title":"a.title","product_url":"a.title@href"{'}'} (use @attr for attributes)
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex items-end gap-2">
+          <Button onClick={run} disabled={loading}>Run</Button>
+          <Button variant="secondary" onClick={refresh} disabled={loading || !jobId}>Refresh</Button>
         </div>
 
         {jobId ? (

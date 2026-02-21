@@ -35,6 +35,9 @@ import secrets
 import shutil
 import threading
 import tempfile
+import socket
+import ipaddress
+from urllib.parse import urlparse
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -97,6 +100,8 @@ from app.services.watermark_service import (
 )
 from PIL import Image
 from app.services.playwright_books_scraper import scrape_books_to_scrape_csv
+from app.services.playwright_webscraper_ecommerce_scraper import scrape_webscraper_ecommerce_static_csv
+from app.services.playwright_custom_url_scraper import scrape_custom_url_list_csv
 
 
 def _ascii_safe_filename(name: str) -> str:
@@ -882,6 +887,51 @@ def _playwright_job_expires_at(now: datetime) -> datetime:
     return now + timedelta(seconds=_playwright_temp_ttl_seconds())
 
 
+def _validate_public_http_url(url: str) -> str:
+    u = (url or "").strip()
+    if not u:
+        raise HTTPException(status_code=400, detail="url is required")
+
+    p = urlparse(u)
+    if p.scheme not in ("http", "https"):
+        raise HTTPException(status_code=400, detail="Only http/https URLs are allowed")
+    if not p.hostname:
+        raise HTTPException(status_code=400, detail="Invalid URL")
+
+    host = p.hostname.strip().lower()
+    if host in ("localhost",):
+        raise HTTPException(status_code=400, detail="Localhost is not allowed")
+
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Unable to resolve host")
+
+    ips = []
+    for info in infos:
+        try:
+            ip_str = info[4][0]
+            ips.append(ipaddress.ip_address(ip_str))
+        except Exception:
+            continue
+
+    if not ips:
+        raise HTTPException(status_code=400, detail="Unable to resolve host")
+
+    for ip in ips:
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_multicast
+            or ip.is_reserved
+            or ip.is_unspecified
+        ):
+            raise HTTPException(status_code=400, detail="URL host is not allowed")
+
+    return u
+
+
 def _run_books_to_scrape_job(job_id: str) -> None:
     from app.database import SessionLocal
 
@@ -935,9 +985,137 @@ def _run_books_to_scrape_job(job_id: str) -> None:
         db.close()
 
 
+def _run_webscraper_ecommerce_job(job_id: str) -> None:
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        job = db.query(PlaywrightJob).filter(PlaywrightJob.job_id == job_id).first()
+        if not job:
+            return
+
+        job.status = "running"
+        job.updated_date = datetime.utcnow()
+        db.commit()
+
+        cfg = {}
+        try:
+            cfg = json.loads(job.config_json) if job.config_json else {}
+        except Exception:
+            cfg = {}
+
+        max_pages = int(cfg.get("max_pages") or 1)
+        timeout_ms = int(cfg.get("timeout_ms") or 25000)
+        start_url = (cfg.get("start_url") or "https://webscraper.io/test-sites/e-commerce/static").strip()
+
+        tmp_dir = tempfile.mkdtemp(prefix=_playwright_temp_prefix(), dir=_playwright_temp_base_dir())
+        csv_path = os.path.join(tmp_dir, f"webscraper_ecommerce_static_{job_id}.csv")
+
+        report = scrape_webscraper_ecommerce_static_csv(
+            output_csv_path=csv_path,
+            max_pages=max_pages,
+            timeout_ms=timeout_ms,
+            start_url=start_url,
+        )
+
+        job.csv_path = csv_path
+        job.report_json = json.dumps(report)
+        job.status = "succeeded"
+        job.error_message = None
+        job.expires_at = _playwright_job_expires_at(datetime.utcnow())
+        job.updated_date = datetime.utcnow()
+        db.commit()
+    except Exception as e:
+        try:
+            job = db.query(PlaywrightJob).filter(PlaywrightJob.job_id == job_id).first()
+            if job:
+                job.status = "failed"
+                job.error_message = str(e)
+                job.updated_date = datetime.utcnow()
+                job.expires_at = _playwright_job_expires_at(datetime.utcnow())
+                db.commit()
+        except Exception:
+            pass
+    finally:
+        db.close()
+
+
+def _run_custom_url_job(job_id: str) -> None:
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        job = db.query(PlaywrightJob).filter(PlaywrightJob.job_id == job_id).first()
+        if not job:
+            return
+
+        job.status = "running"
+        job.updated_date = datetime.utcnow()
+        db.commit()
+
+        cfg = {}
+        try:
+            cfg = json.loads(job.config_json) if job.config_json else {}
+        except Exception:
+            cfg = {}
+
+        url = (cfg.get("url") or "").strip()
+        item_selector = (cfg.get("item_selector") or "").strip()
+        fields = cfg.get("fields") or {}
+        max_items = int(cfg.get("max_items") or 50)
+        timeout_ms = int(cfg.get("timeout_ms") or 25000)
+
+        tmp_dir = tempfile.mkdtemp(prefix=_playwright_temp_prefix(), dir=_playwright_temp_base_dir())
+        csv_path = os.path.join(tmp_dir, f"custom_url_{job_id}.csv")
+
+        report = scrape_custom_url_list_csv(
+            output_csv_path=csv_path,
+            url=url,
+            item_selector=item_selector,
+            fields=fields,
+            max_items=max_items,
+            timeout_ms=timeout_ms,
+        )
+
+        job.csv_path = csv_path
+        job.report_json = json.dumps(report)
+        job.status = "succeeded"
+        job.error_message = None
+        job.expires_at = _playwright_job_expires_at(datetime.utcnow())
+        job.updated_date = datetime.utcnow()
+        db.commit()
+    except Exception as e:
+        try:
+            job = db.query(PlaywrightJob).filter(PlaywrightJob.job_id == job_id).first()
+            if job:
+                job.status = "failed"
+                job.error_message = str(e)
+                job.updated_date = datetime.utcnow()
+                job.expires_at = _playwright_job_expires_at(datetime.utcnow())
+                db.commit()
+        except Exception:
+            pass
+    finally:
+        db.close()
+
+
 class PlaywrightBooksRunRequest(BaseModel):
     max_pages: int = Field(..., ge=1, le=200)
     timeout_ms: int = Field(..., ge=5000, le=120000)
+
+
+class PlaywrightWebScraperRunRequest(BaseModel):
+    max_pages: int = Field(..., ge=1, le=200)
+    timeout_ms: int = Field(..., ge=5000, le=120000)
+    start_url: Optional[str] = None
+
+
+class PlaywrightCustomUrlRunRequest(BaseModel):
+    url: str
+    item_selector: str
+    fields: Dict[str, str]
+    max_items: int = Field(50, ge=1, le=1000)
+    timeout_ms: int = Field(25000, ge=5000, le=120000)
 
 
 class PlaywrightRunResponse(BaseModel):
@@ -977,6 +1155,73 @@ async def run_playwright_books_connector(
 
     loop = asyncio.get_running_loop()
     loop.run_in_executor(None, _run_books_to_scrape_job, job_id)
+    return {"job_id": job_id}
+
+
+@app.post("/api/connectors/playwright/webscraper/ecommerce/run", response_model=PlaywrightRunResponse)
+async def run_playwright_webscraper_ecommerce_connector(
+    payload: PlaywrightWebScraperRunRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    _enforce_playwright_entitlement(subscription)
+
+    start_url = (payload.start_url or "https://webscraper.io/test-sites/e-commerce/static").strip()
+    _validate_public_http_url(start_url)
+
+    job_id = _create_playwright_job_id()
+    now = datetime.utcnow()
+    job = PlaywrightJob(
+        job_id=job_id,
+        user_email=current_user["email"],
+        connector="webscraper_ecommerce_static",
+        status="queued",
+        config_json=json.dumps({"max_pages": payload.max_pages, "timeout_ms": payload.timeout_ms, "start_url": start_url}),
+        expires_at=_playwright_job_expires_at(now),
+    )
+    db.add(job)
+    db.commit()
+
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, _run_webscraper_ecommerce_job, job_id)
+    return {"job_id": job_id}
+
+
+@app.post("/api/connectors/playwright/custom/run", response_model=PlaywrightRunResponse)
+async def run_playwright_custom_url_connector(
+    payload: PlaywrightCustomUrlRunRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    _enforce_playwright_entitlement(subscription)
+
+    safe_url = _validate_public_http_url(payload.url)
+
+    job_id = _create_playwright_job_id()
+    now = datetime.utcnow()
+    job = PlaywrightJob(
+        job_id=job_id,
+        user_email=current_user["email"],
+        connector="custom_url",
+        status="queued",
+        config_json=json.dumps(
+            {
+                "url": safe_url,
+                "item_selector": payload.item_selector,
+                "fields": payload.fields,
+                "max_items": payload.max_items,
+                "timeout_ms": payload.timeout_ms,
+            }
+        ),
+        expires_at=_playwright_job_expires_at(now),
+    )
+    db.add(job)
+    db.commit()
+
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, _run_custom_url_job, job_id)
     return {"job_id": job_id}
 
 
@@ -1046,7 +1291,8 @@ async def download_playwright_job_artifact(
                     break
                 yield chunk
 
-    filename = f"books_to_scrape_{job.job_id}.csv"
+    connector = _ascii_safe_filename(job.connector or "playwright")
+    filename = f"{connector}_{job.job_id}.csv"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return StreamingResponse(_iterfile(), media_type="text/csv", headers=headers)
 

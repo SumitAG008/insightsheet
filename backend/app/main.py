@@ -935,6 +935,24 @@ def _run_books_to_scrape_job(job_id: str) -> None:
         db.close()
 
 
+class PlaywrightBooksRunRequest(BaseModel):
+    max_pages: int = Field(..., ge=1, le=200)
+    timeout_ms: int = Field(..., ge=5000, le=120000)
+
+
+class PlaywrightRunResponse(BaseModel):
+    job_id: str
+
+
+class PlaywrightJobStatusResponse(BaseModel):
+    job_id: str
+    connector: str
+    status: str
+    report: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
 @app.post("/api/connectors/playwright/books/run", response_model=PlaywrightRunResponse)
 async def run_playwright_books_connector(
     payload: PlaywrightBooksRunRequest,
@@ -1048,25 +1066,6 @@ class UserLogin(BaseModel):
 class LoginOtpVerifyRequest(BaseModel):
     challenge_id: str
     otp: str
-
-
-class PlaywrightBooksRunRequest(BaseModel):
-    max_pages: int = Field(..., ge=1, le=200)
-    timeout_ms: int = Field(..., ge=5000, le=120000)
-
-
-class PlaywrightRunResponse(BaseModel):
-    job_id: str
-
-
-class PlaywrightJobStatusResponse(BaseModel):
-    job_id: str
-    connector: str
-    status: str
-    report: Optional[Dict[str, Any]] = None
-    error_message: Optional[str] = None
-    expires_at: Optional[str] = None
-
 
 class LearningSignalIn(BaseModel):
     kind: str

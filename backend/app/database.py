@@ -239,6 +239,25 @@ class PlaywrightJob(Base):
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class InvoiceExtractionJob(Base):
+    __tablename__ = "invoice_extraction_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(String(64), unique=True, index=True, nullable=False)
+    user_email = Column(String(255), index=True, nullable=False)
+
+    status = Column(String(30), default="queued", index=True)  # queued, running, succeeded, failed
+    config_json = Column(Text, nullable=True)
+    report_json = Column(Text, nullable=True)
+    header_csv_path = Column(String(1000), nullable=True)
+    line_items_csv_path = Column(String(1000), nullable=True)
+    error_message = Column(Text, nullable=True)
+
+    expires_at = Column(DateTime, index=True, nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class ConsentLog(Base):
     """Cookie/consent decisions for compliance. No auth required to record."""
     __tablename__ = "consent_log"

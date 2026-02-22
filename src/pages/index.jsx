@@ -49,6 +49,7 @@ import Settings from "./Settings";
 import AutoStandardize from "./AutoStandardize";
 import Reconciliation from "./Reconciliation";
 import PlaywrightConnector from "./PlaywrightConnector";
+import InvoiceExtractor from "./InvoiceExtractor";
 
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
@@ -103,6 +104,8 @@ const PAGES = {
     Settings: Settings,
 
     PlaywrightConnector: PlaywrightConnector,
+
+    InvoiceExtractor: InvoiceExtractor,
     
 }
 
@@ -258,6 +261,9 @@ function PagesContent() {
 
                 <Route path="/PlaywrightConnector" element={<ProtectedRoute><PlaywrightConnector /></ProtectedRoute>} />
                 <Route path="/playwrightconnector" element={<ProtectedRoute><PlaywrightConnector /></ProtectedRoute>} />
+
+                <Route path="/InvoiceExtractor" element={<ProtectedRoute><InvoiceExtractor /></ProtectedRoute>} />
+                <Route path="/invoiceextractor" element={<ProtectedRoute><InvoiceExtractor /></ProtectedRoute>} />
 
             </Routes>
         </Layout>

@@ -102,6 +102,13 @@ from PIL import Image
 from app.services.playwright_books_scraper import scrape_books_to_scrape_csv
 from app.services.playwright_webscraper_ecommerce_scraper import scrape_webscraper_ecommerce_static_csv
 from app.services.playwright_custom_url_scraper import scrape_custom_url_list_csv
+from app.services.ingestion_service import IngestionService
+from app.services.ocr_service import OCRService
+from app.services.ai_service import invoke_llm
+from app.database import InvoiceExtractionJob
+
+from app.services.invoice_extraction_service import extract_invoice_structured, write_invoice_exports
+
 
 
 def _ascii_safe_filename(name: str) -> str:
@@ -887,6 +894,74 @@ def _playwright_job_expires_at(now: datetime) -> datetime:
     return now + timedelta(seconds=_playwright_temp_ttl_seconds())
 
 
+def _invoice_temp_prefix() -> str:
+    return os.getenv("INVOICE_TEMP_DIR_PREFIX", "meldra_inv_").strip() or "meldra_inv_"
+
+
+def _invoice_temp_base_dir() -> str:
+    return os.getenv("INVOICE_TEMP_DIR", "").strip() or tempfile.gettempdir()
+
+
+def _invoice_temp_ttl_seconds() -> int:
+    try:
+        v = int((os.getenv("INVOICE_TEMP_TTL_SECONDS") or "").strip() or "21600")
+    except Exception:
+        v = 21600
+    return max(300, min(v, 7 * 24 * 3600))
+
+
+def _invoice_job_expires_at(now: datetime) -> datetime:
+    return now + timedelta(seconds=_invoice_temp_ttl_seconds())
+
+
+def _create_invoice_job_id() -> str:
+    return uuid.uuid4().hex
+
+
+def _start_invoice_sweeper_thread() -> None:
+    ttl_seconds = _invoice_temp_ttl_seconds()
+    tmp_prefix = _invoice_temp_prefix()
+
+    def _sweep_once() -> None:
+        base_dir = _invoice_temp_base_dir()
+        now = time.time()
+        try:
+            entries = os.listdir(base_dir)
+        except Exception:
+            return
+        for name in entries:
+            if not name.startswith(tmp_prefix):
+                continue
+            path = os.path.join(base_dir, name)
+            try:
+                st = os.stat(path)
+            except Exception:
+                continue
+            age = now - float(getattr(st, "st_mtime", now))
+            if age < ttl_seconds:
+                continue
+            try:
+                if os.path.isdir(path):
+                    shutil.rmtree(path, ignore_errors=True)
+                else:
+                    os.remove(path)
+            except Exception:
+                pass
+
+    def _loop() -> None:
+        while True:
+            try:
+                _sweep_once()
+            except Exception:
+                pass
+            time.sleep(min(120, max(30, ttl_seconds // 4)))
+
+    threading.Thread(target=_loop, daemon=True).start()
+
+
+_start_invoice_sweeper_thread()
+
+
 def _validate_public_http_url(url: str) -> str:
     u = (url or "").strip()
     if not u:
@@ -983,6 +1058,96 @@ def _run_books_to_scrape_job(job_id: str) -> None:
             pass
     finally:
         db.close()
+
+
+def _run_invoice_extraction_job(job_id: str) -> None:
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        job = db.query(InvoiceExtractionJob).filter(InvoiceExtractionJob.job_id == job_id).first()
+        if not job:
+            return
+
+        job.status = "running"
+        job.updated_date = datetime.utcnow()
+        db.commit()
+
+        cfg = {}
+        try:
+            cfg = json.loads(job.config_json) if job.config_json else {}
+        except Exception:
+            cfg = {}
+
+        filename = (cfg.get("filename") or "invoice.pdf").strip() or "invoice.pdf"
+        b64 = cfg.get("content_base64") or ""
+        if not b64:
+            raise ValueError("Missing file content")
+        content = base64.b64decode(b64)
+        ocr_lang = (cfg.get("ocr_lang") or None)
+        max_pages = int(cfg.get("max_pages") or 25)
+
+        tmp_dir = tempfile.mkdtemp(prefix=_invoice_temp_prefix(), dir=_invoice_temp_base_dir())
+        header_csv_path = os.path.join(tmp_dir, f"invoice_header_{job_id}.csv")
+        line_items_csv_path = os.path.join(tmp_dir, f"invoice_line_items_{job_id}.csv")
+        report_path = os.path.join(tmp_dir, f"invoice_report_{job_id}.json")
+
+        # Run async extraction in this worker thread
+        result = asyncio.run(
+            extract_invoice_structured(
+                filename=filename,
+                content=content,
+                ocr_lang=ocr_lang,
+                max_pages=max_pages,
+            )
+        )
+        invoice = result.get("invoice") or {}
+        report = result.get("report") or {}
+
+        write_invoice_exports(invoice, header_csv_path, line_items_csv_path)
+        with open(report_path, "w", encoding="utf-8") as f:
+            json.dump({"invoice": invoice, "report": report}, f)
+
+        job.header_csv_path = header_csv_path
+        job.line_items_csv_path = line_items_csv_path
+        job.report_json = json.dumps({"invoice": invoice, "report": report, "report_path": report_path})
+        job.status = "succeeded"
+        job.error_message = None
+        job.expires_at = _invoice_job_expires_at(datetime.utcnow())
+        job.updated_date = datetime.utcnow()
+        db.commit()
+    except Exception as e:
+        try:
+            job = db.query(InvoiceExtractionJob).filter(InvoiceExtractionJob.job_id == job_id).first()
+            if job:
+                job.status = "failed"
+                job.error_message = str(e)
+                job.updated_date = datetime.utcnow()
+                job.expires_at = _invoice_job_expires_at(datetime.utcnow())
+                db.commit()
+        except Exception:
+            pass
+    finally:
+        db.close()
+
+
+class InvoiceRunRequest(BaseModel):
+    filename: str
+    content_base64: str
+    ocr_lang: Optional[str] = None
+    max_pages: int = Field(25, ge=1, le=200)
+
+
+class InvoiceRunResponse(BaseModel):
+    job_id: str
+
+
+class InvoiceJobStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    report: Optional[Dict[str, Any]] = None
+    error_message: Optional[str] = None
+    expires_at: Optional[str] = None
 
 
 def _run_webscraper_ecommerce_job(job_id: str) -> None:
@@ -1295,6 +1460,110 @@ async def download_playwright_job_artifact(
     filename = f"{connector}_{job.job_id}.csv"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return StreamingResponse(_iterfile(), media_type="text/csv", headers=headers)
+
+
+@app.post("/api/unstructured/invoice/run", response_model=InvoiceRunResponse)
+async def run_invoice_extraction(
+    payload: InvoiceRunRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    job_id = _create_invoice_job_id()
+    now = datetime.utcnow()
+    job = InvoiceExtractionJob(
+        job_id=job_id,
+        user_email=current_user["email"],
+        status="queued",
+        config_json=json.dumps(
+            {
+                "filename": payload.filename,
+                "content_base64": payload.content_base64,
+                "ocr_lang": payload.ocr_lang,
+                "max_pages": payload.max_pages,
+            }
+        ),
+        expires_at=_invoice_job_expires_at(now),
+    )
+    db.add(job)
+    db.commit()
+
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, _run_invoice_extraction_job, job_id)
+    return {"job_id": job_id}
+
+
+@app.get("/api/unstructured/invoice/jobs/{job_id}", response_model=InvoiceJobStatusResponse)
+async def get_invoice_extraction_status(
+    job_id: str,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    job = db.query(InvoiceExtractionJob).filter(InvoiceExtractionJob.job_id == job_id).first()
+    if not job or job.user_email != current_user["email"]:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.expires_at and job.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="Job expired")
+
+    report = None
+    if job.report_json:
+        try:
+            report = json.loads(job.report_json)
+        except Exception:
+            report = None
+
+    return {
+        "job_id": job.job_id,
+        "status": job.status,
+        "report": report,
+        "error_message": job.error_message,
+        "expires_at": job.expires_at.isoformat() if job.expires_at else None,
+    }
+
+
+@app.get("/api/unstructured/invoice/jobs/{job_id}/download")
+async def download_invoice_extraction_artifact(
+    job_id: str,
+    type: str = Query("header_csv"),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    job = db.query(InvoiceExtractionJob).filter(InvoiceExtractionJob.job_id == job_id).first()
+    if not job or job.user_email != current_user["email"]:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.expires_at and job.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="Job expired")
+    if job.status != "succeeded":
+        raise HTTPException(status_code=400, detail="Job not completed")
+
+    if type == "header_csv":
+        path = job.header_csv_path
+        media = "text/csv"
+        filename = f"invoice_header_{job.job_id}.csv"
+    elif type == "line_items_csv":
+        path = job.line_items_csv_path
+        media = "text/csv"
+        filename = f"invoice_line_items_{job.job_id}.csv"
+    elif type == "report_json":
+        # Prefer report_json field; write to stream
+        data = (job.report_json or "{}").encode("utf-8")
+        headers = {"Content-Disposition": f'attachment; filename="invoice_report_{job.job_id}.json"'}
+        return StreamingResponse(io.BytesIO(data), media_type="application/json", headers=headers)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid type")
+
+    if not path or not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Artifact not available")
+
+    def _iterfile():
+        with open(path, "rb") as f:
+            while True:
+                chunk = f.read(1024 * 256)
+                if not chunk:
+                    break
+                yield chunk
+
+    headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
+    return StreamingResponse(_iterfile(), media_type=media, headers=headers)
 
 
 # Pydantic Models

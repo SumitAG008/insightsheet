@@ -109,6 +109,8 @@ from app.database import InvoiceExtractionJob
 
 from app.services.invoice_extraction_service import extract_invoice_structured, write_invoice_exports
 
+from app.database import UserFeature, FeatureKey
+
 
 
 def _ascii_safe_filename(name: str) -> str:
@@ -962,6 +964,36 @@ def _start_invoice_sweeper_thread() -> None:
 _start_invoice_sweeper_thread()
 
 
+def _feature_key_hash(key: str) -> str:
+    # Stable hash so we never store raw keys
+    return hashlib.sha256((key or "").strip().encode("utf-8")).hexdigest()
+
+
+def _is_feature_enabled_for_user(db: Session, user_email: str, feature: str) -> bool:
+    feat = (feature or "").strip().lower()
+    if not feat:
+        return False
+
+    allow_env = (os.getenv(f"FEATURE_{feat.upper()}_ALLOW_ALL", "").strip().lower() in ("1", "true", "yes"))
+    if allow_env:
+        return True
+
+    q = db.query(UserFeature).filter(UserFeature.user_email == user_email, UserFeature.feature == feat).first()
+    if not q:
+        return False
+    if not getattr(q, "enabled", False):
+        return False
+    exp = getattr(q, "expires_at", None)
+    if exp is not None and exp < datetime.utcnow():
+        return False
+    return True
+
+
+def _enforce_feature(db: Session, user_email: str, feature: str) -> None:
+    if not _is_feature_enabled_for_user(db, user_email, feature):
+        raise HTTPException(status_code=403, detail=f"Feature not enabled: {feature}")
+
+
 def _validate_public_http_url(url: str) -> str:
     u = (url or "").strip()
     if not u:
@@ -1147,6 +1179,23 @@ class InvoiceJobStatusResponse(BaseModel):
     status: str
     report: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+class FeatureRedeemRequest(BaseModel):
+    key: str
+
+
+class FeatureGrantRequest(BaseModel):
+    user_email: EmailStr
+    feature: str
+    enabled: bool = True
+    expires_at: Optional[str] = None
+
+
+class FeatureKeyCreateRequest(BaseModel):
+    feature: str
+    user_email: Optional[EmailStr] = None
     expires_at: Optional[str] = None
 
 
@@ -1468,6 +1517,7 @@ async def run_invoice_extraction(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    _enforce_feature(db, current_user["email"], "invoice_extractor")
     job_id = _create_invoice_job_id()
     now = datetime.utcnow()
     job = InvoiceExtractionJob(
@@ -1498,6 +1548,7 @@ async def get_invoice_extraction_status(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    _enforce_feature(db, current_user["email"], "invoice_extractor")
     job = db.query(InvoiceExtractionJob).filter(InvoiceExtractionJob.job_id == job_id).first()
     if not job or job.user_email != current_user["email"]:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -1527,6 +1578,7 @@ async def download_invoice_extraction_artifact(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    _enforce_feature(db, current_user["email"], "invoice_extractor")
     job = db.query(InvoiceExtractionJob).filter(InvoiceExtractionJob.job_id == job_id).first()
     if not job or job.user_email != current_user["email"]:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -1564,6 +1616,123 @@ async def download_invoice_extraction_artifact(
 
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return StreamingResponse(_iterfile(), media_type=media, headers=headers)
+
+
+@app.get("/api/features/me")
+async def get_my_features(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    rows = db.query(UserFeature).filter(UserFeature.user_email == email).all()
+    now = datetime.utcnow()
+    enabled = []
+    for r in rows:
+        if not getattr(r, "enabled", False):
+            continue
+        exp = getattr(r, "expires_at", None)
+        if exp is not None and exp < now:
+            continue
+        enabled.append(r.feature)
+    return {"features": sorted(set(enabled))}
+
+
+@app.post("/api/features/redeem")
+async def redeem_feature_key(
+    payload: FeatureRedeemRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    key = (payload.key or "").strip()
+    if not key:
+        raise HTTPException(status_code=400, detail="key is required")
+
+    key_hash = _feature_key_hash(key)
+    row = db.query(FeatureKey).filter(FeatureKey.key_hash == key_hash).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Invalid key")
+    if row.redeemed_at is not None:
+        raise HTTPException(status_code=409, detail="Key already redeemed")
+    if row.expires_at is not None and row.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=410, detail="Key expired")
+    if row.user_email and row.user_email.lower().strip() != current_user["email"].lower().strip():
+        raise HTTPException(status_code=403, detail="Key not valid for this user")
+
+    feat = (row.feature or "").strip().lower()
+    if not feat:
+        raise HTTPException(status_code=400, detail="Key misconfigured")
+
+    # Grant feature
+    uf = db.query(UserFeature).filter(UserFeature.user_email == current_user["email"], UserFeature.feature == feat).first()
+    if not uf:
+        uf = UserFeature(user_email=current_user["email"], feature=feat, enabled=True)
+        db.add(uf)
+    uf.enabled = True
+    uf.expires_at = row.expires_at
+    db.commit()
+
+    row.redeemed_by = current_user["email"]
+    row.redeemed_at = datetime.utcnow()
+    db.commit()
+
+    return {"feature": feat, "enabled": True, "expires_at": uf.expires_at.isoformat() if uf.expires_at else None}
+
+
+@app.post("/api/admin/features/grant")
+async def admin_grant_feature(
+    payload: FeatureGrantRequest,
+    current_user: dict = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    feat = (payload.feature or "").strip().lower()
+    if not feat:
+        raise HTTPException(status_code=400, detail="feature is required")
+    email = payload.user_email.lower().strip()
+
+    exp = None
+    if payload.expires_at:
+        try:
+            exp = datetime.fromisoformat(payload.expires_at.replace("Z", "+00:00")).replace(tzinfo=None)
+        except Exception:
+            raise HTTPException(status_code=400, detail="expires_at must be ISO datetime")
+
+    uf = db.query(UserFeature).filter(UserFeature.user_email == email, UserFeature.feature == feat).first()
+    if not uf:
+        uf = UserFeature(user_email=email, feature=feat)
+        db.add(uf)
+    uf.enabled = bool(payload.enabled)
+    uf.expires_at = exp
+    db.commit()
+    return {"user_email": email, "feature": feat, "enabled": uf.enabled, "expires_at": uf.expires_at.isoformat() if uf.expires_at else None}
+
+
+@app.post("/api/admin/features/key")
+async def admin_create_feature_key(
+    payload: FeatureKeyCreateRequest,
+    current_user: dict = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    feat = (payload.feature or "").strip().lower()
+    if not feat:
+        raise HTTPException(status_code=400, detail="feature is required")
+
+    exp = None
+    if payload.expires_at:
+        try:
+            exp = datetime.fromisoformat(payload.expires_at.replace("Z", "+00:00")).replace(tzinfo=None)
+        except Exception:
+            raise HTTPException(status_code=400, detail="expires_at must be ISO datetime")
+
+    raw_key = "fk_" + secrets.token_urlsafe(24)
+    row = FeatureKey(
+        key_hash=_feature_key_hash(raw_key),
+        feature=feat,
+        user_email=(payload.user_email.lower().strip() if payload.user_email else None),
+        expires_at=exp,
+    )
+    db.add(row)
+    db.commit()
+    return {"key": raw_key, "feature": feat, "user_email": row.user_email, "expires_at": row.expires_at.isoformat() if row.expires_at else None}
 
 
 # Pydantic Models

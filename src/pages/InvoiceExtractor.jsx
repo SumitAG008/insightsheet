@@ -27,12 +27,76 @@ async function fileToBase64(file) {
 
 export default function InvoiceExtractor() {
   const apiBase = useMemo(() => getApiBase(), []);
+  const [features, setFeatures] = useState(null);
+  const [featureKey, setFeatureKey] = useState('');
   const [file, setFile] = useState(null);
   const [filename, setFilename] = useState('');
   const [jobId, setJobId] = useState('');
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
   const [maxPages, setMaxPages] = useState('25');
+
+  const isEnabled = Array.isArray(features) ? features.includes('invoice_extractor') : false;
+
+  const refreshFeatures = async () => {
+    if (!apiBase) return;
+    const token = getToken();
+    if (!token) return;
+    try {
+      const res = await fetch(`${apiBase}/api/features/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+      setFeatures(data.features || []);
+    } catch (e) {
+      // Don't block page if features endpoint fails
+      setFeatures([]);
+    }
+  };
+
+  const redeemKey = async () => {
+    if (!apiBase) {
+      toast.error('Backend not configured. Set VITE_API_URL.');
+      return;
+    }
+    const token = getToken();
+    if (!token) {
+      toast.error('Please login first.');
+      return;
+    }
+    const k = (featureKey || '').trim();
+    if (!k) {
+      toast.error('Please paste a feature key.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/features/redeem`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ key: k }),
+      });
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { detail: text };
+      }
+      if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+      toast.success(`Unlocked: ${data.feature || 'feature'}`);
+      setFeatureKey('');
+      await refreshFeatures();
+    } catch (e) {
+      toast.error(e.message || 'Failed to redeem key');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const run = async () => {
     if (!apiBase) {
@@ -48,6 +112,11 @@ export default function InvoiceExtractor() {
 
     if (!file) {
       toast.error('Please choose a file (PDF or image).');
+      return;
+    }
+
+    if (!isEnabled) {
+      toast.error('Invoices & Receipts module is not enabled for your account.');
       return;
     }
 
@@ -98,6 +167,11 @@ export default function InvoiceExtractor() {
     const token = getToken();
     if (!token) return;
 
+    if (!isEnabled) {
+      toast.error('Invoices & Receipts module is not enabled for your account.');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`${apiBase}/api/unstructured/invoice/jobs/${encodeURIComponent(jobId)}`, {
@@ -117,6 +191,11 @@ export default function InvoiceExtractor() {
     if (!apiBase || !jobId) return;
     const token = getToken();
     if (!token) return;
+
+    if (!isEnabled) {
+      toast.error('Invoices & Receipts module is not enabled for your account.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -160,6 +239,30 @@ export default function InvoiceExtractor() {
       </div>
 
       <Card className="p-4">
+        <div className="mb-4 flex items-center gap-2">
+          <Button variant="secondary" onClick={refreshFeatures} disabled={loading}>Refresh Access</Button>
+          {features === null ? (
+            <span className="text-sm text-slate-600 dark:text-slate-300">Access not checked yet.</span>
+          ) : isEnabled ? (
+            <span className="text-sm text-emerald-700 dark:text-emerald-300">Module enabled</span>
+          ) : (
+            <span className="text-sm text-amber-700 dark:text-amber-300">Module locked</span>
+          )}
+        </div>
+
+        {!isEnabled ? (
+          <div className="mb-4">
+            <div className="text-sm text-slate-700 dark:text-slate-200 font-medium">Unlock with feature key</div>
+            <div className="mt-2 flex flex-col md:flex-row gap-2">
+              <Input value={featureKey} onChange={(e) => setFeatureKey(e.target.value)} placeholder="fk_..." />
+              <Button onClick={redeemKey} disabled={loading}>Redeem</Button>
+            </div>
+            <div className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+              Ask support/admin for an invoices module key. This feature is not enabled by default.
+            </div>
+          </div>
+        ) : null}
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="text-sm font-medium">File (required)</label>
@@ -183,8 +286,8 @@ export default function InvoiceExtractor() {
         </div>
 
         <div className="mt-4 flex items-end gap-2">
-          <Button onClick={run} disabled={loading}>Run</Button>
-          <Button variant="secondary" onClick={refresh} disabled={loading || !jobId}>Refresh</Button>
+          <Button onClick={run} disabled={loading || !isEnabled}>Run</Button>
+          <Button variant="secondary" onClick={refresh} disabled={loading || !jobId || !isEnabled}>Refresh</Button>
         </div>
 
         {jobId ? (

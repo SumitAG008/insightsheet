@@ -258,6 +258,31 @@ class InvoiceExtractionJob(Base):
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class UserFeature(Base):
+    __tablename__ = "user_features"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    feature = Column(String(100), index=True, nullable=False)
+    enabled = Column(Boolean, default=True, nullable=False)
+    expires_at = Column(DateTime, index=True, nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class FeatureKey(Base):
+    __tablename__ = "feature_keys"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key_hash = Column(String(128), unique=True, index=True, nullable=False)
+    feature = Column(String(100), index=True, nullable=False)
+    user_email = Column(String(255), index=True, nullable=True)  # Optional: restrict redemption
+    redeemed_by = Column(String(255), index=True, nullable=True)
+    redeemed_at = Column(DateTime, index=True, nullable=True)
+    expires_at = Column(DateTime, index=True, nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+
+
 class ConsentLog(Base):
     """Cookie/consent decisions for compliance. No auth required to record."""
     __tablename__ = "consent_log"

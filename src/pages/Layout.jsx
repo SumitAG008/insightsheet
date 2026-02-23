@@ -549,6 +549,12 @@ export default function Layout({ children, currentPageName }) {
                         {t('nav_onboarding')}
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
+                        <Link to={createPageUrl('Help')} className="flex items-center gap-2 cursor-pointer">
+                          <HelpCircle className="w-4 h-4" />
+                          <span>Help Guide</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
                         <Link to={createPageUrl('Settings')} className="flex items-center gap-2 cursor-pointer">
                           <SettingsIcon className="w-4 h-4" />
                           {t('nav_settings')}
@@ -668,6 +674,14 @@ export default function Layout({ children, currentPageName }) {
                       <HelpCircle className="w-4 h-4" />
                       <span>{t('nav_onboarding')}</span>
                     </button>
+                    <Link
+                      to={createPageUrl('Help')}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm"
+                    >
+                      <HelpCircle className="w-4 h-4" />
+                      <span>Help Guide</span>
+                    </Link>
                     <Link
                       to={createPageUrl('Security')}
                       onClick={() => setMobileMenuOpen(false)}

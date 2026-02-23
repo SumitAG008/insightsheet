@@ -50,6 +50,7 @@ import AutoStandardize from "./AutoStandardize";
 import Reconciliation from "./Reconciliation";
 import PlaywrightConnector from "./PlaywrightConnector";
 import InvoiceExtractor from "./InvoiceExtractor";
+import HelpGuide from "./HelpGuide";
 
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
@@ -106,6 +107,8 @@ const PAGES = {
     PlaywrightConnector: PlaywrightConnector,
 
     InvoiceExtractor: InvoiceExtractor,
+
+    HelpGuide: HelpGuide,
     
 }
 
@@ -265,6 +268,11 @@ function PagesContent() {
                 <Route path="/InvoiceExtractor" element={<ProtectedRoute><InvoiceExtractor /></ProtectedRoute>} />
                 <Route path="/invoiceextractor" element={<ProtectedRoute><InvoiceExtractor /></ProtectedRoute>} />
 
+                <Route path="/Help" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
+                <Route path="/help" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
+                <Route path="/HelpGuide" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
+                <Route path="/helpguide" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
+ 
             </Routes>
         </Layout>
     );

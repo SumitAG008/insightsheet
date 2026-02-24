@@ -84,8 +84,13 @@ export default function AgenticWorkflows() {
   };
 
   useEffect(() => {
-    const csvData = JSON.parse(sessionStorage.getItem('insightsheet_data') || 'null');
-    setData(csvData);
+    const fromSession = JSON.parse(sessionStorage.getItem('insightsheet_data') || 'null');
+    if (fromSession) {
+      setData(fromSession);
+    } else {
+      const fromLocal = JSON.parse(localStorage.getItem('insightsheet_data') || 'null');
+      setData(fromLocal);
+    }
     refreshFeatures();
   }, []);
 

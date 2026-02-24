@@ -272,7 +272,10 @@ export default function Layout({ children, currentPageName }) {
       <nav className="glass-surface-strong dark:bg-slate-900/95 dark:border-slate-800 sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <Link to={user && user.email ? createPageUrl('Dashboard') : '/pricing'} className="group">
+            <Link
+              to={user && user.email ? createPageUrl('Dashboard') : '/pricing'}
+              className="group rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
               <Logo
                 size="medium"
                 className="group-hover:opacity-80 transition-opacity"

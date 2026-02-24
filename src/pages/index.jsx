@@ -33,6 +33,7 @@ import DownloadCode from "./DownloadCode";
 import StripeSuccess from "./StripeSuccess";
 
 import AgenticAI from "./AgenticAI";
+import AgenticWorkflows from "./AgenticWorkflows";
 
 import FileToPPT from "./FileToPPT";
 import OCRConverter from "./OCRConverter";
@@ -87,6 +88,8 @@ const PAGES = {
     StripeSuccess: StripeSuccess,
     
     AgenticAI: AgenticAI,
+
+    AgenticWorkflows: AgenticWorkflows,
 
     FileToPPT: FileToPPT,
     OCRConverter: OCRConverter,
@@ -228,6 +231,9 @@ function PagesContent() {
 
                 <Route path="/AgenticAI" element={<ProtectedRoute><AgenticAI /></ProtectedRoute>} />
                 <Route path="/agenticai" element={<ProtectedRoute><AgenticAI /></ProtectedRoute>} />
+
+                <Route path="/AgenticWorkflows" element={<ProtectedRoute><AgenticWorkflows /></ProtectedRoute>} />
+                <Route path="/agenticworkflows" element={<ProtectedRoute><AgenticWorkflows /></ProtectedRoute>} />
 
                 <Route path="/FileToPPT" element={<ProtectedRoute><FileToPPT /></ProtectedRoute>} />
                 <Route path="/filetoppt" element={<ProtectedRoute><FileToPPT /></ProtectedRoute>} />

@@ -42,7 +42,7 @@ export default function Logo({ className = "", size = "medium", showText = true,
       {showText && (
         <div className="flex flex-col justify-center min-w-0 space-y-1">
           <h1 
-            className={`${currentSize.text} font-bold leading-tight tracking-tight`} 
+            className={`${currentSize.text} font-bold leading-tight tracking-tight whitespace-nowrap overflow-hidden text-ellipsis`} 
             style={{ 
               color: 'inherit', 
               fontFamily: "'Space Grotesk', sans-serif",
@@ -53,7 +53,7 @@ export default function Logo({ className = "", size = "medium", showText = true,
             {brandName}
           </h1>
           <p 
-            className={`${currentSize.tagline} font-medium ${taglineText === DEFAULT_TAGLINE ? 'tracking-widest uppercase' : ''}`} 
+            className={`${currentSize.tagline} font-medium ${taglineText === DEFAULT_TAGLINE ? 'tracking-widest uppercase' : ''} whitespace-nowrap overflow-hidden text-ellipsis`} 
             style={{ 
               color: 'inherit', 
               opacity: isPrimaryTagline ? 1 : 0.9,

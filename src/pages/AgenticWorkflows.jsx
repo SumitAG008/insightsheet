@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { runCleanPipeline, getAutoFillOptions } from '@/lib/dataCleaning';
 import { applyTransform } from '@/lib/transformUtils';
 
 export default function AgenticWorkflows() {
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
 
   const [features, setFeatures] = useState(null);
@@ -29,6 +31,8 @@ export default function AgenticWorkflows() {
   const getToken = () => {
     return typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
   };
+
+  const canAccessAgenticWorkflows = (email) => (email || '').toLowerCase().trim() === 'sumitagaraia@gmail.com';
 
   const isWorkflowEnabled = Array.isArray(features) ? features.includes('agentic_workflows') : false;
 
@@ -91,7 +95,37 @@ export default function AgenticWorkflows() {
       const fromLocal = JSON.parse(localStorage.getItem('insightsheet_data') || 'null');
       setData(fromLocal);
     }
-    refreshFeatures();
+
+    const gate = async () => {
+      const apiBase = getApiBase();
+      const token = getToken();
+      if (!apiBase || !token) {
+        navigate('/Login');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${apiBase}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+        const email = body?.email;
+        if (!canAccessAgenticWorkflows(email)) {
+          toast.error('Agentic Workflows is in private beta');
+          navigate('/dashboard');
+          return;
+        }
+      } catch {
+        toast.error('Please login again');
+        navigate('/Login');
+        return;
+      }
+
+      refreshFeatures();
+    };
+
+    gate();
   }, []);
 
   const safeJson = (obj) => {

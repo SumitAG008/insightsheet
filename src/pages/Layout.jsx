@@ -175,6 +175,8 @@ export default function Layout({ children, currentPageName }) {
     }
   }, [user?.email, location.search]);
 
+  const canAccessAgenticWorkflows = (user?.email || '').toLowerCase().trim() === 'sumitagaraia@gmail.com';
+
   const logLogin = async (email) => {
     try {
       const ipData = await getIPAndLocation();
@@ -367,7 +369,7 @@ export default function Layout({ children, currentPageName }) {
                       <button
                         type="button"
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                          [createPageUrl('AgenticAI'), createPageUrl('AgenticWorkflows')].some(p => isActive(p))
+                          [createPageUrl('AgenticAI'), ...(canAccessAgenticWorkflows ? [createPageUrl('AgenticWorkflows')] : [])].some(p => isActive(p))
                             ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
                             : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
                         }`}
@@ -385,12 +387,14 @@ export default function Layout({ children, currentPageName }) {
                           AI Assistant
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('AgenticWorkflows')} className="flex items-center gap-2 cursor-pointer">
-                          <Sparkles className="w-4 h-4" />
-                          Agentic Workflows (Beta)
-                        </Link>
-                      </DropdownMenuItem>
+                      {canAccessAgenticWorkflows && (
+                        <DropdownMenuItem asChild>
+                          <Link to={createPageUrl('AgenticWorkflows')} className="flex items-center gap-2 cursor-pointer">
+                            <Sparkles className="w-4 h-4" />
+                            Agentic Workflows (Beta)
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
 
@@ -653,9 +657,11 @@ export default function Layout({ children, currentPageName }) {
                     <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : 'text-blue-500'}`} /> <span>{t('nav_ai_assistant')}</span>
                   </Link>
 
-                  <Link to={createPageUrl('AgenticWorkflows')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('AgenticWorkflows')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <Sparkles className="w-4 h-4" /> <span>Agentic Workflows (Beta)</span>
-                  </Link>
+                  {canAccessAgenticWorkflows && (
+                    <Link to={createPageUrl('AgenticWorkflows')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('AgenticWorkflows')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                      <Sparkles className="w-4 h-4" /> <span>Agentic Workflows (Beta)</span>
+                    </Link>
+                  )}
 
                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_data_schema')}</p>
                   <Link to={createPageUrl('DataModelCreator')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('DataModelCreator')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>

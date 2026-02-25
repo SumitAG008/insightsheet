@@ -1716,6 +1716,9 @@ async def admin_create_feature_key(
     if not feat:
         raise HTTPException(status_code=400, detail="feature is required")
 
+    if feat == "agentic_workflows" and not payload.user_email:
+        raise HTTPException(status_code=400, detail="user_email is required for agentic_workflows")
+
     exp = None
     if payload.expires_at:
         try:

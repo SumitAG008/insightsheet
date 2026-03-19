@@ -382,8 +382,13 @@ export default function FileToPPT() {
           setProgress(95);
           setProgressMessage('Saving PowerPoint file...');
 
-          // Use consistent naming: original_name_timestamp.pptx
-          const fileName = generateDownloadFilename(file.name, '.pptx');
+          // Use consistent naming: original_name_presentation_highquality.pptx
+          const baseName = (file.name || 'presentation').replace(/\.[^/.]+$/, '');
+          const cleanBaseName = baseName
+            .replace(/[^a-zA-Z0-9_-]/g, '_')
+            .replace(/(_\d+)+$/, '')
+            .substring(0, 80) || 'presentation';
+          const fileName = `${cleanBaseName}_presentation_highquality.pptx`;
           await pptx.writeFile({ fileName });
 
           setProgress(100);

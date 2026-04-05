@@ -4724,9 +4724,12 @@ async def excel_to_ppt(
                 raise HTTPException(status_code=400, detail=f"Exact conversion failed: {err}")
         else:
             ppt_service = ExcelToPPTService()
+            gen_name = (current_user or {}).get("full_name") or (current_user or {}).get("email")
             ppt_data = await ppt_service.convert_excel_to_ppt(
                 io.BytesIO(file_content),
                 file.filename,
+                author_name="Meldra",
+                last_modified_by=gen_name,
             )
 
         if should_apply_watermark(getattr(subscription, "plan", None)):

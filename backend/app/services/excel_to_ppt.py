@@ -38,7 +38,9 @@ class ExcelToPPTService:
     async def convert_excel_to_ppt(
         self,
         excel_file: BinaryIO,
-        filename: str
+        filename: str,
+        author_name: Optional[str] = None,
+        last_modified_by: Optional[str] = None,
     ) -> bytes:
         """
         Convert Excel file to PowerPoint presentation
@@ -59,6 +61,16 @@ class ExcelToPPTService:
             prs = Presentation()
             prs.slide_width = Inches(10)
             prs.slide_height = Inches(5.625)  # 16:9 aspect ratio
+
+            try:
+                cp = prs.core_properties
+                cp.author = author_name or "Meldra"
+                cp.last_modified_by = last_modified_by or (author_name or "Meldra")
+                now = datetime.utcnow()
+                cp.created = now
+                cp.modified = now
+            except Exception:
+                pass
 
             # Add title slide
             self._add_title_slide(prs, filename)
@@ -560,71 +572,34 @@ class ExcelToPPTService:
         slide_w_in = 10.0
         slide_h_in = 5.625
 
-        def _find_connected_bboxes(mask_rows, w, h):
-            visited = [bytearray(w) for _ in range(h)]
-            bboxes = []
-            for y in range(h):
-                row = mask_rows[y]
-                vis = visited[y]
-                for x in range(w):
-                    if row[x] == 0 or vis[x] == 1:
-                        continue
-                    stack = [(x, y)]
-                    vis[x] = 1
-                    minx = maxx = x
-                    miny = maxy = y
-                    count = 0
-                    while stack:
-                        cx, cy = stack.pop()
-                        count += 1
-                        if cx < minx:
-                            minx = cx
-                        if cx > maxx:
-                            maxx = cx
-                        if cy < miny:
-                            miny = cy
-                        if cy > maxy:
-                            maxy = cy
+        def _contiguous_runs(indices, min_len: int):
+            if not indices:
+                return []
+            runs = []
+            start = prev = indices[0]
+            for v in indices[1:]:
+                if v == prev + 1:
+                    prev = v
+                    continue
+                if prev - start + 1 >= min_len:
+                    runs.append((start, prev + 1))
+                start = prev = v
+            if prev - start + 1 >= min_len:
+                runs.append((start, prev + 1))
+            return runs
 
-                        for nx, ny in ((cx - 1, cy), (cx + 1, cy), (cx, cy - 1), (cx, cy + 1)):
-                            if nx < 0 or ny < 0 or nx >= w or ny >= h:
-                                continue
-                            if visited[ny][nx] == 1:
-                                continue
-                            if mask_rows[ny][nx] == 0:
-                                continue
-                            visited[ny][nx] = 1
-                            stack.append((nx, ny))
-
-                    bboxes.append((minx, miny, maxx + 1, maxy + 1, count))
-            return bboxes
-
-        def _merge_overlapping(bboxes):
+        def _split_by_whitespace_gaps(active_runs, gap_min: int):
+            if not active_runs:
+                return []
             out = []
-            for b in sorted(bboxes, key=lambda t: (t[1], t[0])):
-                x0, y0, x1, y1, area = b
-                merged = False
-                for i, ob in enumerate(out):
-                    ox0, oy0, ox1, oy1, oarea = ob
-                    ix0 = max(x0, ox0)
-                    iy0 = max(y0, oy0)
-                    ix1 = min(x1, ox1)
-                    iy1 = min(y1, oy1)
-                    if ix1 <= ix0 or iy1 <= iy0:
-                        continue
-                    inter = (ix1 - ix0) * (iy1 - iy0)
-                    if inter / float((x1 - x0) * (y1 - y0) + (ox1 - ox0) * (oy1 - oy0) - inter) > 0.2:
-                        out[i] = (
-                            min(x0, ox0),
-                            min(y0, oy0),
-                            max(x1, ox1),
-                            max(y1, oy1),
-                            area + oarea,
-                        )
-                        merged = True
-                        break
-                if not merged:
-                    out.append(b)
+            cur_y0, cur_y1 = active_runs[0]
+            for y0, y1 in active_runs[1:]:
+                if y0 - cur_y1 >= gap_min:
+                    out.append((cur_y0, cur_y1))
+                    cur_y0, cur_y1 = y0, y1
+                else:
+                    cur_y1 = max(cur_y1, y1)
+            out.append((cur_y0, cur_y1))
             return out
 
         doc = None
@@ -654,36 +629,98 @@ class ExcelToPPTService:
 
                 px = small.load()
                 w, h = small.size
-                mask_rows = [bytearray(w) for _ in range(h)]
+                # Build a simple non-white mask
+                mask = [bytearray(w) for _ in range(h)]
+                row_counts = [0] * h
+                col_counts = [0] * w
                 for y in range(h):
-                    row = mask_rows[y]
+                    row = mask[y]
+                    cnt = 0
                     for x in range(w):
                         r, g, b = px[x, y]
-                        row[x] = 1 if (r < 245 or g < 245 or b < 245) else 0
+                        v = 1 if (r < 248 or g < 248 or b < 248) else 0
+                        row[x] = v
+                        if v:
+                            cnt += 1
+                            col_counts[x] += 1
+                    row_counts[y] = cnt
 
-                bboxes = _find_connected_bboxes(mask_rows, w, h)
-                if not bboxes:
+                # Identify horizontal content bands (separated by whitespace)
+                active_rows = [y for y in range(h) if row_counts[y] > int(w * 0.03)]
+                row_runs = _contiguous_runs(active_rows, min_len=8)
+                bands = _split_by_whitespace_gaps(row_runs, gap_min=14)
+                if not bands:
                     continue
 
-                page_area = w * h
-                filtered = []
-                for x0, y0, x1, y1, count in bboxes:
-                    bw = x1 - x0
-                    bh = y1 - y0
-                    area = bw * bh
-                    if bw < 60 or bh < 60:
-                        continue
-                    if area < page_area * 0.03:
-                        continue
-                    if area > page_area * 0.80:
-                        continue
-                    filtered.append((x0, y0, x1, y1, area))
+                regions = []
+                for by0, by1 in bands:
+                    # Within each band, split into columns by whitespace
+                    band_col_counts = [0] * w
+                    for y in range(by0, by1):
+                        row = mask[y]
+                        for x in range(w):
+                            if row[x]:
+                                band_col_counts[x] += 1
 
-                filtered = _merge_overlapping(filtered)
-                if not filtered:
+                    active_cols = [x for x in range(w) if band_col_counts[x] > int((by1 - by0) * 0.03)]
+                    col_runs = _contiguous_runs(active_cols, min_len=8)
+                    cols = _split_by_whitespace_gaps(col_runs, gap_min=14)
+                    if not cols:
+                        continue
+
+                    for cx0, cx1 in cols:
+                        # Tighten bbox inside this cell by scanning for nonwhite
+                        minx, miny, maxx, maxy = cx1, by1, cx0, by0
+                        nonwhite = 0
+                        for y in range(by0, by1):
+                            row = mask[y]
+                            for x in range(cx0, cx1):
+                                if not row[x]:
+                                    continue
+                                nonwhite += 1
+                                if x < minx:
+                                    minx = x
+                                if x > maxx:
+                                    maxx = x
+                                if y < miny:
+                                    miny = y
+                                if y > maxy:
+                                    maxy = y
+
+                        if nonwhite == 0 or maxx <= minx or maxy <= miny:
+                            continue
+
+                        # Expand bbox a bit
+                        x0 = max(minx - 6, 0)
+                        y0 = max(miny - 6, 0)
+                        x1 = min(maxx + 7, w)
+                        y1 = min(maxy + 7, h)
+
+                        bw = x1 - x0
+                        bh = y1 - y0
+                        if bw < 90 or bh < 90:
+                            continue
+
+                        area = bw * bh
+                        page_area = w * h
+                        if area < page_area * 0.04:
+                            continue
+                        if area > page_area * 0.85:
+                            continue
+
+                        density = float(nonwhite) / float(max(area, 1))
+                        if density > 0.75:
+                            continue
+
+                        regions.append((x0, y0, x1, y1))
+
+                if not regions:
                     continue
 
-                for x0, y0, x1, y1, _area in filtered[:8]:
+                # Sort by reading order
+                regions = sorted(regions, key=lambda t: (t[1], t[0]))[:12]
+
+                for x0, y0, x1, y1 in regions:
                     fig_num += 1
                     sx0 = int(x0 / scale)
                     sy0 = int(y0 / scale)

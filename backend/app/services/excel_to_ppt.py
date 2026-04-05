@@ -275,7 +275,7 @@ class ExcelToPPTService:
 
         # Prepare chart data
         chart_data = CategoryChartData()
-        chart_data.categories = []
+        categories = []
         values = []
 
         # Aggregate data
@@ -300,8 +300,10 @@ class ExcelToPPTService:
         )[:15]
 
         for category, value in sorted_data:
-            chart_data.categories.append(category)
+            categories.append(category)
             values.append(round(value, 2))
+
+        chart_data.categories = categories
 
         chart_data.add_series(data['headers'][num_idx], values)
 

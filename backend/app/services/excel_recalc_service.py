@@ -7,10 +7,25 @@ from typing import Optional, Tuple
 
 def _find_soffice_exe() -> Optional[str]:
     # Common names on Windows and Linux
-    for name in ("soffice", "soffice.exe", "soffice.com"):
+    for name in ("soffice", "soffice.exe", "soffice.com", "libreoffice"):
         p = shutil.which(name)
         if p:
             return p
+
+    # Common install locations in Debian/Ubuntu containers
+    candidates = (
+        "/usr/bin/soffice",
+        "/usr/bin/libreoffice",
+        "/usr/lib/libreoffice/program/soffice",
+        "/opt/libreoffice/program/soffice",
+    )
+    for p in candidates:
+        try:
+            if os.path.exists(p) and os.access(p, os.X_OK):
+                return p
+        except Exception:
+            continue
+
     return None
 
 

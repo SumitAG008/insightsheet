@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y \
     libmagic1 \
     tesseract-ocr \
     tesseract-ocr-hin \
+    libreoffice \
+    fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements

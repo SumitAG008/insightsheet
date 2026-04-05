@@ -82,13 +82,8 @@ class ExcelToPPTService:
                 # Add data table slide
                 self._add_data_table_slide(prs, sheet_name, data)
 
-                # Add chart slides
-                if analysis['numeric_columns'] and analysis['categorical_columns']:
-                    self._add_chart_slides(prs, sheet_name, data, analysis)
-
-                # Add statistics slide
-                if analysis['numeric_columns']:
-                    self._add_statistics_slide(prs, sheet_name, data, analysis)
+                # Add embedded images (including pasted charts/screenshots) as individual slides
+                self._add_embedded_image_slides(prs, sheet_name, worksheet)
 
             # Save to bytes
             output = io.BytesIO()
@@ -449,3 +444,91 @@ class ExcelToPPTService:
                     })
 
         return analysis
+
+
+    def _add_embedded_image_slides(self, prs: Presentation, sheet_name: str, worksheet) -> None:
+        """Add one slide per embedded image in the worksheet.
+
+        This captures pasted charts/screenshots and any inserted pictures.
+        """
+        images = getattr(worksheet, "_images", None) or []
+        if not images:
+            return
+
+        slide_w_in = 10.0
+        slide_h_in = 5.625
+
+        for idx, img in enumerate(images, start=1):
+            try:
+                img_bytes = None
+
+                # openpyxl Image exposes a private _data() helper in most versions
+                data_fn = getattr(img, "_data", None)
+                if callable(data_fn):
+                    img_bytes = data_fn()
+
+                if not img_bytes:
+                    # Some images may have a ref/path-like attribute
+                    ref = getattr(img, "ref", None) or getattr(img, "path", None)
+                    if ref:
+                        try:
+                            with open(ref, "rb") as f:
+                                img_bytes = f.read()
+                        except Exception:
+                            img_bytes = None
+
+                if not img_bytes:
+                    continue
+
+                blank = prs.slide_layouts[6]
+                slide = prs.slides.add_slide(blank)
+
+                # Title
+                title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.25), Inches(9.0), Inches(0.5))
+                title_frame = title_box.text_frame
+                title_frame.text = f"{sheet_name} - Figure {idx}"
+                title_para = title_frame.paragraphs[0]
+                title_para.font.size = Pt(20)
+                title_para.font.bold = True
+
+                # Add image, fit-to-slide with margins
+                stream = io.BytesIO(img_bytes)
+                stream.seek(0)
+
+                try:
+                    from PIL import Image as PILImage
+                    with PILImage.open(io.BytesIO(img_bytes)) as pil:
+                        w_px, h_px = pil.size
+                except Exception:
+                    w_px, h_px = 0, 0
+
+                # Layout region for image below title
+                margin_l = 0.5
+                margin_r = 0.5
+                margin_top = 0.9
+                margin_bottom = 0.5
+                max_w = slide_w_in - margin_l - margin_r
+                max_h = slide_h_in - margin_top - margin_bottom
+
+                if w_px > 0 and h_px > 0:
+                    # Use pixels ratio only; absolute PPI isn't needed
+                    scale = min(max_w / float(w_px), max_h / float(h_px))
+                    w_in = float(w_px) * scale
+                    h_in = float(h_px) * scale
+                else:
+                    # Fallback: just fill the region
+                    w_in, h_in = max_w, max_h
+
+                left = margin_l + max((max_w - w_in) / 2.0, 0.0)
+                top = margin_top + max((max_h - h_in) / 2.0, 0.0)
+
+                slide.shapes.add_picture(
+                    stream,
+                    Inches(left),
+                    Inches(top),
+                    width=Inches(w_in),
+                    height=Inches(h_in),
+                )
+            except Exception:
+                # Best-effort: skip problematic images
+                continue

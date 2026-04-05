@@ -134,9 +134,9 @@ export default function FileToPPT() {
       setProgressMessage('Uploading spreadsheet...');
 
       setProgress(40);
-      setProgressMessage('Rendering charts & images (server-side)...');
+      setProgressMessage('Converting spreadsheet (server-side)...');
 
-      const blob = await backendApi.files.excelToPpt(file, { mode: 'exact' });
+      const blob = await backendApi.files.excelToPpt(file);
 
       setProgress(85);
       setProgressMessage('Downloading PowerPoint...');

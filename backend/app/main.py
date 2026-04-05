@@ -682,6 +682,13 @@ def _consume_transaction(db: Session, subscription: Subscription, *args) -> None
     db.commit()
 
 
+def _enforce_conversion_quota(db: Session, user_email: str, conversion_type: str, subscription: Subscription) -> None:
+    # Backwards-compatible wrapper used by multiple endpoints.
+    # All conversions are metered via the monthly transactions meter.
+    _enforce_transactions_quota(subscription)
+    _consume_transaction(db, subscription, user_email, conversion_type)
+
+
 def _apply_admin_entitlements(subscription: Subscription, user_email: str) -> None:
     admin_email = (os.getenv("ADMIN_PREMIUM_EMAIL") or "sumitagaria@gmail.com").strip().lower()
     if (user_email or "").strip().lower() != admin_email:

@@ -16,6 +16,8 @@ import io
 import logging
 from datetime import datetime
 
+from .excel_recalc_service import convert_spreadsheet_to_pdf_bytes
+
 logger = logging.getLogger(__name__)
 
 
@@ -84,6 +86,14 @@ class ExcelToPPTService:
 
                 # Add embedded images (including pasted charts/screenshots) as individual slides
                 self._add_embedded_image_slides(prs, sheet_name, worksheet)
+
+            # Fallback for real Excel chart objects: render workbook via LibreOffice and crop figures
+            try:
+                pdf_bytes, _ = convert_spreadsheet_to_pdf_bytes(excel_data, filename)
+                if pdf_bytes:
+                    self._add_rendered_figure_slides(prs, pdf_bytes)
+            except Exception:
+                pass
 
             # Save to bytes
             output = io.BytesIO()
@@ -534,3 +544,198 @@ class ExcelToPPTService:
             except Exception:
                 # Best-effort: skip problematic images
                 continue
+
+
+    def _add_rendered_figure_slides(self, prs: Presentation, pdf_bytes: bytes) -> None:
+        try:
+            import fitz
+        except Exception:
+            return
+
+        try:
+            from PIL import Image as PILImage
+        except Exception:
+            return
+
+        slide_w_in = 10.0
+        slide_h_in = 5.625
+
+        def _find_connected_bboxes(mask_rows, w, h):
+            visited = [bytearray(w) for _ in range(h)]
+            bboxes = []
+            for y in range(h):
+                row = mask_rows[y]
+                vis = visited[y]
+                for x in range(w):
+                    if row[x] == 0 or vis[x] == 1:
+                        continue
+                    stack = [(x, y)]
+                    vis[x] = 1
+                    minx = maxx = x
+                    miny = maxy = y
+                    count = 0
+                    while stack:
+                        cx, cy = stack.pop()
+                        count += 1
+                        if cx < minx:
+                            minx = cx
+                        if cx > maxx:
+                            maxx = cx
+                        if cy < miny:
+                            miny = cy
+                        if cy > maxy:
+                            maxy = cy
+
+                        for nx, ny in ((cx - 1, cy), (cx + 1, cy), (cx, cy - 1), (cx, cy + 1)):
+                            if nx < 0 or ny < 0 or nx >= w or ny >= h:
+                                continue
+                            if visited[ny][nx] == 1:
+                                continue
+                            if mask_rows[ny][nx] == 0:
+                                continue
+                            visited[ny][nx] = 1
+                            stack.append((nx, ny))
+
+                    bboxes.append((minx, miny, maxx + 1, maxy + 1, count))
+            return bboxes
+
+        def _merge_overlapping(bboxes):
+            out = []
+            for b in sorted(bboxes, key=lambda t: (t[1], t[0])):
+                x0, y0, x1, y1, area = b
+                merged = False
+                for i, ob in enumerate(out):
+                    ox0, oy0, ox1, oy1, oarea = ob
+                    ix0 = max(x0, ox0)
+                    iy0 = max(y0, oy0)
+                    ix1 = min(x1, ox1)
+                    iy1 = min(y1, oy1)
+                    if ix1 <= ix0 or iy1 <= iy0:
+                        continue
+                    inter = (ix1 - ix0) * (iy1 - iy0)
+                    if inter / float((x1 - x0) * (y1 - y0) + (ox1 - ox0) * (oy1 - oy0) - inter) > 0.2:
+                        out[i] = (
+                            min(x0, ox0),
+                            min(y0, oy0),
+                            max(x1, ox1),
+                            max(y1, oy1),
+                            area + oarea,
+                        )
+                        merged = True
+                        break
+                if not merged:
+                    out.append(b)
+            return out
+
+        doc = None
+        try:
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            fig_num = 0
+            matrix = fitz.Matrix(2.0, 2.0)
+
+            for p_idx in range(len(doc)):
+                page = doc[p_idx]
+                pix = page.get_pixmap(matrix=matrix, alpha=False)
+                if pix is None or pix.width <= 0 or pix.height <= 0:
+                    continue
+
+                try:
+                    if pix.colorspace is None or pix.colorspace.n != 3:
+                        pix = fitz.Pixmap(fitz.csRGB, pix)
+                except Exception:
+                    pass
+
+                img = PILImage.frombytes("RGB", (pix.width, pix.height), pix.samples)
+
+                target_w = 600
+                scale = target_w / float(img.size[0]) if img.size[0] else 1.0
+                small_h = max(int(img.size[1] * scale), 1)
+                small = img.resize((target_w, small_h))
+
+                px = small.load()
+                w, h = small.size
+                mask_rows = [bytearray(w) for _ in range(h)]
+                for y in range(h):
+                    row = mask_rows[y]
+                    for x in range(w):
+                        r, g, b = px[x, y]
+                        row[x] = 1 if (r < 245 or g < 245 or b < 245) else 0
+
+                bboxes = _find_connected_bboxes(mask_rows, w, h)
+                if not bboxes:
+                    continue
+
+                page_area = w * h
+                filtered = []
+                for x0, y0, x1, y1, count in bboxes:
+                    bw = x1 - x0
+                    bh = y1 - y0
+                    area = bw * bh
+                    if bw < 60 or bh < 60:
+                        continue
+                    if area < page_area * 0.03:
+                        continue
+                    if area > page_area * 0.80:
+                        continue
+                    filtered.append((x0, y0, x1, y1, area))
+
+                filtered = _merge_overlapping(filtered)
+                if not filtered:
+                    continue
+
+                for x0, y0, x1, y1, _area in filtered[:8]:
+                    fig_num += 1
+                    sx0 = int(x0 / scale)
+                    sy0 = int(y0 / scale)
+                    sx1 = int(x1 / scale)
+                    sy1 = int(y1 / scale)
+                    sx0 = max(sx0 - 10, 0)
+                    sy0 = max(sy0 - 10, 0)
+                    sx1 = min(sx1 + 10, img.size[0])
+                    sy1 = min(sy1 + 10, img.size[1])
+
+                    crop = img.crop((sx0, sy0, sx1, sy1))
+                    buf = io.BytesIO()
+                    crop.save(buf, format="PNG")
+                    crop_bytes = buf.getvalue()
+                    if not crop_bytes:
+                        continue
+
+                    slide = prs.slides.add_slide(prs.slide_layouts[6])
+
+                    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.25), Inches(9.0), Inches(0.5))
+                    title_frame = title_box.text_frame
+                    title_frame.text = f"Figure {fig_num}"
+                    title_para = title_frame.paragraphs[0]
+                    title_para.font.size = Pt(20)
+                    title_para.font.bold = True
+
+                    # Fit image into remaining area
+                    margin_l = 0.5
+                    margin_r = 0.5
+                    margin_top = 0.9
+                    margin_bottom = 0.5
+                    max_w = slide_w_in - margin_l - margin_r
+                    max_h = slide_h_in - margin_top - margin_bottom
+                    cw, ch = crop.size
+                    if cw and ch:
+                        s = min(max_w / float(cw), max_h / float(ch))
+                        w_in = float(cw) * s
+                        h_in = float(ch) * s
+                    else:
+                        w_in, h_in = max_w, max_h
+                    left = margin_l + max((max_w - w_in) / 2.0, 0.0)
+                    top = margin_top + max((max_h - h_in) / 2.0, 0.0)
+
+                    stream = io.BytesIO(crop_bytes)
+                    stream.seek(0)
+                    slide.shapes.add_picture(stream, Inches(left), Inches(top), width=Inches(w_in), height=Inches(h_in))
+
+        except Exception:
+            return
+        finally:
+            try:
+                if doc is not None:
+                    doc.close()
+            except Exception:
+                pass

@@ -581,11 +581,14 @@ export const backendApi = {
       return response.json();
     },
 
-    excelToPpt: async (file) => {
+    excelToPpt: async (file, options = {}) => {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await apiCall('/api/files/excel-to-ppt', {
+      const mode = (options && options.mode) ? String(options.mode) : '';
+      const qs = mode ? `?mode=${encodeURIComponent(mode)}` : '';
+
+      const response = await apiCall(`/api/files/excel-to-ppt${qs}` , {
         method: 'POST',
         body: formData,
       });

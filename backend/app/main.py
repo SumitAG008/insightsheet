@@ -67,7 +67,7 @@ from app.services.ocr_service import (
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
 from app.services.universal_excel_processor import UniversalExcelProcessor
-from app.services.excel_recalc_service import recalc_xlsx_with_libreoffice_bytes
+from app.services.excel_recalc_service import recalc_xlsx_with_libreoffice_bytes, convert_spreadsheet_to_pdf_bytes
 from app.services.ingestion_service import IngestionService, IngestLimits, build_ingestion_prompt_block
 from app.services.standardize_service import StandardizeService, StandardizeOptions
 from app.services.reconciliation_service import ReconciliationService, ReconcileOptions
@@ -4675,6 +4675,7 @@ async def developer_generate_pl_with_file(
 @app.post("/api/files/excel-to-ppt")
 async def excel_to_ppt(
     file: UploadFile = File(...),
+    mode: str = Query("smart"),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -4702,12 +4703,24 @@ async def excel_to_ppt(
         if not file.filename.endswith((".xlsx", ".xls", ".csv")):
             raise HTTPException(status_code=400, detail="Invalid file type")
 
+        m = (mode or "smart").strip().lower()
+        if m not in ("smart", "exact"):
+            m = "smart"
+
         # Convert to PPT
-        ppt_service = ExcelToPPTService()
-        ppt_data = await ppt_service.convert_excel_to_ppt(
-            io.BytesIO(file_content),
-            file.filename,
-        )
+        if m == "exact":
+            pdf_bytes, msg = convert_spreadsheet_to_pdf_bytes(file_content, file.filename)
+            if not pdf_bytes:
+                raise HTTPException(status_code=400, detail=f"Exact conversion unavailable: {msg}")
+            ppt_data, err = pdf_to_pptx(pdf_bytes)
+            if err:
+                raise HTTPException(status_code=400, detail=f"Exact conversion failed: {err}")
+        else:
+            ppt_service = ExcelToPPTService()
+            ppt_data = await ppt_service.convert_excel_to_ppt(
+                io.BytesIO(file_content),
+                file.filename,
+            )
 
         if should_apply_watermark(getattr(subscription, "plan", None)):
             ppt_data = watermark_pptx_bytes(ppt_data)
@@ -4725,13 +4738,13 @@ async def excel_to_ppt(
 
         logger.info(f"Excel to PPT conversion: {file.filename} by {current_user['email']}")
 
-        base = _ascii_safe_filename(file.filename.replace(".xlsx", "").replace(".xls", ""))
+        base = _ascii_safe_filename(file.filename.replace(".xlsx", "").replace(".xls", "").replace(".csv", ""))
         # Return file as download
         return StreamingResponse(
             io.BytesIO(ppt_data),
             media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
             headers={
-                "Content-Disposition": f"attachment; filename={base}_presentation.pptx"
+                "Content-Disposition": f"attachment; filename={base}_presentation_highquality.pptx"
             },
         )
 

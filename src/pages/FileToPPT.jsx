@@ -4,6 +4,7 @@ import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { generateDownloadFilename } from '@/utils/fileNaming';
 import {
   FileSpreadsheet, FileText, Download, Upload,
   Loader2, CheckCircle, AlertCircle, Sparkles,
@@ -140,13 +141,7 @@ export default function FileToPPT() {
       setProgress(85);
       setProgressMessage('Downloading PowerPoint...');
 
-      // Use consistent naming: original_name_presentation_highquality.pptx
-      const baseName = (file.name || 'presentation').replace(/\.[^/.]+$/, '');
-      const cleanBaseName = baseName
-        .replace(/[^a-zA-Z0-9_-]/g, '_')
-        .replace(/(_\d+)+$/, '')
-        .substring(0, 80) || 'presentation';
-      const fileName = `${cleanBaseName}_presentation_highquality.pptx`;
+      const fileName = generateDownloadFilename(file.name || 'presentation.xlsx', '.pptx');
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -252,13 +247,7 @@ export default function FileToPPT() {
           setProgress(95);
           setProgressMessage('Saving PowerPoint...');
 
-          // Use consistent naming: original_name_presentation_highquality.pptx
-          const baseName = (file.name || 'presentation').replace(/\.[^/.]+$/, '');
-          const cleanBaseName = baseName
-            .replace(/[^a-zA-Z0-9_-]/g, '_')
-            .replace(/(_\d+)+$/, '')
-            .substring(0, 80) || 'presentation';
-          const fileName = `${cleanBaseName}_presentation_highquality.pptx`;
+          const fileName = generateDownloadFilename(file.name || 'presentation.pdf', '.pptx');
           await pptx.writeFile({ fileName });
 
           setProgress(100);

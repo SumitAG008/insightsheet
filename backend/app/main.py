@@ -4739,12 +4739,13 @@ async def excel_to_ppt(
         logger.info(f"Excel to PPT conversion: {file.filename} by {current_user['email']}")
 
         base = _ascii_safe_filename(file.filename.replace(".xlsx", "").replace(".xls", "").replace(".csv", ""))
+        ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")[:-3]
         # Return file as download
         return StreamingResponse(
             io.BytesIO(ppt_data),
             media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
             headers={
-                "Content-Disposition": f"attachment; filename={base}_presentation_highquality.pptx"
+                "Content-Disposition": f"attachment; filename={base}_{ts}.pptx"
             },
         )
 

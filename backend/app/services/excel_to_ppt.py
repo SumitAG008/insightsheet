@@ -75,8 +75,18 @@ class ExcelToPPTService:
             # Add title slide
             self._add_title_slide(prs, filename)
 
+            rendered_pages = None
+            try:
+                pdf_bytes, _ = convert_spreadsheet_to_pdf_bytes(excel_data, filename)
+                if pdf_bytes:
+                    rendered_pages = self._render_pdf_pages_to_images(pdf_bytes)
+            except Exception:
+                rendered_pages = None
+
             # Process each worksheet
-            for sheet_name in workbook.sheetnames:
+            fig_num = 0
+
+            for sheet_idx, sheet_name in enumerate(workbook.sheetnames):
                 logger.info(f"Processing sheet: {sheet_name}")
                 worksheet = workbook[sheet_name]
 
@@ -99,13 +109,17 @@ class ExcelToPPTService:
                 # Add embedded images (including pasted charts/screenshots) as individual slides
                 self._add_embedded_image_slides(prs, sheet_name, worksheet)
 
-            # Fallback for real Excel chart objects: render workbook via LibreOffice and crop figures
-            try:
-                pdf_bytes, _ = convert_spreadsheet_to_pdf_bytes(excel_data, filename)
-                if pdf_bytes:
-                    self._add_rendered_figure_slides(prs, pdf_bytes)
-            except Exception:
-                pass
+                # Fallback for real Excel chart objects (Insert -> Chart): use rendered PDF page for this sheet
+                try:
+                    if rendered_pages and sheet_idx < len(rendered_pages):
+                        fig_num = self._add_rendered_figure_slides_from_page_image(
+                            prs,
+                            sheet_name,
+                            rendered_pages[sheet_idx],
+                            fig_num,
+                        )
+                except Exception:
+                    pass
 
             # Save to bytes
             output = io.BytesIO()
@@ -558,16 +572,45 @@ class ExcelToPPTService:
                 continue
 
 
-    def _add_rendered_figure_slides(self, prs: Presentation, pdf_bytes: bytes) -> None:
+    def _render_pdf_pages_to_images(self, pdf_bytes: bytes):
         try:
             import fitz
         except Exception:
-            return
+            return None
 
         try:
             from PIL import Image as PILImage
         except Exception:
-            return
+            return None
+
+        try:
+            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+            try:
+                pages = []
+                matrix = fitz.Matrix(2.0, 2.0)
+                for p_idx in range(len(doc)):
+                    page = doc[p_idx]
+                    pix = page.get_pixmap(matrix=matrix, alpha=False)
+                    if pix is None or pix.width <= 0 or pix.height <= 0:
+                        continue
+                    try:
+                        if pix.colorspace is None or pix.colorspace.n != 3:
+                            pix = fitz.Pixmap(fitz.csRGB, pix)
+                    except Exception:
+                        pass
+                    pages.append(PILImage.frombytes("RGB", (pix.width, pix.height), pix.samples))
+                return pages
+            finally:
+                doc.close()
+        except Exception:
+            return None
+
+
+    def _add_rendered_figure_slides_from_page_image(self, prs: Presentation, sheet_name: str, page_img, fig_num: int) -> int:
+        try:
+            from PIL import ImageStat as PILImageStat
+        except Exception:
+            return fig_num
 
         slide_w_in = 10.0
         slide_h_in = 5.625
@@ -602,177 +645,178 @@ class ExcelToPPTService:
             out.append((cur_y0, cur_y1))
             return out
 
-        doc = None
         try:
-            doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-            fig_num = 0
-            matrix = fitz.Matrix(2.0, 2.0)
+            img = page_img
+            target_w = 600
+            scale = target_w / float(img.size[0]) if img.size[0] else 1.0
+            small_h = max(int(img.size[1] * scale), 1)
+            small = img.resize((target_w, small_h))
 
-            for p_idx in range(len(doc)):
-                page = doc[p_idx]
-                pix = page.get_pixmap(matrix=matrix, alpha=False)
-                if pix is None or pix.width <= 0 or pix.height <= 0:
+            px = small.load()
+            w, h = small.size
+            # Build a simple non-white mask
+            mask = [bytearray(w) for _ in range(h)]
+            row_counts = [0] * h
+            col_counts = [0] * w
+            for y in range(h):
+                row = mask[y]
+                cnt = 0
+                for x in range(w):
+                    r, g, b = px[x, y]
+                    v = 1 if (r < 248 or g < 248 or b < 248) else 0
+                    row[x] = v
+                    if v:
+                        cnt += 1
+                        col_counts[x] += 1
+                row_counts[y] = cnt
+
+            # Identify horizontal content bands (separated by whitespace)
+            active_rows = [y for y in range(h) if row_counts[y] > int(w * 0.03)]
+            row_runs = _contiguous_runs(active_rows, min_len=8)
+            bands = _split_by_whitespace_gaps(row_runs, gap_min=14)
+            if not bands:
+                return fig_num
+
+            regions = []
+            for by0, by1 in bands:
+                # Within each band, split into columns by whitespace
+                band_col_counts = [0] * w
+                for y in range(by0, by1):
+                    row = mask[y]
+                    for x in range(w):
+                        if row[x]:
+                            band_col_counts[x] += 1
+
+                active_cols = [x for x in range(w) if band_col_counts[x] > int((by1 - by0) * 0.03)]
+                col_runs = _contiguous_runs(active_cols, min_len=8)
+                cols = _split_by_whitespace_gaps(col_runs, gap_min=14)
+                if not cols:
+                    continue
+
+                for cx0, cx1 in cols:
+                    # Tighten bbox inside this cell by scanning for nonwhite
+                    minx, miny, maxx, maxy = cx1, by1, cx0, by0
+                    nonwhite = 0
+                    for y in range(by0, by1):
+                        row = mask[y]
+                        for x in range(cx0, cx1):
+                            if not row[x]:
+                                continue
+                            nonwhite += 1
+                            if x < minx:
+                                minx = x
+                            if x > maxx:
+                                maxx = x
+                            if y < miny:
+                                miny = y
+                            if y > maxy:
+                                maxy = y
+
+                    if nonwhite == 0 or maxx <= minx or maxy <= miny:
+                        continue
+
+                    # Expand bbox a bit
+                    x0 = max(minx - 6, 0)
+                    y0 = max(miny - 6, 0)
+                    x1 = min(maxx + 7, w)
+                    y1 = min(maxy + 7, h)
+
+                    bw = x1 - x0
+                    bh = y1 - y0
+                    if bw < 90 or bh < 90:
+                        continue
+
+                    area = bw * bh
+                    page_area = w * h
+                    if area < page_area * 0.04:
+                        continue
+                    if area > page_area * 0.85:
+                        continue
+
+                    density = float(nonwhite) / float(max(area, 1))
+                    if density > 0.75:
+                        continue
+
+                    regions.append((x0, y0, x1, y1))
+
+            if not regions:
+                return fig_num
+
+            # Score and select best regions to avoid table fragments / strips
+            scored = []
+            for x0, y0, x1, y1 in regions:
+                sx0 = int(x0 / scale)
+                sy0 = int(y0 / scale)
+                sx1 = int(x1 / scale)
+                sy1 = int(y1 / scale)
+                sx0 = max(sx0 - 10, 0)
+                sy0 = max(sy0 - 10, 0)
+                sx1 = min(sx1 + 10, img.size[0])
+                sy1 = min(sy1 + 10, img.size[1])
+                crop = img.crop((sx0, sy0, sx1, sy1))
+
+                cw, ch = crop.size
+                if cw <= 0 or ch <= 0:
+                    continue
+                ar = float(cw) / float(ch)
+                if ar < 0.35 or ar > 3.5:
                     continue
 
                 try:
-                    if pix.colorspace is None or pix.colorspace.n != 3:
-                        pix = fitz.Pixmap(fitz.csRGB, pix)
+                    stat = PILImageStat.Stat(crop)
+                    std = sum(stat.stddev) / max(len(stat.stddev), 1)
                 except Exception:
-                    pass
+                    std = 0.0
 
-                img = PILImage.frombytes("RGB", (pix.width, pix.height), pix.samples)
+                # Region density already filtered; prefer higher color variance
+                score = std
+                scored.append((score, crop))
 
-                target_w = 600
-                scale = target_w / float(img.size[0]) if img.size[0] else 1.0
-                small_h = max(int(img.size[1] * scale), 1)
-                small = img.resize((target_w, small_h))
+            if not scored:
+                return fig_num
 
-                px = small.load()
-                w, h = small.size
-                # Build a simple non-white mask
-                mask = [bytearray(w) for _ in range(h)]
-                row_counts = [0] * h
-                col_counts = [0] * w
-                for y in range(h):
-                    row = mask[y]
-                    cnt = 0
-                    for x in range(w):
-                        r, g, b = px[x, y]
-                        v = 1 if (r < 248 or g < 248 or b < 248) else 0
-                        row[x] = v
-                        if v:
-                            cnt += 1
-                            col_counts[x] += 1
-                    row_counts[y] = cnt
+            scored.sort(key=lambda t: t[0], reverse=True)
+            best = [c for _s, c in scored[:6]]
 
-                # Identify horizontal content bands (separated by whitespace)
-                active_rows = [y for y in range(h) if row_counts[y] > int(w * 0.03)]
-                row_runs = _contiguous_runs(active_rows, min_len=8)
-                bands = _split_by_whitespace_gaps(row_runs, gap_min=14)
-                if not bands:
+            for crop in best:
+                fig_num += 1
+                buf = io.BytesIO()
+                crop.save(buf, format="PNG")
+                crop_bytes = buf.getvalue()
+                if not crop_bytes:
                     continue
 
-                regions = []
-                for by0, by1 in bands:
-                    # Within each band, split into columns by whitespace
-                    band_col_counts = [0] * w
-                    for y in range(by0, by1):
-                        row = mask[y]
-                        for x in range(w):
-                            if row[x]:
-                                band_col_counts[x] += 1
+                slide = prs.slides.add_slide(prs.slide_layouts[6])
 
-                    active_cols = [x for x in range(w) if band_col_counts[x] > int((by1 - by0) * 0.03)]
-                    col_runs = _contiguous_runs(active_cols, min_len=8)
-                    cols = _split_by_whitespace_gaps(col_runs, gap_min=14)
-                    if not cols:
-                        continue
+                title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.25), Inches(9.0), Inches(0.5))
+                title_frame = title_box.text_frame
+                title_frame.text = f"{sheet_name} - Figure {fig_num}"
+                title_para = title_frame.paragraphs[0]
+                title_para.font.size = Pt(20)
+                title_para.font.bold = True
 
-                    for cx0, cx1 in cols:
-                        # Tighten bbox inside this cell by scanning for nonwhite
-                        minx, miny, maxx, maxy = cx1, by1, cx0, by0
-                        nonwhite = 0
-                        for y in range(by0, by1):
-                            row = mask[y]
-                            for x in range(cx0, cx1):
-                                if not row[x]:
-                                    continue
-                                nonwhite += 1
-                                if x < minx:
-                                    minx = x
-                                if x > maxx:
-                                    maxx = x
-                                if y < miny:
-                                    miny = y
-                                if y > maxy:
-                                    maxy = y
+                # Fit image into remaining area
+                margin_l = 0.5
+                margin_r = 0.5
+                margin_top = 0.9
+                margin_bottom = 0.5
+                max_w = slide_w_in - margin_l - margin_r
+                max_h = slide_h_in - margin_top - margin_bottom
+                cw, ch = crop.size
+                if cw and ch:
+                    s = min(max_w / float(cw), max_h / float(ch))
+                    w_in = float(cw) * s
+                    h_in = float(ch) * s
+                else:
+                    w_in, h_in = max_w, max_h
+                left = margin_l + max((max_w - w_in) / 2.0, 0.0)
+                top = margin_top + max((max_h - h_in) / 2.0, 0.0)
 
-                        if nonwhite == 0 or maxx <= minx or maxy <= miny:
-                            continue
-
-                        # Expand bbox a bit
-                        x0 = max(minx - 6, 0)
-                        y0 = max(miny - 6, 0)
-                        x1 = min(maxx + 7, w)
-                        y1 = min(maxy + 7, h)
-
-                        bw = x1 - x0
-                        bh = y1 - y0
-                        if bw < 90 or bh < 90:
-                            continue
-
-                        area = bw * bh
-                        page_area = w * h
-                        if area < page_area * 0.04:
-                            continue
-                        if area > page_area * 0.85:
-                            continue
-
-                        density = float(nonwhite) / float(max(area, 1))
-                        if density > 0.75:
-                            continue
-
-                        regions.append((x0, y0, x1, y1))
-
-                if not regions:
-                    continue
-
-                # Sort by reading order
-                regions = sorted(regions, key=lambda t: (t[1], t[0]))[:12]
-
-                for x0, y0, x1, y1 in regions:
-                    fig_num += 1
-                    sx0 = int(x0 / scale)
-                    sy0 = int(y0 / scale)
-                    sx1 = int(x1 / scale)
-                    sy1 = int(y1 / scale)
-                    sx0 = max(sx0 - 10, 0)
-                    sy0 = max(sy0 - 10, 0)
-                    sx1 = min(sx1 + 10, img.size[0])
-                    sy1 = min(sy1 + 10, img.size[1])
-
-                    crop = img.crop((sx0, sy0, sx1, sy1))
-                    buf = io.BytesIO()
-                    crop.save(buf, format="PNG")
-                    crop_bytes = buf.getvalue()
-                    if not crop_bytes:
-                        continue
-
-                    slide = prs.slides.add_slide(prs.slide_layouts[6])
-
-                    title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.25), Inches(9.0), Inches(0.5))
-                    title_frame = title_box.text_frame
-                    title_frame.text = f"Figure {fig_num}"
-                    title_para = title_frame.paragraphs[0]
-                    title_para.font.size = Pt(20)
-                    title_para.font.bold = True
-
-                    # Fit image into remaining area
-                    margin_l = 0.5
-                    margin_r = 0.5
-                    margin_top = 0.9
-                    margin_bottom = 0.5
-                    max_w = slide_w_in - margin_l - margin_r
-                    max_h = slide_h_in - margin_top - margin_bottom
-                    cw, ch = crop.size
-                    if cw and ch:
-                        s = min(max_w / float(cw), max_h / float(ch))
-                        w_in = float(cw) * s
-                        h_in = float(ch) * s
-                    else:
-                        w_in, h_in = max_w, max_h
-                    left = margin_l + max((max_w - w_in) / 2.0, 0.0)
-                    top = margin_top + max((max_h - h_in) / 2.0, 0.0)
-
-                    stream = io.BytesIO(crop_bytes)
-                    stream.seek(0)
-                    slide.shapes.add_picture(stream, Inches(left), Inches(top), width=Inches(w_in), height=Inches(h_in))
+                stream = io.BytesIO(crop_bytes)
+                stream.seek(0)
+                slide.shapes.add_picture(stream, Inches(left), Inches(top), width=Inches(w_in), height=Inches(h_in))
 
         except Exception:
-            return
-        finally:
-            try:
-                if doc is not None:
-                    doc.close()
-            except Exception:
-                pass
+            return fig_num
+
+        return fig_num

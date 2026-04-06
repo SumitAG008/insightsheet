@@ -626,6 +626,17 @@ class ExcelToPPTService:
         if not charts:
             return fig_num
 
+        def _excel_col_width_to_px(width_chars: float) -> int:
+            # Approximation used by Excel: https://support.microsoft.com/en-us/office/column-widths-0c8b6b40-1f70-4aa2-a34a-8c7b81b6f6c2
+            # pixels = trunc(((256*width + trunc(128/7))/256) * 7)
+            try:
+                w = float(width_chars)
+            except Exception:
+                w = 8.43
+            if w <= 0:
+                w = 8.43
+            return int((((256.0 * w + int(128.0 / 7.0)) / 256.0) * 7.0))
+
         def _col_width_px(col_letter: str) -> float:
             try:
                 w = worksheet.column_dimensions[col_letter].width
@@ -633,7 +644,7 @@ class ExcelToPPTService:
                 w = None
             if not w:
                 w = 8.43
-            return float(w) * 7.0 + 5.0
+            return float(_excel_col_width_to_px(w))
 
         def _row_height_px(row_idx: int) -> float:
             try:
@@ -644,6 +655,10 @@ class ExcelToPPTService:
                 h = 15.0
             return float(h) * (96.0 / 72.0)
 
+        def _emu_to_px(emu: int) -> float:
+            # 1 inch = 914400 EMU, assume 96 dpi
+            return float(emu or 0) / (914400.0 / 96.0)
+
         def _cell_xy_px(col_idx_1: int, row_idx_1: int) -> tuple:
             x = 0.0
             for c in range(1, max(col_idx_1, 1)):
@@ -652,6 +667,51 @@ class ExcelToPPTService:
             for r in range(1, max(row_idx_1, 1)):
                 y += _row_height_px(r)
             return x, y
+
+        def _tighten_to_nonwhite(img_in, threshold: int = 248, pad: int = 6):
+            try:
+                w0, h0 = img_in.size
+                if w0 <= 0 or h0 <= 0:
+                    return img_in
+                px = img_in.load()
+
+                def row_nonwhite(y):
+                    for x in range(w0):
+                        r, g, b = px[x, y]
+                        if r < threshold or g < threshold or b < threshold:
+                            return True
+                    return False
+
+                def col_nonwhite(x):
+                    for y in range(h0):
+                        r, g, b = px[x, y]
+                        if r < threshold or g < threshold or b < threshold:
+                            return True
+                    return False
+
+                top = 0
+                while top < h0 and not row_nonwhite(top):
+                    top += 1
+                bottom = h0 - 1
+                while bottom > top and not row_nonwhite(bottom):
+                    bottom -= 1
+                left = 0
+                while left < w0 and not col_nonwhite(left):
+                    left += 1
+                right = w0 - 1
+                while right > left and not col_nonwhite(right):
+                    right -= 1
+
+                left = max(left - pad, 0)
+                top = max(top - pad, 0)
+                right = min(right + pad, w0 - 1)
+                bottom = min(bottom + pad, h0 - 1)
+
+                if right - left < 40 or bottom - top < 40:
+                    return img_in
+                return img_in.crop((left, top, right + 1, bottom + 1))
+            except Exception:
+                return img_in
 
         img = page_img
         img_w, img_h = img.size
@@ -706,6 +766,19 @@ class ExcelToPPTService:
                 x0, y0 = _cell_xy_px(c0, r0)
                 x1, y1 = _cell_xy_px(max(c1, c0 + 1), max(r1, r0 + 1))
 
+                # Anchor offsets (EMU) within the start/end cells
+                try:
+                    x0 += _emu_to_px(int(getattr(fr, "colOff", 0) or 0))
+                    y0 += _emu_to_px(int(getattr(fr, "rowOff", 0) or 0))
+                except Exception:
+                    pass
+                if to is not None:
+                    try:
+                        x1 += _emu_to_px(int(getattr(to, "colOff", 0) or 0))
+                        y1 += _emu_to_px(int(getattr(to, "rowOff", 0) or 0))
+                    except Exception:
+                        pass
+
                 px0 = int(max(min(x0 * scale_x, img_w - 1), 0))
                 py0 = int(max(min(y0 * scale_y, img_h - 1), 0))
                 px1 = int(max(min(x1 * scale_x, img_w), px0 + 1))
@@ -718,6 +791,7 @@ class ExcelToPPTService:
                 py1 = min(py1 + pad, img_h)
 
                 crop = img.crop((px0, py0, px1, py1))
+                crop = _tighten_to_nonwhite(crop)
                 cw, chh = crop.size
                 if cw < 120 or chh < 120:
                     continue

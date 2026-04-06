@@ -112,12 +112,22 @@ class ExcelToPPTService:
                 # Fallback for real Excel chart objects (Insert -> Chart): use rendered PDF page for this sheet
                 try:
                     if rendered_pages and sheet_idx < len(rendered_pages):
-                        fig_num = self._add_rendered_figure_slides_from_page_image(
+                        page_img = rendered_pages[sheet_idx]
+                        before = fig_num
+                        fig_num = self._add_chart_slides_from_anchors(
                             prs,
                             sheet_name,
-                            rendered_pages[sheet_idx],
+                            worksheet,
+                            page_img,
                             fig_num,
                         )
+                        if fig_num == before:
+                            fig_num = self._add_rendered_figure_slides_from_page_image(
+                                prs,
+                                sheet_name,
+                                page_img,
+                                fig_num,
+                            )
                 except Exception:
                     pass
 
@@ -604,6 +614,158 @@ class ExcelToPPTService:
                 doc.close()
         except Exception:
             return None
+
+
+    def _add_chart_slides_from_anchors(self, prs: Presentation, sheet_name: str, worksheet, page_img, fig_num: int) -> int:
+        try:
+            from PIL import ImageStat as PILImageStat
+        except Exception:
+            return fig_num
+
+        charts = getattr(worksheet, "_charts", None) or []
+        if not charts:
+            return fig_num
+
+        def _col_width_px(col_letter: str) -> float:
+            try:
+                w = worksheet.column_dimensions[col_letter].width
+            except Exception:
+                w = None
+            if not w:
+                w = 8.43
+            return float(w) * 7.0 + 5.0
+
+        def _row_height_px(row_idx: int) -> float:
+            try:
+                h = worksheet.row_dimensions[row_idx].height
+            except Exception:
+                h = None
+            if not h:
+                h = 15.0
+            return float(h) * (96.0 / 72.0)
+
+        def _cell_xy_px(col_idx_1: int, row_idx_1: int) -> tuple:
+            x = 0.0
+            for c in range(1, max(col_idx_1, 1)):
+                x += _col_width_px(openpyxl.utils.get_column_letter(c))
+            y = 0.0
+            for r in range(1, max(row_idx_1, 1)):
+                y += _row_height_px(r)
+            return x, y
+
+        img = page_img
+        img_w, img_h = img.size
+
+        sheet_cols = max(int(getattr(worksheet, "max_column", 1) or 1), 1)
+        sheet_rows = max(int(getattr(worksheet, "max_row", 1) or 1), 1)
+        sheet_w_px = 0.0
+        for c in range(1, sheet_cols + 1):
+            sheet_w_px += _col_width_px(openpyxl.utils.get_column_letter(c))
+        sheet_h_px = 0.0
+        for r in range(1, sheet_rows + 1):
+            sheet_h_px += _row_height_px(r)
+
+        if sheet_w_px <= 0 or sheet_h_px <= 0:
+            return fig_num
+
+        scale_x = float(img_w) / float(sheet_w_px)
+        scale_y = float(img_h) / float(sheet_h_px)
+
+        slide_w_in = 10.0
+        slide_h_in = 5.625
+
+        added = 0
+        for ch in charts:
+            try:
+                title = None
+                try:
+                    t = getattr(ch, "title", None)
+                    title = getattr(t, "tx", None)
+                    if title and getattr(title, "rich", None) and title.rich.p and title.rich.p[0].r:
+                        title = title.rich.p[0].r[0].t
+                except Exception:
+                    title = None
+                if not title:
+                    title = f"Chart {added + 1}"
+
+                a = getattr(ch, "anchor", None)
+                fr = getattr(a, "_from", None)
+                to = getattr(a, "_to", None)
+                if fr is None:
+                    continue
+
+                c0 = int(getattr(fr, "col", 0)) + 1
+                r0 = int(getattr(fr, "row", 0)) + 1
+                if to is not None:
+                    c1 = int(getattr(to, "col", c0)) + 1
+                    r1 = int(getattr(to, "row", r0)) + 1
+                else:
+                    c1 = c0 + 8
+                    r1 = r0 + 18
+
+                x0, y0 = _cell_xy_px(c0, r0)
+                x1, y1 = _cell_xy_px(max(c1, c0 + 1), max(r1, r0 + 1))
+
+                px0 = int(max(min(x0 * scale_x, img_w - 1), 0))
+                py0 = int(max(min(y0 * scale_y, img_h - 1), 0))
+                px1 = int(max(min(x1 * scale_x, img_w), px0 + 1))
+                py1 = int(max(min(y1 * scale_y, img_h), py0 + 1))
+
+                pad = 12
+                px0 = max(px0 - pad, 0)
+                py0 = max(py0 - pad, 0)
+                px1 = min(px1 + pad, img_w)
+                py1 = min(py1 + pad, img_h)
+
+                crop = img.crop((px0, py0, px1, py1))
+                cw, chh = crop.size
+                if cw < 120 or chh < 120:
+                    continue
+
+                try:
+                    stat = PILImageStat.Stat(crop)
+                    std = sum(stat.stddev) / max(len(stat.stddev), 1)
+                    if std < 5.0:
+                        continue
+                except Exception:
+                    pass
+
+                fig_num += 1
+                added += 1
+
+                buf = io.BytesIO()
+                crop.save(buf, format="PNG")
+                img_bytes = buf.getvalue()
+                if not img_bytes:
+                    continue
+
+                slide = prs.slides.add_slide(prs.slide_layouts[6])
+                title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.25), Inches(9.0), Inches(0.5))
+                title_frame = title_box.text_frame
+                title_frame.text = f"{sheet_name} - {title}"
+                title_para = title_frame.paragraphs[0]
+                title_para.font.size = Pt(20)
+                title_para.font.bold = True
+
+                margin_l = 0.5
+                margin_r = 0.5
+                margin_top = 0.9
+                margin_bottom = 0.5
+                max_w = slide_w_in - margin_l - margin_r
+                max_h = slide_h_in - margin_top - margin_bottom
+                s = min(max_w / float(cw), max_h / float(chh))
+                w_in = float(cw) * s
+                h_in = float(chh) * s
+                left = margin_l + max((max_w - w_in) / 2.0, 0.0)
+                top = margin_top + max((max_h - h_in) / 2.0, 0.0)
+
+                stream = io.BytesIO(img_bytes)
+                stream.seek(0)
+                slide.shapes.add_picture(stream, Inches(left), Inches(top), width=Inches(w_in), height=Inches(h_in))
+            except Exception:
+                continue
+
+        return fig_num
 
 
     def _add_rendered_figure_slides_from_page_image(self, prs: Presentation, sheet_name: str, page_img, fig_num: int) -> int:

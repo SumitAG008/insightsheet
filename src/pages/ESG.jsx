@@ -39,6 +39,10 @@ export default function ESG() {
   const [dashboardInsights, setDashboardInsights] = useState(null);
   const [activities, setActivities] = useState([]);
 
+  const [activeTab, setActiveTab] = useState('sites');
+  const [evidenceError, setEvidenceError] = useState('');
+  const [dashboardError, setDashboardError] = useState('');
+
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
 
@@ -94,10 +98,11 @@ export default function ESG() {
     if (!projectId || !periodId) {
       setEvidence([]);
       setSuggestions([]);
+      setEvidenceError('');
       return;
     }
 
-    setError('');
+    setEvidenceError('');
     setLoading(true);
     try {
       const [evRows, sugRows] = await Promise.all([
@@ -107,7 +112,7 @@ export default function ESG() {
       setEvidence(Array.isArray(evRows) ? evRows : []);
       setSuggestions(Array.isArray(sugRows) ? sugRows : []);
     } catch (e) {
-      setError(e?.message || 'Failed to load evidence');
+      setEvidenceError(e?.message || 'Failed to load evidence');
       setEvidence([]);
       setSuggestions([]);
     } finally {
@@ -122,10 +127,11 @@ export default function ESG() {
       setDashboardFinance(null);
       setDashboardInsights(null);
       setActivities([]);
+      setDashboardError('');
       return;
     }
 
-    setError('');
+    setDashboardError('');
     setLoading(true);
     try {
       const [summary, anomalies, finance, acts] = await Promise.all([
@@ -139,7 +145,7 @@ export default function ESG() {
       setDashboardFinance(finance || null);
       setActivities(Array.isArray(acts) ? acts : []);
     } catch (e) {
-      setError(e?.message || 'Failed to load dashboard');
+      setDashboardError(e?.message || 'Failed to load dashboard');
       setDashboardSummary(null);
       setDashboardAnomalies([]);
       setDashboardFinance(null);
@@ -215,12 +221,14 @@ export default function ESG() {
   }, [selectedProjectId, selectedPeriodId, loadMetrics]);
 
   useEffect(() => {
+    if (activeTab !== 'evidence') return;
     loadEvidenceAndSuggestions({ projectId: selectedProjectId, periodId: selectedPeriodId });
-  }, [selectedProjectId, selectedPeriodId, loadEvidenceAndSuggestions]);
+  }, [selectedProjectId, selectedPeriodId, activeTab, loadEvidenceAndSuggestions]);
 
   useEffect(() => {
+    if (activeTab !== 'dashboard') return;
     loadDashboard({ projectId: selectedProjectId, periodId: selectedPeriodId });
-  }, [selectedProjectId, selectedPeriodId, loadDashboard]);
+  }, [selectedProjectId, selectedPeriodId, activeTab, loadDashboard]);
 
   const onRefresh = async () => {
     await loadProjects();
@@ -249,7 +257,6 @@ export default function ESG() {
       setEvidenceFile(null);
       setEvidenceSiteId('');
       await loadEvidenceAndSuggestions({ projectId: selectedProjectId, periodId: selectedPeriodId });
-      await loadDashboard({ projectId: selectedProjectId, periodId: selectedPeriodId });
     } catch (e) {
       setError(e?.message || 'Failed to upload evidence');
     } finally {
@@ -264,7 +271,6 @@ export default function ESG() {
     try {
       await backendApi.esg.evidence.extract(evidenceId);
       await loadEvidenceAndSuggestions({ projectId: selectedProjectId, periodId: selectedPeriodId });
-      await loadDashboard({ projectId: selectedProjectId, periodId: selectedPeriodId });
     } catch (e) {
       setError(e?.message || 'Failed to extract evidence');
     } finally {
@@ -280,7 +286,6 @@ export default function ESG() {
       await backendApi.esg.suggestions.review({ suggestionId, status });
       await loadEvidenceAndSuggestions({ projectId: selectedProjectId, periodId: selectedPeriodId });
       await loadMetrics({ projectId: selectedProjectId, periodId: selectedPeriodId });
-      await loadDashboard({ projectId: selectedProjectId, periodId: selectedPeriodId });
     } catch (e) {
       setError(e?.message || 'Failed to update suggestion');
     } finally {
@@ -595,7 +600,7 @@ export default function ESG() {
 
         <div className="lg:col-span-9">
           <div className="glass-surface p-4">
-            <Tabs defaultValue="sites" className="space-y-5">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
               <TabsList className="bg-slate-900/80 border border-slate-700/50 p-1">
                 <TabsTrigger value="sites" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-semibold">
                   <MapPin className="w-4 h-4 mr-2" /> Sites
@@ -795,6 +800,12 @@ export default function ESG() {
                   </div>
                 ) : (
                   <div className="space-y-4">
+                    {dashboardError ? (
+                      <Alert>
+                        <AlertDescription>{dashboardError}</AlertDescription>
+                      </Alert>
+                    ) : null}
+
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                       <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
                         <div className="text-xs text-slate-600 dark:text-slate-300">Sites</div>
@@ -947,6 +958,11 @@ export default function ESG() {
               </TabsContent>
 
               <TabsContent value="evidence" className="space-y-4">
+                {evidenceError ? (
+                  <Alert>
+                    <AlertDescription>{evidenceError}</AlertDescription>
+                  </Alert>
+                ) : null}
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">Evidence</div>

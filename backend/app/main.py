@@ -47,7 +47,7 @@ from sqlalchemy import func, and_
 import httpx
 
 # Import local modules
-from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, PlaywrightJob, ConsentLog, ApiKey, ApiKeyIssuanceLog, ApiUsage, ApiBilling, SubscriptionEventLog, LoginOtpChallenge, LearningSignal, init_db
+from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, PlaywrightJob, ConsentLog, ApiKey, ApiKeyIssuanceLog, ApiUsage, ApiBilling, SubscriptionEventLog, LoginOtpChallenge, LearningSignal, EsgProject, EsgReportingPeriod, EsgSite, EsgMetric, init_db
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -1844,6 +1844,663 @@ class ActivityLog(BaseModel):
     activity_type: str
     page_name: Optional[str] = None
     details: Optional[Any] = None  # Can be str, dict, or None - accepts any type
+
+
+class EsgProjectCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class EsgProjectUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+class EsgReportingPeriodCreateRequest(BaseModel):
+    project_id: int
+    name: str
+    framework: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+
+
+class EsgReportingPeriodUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    framework: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+
+
+class EsgSiteCreateRequest(BaseModel):
+    project_id: int
+    name: str
+    country: Optional[str] = None
+    region: Optional[str] = None
+
+
+class EsgSiteUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    country: Optional[str] = None
+    region: Optional[str] = None
+
+
+class EsgMetricCreateRequest(BaseModel):
+    project_id: int
+    period_id: int
+    site_id: Optional[int] = None
+    scope: Optional[str] = None
+    category: str
+    subcategory: Optional[str] = None
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    notes: Optional[str] = None
+    source_document_id: Optional[int] = None
+    source_page_from: Optional[int] = None
+    source_page_to: Optional[int] = None
+
+
+class EsgMetricUpdateRequest(BaseModel):
+    site_id: Optional[int] = None
+    scope: Optional[str] = None
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    notes: Optional[str] = None
+    source_document_id: Optional[int] = None
+    source_page_from: Optional[int] = None
+    source_page_to: Optional[int] = None
+
+
+def _esg_require_owner(email: str, row_user_email: str) -> None:
+    if (row_user_email or "").strip().lower() != (email or "").strip().lower():
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+@app.get("/api/esg/projects")
+async def esg_list_projects(
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    rows = (
+        db.query(EsgProject)
+        .filter(EsgProject.user_email == email)
+        .order_by(EsgProject.created_date.desc())
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "name": r.name,
+            "description": r.description,
+            "created_date": r.created_date,
+            "updated_date": r.updated_date,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/esg/projects")
+async def esg_create_project(
+    payload: EsgProjectCreateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    name = (payload.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Project name is required")
+
+    existing = (
+        db.query(EsgProject)
+        .filter(EsgProject.user_email == email, EsgProject.name == name)
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="Project already exists")
+
+    row = EsgProject(user_email=email, name=name, description=payload.description)
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "name": row.name,
+        "description": row.description,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.patch("/api/esg/projects/{project_id}")
+async def esg_update_project(
+    project_id: int,
+    payload: EsgProjectUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    row = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+    _esg_require_owner(email, row.user_email)
+
+    if payload.name is not None:
+        name = (payload.name or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Project name cannot be empty")
+        row.name = name
+    if payload.description is not None:
+        row.description = payload.description
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "name": row.name,
+        "description": row.description,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.delete("/api/esg/projects/{project_id}")
+async def esg_delete_project(
+    project_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    row = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not row:
+        return {"message": "ok"}
+    _esg_require_owner(email, row.user_email)
+
+    db.query(EsgMetric).filter(EsgMetric.project_id == project_id, EsgMetric.user_email == email).delete()
+    db.query(EsgSite).filter(EsgSite.project_id == project_id, EsgSite.user_email == email).delete()
+    db.query(EsgReportingPeriod).filter(EsgReportingPeriod.project_id == project_id, EsgReportingPeriod.user_email == email).delete()
+    db.delete(row)
+    db.commit()
+    return {"message": "ok"}
+
+
+@app.get("/api/esg/periods")
+async def esg_list_periods(
+    project_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+
+    rows = (
+        db.query(EsgReportingPeriod)
+        .filter(
+            EsgReportingPeriod.user_email == email,
+            EsgReportingPeriod.project_id == project_id,
+        )
+        .order_by(EsgReportingPeriod.created_date.desc())
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "project_id": r.project_id,
+            "name": r.name,
+            "framework": r.framework,
+            "start_date": r.start_date,
+            "end_date": r.end_date,
+            "created_date": r.created_date,
+            "updated_date": r.updated_date,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/esg/periods")
+async def esg_create_period(
+    payload: EsgReportingPeriodCreateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == payload.project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+
+    name = (payload.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Period name is required")
+
+    existing = (
+        db.query(EsgReportingPeriod)
+        .filter(
+            EsgReportingPeriod.project_id == payload.project_id,
+            EsgReportingPeriod.user_email == email,
+            EsgReportingPeriod.name == name,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="Period already exists")
+
+    row = EsgReportingPeriod(
+        project_id=payload.project_id,
+        user_email=email,
+        name=name,
+        framework=payload.framework,
+        start_date=payload.start_date,
+        end_date=payload.end_date,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "name": row.name,
+        "framework": row.framework,
+        "start_date": row.start_date,
+        "end_date": row.end_date,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.patch("/api/esg/periods/{period_id}")
+async def esg_update_period(
+    period_id: int,
+    payload: EsgReportingPeriodUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    row = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+    _esg_require_owner(email, row.user_email)
+
+    if payload.name is not None:
+        name = (payload.name or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Period name cannot be empty")
+        row.name = name
+    if payload.framework is not None:
+        row.framework = payload.framework
+    if payload.start_date is not None:
+        row.start_date = payload.start_date
+    if payload.end_date is not None:
+        row.end_date = payload.end_date
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "name": row.name,
+        "framework": row.framework,
+        "start_date": row.start_date,
+        "end_date": row.end_date,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.delete("/api/esg/periods/{period_id}")
+async def esg_delete_period(
+    period_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    row = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not row:
+        return {"message": "ok"}
+    _esg_require_owner(email, row.user_email)
+
+    db.query(EsgMetric).filter(EsgMetric.period_id == period_id, EsgMetric.user_email == email).delete()
+    db.delete(row)
+    db.commit()
+    return {"message": "ok"}
+
+
+@app.get("/api/esg/sites")
+async def esg_list_sites(
+    project_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+
+    rows = (
+        db.query(EsgSite)
+        .filter(
+            EsgSite.user_email == email,
+            EsgSite.project_id == project_id,
+        )
+        .order_by(EsgSite.created_date.desc())
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "project_id": r.project_id,
+            "name": r.name,
+            "country": r.country,
+            "region": r.region,
+            "created_date": r.created_date,
+            "updated_date": r.updated_date,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/esg/sites")
+async def esg_create_site(
+    payload: EsgSiteCreateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == payload.project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+
+    name = (payload.name or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Site name is required")
+
+    existing = (
+        db.query(EsgSite)
+        .filter(
+            EsgSite.project_id == payload.project_id,
+            EsgSite.user_email == email,
+            EsgSite.name == name,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="Site already exists")
+
+    row = EsgSite(
+        project_id=payload.project_id,
+        user_email=email,
+        name=name,
+        country=payload.country,
+        region=payload.region,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "name": row.name,
+        "country": row.country,
+        "region": row.region,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.patch("/api/esg/sites/{site_id}")
+async def esg_update_site(
+    site_id: int,
+    payload: EsgSiteUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    row = db.query(EsgSite).filter(EsgSite.id == site_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+    _esg_require_owner(email, row.user_email)
+
+    if payload.name is not None:
+        name = (payload.name or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="Site name cannot be empty")
+        row.name = name
+    if payload.country is not None:
+        row.country = payload.country
+    if payload.region is not None:
+        row.region = payload.region
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "name": row.name,
+        "country": row.country,
+        "region": row.region,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.delete("/api/esg/sites/{site_id}")
+async def esg_delete_site(
+    site_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    row = db.query(EsgSite).filter(EsgSite.id == site_id).first()
+    if not row:
+        return {"message": "ok"}
+    _esg_require_owner(email, row.user_email)
+
+    db.query(EsgMetric).filter(EsgMetric.site_id == site_id, EsgMetric.user_email == email).delete()
+    db.delete(row)
+    db.commit()
+    return {"message": "ok"}
+
+
+@app.get("/api/esg/metrics")
+async def esg_list_metrics(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    site_id: Optional[int] = Query(None),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    q = db.query(EsgMetric).filter(
+        EsgMetric.user_email == email,
+        EsgMetric.project_id == project_id,
+        EsgMetric.period_id == period_id,
+    )
+    if site_id is not None:
+        q = q.filter(EsgMetric.site_id == site_id)
+    rows = q.order_by(EsgMetric.created_date.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "project_id": r.project_id,
+            "period_id": r.period_id,
+            "site_id": r.site_id,
+            "scope": r.scope,
+            "category": r.category,
+            "subcategory": r.subcategory,
+            "value": r.value,
+            "unit": r.unit,
+            "notes": r.notes,
+            "source_document_id": r.source_document_id,
+            "source_page_from": r.source_page_from,
+            "source_page_to": r.source_page_to,
+            "created_date": r.created_date,
+            "updated_date": r.updated_date,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/esg/metrics")
+async def esg_create_metric(
+    payload: EsgMetricCreateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == payload.project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == payload.period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != payload.project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    if payload.site_id is not None:
+        site = db.query(EsgSite).filter(EsgSite.id == payload.site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Site not found")
+        _esg_require_owner(email, site.user_email)
+        if site.project_id != payload.project_id:
+            raise HTTPException(status_code=400, detail="Site does not belong to project")
+
+    category = (payload.category or "").strip()
+    if not category:
+        raise HTTPException(status_code=400, detail="Metric category is required")
+
+    row = EsgMetric(
+        user_email=email,
+        project_id=payload.project_id,
+        period_id=payload.period_id,
+        site_id=payload.site_id,
+        scope=payload.scope,
+        category=category,
+        subcategory=payload.subcategory,
+        value=payload.value,
+        unit=payload.unit,
+        notes=payload.notes,
+        source_document_id=payload.source_document_id,
+        source_page_from=payload.source_page_from,
+        source_page_to=payload.source_page_to,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "period_id": row.period_id,
+        "site_id": row.site_id,
+        "scope": row.scope,
+        "category": row.category,
+        "subcategory": row.subcategory,
+        "value": row.value,
+        "unit": row.unit,
+        "notes": row.notes,
+        "source_document_id": row.source_document_id,
+        "source_page_from": row.source_page_from,
+        "source_page_to": row.source_page_to,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.patch("/api/esg/metrics/{metric_id}")
+async def esg_update_metric(
+    metric_id: int,
+    payload: EsgMetricUpdateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    row = db.query(EsgMetric).filter(EsgMetric.id == metric_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Not found")
+    _esg_require_owner(email, row.user_email)
+
+    if payload.site_id is not None:
+        site = db.query(EsgSite).filter(EsgSite.id == payload.site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Site not found")
+        _esg_require_owner(email, site.user_email)
+        if site.project_id != row.project_id:
+            raise HTTPException(status_code=400, detail="Site does not belong to project")
+        row.site_id = payload.site_id
+    if payload.scope is not None:
+        row.scope = payload.scope
+    if payload.category is not None:
+        category = (payload.category or "").strip()
+        if not category:
+            raise HTTPException(status_code=400, detail="Metric category cannot be empty")
+        row.category = category
+    if payload.subcategory is not None:
+        row.subcategory = payload.subcategory
+    if payload.value is not None:
+        row.value = payload.value
+    if payload.unit is not None:
+        row.unit = payload.unit
+    if payload.notes is not None:
+        row.notes = payload.notes
+    if payload.source_document_id is not None:
+        row.source_document_id = payload.source_document_id
+    if payload.source_page_from is not None:
+        row.source_page_from = payload.source_page_from
+    if payload.source_page_to is not None:
+        row.source_page_to = payload.source_page_to
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "period_id": row.period_id,
+        "site_id": row.site_id,
+        "scope": row.scope,
+        "category": row.category,
+        "subcategory": row.subcategory,
+        "value": row.value,
+        "unit": row.unit,
+        "notes": row.notes,
+        "source_document_id": row.source_document_id,
+        "source_page_from": row.source_page_from,
+        "source_page_to": row.source_page_to,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.delete("/api/esg/metrics/{metric_id}")
+async def esg_delete_metric(
+    metric_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    row = db.query(EsgMetric).filter(EsgMetric.id == metric_id).first()
+    if not row:
+        return {"message": "ok"}
+    _esg_require_owner(email, row.user_email)
+
+    db.delete(row)
+    db.commit()
+    return {"message": "ok"}
 
 
 # ============================================================================

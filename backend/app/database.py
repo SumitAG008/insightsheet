@@ -83,6 +83,80 @@ class User(Base):
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class EsgProject(Base):
+    __tablename__ = "esg_projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_email", "name", name="uq_esg_projects_user_name"),
+    )
+
+
+class EsgReportingPeriod(Base):
+    __tablename__ = "esg_reporting_periods"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, index=True, nullable=False)
+    user_email = Column(String(255), index=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    framework = Column(String(100), nullable=True)
+    start_date = Column(DateTime, nullable=True)
+    end_date = Column(DateTime, nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "name", name="uq_esg_periods_project_name"),
+    )
+
+
+class EsgSite(Base):
+    __tablename__ = "esg_sites"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, index=True, nullable=False)
+    user_email = Column(String(255), index=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    country = Column(String(100), nullable=True)
+    region = Column(String(100), nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "name", name="uq_esg_sites_project_name"),
+    )
+
+
+class EsgMetric(Base):
+    __tablename__ = "esg_metrics"
+
+    id = Column(Integer, primary_key=True, index=True)
+    period_id = Column(Integer, index=True, nullable=False)
+    project_id = Column(Integer, index=True, nullable=False)
+    user_email = Column(String(255), index=True, nullable=False)
+    site_id = Column(Integer, index=True, nullable=True)
+
+    scope = Column(String(20), nullable=True)
+    category = Column(String(255), nullable=False)
+    subcategory = Column(String(255), nullable=True)
+    value = Column(Float, nullable=True)
+    unit = Column(String(50), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    source_document_id = Column(Integer, index=True, nullable=True)
+    source_page_from = Column(Integer, nullable=True)
+    source_page_to = Column(Integer, nullable=True)
+
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class LoginOtpChallenge(Base):
     __tablename__ = "login_otp_challenges"
 

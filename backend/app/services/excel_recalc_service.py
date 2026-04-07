@@ -5,12 +5,114 @@ import tempfile
 from typing import Optional, Tuple
 
 
+def convert_spreadsheet_to_png_images(
+    content: bytes,
+    filename: str,
+    timeout_seconds: int = 90,
+):
+    exe = _find_soffice_exe()
+    if not exe:
+        return None, "LibreOffice (soffice) not found on server"
+
+    try:
+        from PIL import Image as PILImage
+    except Exception:
+        return None, "Pillow (PIL) not available"
+
+    base = os.path.basename(filename or "workbook.xlsx")
+    if not base.lower().endswith((".xlsx", ".xls", ".csv")):
+        base = base + ".xlsx"
+
+    with tempfile.TemporaryDirectory(prefix="insightsheet_xlsx_png_") as td:
+        in_path = os.path.join(td, base)
+        with open(in_path, "wb") as f:
+            f.write(content)
+
+        out_dir = os.path.join(td, "out")
+        os.makedirs(out_dir, exist_ok=True)
+
+        cmd = [
+            exe,
+            "--headless",
+            "--nologo",
+            "--nofirststartwizard",
+            "--norestore",
+            "--convert-to",
+            "png",
+            "--outdir",
+            out_dir,
+            in_path,
+        ]
+
+        try:
+            subprocess.run(
+                cmd,
+                cwd=td,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=timeout_seconds,
+                check=False,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            )
+        except subprocess.TimeoutExpired:
+            return None, f"LibreOffice PNG conversion timed out after {timeout_seconds}s"
+        except Exception as e:
+            return None, f"LibreOffice PNG conversion failed to start: {str(e)}"
+
+        png_paths = []
+        try:
+            for fn in os.listdir(out_dir):
+                if fn.lower().endswith(".png"):
+                    png_paths.append(os.path.join(out_dir, fn))
+        except Exception:
+            png_paths = []
+
+        if not png_paths:
+            return None, "LibreOffice did not produce PNG output"
+
+        png_paths.sort()
+
+        pages = []
+        for p in png_paths:
+            try:
+                with PILImage.open(p) as im:
+                    pages.append(im.convert("RGB").copy())
+            except Exception:
+                continue
+
+        if not pages:
+            return None, "Failed reading PNG output"
+
+        return pages, "ok"
+
+
 def _find_soffice_exe() -> Optional[str]:
+    # Optional override
+    try:
+        override = os.environ.get("INSIGHT_SOFFICE_PATH")
+        if override and os.path.exists(override) and os.access(override, os.X_OK):
+            return override
+    except Exception:
+        pass
+
     # Common names on Windows and Linux
     for name in ("soffice", "soffice.exe", "soffice.com", "libreoffice"):
         p = shutil.which(name)
         if p:
             return p
+
+    # Common install locations on Windows
+    if os.name == "nt":
+        candidates = (
+            r"C:\\Program Files\\LibreOffice\\program\\soffice.exe",
+            r"C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe",
+        )
+        for p in candidates:
+            try:
+                if os.path.exists(p) and os.access(p, os.X_OK):
+                    return p
+            except Exception:
+                continue
 
     # Common install locations in Debian/Ubuntu containers
     candidates = (

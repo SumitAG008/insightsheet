@@ -53,6 +53,8 @@ import PlaywrightConnector from "./PlaywrightConnector";
 import InvoiceExtractor from "./InvoiceExtractor";
 import HelpGuide from "./HelpGuide";
 
+import ESG from "./ESG";
+
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
 import Faq from "./Faq";
@@ -112,6 +114,8 @@ const PAGES = {
     InvoiceExtractor: InvoiceExtractor,
 
     HelpGuide: HelpGuide,
+
+    ESG: ESG,
     
 }
 
@@ -278,6 +282,9 @@ function PagesContent() {
                 <Route path="/help" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
                 <Route path="/HelpGuide" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
                 <Route path="/helpguide" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
+
+                <Route path="/ESG" element={<ProtectedRoute><ESG /></ProtectedRoute>} />
+                <Route path="/esg" element={<ProtectedRoute><ESG /></ProtectedRoute>} />
  
             </Routes>
         </Layout>

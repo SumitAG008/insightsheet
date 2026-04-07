@@ -33,6 +33,7 @@ export default function Layout({ children, currentPageName }) {
   const isHome = currentPageName === 'Dashboard';
   const navigate = useNavigate();
   const [user, setUser] = React.useState(null);
+  const [subscription, setSubscription] = React.useState(null);
   const [brandPrefs, setBrandPrefs] = React.useState({ brandName: null, logoUrl: null });
   const [loginTime, setLoginTime] = React.useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -95,6 +96,22 @@ export default function Layout({ children, currentPageName }) {
   React.useEffect(() => {
     loadUser();
   }, [loadUser]);
+
+  useEffect(() => {
+    const loadSubscription = async () => {
+      try {
+        if (!user?.email) {
+          setSubscription(null);
+          return;
+        }
+        const mySub = await meldraAi.subscriptions.getMy();
+        setSubscription(mySub || null);
+      } catch {
+        setSubscription(null);
+      }
+    };
+    loadSubscription();
+  }, [user?.email]);
 
   useEffect(() => {
     const applyFromPrefs = (email) => {
@@ -176,6 +193,12 @@ export default function Layout({ children, currentPageName }) {
   }, [user?.email, location.search]);
 
   const canAccessAgenticWorkflows = (user?.email || '').toLowerCase().trim() === 'sumitagaraia@gmail.com';
+
+  const esgAlwaysAllowlist = ['sumitagaraia@gmail.com', 'sumit@meldra.ai'];
+  const isEsgAlwaysAllowed = esgAlwaysAllowlist.includes((user?.email || '').toLowerCase().trim());
+  const subscriptionPlan = (subscription?.plan || 'free').toLowerCase();
+  const isEsgPurchased = subscriptionPlan !== 'free';
+  const canAccessESG = !!user?.email && (isEsgAlwaysAllowed || isEsgPurchased);
 
   const logLogin = async (email) => {
     try {
@@ -477,6 +500,20 @@ export default function Layout({ children, currentPageName }) {
                   </DropdownMenu>
 
                   {/* Developers (developer.meldra.ai / API docs) — opens /developers on same host */}
+                  {canAccessESG && (
+                    <Link
+                      to={createPageUrl('ESG')}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                        isActive(createPageUrl('ESG'))
+                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
+                      }`}
+                      title="ESG"
+                    >
+                      <Shield className={`w-4 h-4 ${isActive(createPageUrl('ESG')) ? 'text-white' : ''}`} />
+                      <span>ESG</span>
+                    </Link>
+                  )}
                   <Link
                     to="/developers"
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
@@ -684,6 +721,14 @@ export default function Layout({ children, currentPageName }) {
                   <Link to={createPageUrl('FilenameCleaner')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FilenameCleaner')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <FileArchive className="w-4 h-4" /> <span>{t('nav_zip_cleaner')}</span>
                   </Link>
+                  {canAccessESG && (
+                    <>
+                      <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ESG</p>
+                      <Link to={createPageUrl('ESG')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('ESG')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                        <Shield className="w-4 h-4" /> <span>ESG</span>
+                      </Link>
+                    </>
+                  )}
                   <Link to="/developers" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
                     <Code className="w-4 h-4" /> <span>{t('nav_developers')}</span>
                   </Link>

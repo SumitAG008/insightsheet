@@ -16,7 +16,7 @@ import io
 import logging
 from datetime import datetime
 
-from .excel_recalc_service import convert_spreadsheet_to_pdf_bytes
+from .excel_recalc_service import convert_spreadsheet_to_pdf_bytes, convert_spreadsheet_to_png_images
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +83,16 @@ class ExcelToPPTService:
             except Exception:
                 rendered_pages = None
 
+            # Fallback: if PDF->image rendering isn't available (e.g. PyMuPDF missing),
+            # use LibreOffice's direct PNG export.
+            if not rendered_pages:
+                try:
+                    png_pages, _msg = convert_spreadsheet_to_png_images(excel_data, filename)
+                    if png_pages:
+                        rendered_pages = png_pages
+                except Exception:
+                    rendered_pages = None
+
             # Process each worksheet
             fig_num = 0
 
@@ -111,8 +121,8 @@ class ExcelToPPTService:
 
                 # Fallback for real Excel chart objects (Insert -> Chart): use rendered PDF page for this sheet
                 try:
-                    if rendered_pages and sheet_idx < len(rendered_pages):
-                        page_img = rendered_pages[sheet_idx]
+                    if rendered_pages:
+                        page_img = rendered_pages
                         before = fig_num
                         fig_num = self._add_chart_slides_from_anchors(
                             prs,
@@ -122,12 +132,17 @@ class ExcelToPPTService:
                             fig_num,
                         )
                         if fig_num == before:
-                            fig_num = self._add_rendered_figure_slides_from_page_image(
-                                prs,
-                                sheet_name,
-                                page_img,
-                                fig_num,
-                            )
+                            # As a last resort, attempt region-detection on each rendered page
+                            for p in page_img:
+                                before2 = fig_num
+                                fig_num = self._add_rendered_figure_slides_from_page_image(
+                                    prs,
+                                    sheet_name,
+                                    p,
+                                    fig_num,
+                                )
+                                if fig_num != before2:
+                                    break
                 except Exception:
                     pass
 
@@ -221,56 +236,85 @@ class ExcelToPPTService:
         stats_para.alignment = PP_ALIGN.CENTER
 
     def _add_data_table_slide(self, prs: Presentation, sheet_name: str, data: Dict):
-        """Add data table slide"""
-        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        """Add data table slide(s)."""
 
-        # Title
-        title_box = slide.shapes.add_textbox(
-            Inches(0.5), Inches(0.3), Inches(9), Inches(0.5)
-        )
-        title_frame = title_box.text_frame
-        title_frame.text = f"{sheet_name} - Data Overview"
-        title_para = title_frame.paragraphs[0]
-        title_para.font.size = Pt(28)
-        title_para.font.bold = True
-        title_para.font.color.rgb = self.theme_colors['dark']
+        headers = list(data.get('headers') or [])
+        rows = list(data.get('rows') or [])
+        if not headers:
+            return
 
-        # Create table
-        max_rows = min(len(data['rows']), 20)
-        max_cols = min(len(data['headers']), 10)
+        rows_per_slide = 20
+        cols_per_slide = 10
 
-        rows_count = max_rows + 1  # +1 for header
-        cols_count = max_cols
+        total_rows = len(rows)
+        total_cols = len(headers)
 
-        table = slide.shapes.add_table(
-            rows_count, cols_count,
-            Inches(0.4), Inches(1),
-            Inches(9.2), Inches(4.2)
-        ).table
+        row_start = 0
+        while row_start < max(total_rows, 1):
+            row_end = min(row_start + rows_per_slide, total_rows)
+            col_start = 0
+            while col_start < total_cols:
+                col_end = min(col_start + cols_per_slide, total_cols)
 
-        # Set column widths
-        for col_idx in range(cols_count):
-            table.columns[col_idx].width = Inches(9.2 / cols_count)
+                slide = prs.slides.add_slide(prs.slide_layouts[6])
 
-        # Add headers
-        for col_idx in range(max_cols):
-            cell = table.cell(0, col_idx)
-            cell.text = str(data['headers'][col_idx])
-            cell.fill.solid()
-            cell.fill.fore_color.rgb = self.theme_colors['primary']
-            paragraph = cell.text_frame.paragraphs[0]
-            paragraph.font.size = Pt(10)
-            paragraph.font.bold = True
-            paragraph.font.color.rgb = RGBColor(255, 255, 255)
+                # Title
+                title_box = slide.shapes.add_textbox(
+                    Inches(0.5), Inches(0.3), Inches(9), Inches(0.5)
+                )
+                title_frame = title_box.text_frame
+                title_frame.text = f"{sheet_name} - Data Overview"
+                title_para = title_frame.paragraphs[0]
+                title_para.font.size = Pt(28)
+                title_para.font.bold = True
+                title_para.font.color.rgb = self.theme_colors['dark']
 
-        # Add data rows
-        for row_idx in range(max_rows):
-            for col_idx in range(max_cols):
-                cell = table.cell(row_idx + 1, col_idx)
-                value = data['rows'][row_idx][col_idx] if col_idx < len(data['rows'][row_idx]) else ''
-                cell.text = str(value) if value is not None else ''
-                paragraph = cell.text_frame.paragraphs[0]
-                paragraph.font.size = Pt(9)
+                sub_box = slide.shapes.add_textbox(
+                    Inches(0.5), Inches(0.75), Inches(9), Inches(0.3)
+                )
+                sub_frame = sub_box.text_frame
+                shown_rows = f"rows {row_start + 1}-{row_end}" if total_rows else "no data rows"
+                shown_cols = f"cols {col_start + 1}-{col_end}"
+                sub_frame.text = f"Showing {shown_rows}, {shown_cols}"
+                sub_para = sub_frame.paragraphs[0]
+                sub_para.font.size = Pt(12)
+                sub_para.font.color.rgb = RGBColor(100, 116, 139)
+
+                page_rows = rows[row_start:row_end] if total_rows else []
+                rows_count = (len(page_rows) if page_rows else 0) + 1
+                cols_count = max(col_end - col_start, 1)
+
+                table = slide.shapes.add_table(
+                    rows_count, cols_count,
+                    Inches(0.4), Inches(1.1),
+                    Inches(9.2), Inches(4.1)
+                ).table
+
+                # Set column widths
+                for col_idx in range(cols_count):
+                    table.columns[col_idx].width = Inches(9.2 / cols_count)
+
+                for col_idx in range(cols_count):
+                    cell = table.cell(0, col_idx)
+                    cell.text = str(headers[col_start + col_idx])
+                    cell.fill.solid()
+                    cell.fill.fore_color.rgb = self.theme_colors['primary']
+                    paragraph = cell.text_frame.paragraphs[0]
+                    paragraph.font.size = Pt(10)
+                    paragraph.font.bold = True
+                    paragraph.font.color.rgb = RGBColor(255, 255, 255)
+
+                for r_i, row in enumerate(page_rows, start=1):
+                    for c_i in range(cols_count):
+                        cell = table.cell(r_i, c_i)
+                        src_idx = col_start + c_i
+                        value = row[src_idx] if src_idx < len(row) else ''
+                        cell.text = str(value) if value is not None else ''
+                        paragraph = cell.text_frame.paragraphs[0]
+                        paragraph.font.size = Pt(9)
+
+                col_start += cols_per_slide
+            row_start += rows_per_slide
 
     def _add_chart_slides(self, prs: Presentation, sheet_name: str, data: Dict, analysis: Dict):
         """Add chart slides for data visualization"""
@@ -622,6 +666,13 @@ class ExcelToPPTService:
         except Exception:
             return fig_num
 
+        if isinstance(page_img, (list, tuple)):
+            page_imgs = [p for p in page_img if p is not None]
+        else:
+            page_imgs = [page_img] if page_img is not None else []
+        if not page_imgs:
+            return fig_num
+
         charts = getattr(worksheet, "_charts", None) or []
         if not charts:
             return fig_num
@@ -713,11 +764,28 @@ class ExcelToPPTService:
             except Exception:
                 return img_in
 
-        img = page_img
-        img_w, img_h = img.size
+        try:
+            dim = getattr(worksheet, "calculate_dimension", None)
+            dim = dim() if callable(dim) else None
+        except Exception:
+            dim = None
 
-        sheet_cols = max(int(getattr(worksheet, "max_column", 1) or 1), 1)
-        sheet_rows = max(int(getattr(worksheet, "max_row", 1) or 1), 1)
+        try:
+            from openpyxl.utils.cell import range_boundaries
+        except Exception:
+            range_boundaries = None
+
+        if dim and range_boundaries and ":" in dim:
+            try:
+                min_col, min_row, max_col, max_row = range_boundaries(dim)
+                sheet_cols = max(int(max_col or 1), 1)
+                sheet_rows = max(int(max_row or 1), 1)
+            except Exception:
+                sheet_cols = max(int(getattr(worksheet, "max_column", 1) or 1), 1)
+                sheet_rows = max(int(getattr(worksheet, "max_row", 1) or 1), 1)
+        else:
+            sheet_cols = max(int(getattr(worksheet, "max_column", 1) or 1), 1)
+            sheet_rows = max(int(getattr(worksheet, "max_row", 1) or 1), 1)
         sheet_w_px = 0.0
         for c in range(1, sheet_cols + 1):
             sheet_w_px += _col_width_px(openpyxl.utils.get_column_letter(c))
@@ -727,9 +795,6 @@ class ExcelToPPTService:
 
         if sheet_w_px <= 0 or sheet_h_px <= 0:
             return fig_num
-
-        scale_x = float(img_w) / float(sheet_w_px)
-        scale_y = float(img_h) / float(sheet_h_px)
 
         slide_w_in = 10.0
         slide_h_in = 5.625
@@ -779,30 +844,51 @@ class ExcelToPPTService:
                     except Exception:
                         pass
 
-                px0 = int(max(min(x0 * scale_x, img_w - 1), 0))
-                py0 = int(max(min(y0 * scale_y, img_h - 1), 0))
-                px1 = int(max(min(x1 * scale_x, img_w), px0 + 1))
-                py1 = int(max(min(y1 * scale_y, img_h), py0 + 1))
+                best_crop = None
+                best_score = -1.0
+                for img in page_imgs:
+                    try:
+                        img_w, img_h = img.size
+                        if img_w <= 0 or img_h <= 0:
+                            continue
+                        scale_x = float(img_w) / float(sheet_w_px)
+                        scale_y = float(img_h) / float(sheet_h_px)
 
-                pad = 12
-                px0 = max(px0 - pad, 0)
-                py0 = max(py0 - pad, 0)
-                px1 = min(px1 + pad, img_w)
-                py1 = min(py1 + pad, img_h)
+                        px0 = int(max(min(x0 * scale_x, img_w - 1), 0))
+                        py0 = int(max(min(y0 * scale_y, img_h - 1), 0))
+                        px1 = int(max(min(x1 * scale_x, img_w), px0 + 1))
+                        py1 = int(max(min(y1 * scale_y, img_h), py0 + 1))
 
-                crop = img.crop((px0, py0, px1, py1))
-                crop = _tighten_to_nonwhite(crop)
-                cw, chh = crop.size
-                if cw < 120 or chh < 120:
+                        pad = 12
+                        px0 = max(px0 - pad, 0)
+                        py0 = max(py0 - pad, 0)
+                        px1 = min(px1 + pad, img_w)
+                        py1 = min(py1 + pad, img_h)
+
+                        crop = img.crop((px0, py0, px1, py1))
+                        crop = _tighten_to_nonwhite(crop)
+                        cw, chh = crop.size
+                        if cw < 160 or chh < 160:
+                            continue
+
+                        try:
+                            stat = PILImageStat.Stat(crop)
+                            std = sum(stat.stddev) / max(len(stat.stddev), 1)
+                        except Exception:
+                            std = 0.0
+
+                        score = float(std) + (float(cw * chh) / 1_000_000.0)
+                        if score > best_score:
+                            best_score = score
+                            best_crop = crop
+                    except Exception:
+                        continue
+
+                if best_crop is None or best_score < 5.0:
                     continue
 
-                try:
-                    stat = PILImageStat.Stat(crop)
-                    std = sum(stat.stddev) / max(len(stat.stddev), 1)
-                    if std < 5.0:
-                        continue
-                except Exception:
-                    pass
+                crop = best_crop
+                cw, chh = crop.size
 
                 fig_num += 1
                 added += 1

@@ -31,6 +31,14 @@ export default function ESG() {
   const [sites, setSites] = useState([]);
   const [metrics, setMetrics] = useState([]);
 
+  const [evidence, setEvidence] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [dashboardAnomalies, setDashboardAnomalies] = useState([]);
+  const [dashboardFinance, setDashboardFinance] = useState(null);
+  const [dashboardInsights, setDashboardInsights] = useState(null);
+  const [activities, setActivities] = useState([]);
+
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [selectedPeriodId, setSelectedPeriodId] = useState('');
 
@@ -38,6 +46,10 @@ export default function ESG() {
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
   const [siteDialogOpen, setSiteDialogOpen] = useState(false);
   const [metricDialogOpen, setMetricDialogOpen] = useState(false);
+
+  const [evidenceDialogOpen, setEvidenceDialogOpen] = useState(false);
+  const [evidenceFile, setEvidenceFile] = useState(null);
+  const [evidenceSiteId, setEvidenceSiteId] = useState('');
 
   const [newProject, setNewProject] = useState({ name: '', description: '' });
   const [newPeriod, setNewPeriod] = useState({ name: '', framework: 'GRI', start_date: '', end_date: '' });
@@ -73,6 +85,66 @@ export default function ESG() {
     } catch (e) {
       setError(e?.message || 'Failed to load ESG projects');
       setProjects([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadEvidenceAndSuggestions = useCallback(async ({ projectId, periodId }) => {
+    if (!projectId || !periodId) {
+      setEvidence([]);
+      setSuggestions([]);
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+    try {
+      const [evRows, sugRows] = await Promise.all([
+        backendApi.esg.evidence.list({ projectId, periodId }),
+        backendApi.esg.suggestions.list({ projectId, periodId, status: 'pending' }),
+      ]);
+      setEvidence(Array.isArray(evRows) ? evRows : []);
+      setSuggestions(Array.isArray(sugRows) ? sugRows : []);
+    } catch (e) {
+      setError(e?.message || 'Failed to load evidence');
+      setEvidence([]);
+      setSuggestions([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const loadDashboard = useCallback(async ({ projectId, periodId }) => {
+    if (!projectId || !periodId) {
+      setDashboardSummary(null);
+      setDashboardAnomalies([]);
+      setDashboardFinance(null);
+      setDashboardInsights(null);
+      setActivities([]);
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+    try {
+      const [summary, anomalies, finance, acts] = await Promise.all([
+        backendApi.esg.dashboard.summary({ projectId, periodId }),
+        backendApi.esg.dashboard.anomalies({ projectId, periodId }),
+        backendApi.esg.dashboard.financeKpis({ projectId, periodId }),
+        backendApi.esg.activities.list({ projectId, periodId, limit: 50 }),
+      ]);
+      setDashboardSummary(summary || null);
+      setDashboardAnomalies(Array.isArray(anomalies?.anomalies) ? anomalies.anomalies : []);
+      setDashboardFinance(finance || null);
+      setActivities(Array.isArray(acts) ? acts : []);
+    } catch (e) {
+      setError(e?.message || 'Failed to load dashboard');
+      setDashboardSummary(null);
+      setDashboardAnomalies([]);
+      setDashboardFinance(null);
+      setDashboardInsights(null);
+      setActivities([]);
     } finally {
       setLoading(false);
     }
@@ -142,8 +214,96 @@ export default function ESG() {
     loadMetrics({ projectId: selectedProjectId, periodId: selectedPeriodId });
   }, [selectedProjectId, selectedPeriodId, loadMetrics]);
 
+  useEffect(() => {
+    loadEvidenceAndSuggestions({ projectId: selectedProjectId, periodId: selectedPeriodId });
+  }, [selectedProjectId, selectedPeriodId, loadEvidenceAndSuggestions]);
+
+  useEffect(() => {
+    loadDashboard({ projectId: selectedProjectId, periodId: selectedPeriodId });
+  }, [selectedProjectId, selectedPeriodId, loadDashboard]);
+
   const onRefresh = async () => {
     await loadProjects();
+  };
+
+  const uploadEvidence = async () => {
+    if (!selectedProjectId || !selectedPeriodId) {
+      setError('Select a project and reporting period first');
+      return;
+    }
+    if (!evidenceFile) {
+      setError('Choose a file to upload');
+      return;
+    }
+
+    setError('');
+    setLoading(true);
+    try {
+      await backendApi.esg.evidence.upload({
+        projectId: Number(selectedProjectId),
+        periodId: Number(selectedPeriodId),
+        siteId: evidenceSiteId ? Number(evidenceSiteId) : null,
+        file: evidenceFile,
+      });
+      setEvidenceDialogOpen(false);
+      setEvidenceFile(null);
+      setEvidenceSiteId('');
+      await loadEvidenceAndSuggestions({ projectId: selectedProjectId, periodId: selectedPeriodId });
+      await loadDashboard({ projectId: selectedProjectId, periodId: selectedPeriodId });
+    } catch (e) {
+      setError(e?.message || 'Failed to upload evidence');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const runEvidenceExtraction = async (evidenceId) => {
+    if (!evidenceId) return;
+    setError('');
+    setLoading(true);
+    try {
+      await backendApi.esg.evidence.extract(evidenceId);
+      await loadEvidenceAndSuggestions({ projectId: selectedProjectId, periodId: selectedPeriodId });
+      await loadDashboard({ projectId: selectedProjectId, periodId: selectedPeriodId });
+    } catch (e) {
+      setError(e?.message || 'Failed to extract evidence');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reviewSuggestion = async ({ suggestionId, status }) => {
+    if (!suggestionId) return;
+    setError('');
+    setLoading(true);
+    try {
+      await backendApi.esg.suggestions.review({ suggestionId, status });
+      await loadEvidenceAndSuggestions({ projectId: selectedProjectId, periodId: selectedPeriodId });
+      await loadMetrics({ projectId: selectedProjectId, periodId: selectedPeriodId });
+      await loadDashboard({ projectId: selectedProjectId, periodId: selectedPeriodId });
+    } catch (e) {
+      setError(e?.message || 'Failed to update suggestion');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateAiInsights = async () => {
+    if (!selectedProjectId || !selectedPeriodId) {
+      setError('Select a project and reporting period first');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const out = await backendApi.esg.dashboard.insights({ projectId: selectedProjectId, periodId: selectedPeriodId });
+      setDashboardInsights(out?.insights || null);
+    } catch (e) {
+      setError(e?.message || 'Failed to generate AI insights');
+      setDashboardInsights(null);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const createProject = async () => {
@@ -443,6 +603,9 @@ export default function ESG() {
                 <TabsTrigger value="metrics" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-semibold">
                   <Ruler className="w-4 h-4 mr-2" /> Metrics
                 </TabsTrigger>
+                <TabsTrigger value="evidence" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-semibold">
+                  <FileText className="w-4 h-4 mr-2" /> Evidence
+                </TabsTrigger>
                 <TabsTrigger value="dashboard" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-semibold">
                   <FileText className="w-4 h-4 mr-2" /> Dashboard
                 </TabsTrigger>
@@ -623,10 +786,291 @@ export default function ESG() {
               </TabsContent>
 
               <TabsContent value="dashboard" className="space-y-4">
-                <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
-                  <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dashboard (Next)</div>
-                  <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    This tab will show totals, charts, and export-ready summaries once metrics + evidence are populated.
+                {!selectedProjectId || !selectedPeriodId ? (
+                  <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dashboard</div>
+                    <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                      Select a project and reporting period to see ESG coverage, anomalies, and AI insights.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                        <div className="text-xs text-slate-600 dark:text-slate-300">Sites</div>
+                        <div className="text-2xl font-semibold">{dashboardSummary?.counts?.sites ?? '-'}</div>
+                      </div>
+                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                        <div className="text-xs text-slate-600 dark:text-slate-300">Metrics</div>
+                        <div className="text-2xl font-semibold">{dashboardSummary?.counts?.metrics ?? '-'}</div>
+                      </div>
+                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                        <div className="text-xs text-slate-600 dark:text-slate-300">Evidence</div>
+                        <div className="text-2xl font-semibold">{dashboardSummary?.counts?.evidence ?? '-'}</div>
+                      </div>
+                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                        <div className="text-xs text-slate-600 dark:text-slate-300">Pending AI suggestions</div>
+                        <div className="text-2xl font-semibold">{dashboardSummary?.counts?.pending_suggestions ?? '-'}</div>
+                      </div>
+                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                        <div className="text-xs text-slate-600 dark:text-slate-300">Metrics w/o evidence</div>
+                        <div className="text-2xl font-semibold">{dashboardSummary?.counts?.metrics_without_evidence ?? '-'}</div>
+                      </div>
+                    </div>
+
+                    {Number(dashboardSummary?.counts?.metrics_without_evidence || 0) > 0 ? (
+                      <Alert>
+                        <AlertDescription>
+                          {dashboardSummary.counts.metrics_without_evidence} metrics do not have evidence linked yet. Upload evidence and/or link metrics to source documents.
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
+
+                    {Number(dashboardSummary?.counts?.pending_suggestions || 0) > 0 ? (
+                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI suggestions to review</div>
+                            <div className="text-xs text-slate-600 dark:text-slate-300">Approve to create metrics automatically.</div>
+                          </div>
+                        </div>
+                        <div className="mt-3 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Category</TableHead>
+                                <TableHead>Subcategory</TableHead>
+                                <TableHead className="text-right">Value</TableHead>
+                                <TableHead>Unit</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {suggestions.slice(0, 10).map((s) => (
+                                <TableRow key={s.id}>
+                                  <TableCell className="font-medium">{s.category}</TableCell>
+                                  <TableCell>{s.subcategory || '-'}</TableCell>
+                                  <TableCell className="text-right">{s.value == null ? '-' : String(s.value)}</TableCell>
+                                  <TableCell>{s.unit || '-'}</TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end gap-2">
+                                      <Button size="sm" onClick={() => reviewSuggestion({ suggestionId: s.id, status: 'approved' })} disabled={loading}>Approve</Button>
+                                      <Button size="sm" variant="outline" onClick={() => reviewSuggestion({ suggestionId: s.id, status: 'rejected' })} disabled={loading}>Reject</Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                              {suggestions.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={5} className="text-center text-slate-600 dark:text-slate-300 py-8">
+                                    No pending AI suggestions.
+                                  </TableCell>
+                                </TableRow>
+                              ) : null}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    ) : null}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Finance KPIs</div>
+                        <div className="mt-3 text-sm text-slate-700 dark:text-slate-200 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span>Total utilities spend</span>
+                            <span className="font-semibold">{dashboardFinance?.kpis?.total_utilities_spend ?? '-'}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span>Total emissions reported</span>
+                            <span className="font-semibold">{dashboardFinance?.kpis?.total_emissions_reported ?? '-'}</span>
+                          </div>
+                        </div>
+                        <div className="mt-2 text-xs text-slate-600 dark:text-slate-300">
+                          Add cost metrics (unit GBP/USD/EUR/INR or category contains “cost/spend”) to improve finance reporting.
+                        </div>
+                      </div>
+
+                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Anomalies</div>
+                        <div className="mt-3 text-sm text-slate-700 dark:text-slate-200">
+                          {dashboardAnomalies.length === 0 ? (
+                            <div className="text-xs text-slate-600 dark:text-slate-300">No anomalies detected yet (needs enough data points).</div>
+                          ) : (
+                            <div className="space-y-2">
+                              {dashboardAnomalies.slice(0, 5).map((a, idx) => (
+                                <div key={`${a.key}-${idx}`} className="flex items-center justify-between">
+                                  <span className="truncate pr-2">{a.key}</span>
+                                  <span className="font-semibold">z={Number(a.z_score || 0).toFixed(1)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI Insights</div>
+                          <div className="text-xs text-slate-600 dark:text-slate-300">Generate a narrative with recommendations + citations.</div>
+                        </div>
+                        <Button onClick={generateAiInsights} disabled={loading} className="gap-2">
+                          <RefreshCw className="w-4 h-4" /> Generate
+                        </Button>
+                      </div>
+                      <div className="mt-3 text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
+                        {dashboardInsights ? (typeof dashboardInsights === 'string' ? dashboardInsights : JSON.stringify(dashboardInsights, null, 2)) : 'No insights generated yet.'}
+                      </div>
+                    </div>
+
+                    <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Activities</div>
+                      <div className="mt-3 text-sm text-slate-700 dark:text-slate-200">
+                        {activities.length === 0 ? (
+                          <div className="text-xs text-slate-600 dark:text-slate-300">No activity yet.</div>
+                        ) : (
+                          <div className="space-y-2">
+                            {activities.slice(0, 10).map((a) => (
+                              <div key={a.id} className="flex items-center justify-between gap-3">
+                                <span className="truncate">{a.activity_type}</span>
+                                <span className="text-xs text-slate-600 dark:text-slate-300">{a.created_date ? new Date(a.created_date).toLocaleString() : ''}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="evidence" className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">Evidence</div>
+                    <div className="text-sm text-slate-600 dark:text-slate-300">Upload invoices/bills/spreadsheets and let AI suggest metrics.</div>
+                  </div>
+                  <Dialog open={evidenceDialogOpen} onOpenChange={setEvidenceDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button className="gap-2" disabled={!selectedProjectId || !selectedPeriodId}>
+                        <Plus className="w-4 h-4" /> Upload evidence
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl bg-white dark:bg-slate-900">
+                      <DialogHeader>
+                        <DialogTitle>Upload Evidence</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Site (optional)</label>
+                          <Select value={evidenceSiteId} onValueChange={setEvidenceSiteId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Link to a site (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {sites.map((s) => (
+                                <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">File</label>
+                          <Input type="file" onChange={(e) => setEvidenceFile(e.target.files?.[0] || null)} />
+                          <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">PDF, CSV, XLSX are supported for best extraction.</div>
+                        </div>
+                      </div>
+                      <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setEvidenceDialogOpen(false)} disabled={loading}>Cancel</Button>
+                        <Button onClick={uploadEvidence} disabled={loading}>Upload</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/60 dark:bg-slate-950/20">
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Uploaded evidence</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-300">Run extraction to create AI metric suggestions.</div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Filename</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {evidence.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={3} className="text-center text-slate-600 dark:text-slate-300 py-8">
+                              {selectedProjectId && selectedPeriodId ? 'No evidence yet. Upload the first document.' : 'Select a project and period first.'}
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          evidence.map((ev) => (
+                            <TableRow key={ev.id}>
+                              <TableCell className="font-medium truncate max-w-[220px]">{ev.filename}</TableCell>
+                              <TableCell>{ev.status || '-'}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button size="sm" variant="outline" onClick={() => window.open(backendApi.esg.evidence.downloadUrl(ev.id), '_blank')} disabled={loading}>
+                                    Open
+                                  </Button>
+                                  <Button size="sm" onClick={() => runEvidenceExtraction(ev.id)} disabled={loading}>
+                                    Extract
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/60 dark:bg-slate-950/20">
+                    <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI metric suggestions</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-300">Approve suggestions to create metrics.</div>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Category</TableHead>
+                          <TableHead className="text-right">Value</TableHead>
+                          <TableHead>Unit</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {suggestions.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center text-slate-600 dark:text-slate-300 py-8">
+                              No pending suggestions. Upload evidence and run Extract.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          suggestions.map((s) => (
+                            <TableRow key={s.id}>
+                              <TableCell className="font-medium">{s.category}{s.subcategory ? ` · ${s.subcategory}` : ''}</TableCell>
+                              <TableCell className="text-right">{s.value == null ? '-' : String(s.value)}</TableCell>
+                              <TableCell>{s.unit || '-'}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button size="sm" onClick={() => reviewSuggestion({ suggestionId: s.id, status: 'approved' })} disabled={loading}>Approve</Button>
+                                  <Button size="sm" variant="outline" onClick={() => reviewSuggestion({ suggestionId: s.id, status: 'rejected' })} disabled={loading}>Reject</Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               </TabsContent>

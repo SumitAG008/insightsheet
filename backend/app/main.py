@@ -47,7 +47,33 @@ from sqlalchemy import func, and_
 import httpx
 
 # Import local modules
-from app.database import get_db, User, Subscription, LoginHistory, UserActivity, FileProcessingHistory, PlaywrightJob, ConsentLog, ApiKey, ApiKeyIssuanceLog, ApiUsage, ApiBilling, SubscriptionEventLog, LoginOtpChallenge, LearningSignal, EsgProject, EsgReportingPeriod, EsgSite, EsgMetric, init_db
+from app.database import (
+    get_db,
+    init_db,
+    User,
+    Subscription,
+    SubscriptionEventLog,
+    LoginHistory,
+    UserActivity,
+    FileProcessingHistory,
+    PlaywrightJob,
+    ConsentLog,
+    ApiKey,
+    ApiKeyIssuanceLog,
+    ApiUsage,
+    ApiBilling,
+    LoginOtpChallenge,
+    LearningSignal,
+    EsgProject,
+    EsgReportingPeriod,
+    EsgSite,
+    EsgMetric,
+    EsgEvidenceDocument,
+    EsgMetricSuggestion,
+    UserFeature,
+    FeatureKey,
+    InvoiceExtractionJob,
+)
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -125,10 +151,10 @@ def _ascii_safe_filename(name: str) -> str:
     return s or "file"
 
 
-def _get_request_id(request: Request) -> str:
+def _get_request_id(request: Optional[Request]) -> str:
     rid = None
     try:
-        rid = request.headers.get("X-Request-Id")
+        rid = request.headers.get("X-Request-Id") if request is not None else None
     except Exception:
         rid = None
 
@@ -1912,6 +1938,16 @@ class EsgMetricUpdateRequest(BaseModel):
     source_page_to: Optional[int] = None
 
 
+class EsgEvidenceCreateRequest(BaseModel):
+    project_id: int
+    period_id: int
+    site_id: Optional[int] = None
+
+
+class EsgSuggestionReviewRequest(BaseModel):
+    status: str  # approved|rejected
+
+
 def _esg_require_owner(email: str, row_user_email: str) -> None:
     if (row_user_email or "").strip().lower() != (email or "").strip().lower():
         raise HTTPException(status_code=403, detail="Forbidden")
@@ -2022,6 +2058,781 @@ async def esg_delete_project(
     db.delete(row)
     db.commit()
     return {"message": "ok"}
+
+
+@app.get("/api/esg/evidence")
+async def esg_list_evidence(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    rows = (
+        db.query(EsgEvidenceDocument)
+        .filter(
+            EsgEvidenceDocument.user_email == email,
+            EsgEvidenceDocument.project_id == project_id,
+            EsgEvidenceDocument.period_id == period_id,
+        )
+        .order_by(EsgEvidenceDocument.created_date.desc())
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "project_id": r.project_id,
+            "period_id": r.period_id,
+            "site_id": r.site_id,
+            "filename": r.filename,
+            "content_type": r.content_type,
+            "file_size_bytes": r.file_size_bytes,
+            "storage_path": r.storage_path,
+            "doc_type": r.doc_type,
+            "status": r.status,
+            "created_date": r.created_date,
+            "updated_date": r.updated_date,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/esg/evidence/upload")
+async def esg_upload_evidence(
+    project_id: int = Form(...),
+    period_id: int = Form(...),
+    site_id: Optional[int] = Form(None),
+    file: UploadFile = File(...),
+    request: Request = None,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+    if site_id is not None:
+        site = db.query(EsgSite).filter(EsgSite.id == site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Site not found")
+        _esg_require_owner(email, site.user_email)
+        if site.project_id != project_id:
+            raise HTTPException(status_code=400, detail="Site does not belong to project")
+
+    subscription = _get_or_create_subscription(db, email)
+    max_size_mb = _plan_file_size_mb(subscription)
+    max_bytes = max_size_mb * 1024 * 1024
+    content = await file.read()
+    if len(content) > max_bytes:
+        raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
+    _enforce_upload_quota(subscription, len(content))
+
+    import uuid
+    safe_filename = _ascii_safe_filename(file.filename or "evidence")
+    evidence_dir = os.path.join("storage", "esg_evidence", email, str(project_id), str(period_id))
+    os.makedirs(evidence_dir, exist_ok=True)
+    storage_name = f"{uuid.uuid4().hex}_{safe_filename}"
+    storage_path = os.path.join(evidence_dir, storage_name)
+    with open(storage_path, "wb") as f:
+        f.write(content)
+
+    row = EsgEvidenceDocument(
+        project_id=project_id,
+        period_id=period_id,
+        user_email=email,
+        site_id=site_id,
+        filename=safe_filename,
+        content_type=file.content_type,
+        file_size_bytes=len(content),
+        storage_path=storage_path,
+        storage_provider="local",
+        storage_bucket=None,
+        storage_key=None,
+        status="uploaded",
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+
+    _consume_upload_bytes(db, subscription, email, _get_request_id(request), len(content))
+
+    activity = UserActivity(
+        user_email=email,
+        activity_type="esg_evidence_upload",
+        page_name="esg",
+        details=json.dumps({"project_id": project_id, "period_id": period_id, "site_id": site_id, "evidence_id": row.id}),
+    )
+    db.add(activity)
+    db.commit()
+
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "period_id": row.period_id,
+        "site_id": row.site_id,
+        "filename": row.filename,
+        "content_type": row.content_type,
+        "file_size_bytes": row.file_size_bytes,
+        "status": row.status,
+        "created_date": row.created_date,
+    }
+
+
+@app.get("/api/esg/evidence/{evidence_id}/download")
+async def esg_download_evidence(
+    evidence_id: int,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    ev = db.query(EsgEvidenceDocument).filter(EsgEvidenceDocument.id == evidence_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Not found")
+    _esg_require_owner(email, ev.user_email)
+
+    if (ev.storage_provider or "local") != "local":
+        raise HTTPException(status_code=501, detail="Non-local storage provider not implemented yet")
+
+    if not ev.storage_path or not os.path.exists(ev.storage_path):
+        raise HTTPException(status_code=404, detail="Stored file not found")
+
+    def _iterfile():
+        with open(ev.storage_path, "rb") as f:
+            yield from f
+
+    headers = {"Content-Disposition": f'attachment; filename="{ev.filename}"'}
+    return StreamingResponse(
+        _iterfile(),
+        media_type=ev.content_type or "application/octet-stream",
+        headers=headers,
+    )
+
+
+@app.post("/api/esg/evidence/{evidence_id}/extract")
+async def esg_extract_evidence(
+    evidence_id: int,
+    request: Request = None,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    ev = db.query(EsgEvidenceDocument).filter(EsgEvidenceDocument.id == evidence_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Not found")
+    _esg_require_owner(email, ev.user_email)
+
+    proj = db.query(EsgProject).filter(EsgProject.id == ev.project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == ev.period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+
+    subscription = _get_or_create_subscription(db, email)
+    _enforce_ai_quota(subscription)
+
+    if not ev.storage_path or not os.path.exists(ev.storage_path):
+        raise HTTPException(status_code=404, detail="Stored file not found")
+
+    with open(ev.storage_path, "rb") as f:
+        content = f.read()
+
+    try:
+        svc = IngestionService(IngestLimits(max_bytes=max(1, len(content))))
+        ingested = svc.ingest(ev.filename, content)
+        extracted_text = (ingested or {}).get("extracted_text") or ""
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to ingest file: {str(e)}")
+
+    schema_obj = {
+        "type": "json_object",
+        "properties": {
+            "doc_type": {"type": "string"},
+            "suggested_metrics": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "scope": {"type": "string"},
+                        "category": {"type": "string"},
+                        "subcategory": {"type": "string"},
+                        "value": {"type": "number"},
+                        "unit": {"type": "string"},
+                        "notes": {"type": "string"},
+                        "confidence": {"type": "number"},
+                    },
+                },
+            },
+        },
+    }
+
+    prompt = (
+        "You are an ESG data extraction assistant. Extract ESG-relevant measurements from the evidence text. "
+        "Return JSON with doc_type and suggested_metrics. suggested_metrics should be normalized and concise. "
+        "If no ESG metrics found, return an empty suggested_metrics array.\n\n"
+        f"Project: {proj.name}\n"
+        f"Reporting period: {period.name} (framework: {period.framework})\n"
+        f"Evidence filename: {ev.filename}\n\n"
+        "EVIDENCE TEXT:\n"
+        f"{extracted_text}"
+    )
+
+    try:
+        llm_out = await invoke_llm(
+            prompt=prompt,
+            response_schema=schema_obj,
+            model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4o-mini"),
+            max_tokens=int(os.getenv("AI_ASSISTANT_MAX_TOKENS", "1200") or "1200"),
+            return_usage=True,
+        )
+    except Exception as e:
+        ev.status = "failed"
+        db.commit()
+        raise HTTPException(status_code=500, detail=f"AI extraction failed: {str(e)}")
+
+    extraction = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
+    usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
+    total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
+    _consume_ai_quota(db, subscription, email, _get_request_id(request), total_tokens)
+
+    import json as _json
+    ev.extracted_text = extracted_text
+    ev.extraction_json = _json.dumps(extraction) if extraction is not None else None
+    ev.doc_type = (extraction or {}).get("doc_type") if isinstance(extraction, dict) else None
+    ev.status = "extracted"
+    db.commit()
+
+    db.query(EsgMetricSuggestion).filter(
+        EsgMetricSuggestion.user_email == email,
+        EsgMetricSuggestion.evidence_document_id == ev.id,
+    ).delete(synchronize_session=False)
+    db.commit()
+
+    created = []
+    suggested = (extraction or {}).get("suggested_metrics") if isinstance(extraction, dict) else None
+    if isinstance(suggested, list):
+        for s in suggested:
+            if not isinstance(s, dict):
+                continue
+            cat = (s.get("category") or "").strip()
+            if not cat:
+                continue
+            sug = EsgMetricSuggestion(
+                evidence_document_id=ev.id,
+                project_id=ev.project_id,
+                period_id=ev.period_id,
+                user_email=email,
+                site_id=ev.site_id,
+                scope=(s.get("scope") or None),
+                category=cat,
+                subcategory=(s.get("subcategory") or None),
+                value=(s.get("value") if isinstance(s.get("value"), (int, float)) else None),
+                unit=(s.get("unit") or None),
+                notes=(s.get("notes") or None),
+                confidence=(s.get("confidence") if isinstance(s.get("confidence"), (int, float)) else None),
+                status="pending",
+            )
+            db.add(sug)
+            db.flush()
+            created.append(sug)
+        db.commit()
+
+    activity = UserActivity(
+        user_email=email,
+        activity_type="esg_evidence_extract",
+        page_name="esg",
+        details=json.dumps({"project_id": ev.project_id, "period_id": ev.period_id, "site_id": ev.site_id, "evidence_id": ev.id}),
+    )
+    db.add(activity)
+    db.commit()
+
+    return {
+        "evidence_id": ev.id,
+        "doc_type": ev.doc_type,
+        "status": ev.status,
+        "suggestions_created": len(created),
+    }
+
+
+@app.get("/api/esg/suggestions")
+async def esg_list_metric_suggestions(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    evidence_document_id: Optional[int] = Query(None),
+    status: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    q = db.query(EsgMetricSuggestion).filter(
+        EsgMetricSuggestion.user_email == email,
+        EsgMetricSuggestion.project_id == project_id,
+        EsgMetricSuggestion.period_id == period_id,
+    )
+    if evidence_document_id is not None:
+        q = q.filter(EsgMetricSuggestion.evidence_document_id == evidence_document_id)
+    if status is not None:
+        q = q.filter(EsgMetricSuggestion.status == status)
+    rows = q.order_by(EsgMetricSuggestion.created_date.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "evidence_document_id": r.evidence_document_id,
+            "project_id": r.project_id,
+            "period_id": r.period_id,
+            "site_id": r.site_id,
+            "scope": r.scope,
+            "category": r.category,
+            "subcategory": r.subcategory,
+            "value": r.value,
+            "unit": r.unit,
+            "notes": r.notes,
+            "confidence": r.confidence,
+            "status": r.status,
+            "approved_metric_id": r.approved_metric_id,
+            "created_date": r.created_date,
+            "updated_date": r.updated_date,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/esg/suggestions/{suggestion_id}/review")
+async def esg_review_metric_suggestion(
+    suggestion_id: int,
+    payload: EsgSuggestionReviewRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    s = db.query(EsgMetricSuggestion).filter(EsgMetricSuggestion.id == suggestion_id).first()
+    if not s:
+        raise HTTPException(status_code=404, detail="Not found")
+    _esg_require_owner(email, s.user_email)
+
+    action = (payload.status or "").strip().lower()
+    if action not in ("approved", "rejected"):
+        raise HTTPException(status_code=400, detail="status must be approved or rejected")
+
+    if action == "rejected":
+        s.status = "rejected"
+        db.commit()
+        return {"message": "ok", "status": s.status}
+
+    if s.status == "approved" and s.approved_metric_id:
+        return {"message": "ok", "status": s.status, "metric_id": s.approved_metric_id}
+
+    metric = EsgMetric(
+        user_email=email,
+        project_id=s.project_id,
+        period_id=s.period_id,
+        site_id=s.site_id,
+        scope=s.scope,
+        category=s.category,
+        subcategory=s.subcategory,
+        value=s.value,
+        unit=s.unit,
+        notes=s.notes,
+        source_document_id=s.evidence_document_id,
+    )
+    db.add(metric)
+    db.commit()
+    db.refresh(metric)
+
+    s.status = "approved"
+    s.approved_metric_id = metric.id
+    db.commit()
+
+    activity = UserActivity(
+        user_email=email,
+        activity_type="esg_suggestion_approved",
+        page_name="esg",
+        details=json.dumps({"project_id": s.project_id, "period_id": s.period_id, "site_id": s.site_id, "suggestion_id": s.id, "metric_id": metric.id}),
+    )
+    db.add(activity)
+    db.commit()
+
+    return {"message": "ok", "status": s.status, "metric_id": metric.id}
+
+
+@app.get("/api/esg/dashboard/summary")
+async def esg_dashboard_summary(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    sites_count = db.query(EsgSite).filter(EsgSite.user_email == email, EsgSite.project_id == project_id).count()
+    metrics_count = db.query(EsgMetric).filter(
+        EsgMetric.user_email == email,
+        EsgMetric.project_id == project_id,
+        EsgMetric.period_id == period_id,
+    ).count()
+    evidence_count = db.query(EsgEvidenceDocument).filter(
+        EsgEvidenceDocument.user_email == email,
+        EsgEvidenceDocument.project_id == project_id,
+        EsgEvidenceDocument.period_id == period_id,
+    ).count()
+    pending_suggestions = db.query(EsgMetricSuggestion).filter(
+        EsgMetricSuggestion.user_email == email,
+        EsgMetricSuggestion.project_id == project_id,
+        EsgMetricSuggestion.period_id == period_id,
+        EsgMetricSuggestion.status == "pending",
+    ).count()
+    metrics_without_evidence = db.query(EsgMetric).filter(
+        EsgMetric.user_email == email,
+        EsgMetric.project_id == project_id,
+        EsgMetric.period_id == period_id,
+        EsgMetric.source_document_id.is_(None),
+    ).count()
+
+    return {
+        "project": {"id": proj.id, "name": proj.name},
+        "period": {"id": period.id, "name": period.name, "framework": period.framework},
+        "counts": {
+            "sites": sites_count,
+            "metrics": metrics_count,
+            "evidence": evidence_count,
+            "pending_suggestions": pending_suggestions,
+            "metrics_without_evidence": metrics_without_evidence,
+        },
+    }
+
+
+@app.get("/api/esg/activities")
+async def esg_list_activities(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    limit: int = Query(50),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    limit = max(1, min(int(limit or 50), 200))
+
+    like_prefix = "esg_%"
+    proj_token = f'"project_id": {int(project_id)}'
+    period_token = f'"period_id": {int(period_id)}'
+    rows = (
+        db.query(UserActivity)
+        .filter(
+            UserActivity.user_email == email,
+            UserActivity.activity_type.like(like_prefix),
+            UserActivity.details.isnot(None),
+            UserActivity.details.contains(proj_token),
+            UserActivity.details.contains(period_token),
+        )
+        .order_by(UserActivity.created_date.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "activity_type": r.activity_type,
+            "page_name": r.page_name,
+            "details": r.details,
+            "created_date": r.created_date,
+        }
+        for r in rows
+    ]
+
+
+@app.get("/api/esg/dashboard/anomalies")
+async def esg_dashboard_anomalies(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    metrics = (
+        db.query(EsgMetric)
+        .filter(
+            EsgMetric.user_email == email,
+            EsgMetric.project_id == project_id,
+            EsgMetric.period_id == period_id,
+        )
+        .all()
+    )
+
+    by_key: Dict[str, List[float]] = {}
+    for m in metrics:
+        if m.value is None:
+            continue
+        key = f"{(m.category or '').strip().lower()}::{(m.subcategory or '').strip().lower()}::{(m.unit or '').strip().lower()}"
+        by_key.setdefault(key, []).append(float(m.value))
+
+    anomalies = []
+    for k, vals in by_key.items():
+        if len(vals) < 4:
+            continue
+        try:
+            mean = sum(vals) / len(vals)
+            var = sum((v - mean) ** 2 for v in vals) / max(1, (len(vals) - 1))
+            std = var ** 0.5
+        except Exception:
+            continue
+        if std <= 0:
+            continue
+        last = vals[0]
+        z = abs((last - mean) / std)
+        if z >= 3.0:
+            anomalies.append({
+                "key": k,
+                "z_score": float(z),
+                "mean": float(mean),
+                "std": float(std),
+                "value": float(last),
+                "severity": "high" if z >= 4.0 else "medium",
+            })
+
+    anomalies = sorted(anomalies, key=lambda x: x.get("z_score", 0), reverse=True)[:50]
+    return {"anomalies": anomalies}
+
+
+@app.get("/api/esg/dashboard/finance-kpis")
+async def esg_dashboard_finance_kpis(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    metrics = (
+        db.query(EsgMetric)
+        .filter(
+            EsgMetric.user_email == email,
+            EsgMetric.project_id == project_id,
+            EsgMetric.period_id == period_id,
+        )
+        .all()
+    )
+
+    def _is_cost_metric(m: EsgMetric) -> bool:
+        cat = (m.category or "").lower()
+        unit = (m.unit or "").lower()
+        return ("cost" in cat or "spend" in cat or unit in ("gbp", "usd", "eur", "inr"))
+
+    total_cost = 0.0
+    for m in metrics:
+        if m.value is None:
+            continue
+        if _is_cost_metric(m):
+            try:
+                total_cost += float(m.value)
+            except Exception:
+                pass
+
+    total_emissions = 0.0
+    for m in metrics:
+        if m.value is None:
+            continue
+        unit = (m.unit or "").lower().strip()
+        cat = (m.category or "").lower()
+        if unit in ("tco2", "tco2e", "kgco2", "kgco2e") or "emission" in cat:
+            try:
+                total_emissions += float(m.value)
+            except Exception:
+                pass
+
+    return {
+        "kpis": {
+            "total_utilities_spend": total_cost,
+            "total_emissions_reported": total_emissions,
+        }
+    }
+
+
+@app.get("/api/esg/dashboard/insights")
+async def esg_dashboard_insights(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    request: Request = None,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    subscription = _get_or_create_subscription(db, email)
+    _enforce_ai_quota(subscription)
+
+    metrics = (
+        db.query(EsgMetric)
+        .filter(
+            EsgMetric.user_email == email,
+            EsgMetric.project_id == project_id,
+            EsgMetric.period_id == period_id,
+        )
+        .order_by(EsgMetric.created_date.desc())
+        .limit(250)
+        .all()
+    )
+    evidence = (
+        db.query(EsgEvidenceDocument)
+        .filter(
+            EsgEvidenceDocument.user_email == email,
+            EsgEvidenceDocument.project_id == project_id,
+            EsgEvidenceDocument.period_id == period_id,
+        )
+        .order_by(EsgEvidenceDocument.created_date.desc())
+        .limit(50)
+        .all()
+    )
+
+    metrics_block = [
+        {
+            "id": m.id,
+            "site_id": m.site_id,
+            "scope": m.scope,
+            "category": m.category,
+            "subcategory": m.subcategory,
+            "value": m.value,
+            "unit": m.unit,
+            "source_document_id": m.source_document_id,
+        }
+        for m in metrics
+    ]
+    evidence_block = [
+        {
+            "id": e.id,
+            "filename": e.filename,
+            "doc_type": e.doc_type,
+            "status": e.status,
+        }
+        for e in evidence
+    ]
+
+    schema_obj = {
+        "type": "json_object",
+        "properties": {
+            "summary": {"type": "string"},
+            "insights": {"type": "array", "items": {"type": "string"}},
+            "risks": {"type": "array", "items": {"type": "string"}},
+            "recommended_actions": {"type": "array", "items": {"type": "string"}},
+            "citations": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "metric_id": {"type": "integer"},
+                        "evidence_id": {"type": "integer"},
+                        "note": {"type": "string"},
+                    },
+                },
+            },
+        },
+    }
+
+    prompt = (
+        "You are an ESG reporting analyst. Create a concise dashboard insight summary for the reporting period. "
+        "Focus on finance and ESG decision-making. Use the provided metrics and evidence list. "
+        "Add citations by referencing metric_id and evidence_id where possible.\n\n"
+        f"Project: {proj.name}\n"
+        f"Period: {period.name} (framework: {period.framework})\n\n"
+        f"Metrics (JSON): {json.dumps(metrics_block)}\n\n"
+        f"Evidence (JSON): {json.dumps(evidence_block)}\n"
+    )
+
+    llm_out = await invoke_llm(
+        prompt=prompt,
+        response_schema=schema_obj,
+        model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4o-mini"),
+        max_tokens=int(os.getenv("AI_ASSISTANT_MAX_TOKENS", "1200") or "1200"),
+        return_usage=True,
+    )
+    content = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
+    usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
+    total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
+    _consume_ai_quota(db, subscription, email, _get_request_id(request), total_tokens)
+
+    return {"insights": content}
 
 
 @app.get("/api/esg/periods")

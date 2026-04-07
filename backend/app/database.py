@@ -83,6 +83,58 @@ class User(Base):
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class EsgEvidenceDocument(Base):
+    __tablename__ = "esg_evidence_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, index=True, nullable=False)
+    period_id = Column(Integer, index=True, nullable=False)
+    user_email = Column(String(255), index=True, nullable=False)
+    site_id = Column(Integer, index=True, nullable=True)
+
+    filename = Column(String(500), nullable=False)
+    content_type = Column(String(200), nullable=True)
+    file_size_bytes = Column(Integer, nullable=True)
+    storage_path = Column(String(1000), nullable=False)
+
+    storage_provider = Column(String(30), default="local", nullable=False)
+    storage_bucket = Column(String(255), nullable=True)
+    storage_key = Column(String(1000), nullable=True)
+
+    doc_type = Column(String(100), nullable=True)
+    extracted_text = Column(Text, nullable=True)
+    extraction_json = Column(Text, nullable=True)
+    status = Column(String(30), default="uploaded", index=True)
+
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class EsgMetricSuggestion(Base):
+    __tablename__ = "esg_metric_suggestions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    evidence_document_id = Column(Integer, index=True, nullable=False)
+    project_id = Column(Integer, index=True, nullable=False)
+    period_id = Column(Integer, index=True, nullable=False)
+    user_email = Column(String(255), index=True, nullable=False)
+    site_id = Column(Integer, index=True, nullable=True)
+
+    scope = Column(String(20), nullable=True)
+    category = Column(String(255), nullable=False)
+    subcategory = Column(String(255), nullable=True)
+    value = Column(Float, nullable=True)
+    unit = Column(String(50), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    confidence = Column(Float, nullable=True)
+    status = Column(String(30), default="pending", index=True)  # pending, approved, rejected
+    approved_metric_id = Column(Integer, index=True, nullable=True)
+
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class EsgProject(Base):
     __tablename__ = "esg_projects"
 

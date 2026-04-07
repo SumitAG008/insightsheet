@@ -353,6 +353,145 @@ export const backendApi = {
         return response.json();
       },
     },
+
+    evidence: {
+      list: async ({ projectId, periodId }) => {
+        const qs = new URLSearchParams({
+          project_id: String(projectId),
+          period_id: String(periodId),
+        });
+        const response = await apiCall(`/api/esg/evidence?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG evidence: ${response.status}`);
+        }
+        return response.json();
+      },
+      upload: async ({ projectId, periodId, siteId, file }) => {
+        const formData = new FormData();
+        formData.append('project_id', String(projectId));
+        formData.append('period_id', String(periodId));
+        if (siteId != null && String(siteId).length > 0) formData.append('site_id', String(siteId));
+        formData.append('file', file);
+        const response = await apiCall('/api/esg/evidence/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to upload evidence: ${response.status}`);
+        }
+        return response.json();
+      },
+      extract: async (evidenceId) => {
+        const response = await apiCall(`/api/esg/evidence/${evidenceId}/extract`, {
+          method: 'POST',
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to extract evidence: ${response.status}`);
+        }
+        return response.json();
+      },
+      downloadUrl: (evidenceId) => {
+        return `${getApiBaseUrl()}/api/esg/evidence/${evidenceId}/download`;
+      },
+    },
+
+    suggestions: {
+      list: async ({ projectId, periodId, evidenceDocumentId, status }) => {
+        const qs = new URLSearchParams({
+          project_id: String(projectId),
+          period_id: String(periodId),
+        });
+        if (evidenceDocumentId != null) qs.set('evidence_document_id', String(evidenceDocumentId));
+        if (status) qs.set('status', String(status));
+        const response = await apiCall(`/api/esg/suggestions?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG suggestions: ${response.status}`);
+        }
+        return response.json();
+      },
+      review: async ({ suggestionId, status }) => {
+        const response = await apiCall(`/api/esg/suggestions/${suggestionId}/review`, {
+          method: 'POST',
+          body: { status },
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to review suggestion: ${response.status}`);
+        }
+        return response.json();
+      },
+    },
+
+    dashboard: {
+      summary: async ({ projectId, periodId }) => {
+        const qs = new URLSearchParams({
+          project_id: String(projectId),
+          period_id: String(periodId),
+        });
+        const response = await apiCall(`/api/esg/dashboard/summary?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG dashboard summary: ${response.status}`);
+        }
+        return response.json();
+      },
+      anomalies: async ({ projectId, periodId }) => {
+        const qs = new URLSearchParams({
+          project_id: String(projectId),
+          period_id: String(periodId),
+        });
+        const response = await apiCall(`/api/esg/dashboard/anomalies?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG anomalies: ${response.status}`);
+        }
+        return response.json();
+      },
+      financeKpis: async ({ projectId, periodId }) => {
+        const qs = new URLSearchParams({
+          project_id: String(projectId),
+          period_id: String(periodId),
+        });
+        const response = await apiCall(`/api/esg/dashboard/finance-kpis?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG finance KPIs: ${response.status}`);
+        }
+        return response.json();
+      },
+      insights: async ({ projectId, periodId }) => {
+        const qs = new URLSearchParams({
+          project_id: String(projectId),
+          period_id: String(periodId),
+        });
+        const response = await apiCall(`/api/esg/dashboard/insights?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG AI insights: ${response.status}`);
+        }
+        return response.json();
+      },
+    },
+
+    activities: {
+      list: async ({ projectId, periodId, limit = 50 }) => {
+        const qs = new URLSearchParams({
+          project_id: String(projectId),
+          period_id: String(periodId),
+          limit: String(limit),
+        });
+        const response = await apiCall(`/api/esg/activities?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG activities: ${response.status}`);
+        }
+        return response.json();
+      },
+    },
   },
 
   // AI/LLM Integration

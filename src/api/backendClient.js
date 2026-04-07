@@ -179,6 +179,182 @@ export const backendApi = {
     },
   },
 
+  esg: {
+    projects: {
+      list: async () => {
+        const response = await apiCall('/api/esg/projects');
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG projects: ${response.status}`);
+        }
+        return response.json();
+      },
+      create: async (payload) => {
+        const response = await apiCall('/api/esg/projects', {
+          method: 'POST',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to create ESG project: ${response.status}`);
+        }
+        return response.json();
+      },
+      update: async (projectId, payload) => {
+        const response = await apiCall(`/api/esg/projects/${projectId}`, {
+          method: 'PATCH',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to update ESG project: ${response.status}`);
+        }
+        return response.json();
+      },
+      remove: async (projectId) => {
+        const response = await apiCall(`/api/esg/projects/${projectId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to delete ESG project: ${response.status}`);
+        }
+        return response.json();
+      },
+    },
+    periods: {
+      list: async (projectId) => {
+        const response = await apiCall(`/api/esg/periods?project_id=${encodeURIComponent(projectId)}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG periods: ${response.status}`);
+        }
+        return response.json();
+      },
+      create: async (payload) => {
+        const response = await apiCall('/api/esg/periods', {
+          method: 'POST',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to create ESG period: ${response.status}`);
+        }
+        return response.json();
+      },
+      update: async (periodId, payload) => {
+        const response = await apiCall(`/api/esg/periods/${periodId}`, {
+          method: 'PATCH',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to update ESG period: ${response.status}`);
+        }
+        return response.json();
+      },
+      remove: async (periodId) => {
+        const response = await apiCall(`/api/esg/periods/${periodId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to delete ESG period: ${response.status}`);
+        }
+        return response.json();
+      },
+    },
+    sites: {
+      list: async (projectId) => {
+        const response = await apiCall(`/api/esg/sites?project_id=${encodeURIComponent(projectId)}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG sites: ${response.status}`);
+        }
+        return response.json();
+      },
+      create: async (payload) => {
+        const response = await apiCall('/api/esg/sites', {
+          method: 'POST',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to create ESG site: ${response.status}`);
+        }
+        return response.json();
+      },
+      update: async (siteId, payload) => {
+        const response = await apiCall(`/api/esg/sites/${siteId}`, {
+          method: 'PATCH',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to update ESG site: ${response.status}`);
+        }
+        return response.json();
+      },
+      remove: async (siteId) => {
+        const response = await apiCall(`/api/esg/sites/${siteId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to delete ESG site: ${response.status}`);
+        }
+        return response.json();
+      },
+    },
+    metrics: {
+      list: async ({ projectId, periodId, siteId }) => {
+        const qs = new URLSearchParams({
+          project_id: String(projectId),
+          period_id: String(periodId),
+        });
+        if (siteId != null) qs.set('site_id', String(siteId));
+        const response = await apiCall(`/api/esg/metrics?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG metrics: ${response.status}`);
+        }
+        return response.json();
+      },
+      create: async (payload) => {
+        const response = await apiCall('/api/esg/metrics', {
+          method: 'POST',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to create ESG metric: ${response.status}`);
+        }
+        return response.json();
+      },
+      update: async (metricId, payload) => {
+        const response = await apiCall(`/api/esg/metrics/${metricId}`, {
+          method: 'PATCH',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to update ESG metric: ${response.status}`);
+        }
+        return response.json();
+      },
+      remove: async (metricId) => {
+        const response = await apiCall(`/api/esg/metrics/${metricId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to delete ESG metric: ${response.status}`);
+        }
+        return response.json();
+      },
+    },
+  },
+
   // AI/LLM Integration
   llm: {
     invoke: async (prompt, options = {}) => {

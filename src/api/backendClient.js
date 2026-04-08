@@ -878,4 +878,6 @@ export const meldraAi = {
   },
 };
 
+backendApi.esgV2 = meldraAi.esgV2;
+
 export default backendApi;

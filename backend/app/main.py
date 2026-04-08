@@ -3137,6 +3137,247 @@ async def esg_dashboard_ai_insights(
     return {"insights": content}
 
 
+@app.get("/api/esg/dashboard/summary")
+async def esg_dashboard_summary(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    sites_count = db.query(EsgSite).filter(
+        EsgSite.user_email == email,
+        EsgSite.project_id == project_id,
+    ).count()
+    metrics_count = db.query(EsgMetric).filter(
+        EsgMetric.user_email == email,
+        EsgMetric.project_id == project_id,
+        EsgMetric.period_id == period_id,
+    ).count()
+    evidence_count = db.query(EsgEvidenceDocument).filter(
+        EsgEvidenceDocument.user_email == email,
+        EsgEvidenceDocument.project_id == project_id,
+        EsgEvidenceDocument.period_id == period_id,
+    ).count()
+    pending_suggestions = db.query(EsgMetricSuggestion).filter(
+        EsgMetricSuggestion.user_email == email,
+        EsgMetricSuggestion.project_id == project_id,
+        EsgMetricSuggestion.period_id == period_id,
+        EsgMetricSuggestion.status == "pending",
+    ).count()
+    metrics_without_evidence = db.query(EsgMetric).filter(
+        EsgMetric.user_email == email,
+        EsgMetric.project_id == project_id,
+        EsgMetric.period_id == period_id,
+        EsgMetric.source_document_id.is_(None),
+    ).count()
+
+    return {
+        "project": {"id": proj.id, "name": proj.name},
+        "period": {"id": period.id, "name": period.name, "framework": period.framework},
+        "counts": {
+            "sites": sites_count,
+            "metrics": metrics_count,
+            "evidence": evidence_count,
+            "pending_suggestions": pending_suggestions,
+            "metrics_without_evidence": metrics_without_evidence,
+        },
+    }
+
+
+@app.get("/api/esg/activities")
+async def esg_list_activities(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    limit: int = Query(50),
+    offset: int = Query(0),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    limit = max(1, min(int(limit or 50), 200))
+    offset = max(0, int(offset or 0))
+
+    like_prefix = "esg_%"
+    proj_token = f'"project_id": {int(project_id)}'
+    period_token = f'"period_id": {int(period_id)}'
+    rows = (
+        db.query(UserActivity)
+        .filter(
+            UserActivity.user_email == email,
+            UserActivity.activity_type.like(like_prefix),
+            UserActivity.details.isnot(None),
+            UserActivity.details.contains(proj_token),
+            UserActivity.details.contains(period_token),
+        )
+        .order_by(UserActivity.created_date.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "activity_type": r.activity_type,
+            "page_name": r.page_name,
+            "details": r.details,
+            "created_date": r.created_date,
+        }
+        for r in rows
+    ]
+
+
+@app.get("/api/esg/dashboard/anomalies")
+async def esg_dashboard_anomalies(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    metrics = (
+        db.query(EsgMetric)
+        .filter(
+            EsgMetric.user_email == email,
+            EsgMetric.project_id == project_id,
+            EsgMetric.period_id == period_id,
+        )
+        .all()
+    )
+
+    by_key: Dict[str, List[float]] = {}
+    for m in metrics:
+        if m.value is None:
+            continue
+        key = f"{(m.category or '').strip().lower()}::{(m.subcategory or '').strip().lower()}::{(m.unit or '').strip().lower()}"
+        by_key.setdefault(key, []).append(float(m.value))
+
+    anomalies = []
+    for k, vals in by_key.items():
+        if len(vals) < 4:
+            continue
+        try:
+            mean = sum(vals) / len(vals)
+            var = sum((v - mean) ** 2 for v in vals) / max(1, (len(vals) - 1))
+            std = var ** 0.5
+        except Exception:
+            continue
+        if std <= 0:
+            continue
+        last = vals[0]
+        z = abs((last - mean) / std)
+        if z >= 3.0:
+            anomalies.append({
+                "key": k,
+                "z_score": float(z),
+                "mean": float(mean),
+                "std": float(std),
+                "value": float(last),
+                "severity": "high" if z >= 4.0 else "medium",
+            })
+
+    anomalies = sorted(anomalies, key=lambda x: x.get("z_score", 0), reverse=True)[:50]
+    return {"anomalies": anomalies}
+
+
+@app.get("/api/esg/dashboard/finance-kpis")
+async def esg_dashboard_finance_kpis(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+
+    metrics = (
+        db.query(EsgMetric)
+        .filter(
+            EsgMetric.user_email == email,
+            EsgMetric.project_id == project_id,
+            EsgMetric.period_id == period_id,
+        )
+        .all()
+    )
+
+    def _is_cost_metric(m: EsgMetric) -> bool:
+        cat = (m.category or "").lower()
+        unit = (m.unit or "").lower().strip()
+        return ("cost" in cat or "spend" in cat or unit in ("gbp", "usd", "eur", "inr"))
+
+    total_cost = 0.0
+    for m in metrics:
+        if m.value is None:
+            continue
+        if _is_cost_metric(m):
+            try:
+                total_cost += float(m.value)
+            except Exception:
+                pass
+
+    total_emissions = 0.0
+    for m in metrics:
+        if m.value is None:
+            continue
+        unit = (m.unit or "").lower().strip()
+        cat = (m.category or "").lower()
+        if unit in ("tco2", "tco2e", "kgco2", "kgco2e") or "emission" in cat:
+            try:
+                total_emissions += float(m.value)
+            except Exception:
+                pass
+
+    return {
+        "kpis": {
+            "total_utilities_spend": total_cost,
+            "total_emissions_reported": total_emissions,
+        }
+    }
+
+
 @app.get("/api/esg/periods")
 async def esg_list_periods(
     project_id: int = Query(...),

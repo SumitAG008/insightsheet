@@ -70,6 +70,13 @@ from app.database import (
     EsgMetric,
     EsgEvidenceDocument,
     EsgMetricSuggestion,
+    EsgFramework,
+    EsgFrameworkRequirement,
+    EsgMetricDefinition,
+    EsgMetricValue,
+    EsgMetricEvidenceLink,
+    EsgTask,
+    EsgMetricApproval,
     UserFeature,
     FeatureKey,
     InvoiceExtractionJob,
@@ -1948,9 +1955,83 @@ class EsgSuggestionReviewRequest(BaseModel):
     status: str  # approved|rejected
 
 
+class EsgV2FrameworkUpsertRequest(BaseModel):
+    project_id: int
+    key: str
+    name: str
+    enabled: bool = True
+
+
+class EsgV2RequirementUpsertRequest(BaseModel):
+    project_id: int
+    framework_key: str
+    code: str
+    title: str
+    description: Optional[str] = None
+    granularity: str = "org"  # org|site|both
+    evidence_required: bool = True
+
+
+class EsgV2MetricDefinitionUpsertRequest(BaseModel):
+    project_id: int
+    key: str
+    name: str
+    category: Optional[str] = None
+    unit: Optional[str] = None
+    description: Optional[str] = None
+    granularity: str = "org"  # org|site|both
+
+
+class EsgV2MetricValueUpsertRequest(BaseModel):
+    project_id: int
+    period_id: int
+    site_id: Optional[int] = None
+    metric_definition_id: int
+    value: Optional[float] = None
+    unit: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None  # missing|in_progress|submitted|needs_changes|approved|locked
+
+
+class EsgV2EvidenceLinkCreateRequest(BaseModel):
+    project_id: int
+    period_id: int
+    metric_value_id: int
+    evidence_document_id: int
+    excerpt: Optional[str] = None
+    page_ref: Optional[str] = None
+
+
+class EsgV2ApproveMetricRequest(BaseModel):
+    project_id: int
+    period_id: int
+    metric_value_id: int
+    evidence_waiver: bool = False
+    waiver_justification: Optional[str] = None
+    waiver_risk_level: Optional[str] = None  # low|medium|high
+
+
 def _esg_require_owner(email: str, row_user_email: str) -> None:
     if (row_user_email or "").strip().lower() != (email or "").strip().lower():
         raise HTTPException(status_code=403, detail="Forbidden")
+
+
+def _esg_v2_require_project_access(db: Session, email: str, project_id: int) -> EsgProject:
+    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    _esg_require_owner(email, proj.user_email)
+    return proj
+
+
+def _esg_v2_require_period_access(db: Session, email: str, project_id: int, period_id: int) -> EsgReportingPeriod:
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+    _esg_require_owner(email, period.user_email)
+    if period.project_id != project_id:
+        raise HTTPException(status_code=400, detail="Period does not belong to project")
+    return period
 
 
 @app.get("/api/esg/projects")
@@ -2060,10 +2141,512 @@ async def esg_delete_project(
     return {"message": "ok"}
 
 
+@app.get("/api/esg/v2/frameworks")
+async def esg_v2_list_frameworks(
+    project_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    _esg_v2_require_project_access(db, email, project_id)
+    rows = (
+        db.query(EsgFramework)
+        .filter(EsgFramework.user_email == email, EsgFramework.project_id == project_id)
+        .order_by(EsgFramework.created_date.desc())
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "project_id": r.project_id,
+            "key": r.key,
+            "name": r.name,
+            "enabled": r.enabled,
+            "created_date": r.created_date,
+            "updated_date": r.updated_date,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/esg/v2/frameworks")
+async def esg_v2_upsert_framework(
+    payload: EsgV2FrameworkUpsertRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    _esg_v2_require_project_access(db, email, payload.project_id)
+
+    key = (payload.key or "").strip().lower()
+    name = (payload.name or "").strip()
+    if not key or not name:
+        raise HTTPException(status_code=400, detail="Framework key and name are required")
+
+    row = (
+        db.query(EsgFramework)
+        .filter(EsgFramework.user_email == email, EsgFramework.project_id == payload.project_id, EsgFramework.key == key)
+        .first()
+    )
+    if not row:
+        row = EsgFramework(user_email=email, project_id=payload.project_id, key=key, name=name, enabled=bool(payload.enabled))
+        db.add(row)
+    else:
+        row.name = name
+        row.enabled = bool(payload.enabled)
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "key": row.key,
+        "name": row.name,
+        "enabled": row.enabled,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.get("/api/esg/v2/requirements")
+async def esg_v2_list_requirements(
+    project_id: int = Query(...),
+    framework_key: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    _esg_v2_require_project_access(db, email, project_id)
+
+    q = db.query(EsgFrameworkRequirement).filter(
+        EsgFrameworkRequirement.user_email == email,
+        EsgFrameworkRequirement.project_id == project_id,
+    )
+    if framework_key is not None:
+        q = q.filter(EsgFrameworkRequirement.framework_key == (framework_key or "").strip().lower())
+    rows = q.order_by(EsgFrameworkRequirement.created_date.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "project_id": r.project_id,
+            "framework_key": r.framework_key,
+            "code": r.code,
+            "title": r.title,
+            "description": r.description,
+            "granularity": r.granularity,
+            "evidence_required": r.evidence_required,
+            "created_date": r.created_date,
+            "updated_date": r.updated_date,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/esg/v2/requirements")
+async def esg_v2_upsert_requirement(
+    payload: EsgV2RequirementUpsertRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    _esg_v2_require_project_access(db, email, payload.project_id)
+
+    framework_key = (payload.framework_key or "").strip().lower()
+    code = (payload.code or "").strip()
+    title = (payload.title or "").strip()
+    if not framework_key or not code or not title:
+        raise HTTPException(status_code=400, detail="framework_key, code, title are required")
+
+    gran = (payload.granularity or "org").strip().lower()
+    if gran not in ("org", "site", "both"):
+        raise HTTPException(status_code=400, detail="Invalid granularity")
+
+    row = (
+        db.query(EsgFrameworkRequirement)
+        .filter(
+            EsgFrameworkRequirement.user_email == email,
+            EsgFrameworkRequirement.project_id == payload.project_id,
+            EsgFrameworkRequirement.framework_key == framework_key,
+            EsgFrameworkRequirement.code == code,
+        )
+        .first()
+    )
+    if not row:
+        row = EsgFrameworkRequirement(
+            user_email=email,
+            project_id=payload.project_id,
+            framework_key=framework_key,
+            code=code,
+            title=title,
+            description=payload.description,
+            granularity=gran,
+            evidence_required=bool(payload.evidence_required),
+        )
+        db.add(row)
+    else:
+        row.title = title
+        row.description = payload.description
+        row.granularity = gran
+        row.evidence_required = bool(payload.evidence_required)
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "framework_key": row.framework_key,
+        "code": row.code,
+        "title": row.title,
+        "description": row.description,
+        "granularity": row.granularity,
+        "evidence_required": row.evidence_required,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.get("/api/esg/v2/metric-definitions")
+async def esg_v2_list_metric_definitions(
+    project_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    _esg_v2_require_project_access(db, email, project_id)
+    rows = (
+        db.query(EsgMetricDefinition)
+        .filter(EsgMetricDefinition.user_email == email, EsgMetricDefinition.project_id == project_id)
+        .order_by(EsgMetricDefinition.created_date.desc())
+        .all()
+    )
+    return [
+        {
+            "id": r.id,
+            "project_id": r.project_id,
+            "key": r.key,
+            "name": r.name,
+            "category": r.category,
+            "unit": r.unit,
+            "description": r.description,
+            "granularity": r.granularity,
+            "created_date": r.created_date,
+            "updated_date": r.updated_date,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/esg/v2/metric-definitions")
+async def esg_v2_upsert_metric_definition(
+    payload: EsgV2MetricDefinitionUpsertRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    _esg_v2_require_project_access(db, email, payload.project_id)
+
+    key = (payload.key or "").strip()
+    name = (payload.name or "").strip()
+    if not key or not name:
+        raise HTTPException(status_code=400, detail="Metric definition key and name are required")
+
+    gran = (payload.granularity or "org").strip().lower()
+    if gran not in ("org", "site", "both"):
+        raise HTTPException(status_code=400, detail="Invalid granularity")
+
+    row = (
+        db.query(EsgMetricDefinition)
+        .filter(EsgMetricDefinition.user_email == email, EsgMetricDefinition.project_id == payload.project_id, EsgMetricDefinition.key == key)
+        .first()
+    )
+    if not row:
+        row = EsgMetricDefinition(
+            user_email=email,
+            project_id=payload.project_id,
+            key=key,
+            name=name,
+            category=payload.category,
+            unit=payload.unit,
+            description=payload.description,
+            granularity=gran,
+        )
+        db.add(row)
+    else:
+        row.name = name
+        row.category = payload.category
+        row.unit = payload.unit
+        row.description = payload.description
+        row.granularity = gran
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "key": row.key,
+        "name": row.name,
+        "category": row.category,
+        "unit": row.unit,
+        "description": row.description,
+        "granularity": row.granularity,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.get("/api/esg/v2/metric-values")
+async def esg_v2_list_metric_values(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    site_id: Optional[int] = Query(None),
+    metric_definition_id: Optional[int] = Query(None),
+    status: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    _esg_v2_require_project_access(db, email, project_id)
+    _esg_v2_require_period_access(db, email, project_id, period_id)
+
+    q = db.query(EsgMetricValue).filter(
+        EsgMetricValue.user_email == email,
+        EsgMetricValue.project_id == project_id,
+        EsgMetricValue.period_id == period_id,
+    )
+    if site_id is not None:
+        q = q.filter(EsgMetricValue.site_id == site_id)
+    if metric_definition_id is not None:
+        q = q.filter(EsgMetricValue.metric_definition_id == metric_definition_id)
+    if status is not None:
+        q = q.filter(EsgMetricValue.status == (status or "").strip().lower())
+
+    rows = q.order_by(EsgMetricValue.updated_date.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "project_id": r.project_id,
+            "period_id": r.period_id,
+            "site_id": r.site_id,
+            "metric_definition_id": r.metric_definition_id,
+            "value": r.value,
+            "unit": r.unit,
+            "notes": r.notes,
+            "status": r.status,
+            "created_date": r.created_date,
+            "updated_date": r.updated_date,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/esg/v2/metric-values")
+async def esg_v2_upsert_metric_value(
+    payload: EsgV2MetricValueUpsertRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    _esg_v2_require_project_access(db, email, payload.project_id)
+    _esg_v2_require_period_access(db, email, payload.project_id, payload.period_id)
+
+    mdef = db.query(EsgMetricDefinition).filter(EsgMetricDefinition.id == payload.metric_definition_id).first()
+    if not mdef:
+        raise HTTPException(status_code=404, detail="Metric definition not found")
+    _esg_require_owner(email, mdef.user_email)
+    if mdef.project_id != payload.project_id:
+        raise HTTPException(status_code=400, detail="Metric definition does not belong to project")
+
+    if payload.site_id is not None:
+        site = db.query(EsgSite).filter(EsgSite.id == payload.site_id).first()
+        if not site:
+            raise HTTPException(status_code=404, detail="Site not found")
+        _esg_require_owner(email, site.user_email)
+        if site.project_id != payload.project_id:
+            raise HTTPException(status_code=400, detail="Site does not belong to project")
+
+    row = (
+        db.query(EsgMetricValue)
+        .filter(
+            EsgMetricValue.user_email == email,
+            EsgMetricValue.project_id == payload.project_id,
+            EsgMetricValue.period_id == payload.period_id,
+            EsgMetricValue.site_id == payload.site_id,
+            EsgMetricValue.metric_definition_id == payload.metric_definition_id,
+        )
+        .first()
+    )
+    if not row:
+        row = EsgMetricValue(
+            user_email=email,
+            project_id=payload.project_id,
+            period_id=payload.period_id,
+            site_id=payload.site_id,
+            metric_definition_id=payload.metric_definition_id,
+            value=payload.value,
+            unit=payload.unit,
+            notes=payload.notes,
+            status=(payload.status or "missing"),
+        )
+        db.add(row)
+    else:
+        if row.status == "locked":
+            raise HTTPException(status_code=400, detail="Metric value is locked")
+        row.value = payload.value
+        row.unit = payload.unit
+        row.notes = payload.notes
+        if payload.status is not None:
+            row.status = (payload.status or "").strip().lower()
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "period_id": row.period_id,
+        "site_id": row.site_id,
+        "metric_definition_id": row.metric_definition_id,
+        "value": row.value,
+        "unit": row.unit,
+        "notes": row.notes,
+        "status": row.status,
+        "created_date": row.created_date,
+        "updated_date": row.updated_date,
+    }
+
+
+@app.post("/api/esg/v2/evidence-links")
+async def esg_v2_create_evidence_link(
+    payload: EsgV2EvidenceLinkCreateRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    _esg_v2_require_project_access(db, email, payload.project_id)
+    _esg_v2_require_period_access(db, email, payload.project_id, payload.period_id)
+
+    mv = db.query(EsgMetricValue).filter(EsgMetricValue.id == payload.metric_value_id).first()
+    if not mv:
+        raise HTTPException(status_code=404, detail="Metric value not found")
+    _esg_require_owner(email, mv.user_email)
+    if mv.project_id != payload.project_id or mv.period_id != payload.period_id:
+        raise HTTPException(status_code=400, detail="Metric value does not belong to project/period")
+
+    ev = db.query(EsgEvidenceDocument).filter(EsgEvidenceDocument.id == payload.evidence_document_id).first()
+    if not ev:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+    _esg_require_owner(email, ev.user_email)
+    if ev.project_id != payload.project_id or ev.period_id != payload.period_id:
+        raise HTTPException(status_code=400, detail="Evidence does not belong to project/period")
+
+    row = (
+        db.query(EsgMetricEvidenceLink)
+        .filter(
+            EsgMetricEvidenceLink.user_email == email,
+            EsgMetricEvidenceLink.metric_value_id == payload.metric_value_id,
+            EsgMetricEvidenceLink.evidence_document_id == payload.evidence_document_id,
+        )
+        .first()
+    )
+    if not row:
+        row = EsgMetricEvidenceLink(
+            user_email=email,
+            project_id=payload.project_id,
+            period_id=payload.period_id,
+            metric_value_id=payload.metric_value_id,
+            evidence_document_id=payload.evidence_document_id,
+            excerpt=payload.excerpt,
+            page_ref=payload.page_ref,
+        )
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+    return {
+        "id": row.id,
+        "project_id": row.project_id,
+        "period_id": row.period_id,
+        "metric_value_id": row.metric_value_id,
+        "evidence_document_id": row.evidence_document_id,
+        "excerpt": row.excerpt,
+        "page_ref": row.page_ref,
+        "created_date": row.created_date,
+    }
+
+
+@app.post("/api/esg/v2/metric-values/approve")
+async def esg_v2_approve_metric_value(
+    payload: EsgV2ApproveMetricRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    email = current_user["email"]
+    _esg_v2_require_project_access(db, email, payload.project_id)
+    _esg_v2_require_period_access(db, email, payload.project_id, payload.period_id)
+
+    mv = db.query(EsgMetricValue).filter(EsgMetricValue.id == payload.metric_value_id).first()
+    if not mv:
+        raise HTTPException(status_code=404, detail="Metric value not found")
+    _esg_require_owner(email, mv.user_email)
+    if mv.project_id != payload.project_id or mv.period_id != payload.period_id:
+        raise HTTPException(status_code=400, detail="Metric value does not belong to project/period")
+    if mv.status == "locked":
+        raise HTTPException(status_code=400, detail="Metric value is locked")
+
+    evidence_count = (
+        db.query(func.count(EsgMetricEvidenceLink.id))
+        .filter(
+            EsgMetricEvidenceLink.user_email == email,
+            EsgMetricEvidenceLink.metric_value_id == payload.metric_value_id,
+        )
+        .scalar()
+    )
+    evidence_count = int(evidence_count or 0)
+
+    waiver = bool(payload.evidence_waiver)
+    if waiver:
+        if current_user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Evidence waiver requires admin")
+        justification = (payload.waiver_justification or "").strip()
+        if not justification:
+            raise HTTPException(status_code=400, detail="waiver_justification is required")
+        risk = (payload.waiver_risk_level or "").strip().lower()
+        if risk not in ("low", "medium", "high"):
+            raise HTTPException(status_code=400, detail="waiver_risk_level must be low|medium|high")
+    else:
+        if evidence_count < 1:
+            raise HTTPException(status_code=400, detail="At least one evidence document is required before approval")
+
+    mv.status = "approved"
+    approval = EsgMetricApproval(
+        user_email=email,
+        project_id=payload.project_id,
+        period_id=payload.period_id,
+        metric_value_id=payload.metric_value_id,
+        approved_by=email,
+        evidence_waiver=waiver,
+        waiver_justification=(payload.waiver_justification if waiver else None),
+        waiver_risk_level=((payload.waiver_risk_level or "").strip().lower() if waiver else None),
+    )
+    db.add(approval)
+    db.commit()
+    db.refresh(approval)
+
+    return {
+        "metric_value_id": mv.id,
+        "status": mv.status,
+        "evidence_count": evidence_count,
+        "approval": {
+            "id": approval.id,
+            "approved_by": approval.approved_by,
+            "approved_at": approval.approved_at,
+            "evidence_waiver": approval.evidence_waiver,
+            "waiver_justification": approval.waiver_justification,
+            "waiver_risk_level": approval.waiver_risk_level,
+        },
+    }
+
+
 @app.get("/api/esg/evidence")
 async def esg_list_evidence(
     project_id: int = Query(...),
     period_id: int = Query(...),
+    limit: int = Query(100),
+    offset: int = Query(0),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -2079,6 +2662,9 @@ async def esg_list_evidence(
     if period.project_id != project_id:
         raise HTTPException(status_code=400, detail="Period does not belong to project")
 
+    limit = max(1, min(int(limit or 100), 500))
+    offset = max(0, int(offset or 0))
+
     rows = (
         db.query(EsgEvidenceDocument)
         .filter(
@@ -2087,6 +2673,8 @@ async def esg_list_evidence(
             EsgEvidenceDocument.period_id == period_id,
         )
         .order_by(EsgEvidenceDocument.created_date.desc())
+        .offset(offset)
+        .limit(limit)
         .all()
     )
     return [
@@ -2380,6 +2968,8 @@ async def esg_list_metric_suggestions(
     period_id: int = Query(...),
     evidence_document_id: Optional[int] = Query(None),
     status: Optional[str] = Query(None),
+    limit: int = Query(100),
+    offset: int = Query(0),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -2395,6 +2985,9 @@ async def esg_list_metric_suggestions(
     if period.project_id != project_id:
         raise HTTPException(status_code=400, detail="Period does not belong to project")
 
+    limit = max(1, min(int(limit or 100), 500))
+    offset = max(0, int(offset or 0))
+
     q = db.query(EsgMetricSuggestion).filter(
         EsgMetricSuggestion.user_email == email,
         EsgMetricSuggestion.project_id == project_id,
@@ -2404,7 +2997,7 @@ async def esg_list_metric_suggestions(
         q = q.filter(EsgMetricSuggestion.evidence_document_id == evidence_document_id)
     if status is not None:
         q = q.filter(EsgMetricSuggestion.status == status)
-    rows = q.order_by(EsgMetricSuggestion.created_date.desc()).all()
+    rows = q.order_by(EsgMetricSuggestion.created_date.desc()).offset(offset).limit(limit).all()
     return [
         {
             "id": r.id,
@@ -2428,300 +3021,8 @@ async def esg_list_metric_suggestions(
     ]
 
 
-@app.post("/api/esg/suggestions/{suggestion_id}/review")
-async def esg_review_metric_suggestion(
-    suggestion_id: int,
-    payload: EsgSuggestionReviewRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    s = db.query(EsgMetricSuggestion).filter(EsgMetricSuggestion.id == suggestion_id).first()
-    if not s:
-        raise HTTPException(status_code=404, detail="Not found")
-    _esg_require_owner(email, s.user_email)
-
-    action = (payload.status or "").strip().lower()
-    if action not in ("approved", "rejected"):
-        raise HTTPException(status_code=400, detail="status must be approved or rejected")
-
-    if action == "rejected":
-        s.status = "rejected"
-        db.commit()
-        return {"message": "ok", "status": s.status}
-
-    if s.status == "approved" and s.approved_metric_id:
-        return {"message": "ok", "status": s.status, "metric_id": s.approved_metric_id}
-
-    metric = EsgMetric(
-        user_email=email,
-        project_id=s.project_id,
-        period_id=s.period_id,
-        site_id=s.site_id,
-        scope=s.scope,
-        category=s.category,
-        subcategory=s.subcategory,
-        value=s.value,
-        unit=s.unit,
-        notes=s.notes,
-        source_document_id=s.evidence_document_id,
-    )
-    db.add(metric)
-    db.commit()
-    db.refresh(metric)
-
-    s.status = "approved"
-    s.approved_metric_id = metric.id
-    db.commit()
-
-    activity = UserActivity(
-        user_email=email,
-        activity_type="esg_suggestion_approved",
-        page_name="esg",
-        details=json.dumps({"project_id": s.project_id, "period_id": s.period_id, "site_id": s.site_id, "suggestion_id": s.id, "metric_id": metric.id}),
-    )
-    db.add(activity)
-    db.commit()
-
-    return {"message": "ok", "status": s.status, "metric_id": metric.id}
-
-
-@app.get("/api/esg/dashboard/summary")
-async def esg_dashboard_summary(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    sites_count = db.query(EsgSite).filter(EsgSite.user_email == email, EsgSite.project_id == project_id).count()
-    metrics_count = db.query(EsgMetric).filter(
-        EsgMetric.user_email == email,
-        EsgMetric.project_id == project_id,
-        EsgMetric.period_id == period_id,
-    ).count()
-    evidence_count = db.query(EsgEvidenceDocument).filter(
-        EsgEvidenceDocument.user_email == email,
-        EsgEvidenceDocument.project_id == project_id,
-        EsgEvidenceDocument.period_id == period_id,
-    ).count()
-    pending_suggestions = db.query(EsgMetricSuggestion).filter(
-        EsgMetricSuggestion.user_email == email,
-        EsgMetricSuggestion.project_id == project_id,
-        EsgMetricSuggestion.period_id == period_id,
-        EsgMetricSuggestion.status == "pending",
-    ).count()
-    metrics_without_evidence = db.query(EsgMetric).filter(
-        EsgMetric.user_email == email,
-        EsgMetric.project_id == project_id,
-        EsgMetric.period_id == period_id,
-        EsgMetric.source_document_id.is_(None),
-    ).count()
-
-    return {
-        "project": {"id": proj.id, "name": proj.name},
-        "period": {"id": period.id, "name": period.name, "framework": period.framework},
-        "counts": {
-            "sites": sites_count,
-            "metrics": metrics_count,
-            "evidence": evidence_count,
-            "pending_suggestions": pending_suggestions,
-            "metrics_without_evidence": metrics_without_evidence,
-        },
-    }
-
-
-@app.get("/api/esg/activities")
-async def esg_list_activities(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    limit: int = Query(50),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    limit = max(1, min(int(limit or 50), 200))
-
-    like_prefix = "esg_%"
-    proj_token = f'"project_id": {int(project_id)}'
-    period_token = f'"period_id": {int(period_id)}'
-    rows = (
-        db.query(UserActivity)
-        .filter(
-            UserActivity.user_email == email,
-            UserActivity.activity_type.like(like_prefix),
-            UserActivity.details.isnot(None),
-            UserActivity.details.contains(proj_token),
-            UserActivity.details.contains(period_token),
-        )
-        .order_by(UserActivity.created_date.desc())
-        .limit(limit)
-        .all()
-    )
-    return [
-        {
-            "id": r.id,
-            "activity_type": r.activity_type,
-            "page_name": r.page_name,
-            "details": r.details,
-            "created_date": r.created_date,
-        }
-        for r in rows
-    ]
-
-
-@app.get("/api/esg/dashboard/anomalies")
-async def esg_dashboard_anomalies(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    metrics = (
-        db.query(EsgMetric)
-        .filter(
-            EsgMetric.user_email == email,
-            EsgMetric.project_id == project_id,
-            EsgMetric.period_id == period_id,
-        )
-        .all()
-    )
-
-    by_key: Dict[str, List[float]] = {}
-    for m in metrics:
-        if m.value is None:
-            continue
-        key = f"{(m.category or '').strip().lower()}::{(m.subcategory or '').strip().lower()}::{(m.unit or '').strip().lower()}"
-        by_key.setdefault(key, []).append(float(m.value))
-
-    anomalies = []
-    for k, vals in by_key.items():
-        if len(vals) < 4:
-            continue
-        try:
-            mean = sum(vals) / len(vals)
-            var = sum((v - mean) ** 2 for v in vals) / max(1, (len(vals) - 1))
-            std = var ** 0.5
-        except Exception:
-            continue
-        if std <= 0:
-            continue
-        last = vals[0]
-        z = abs((last - mean) / std)
-        if z >= 3.0:
-            anomalies.append({
-                "key": k,
-                "z_score": float(z),
-                "mean": float(mean),
-                "std": float(std),
-                "value": float(last),
-                "severity": "high" if z >= 4.0 else "medium",
-            })
-
-    anomalies = sorted(anomalies, key=lambda x: x.get("z_score", 0), reverse=True)[:50]
-    return {"anomalies": anomalies}
-
-
-@app.get("/api/esg/dashboard/finance-kpis")
-async def esg_dashboard_finance_kpis(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    metrics = (
-        db.query(EsgMetric)
-        .filter(
-            EsgMetric.user_email == email,
-            EsgMetric.project_id == project_id,
-            EsgMetric.period_id == period_id,
-        )
-        .all()
-    )
-
-    def _is_cost_metric(m: EsgMetric) -> bool:
-        cat = (m.category or "").lower()
-        unit = (m.unit or "").lower()
-        return ("cost" in cat or "spend" in cat or unit in ("gbp", "usd", "eur", "inr"))
-
-    total_cost = 0.0
-    for m in metrics:
-        if m.value is None:
-            continue
-        if _is_cost_metric(m):
-            try:
-                total_cost += float(m.value)
-            except Exception:
-                pass
-
-    total_emissions = 0.0
-    for m in metrics:
-        if m.value is None:
-            continue
-        unit = (m.unit or "").lower().strip()
-        cat = (m.category or "").lower()
-        if unit in ("tco2", "tco2e", "kgco2", "kgco2e") or "emission" in cat:
-            try:
-                total_emissions += float(m.value)
-            except Exception:
-                pass
-
-    return {
-        "kpis": {
-            "total_utilities_spend": total_cost,
-            "total_emissions_reported": total_emissions,
-        }
-    }
-
-
 @app.get("/api/esg/dashboard/insights")
-async def esg_dashboard_insights(
+async def esg_dashboard_ai_insights(
     project_id: int = Query(...),
     period_id: int = Query(...),
     request: Request = None,
@@ -2751,9 +3052,10 @@ async def esg_dashboard_insights(
             EsgMetric.period_id == period_id,
         )
         .order_by(EsgMetric.created_date.desc())
-        .limit(250)
+        .limit(200)
         .all()
     )
+
     evidence = (
         db.query(EsgEvidenceDocument)
         .filter(
@@ -7121,12 +7423,20 @@ async def log_activity(
 async def get_activity_history(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
-    limit: int = 50
+    limit: int = 50,
+    offset: int = 0
 ):
     """Get user's activity history"""
+    if limit is None:
+        limit = 50
+    limit = max(1, min(int(limit), 200))
+    if offset is None:
+        offset = 0
+    offset = max(0, int(offset))
+
     activities = db.query(UserActivity).filter(
         UserActivity.user_email == current_user["email"]
-    ).order_by(UserActivity.created_date.desc()).limit(limit).all()
+    ).order_by(UserActivity.created_date.desc()).offset(offset).limit(limit).all()
 
     return [
         {

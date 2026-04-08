@@ -15,7 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, RefreshCw, Building2, Calendar, MapPin, Ruler, FileText } from 'lucide-react';
+import { Plus, RefreshCw, Building2, Calendar, MapPin, Ruler, FileText, Sparkles, Info } from 'lucide-react';
 
 const FRAMEWORK_OPTIONS = [
   { value: 'GRI', label: 'GRI' },
@@ -77,6 +77,34 @@ export default function ESG() {
     () => periods.find((p) => String(p.id) === String(selectedPeriodId)) || null,
     [periods, selectedPeriodId]
   );
+
+  const parsedDashboardInsights = useMemo(() => {
+    if (!dashboardInsights) return null;
+    if (typeof dashboardInsights === 'string') {
+      const trimmed = dashboardInsights.trim();
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          return JSON.parse(trimmed);
+        } catch (e) {
+          return dashboardInsights;
+        }
+      }
+      return dashboardInsights;
+    }
+    return dashboardInsights;
+  }, [dashboardInsights]);
+
+  const dashboardNextSteps = useMemo(() => {
+    if (!selectedProjectId || !selectedPeriodId) return [];
+
+    const steps = [];
+    if (sites.length === 0) steps.push({ key: 'sites', text: 'Add at least one site so metrics can be attributed to a facility/location.' });
+    if (metrics.length === 0) steps.push({ key: 'metrics', text: 'Add metrics (or upload evidence and run Extract) to populate the dashboard.' });
+    if (evidence.length === 0) steps.push({ key: 'evidence', text: 'Upload utility bills, invoices, or spreadsheets in Evidence to unlock AI extraction + recommendations.' });
+    if (Number(dashboardSummary?.counts?.metrics_without_evidence || 0) > 0) steps.push({ key: 'link', text: 'Link or upload evidence for metrics without citations to make the dataset auditable.' });
+    if (Number(dashboardSummary?.counts?.pending_suggestions || 0) > 0) steps.push({ key: 'review', text: 'Review pending AI suggestions to auto-create high-confidence metrics faster.' });
+    return steps;
+  }, [selectedProjectId, selectedPeriodId, sites.length, metrics.length, evidence.length, dashboardSummary?.counts?.metrics_without_evidence, dashboardSummary?.counts?.pending_suggestions]);
 
   const loadProjects = useCallback(async () => {
     setError('');
@@ -443,46 +471,47 @@ export default function ESG() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">ESG Reporting</h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-            Create projects, define reporting periods, add sites and metrics, and build an auditable ESG dataset.
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-950 dark:to-indigo-950/30">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">ESG Reporting</h1>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              Create projects, define reporting periods, add sites and metrics, and build an auditable ESG dataset.
+            </p>
+          </div>
+          <Button variant="outline" onClick={onRefresh} disabled={loading} className="gap-2">
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
         </div>
-        <Button variant="outline" onClick={onRefresh} disabled={loading} className="gap-2">
-          <RefreshCw className="w-4 h-4" />
-          Refresh
-        </Button>
-      </div>
 
-      {error ? (
-        <Alert className="mb-6 border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-900">
-          <AlertDescription className="text-red-800 dark:text-red-200">{error}</AlertDescription>
-        </Alert>
-      ) : null}
+        {error ? (
+          <Alert className="mb-6 border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-900">
+            <AlertDescription className="text-red-800 dark:text-red-200">{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-3">
-          <div className="glass-surface p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-semibold">
-                <Building2 className="w-4 h-4" />
-                Project
-              </div>
-              <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button size="sm" className="gap-2">
-                    <Plus className="w-4 h-4" />
-                    New
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-lg bg-white dark:bg-slate-900">
-                  <DialogHeader>
-                    <DialogTitle>Create ESG Project</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-3">
+            <div className="glass-surface p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100 font-semibold">
+                  <Building2 className="w-4 h-4" />
+                  Project
+                </div>
+                <Dialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gap-2">
+                      <Plus className="w-4 h-4" />
+                      New
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg bg-white dark:bg-slate-900">
+                    <DialogHeader>
+                      <DialogTitle>Create ESG Project</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Project name</label>
                       <Input value={newProject.name} onChange={(e) => setNewProject((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. Acme Corp" />
@@ -497,8 +526,8 @@ export default function ESG() {
                     <Button onClick={createProject} disabled={loading}>Create</Button>
                   </DialogFooter>
                 </DialogContent>
-              </Dialog>
-            </div>
+                </Dialog>
+              </div>
 
             <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
               <SelectTrigger>
@@ -595,26 +624,26 @@ export default function ESG() {
                 {selectedPeriod ? selectedPeriod.name : 'No period'}
               </div>
             </div>
+            </div>
           </div>
-        </div>
 
-        <div className="lg:col-span-9">
-          <div className="glass-surface p-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
-              <TabsList className="bg-slate-900/80 border border-slate-700/50 p-1">
-                <TabsTrigger value="sites" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-semibold">
-                  <MapPin className="w-4 h-4 mr-2" /> Sites
-                </TabsTrigger>
-                <TabsTrigger value="metrics" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-semibold">
-                  <Ruler className="w-4 h-4 mr-2" /> Metrics
-                </TabsTrigger>
-                <TabsTrigger value="evidence" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-semibold">
-                  <FileText className="w-4 h-4 mr-2" /> Evidence
-                </TabsTrigger>
-                <TabsTrigger value="dashboard" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-semibold">
-                  <FileText className="w-4 h-4 mr-2" /> Dashboard
-                </TabsTrigger>
-              </TabsList>
+          <div className="lg:col-span-9">
+            <div className="glass-surface p-4">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
+                <TabsList className="bg-slate-100 border border-slate-200 dark:bg-slate-900/80 dark:border-slate-700/50 p-1">
+                  <TabsTrigger value="sites" className="text-slate-700 dark:text-slate-200 data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-semibold">
+                    <MapPin className="w-4 h-4 mr-2" /> Sites
+                  </TabsTrigger>
+                  <TabsTrigger value="metrics" className="text-slate-700 dark:text-slate-200 data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-semibold">
+                    <Ruler className="w-4 h-4 mr-2" /> Metrics
+                  </TabsTrigger>
+                  <TabsTrigger value="evidence" className="text-slate-700 dark:text-slate-200 data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-semibold">
+                    <FileText className="w-4 h-4 mr-2" /> Evidence
+                  </TabsTrigger>
+                  <TabsTrigger value="dashboard" className="text-slate-700 dark:text-slate-200 data-[state=active]:bg-indigo-600 data-[state=active]:text-white font-semibold">
+                    <FileText className="w-4 h-4 mr-2" /> Dashboard
+                  </TabsTrigger>
+                </TabsList>
 
               <TabsContent value="sites" className="space-y-4">
                 <div className="flex items-center justify-between gap-3">
@@ -656,7 +685,7 @@ export default function ESG() {
                   </Dialog>
                 </div>
 
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/60 dark:bg-slate-950/20">
+                <div className="border border-indigo-100 dark:border-slate-800 rounded-xl overflow-hidden bg-white/70 dark:bg-slate-950/30 shadow-sm">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -749,7 +778,7 @@ export default function ESG() {
                   </Dialog>
                 </div>
 
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/60 dark:bg-slate-950/20">
+                <div className="border border-indigo-100 dark:border-slate-800 rounded-xl overflow-hidden bg-white/70 dark:bg-slate-950/30 shadow-sm">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -792,7 +821,7 @@ export default function ESG() {
 
               <TabsContent value="dashboard" className="space-y-4">
                 {!selectedProjectId || !selectedPeriodId ? (
-                  <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-6">
+                  <div className="bg-white/70 dark:bg-slate-950/30 border border-indigo-100 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
                     <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">Dashboard</div>
                     <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">
                       Select a project and reporting period to see ESG coverage, anomalies, and AI insights.
@@ -806,24 +835,45 @@ export default function ESG() {
                       </Alert>
                     ) : null}
 
+                    {dashboardNextSteps.length > 0 ? (
+                      <div className="bg-indigo-50/70 dark:bg-indigo-950/25 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5">
+                            <Info className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Next best steps</div>
+                            <div className="mt-1 text-xs text-slate-700 dark:text-slate-200 space-y-1">
+                              {dashboardNextSteps.slice(0, 4).map((s) => (
+                                <div key={s.key} className="flex items-start gap-2">
+                                  <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
+                                  <span className="leading-relaxed">{s.text}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                      <div className="bg-white/70 dark:bg-slate-950/30 border border-indigo-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
                         <div className="text-xs text-slate-600 dark:text-slate-300">Sites</div>
                         <div className="text-2xl font-semibold">{dashboardSummary?.counts?.sites ?? '-'}</div>
                       </div>
-                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                      <div className="bg-white/70 dark:bg-slate-950/30 border border-indigo-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
                         <div className="text-xs text-slate-600 dark:text-slate-300">Metrics</div>
                         <div className="text-2xl font-semibold">{dashboardSummary?.counts?.metrics ?? '-'}</div>
                       </div>
-                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                      <div className="bg-white/70 dark:bg-slate-950/30 border border-indigo-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
                         <div className="text-xs text-slate-600 dark:text-slate-300">Evidence</div>
                         <div className="text-2xl font-semibold">{dashboardSummary?.counts?.evidence ?? '-'}</div>
                       </div>
-                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                      <div className="bg-white/70 dark:bg-slate-950/30 border border-indigo-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
                         <div className="text-xs text-slate-600 dark:text-slate-300">Pending AI suggestions</div>
                         <div className="text-2xl font-semibold">{dashboardSummary?.counts?.pending_suggestions ?? '-'}</div>
                       </div>
-                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                      <div className="bg-white/70 dark:bg-slate-950/30 border border-indigo-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
                         <div className="text-xs text-slate-600 dark:text-slate-300">Metrics w/o evidence</div>
                         <div className="text-2xl font-semibold">{dashboardSummary?.counts?.metrics_without_evidence ?? '-'}</div>
                       </div>
@@ -838,7 +888,7 @@ export default function ESG() {
                     ) : null}
 
                     {Number(dashboardSummary?.counts?.pending_suggestions || 0) > 0 ? (
-                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                      <div className="bg-white/70 dark:bg-slate-950/30 border border-indigo-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI suggestions to review</div>
@@ -885,7 +935,7 @@ export default function ESG() {
                     ) : null}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                      <div className="bg-white/70 dark:bg-slate-950/30 border border-indigo-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
                         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Finance KPIs</div>
                         <div className="mt-3 text-sm text-slate-700 dark:text-slate-200 space-y-1">
                           <div className="flex items-center justify-between">
@@ -902,7 +952,7 @@ export default function ESG() {
                         </div>
                       </div>
 
-                      <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                      <div className="bg-white/70 dark:bg-slate-950/30 border border-indigo-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
                         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Anomalies</div>
                         <div className="mt-3 text-sm text-slate-700 dark:text-slate-200">
                           {dashboardAnomalies.length === 0 ? (
@@ -921,22 +971,116 @@ export default function ESG() {
                       </div>
                     </div>
 
-                    <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                    <div className="bg-white/70 dark:bg-slate-950/30 border border-indigo-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI Insights</div>
+                          <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                            <Sparkles className="w-4 h-4 text-indigo-700 dark:text-indigo-300" />
+                            <span>AI Insights</span>
+                          </div>
                           <div className="text-xs text-slate-600 dark:text-slate-300">Generate a narrative with recommendations + citations.</div>
                         </div>
                         <Button onClick={generateAiInsights} disabled={loading} className="gap-2">
                           <RefreshCw className="w-4 h-4" /> Generate
                         </Button>
                       </div>
-                      <div className="mt-3 text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
-                        {dashboardInsights ? (typeof dashboardInsights === 'string' ? dashboardInsights : JSON.stringify(dashboardInsights, null, 2)) : 'No insights generated yet.'}
-                      </div>
+
+                      {!parsedDashboardInsights ? (
+                        <div className="mt-3 text-sm text-slate-700 dark:text-slate-200">No insights generated yet.</div>
+                      ) : typeof parsedDashboardInsights === 'string' ? (
+                        <div className="mt-3 text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap">{parsedDashboardInsights}</div>
+                      ) : (
+                        <div className="mt-3 space-y-4">
+                          {parsedDashboardInsights.summary ? (
+                            <div className="bg-indigo-50/70 dark:bg-indigo-950/25 border border-indigo-100 dark:border-indigo-900/40 rounded-xl p-4">
+                              <div className="text-xs uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Summary</div>
+                              <div className="mt-1 text-sm text-slate-800 dark:text-slate-100 whitespace-pre-wrap">{parsedDashboardInsights.summary}</div>
+                            </div>
+                          ) : null}
+
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                            <div className="border border-indigo-100 dark:border-slate-800 rounded-xl p-4 bg-white/70 dark:bg-slate-950/30">
+                              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Insights</div>
+                              <div className="mt-2 space-y-2">
+                                {Array.isArray(parsedDashboardInsights.insights) && parsedDashboardInsights.insights.length > 0 ? (
+                                  parsedDashboardInsights.insights.slice(0, 8).map((t, idx) => (
+                                    <div key={`ins-${idx}`} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-indigo-600 dark:bg-indigo-400" />
+                                      <span className="leading-relaxed">{t}</span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-xs text-slate-600 dark:text-slate-300">No insights returned yet.</div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="border border-indigo-100 dark:border-slate-800 rounded-xl p-4 bg-white/70 dark:bg-slate-950/30">
+                              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Risks</div>
+                              <div className="mt-2 space-y-2">
+                                {Array.isArray(parsedDashboardInsights.risks) && parsedDashboardInsights.risks.length > 0 ? (
+                                  parsedDashboardInsights.risks.slice(0, 8).map((t, idx) => (
+                                    <div key={`risk-${idx}`} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                      <span className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-600 dark:bg-slate-300" />
+                                      <span className="leading-relaxed">{t}</span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="text-xs text-slate-600 dark:text-slate-300">No risks returned yet.</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="border border-indigo-100 dark:border-slate-800 rounded-xl p-4 bg-white/70 dark:bg-slate-950/30">
+                            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Recommended actions</div>
+                            <div className="mt-2 space-y-2">
+                              {Array.isArray(parsedDashboardInsights.recommended_actions) && parsedDashboardInsights.recommended_actions.length > 0 ? (
+                                parsedDashboardInsights.recommended_actions.slice(0, 10).map((t, idx) => (
+                                  <div key={`act-${idx}`} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                    <span className="mt-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600/10 text-indigo-800 dark:bg-indigo-400/10 dark:text-indigo-200 text-xs font-semibold">
+                                      {idx + 1}
+                                    </span>
+                                    <span className="leading-relaxed">{t}</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="text-xs text-slate-600 dark:text-slate-300">No recommended actions returned yet.</div>
+                              )}
+                            </div>
+                          </div>
+
+                          {Array.isArray(parsedDashboardInsights.citations) && parsedDashboardInsights.citations.length > 0 ? (
+                            <div className="border border-indigo-100 dark:border-slate-800 rounded-xl overflow-hidden bg-white/70 dark:bg-slate-950/30">
+                              <div className="p-4 border-b border-indigo-100 dark:border-slate-800">
+                                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Citations</div>
+                                <div className="text-xs text-slate-600 dark:text-slate-300">References to evidence + metrics used to justify the narrative.</div>
+                              </div>
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="w-[120px]">Metric</TableHead>
+                                    <TableHead className="w-[120px]">Evidence</TableHead>
+                                    <TableHead>Note</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {parsedDashboardInsights.citations.slice(0, 12).map((c, idx) => (
+                                    <TableRow key={`cit-${idx}`}>
+                                      <TableCell className="font-medium">{c?.metric_id == null ? '-' : String(c.metric_id)}</TableCell>
+                                      <TableCell className="font-medium">{c?.evidence_id == null ? '-' : String(c.evidence_id)}</TableCell>
+                                      <TableCell className="text-slate-700 dark:text-slate-200">{c?.note || '-'}</TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="bg-white/60 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl p-4">
+                    <div className="bg-white/70 dark:bg-slate-950/30 border border-indigo-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
                       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Activities</div>
                       <div className="mt-3 text-sm text-slate-700 dark:text-slate-200">
                         {activities.length === 0 ? (
@@ -1007,7 +1151,7 @@ export default function ESG() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/60 dark:bg-slate-950/20">
+                  <div className="border border-indigo-100 dark:border-slate-800 rounded-xl overflow-hidden bg-white/70 dark:bg-slate-950/30 shadow-sm">
                     <div className="p-4 border-b border-slate-200 dark:border-slate-800">
                       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Uploaded evidence</div>
                       <div className="text-xs text-slate-600 dark:text-slate-300">Run extraction to create AI metric suggestions.</div>
@@ -1049,7 +1193,7 @@ export default function ESG() {
                     </Table>
                   </div>
 
-                  <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white/60 dark:bg-slate-950/20">
+                  <div className="border border-indigo-100 dark:border-slate-800 rounded-xl overflow-hidden bg-white/70 dark:bg-slate-950/30 shadow-sm">
                     <div className="p-4 border-b border-slate-200 dark:border-slate-800">
                       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI metric suggestions</div>
                       <div className="text-xs text-slate-600 dark:text-slate-300">Approve suggestions to create metrics.</div>
@@ -1090,7 +1234,8 @@ export default function ESG() {
                   </div>
                 </div>
               </TabsContent>
-            </Tabs>
+              </Tabs>
+            </div>
           </div>
         </div>
       </div>

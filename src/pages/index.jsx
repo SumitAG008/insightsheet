@@ -54,6 +54,7 @@ import InvoiceExtractor from "./InvoiceExtractor";
 import HelpGuide from "./HelpGuide";
 
 import ESG from "./ESG";
+import ESGV2 from "./ESGV2";
 
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
@@ -116,6 +117,7 @@ const PAGES = {
     HelpGuide: HelpGuide,
 
     ESG: ESG,
+    ESGV2: ESGV2,
     
 }
 
@@ -285,6 +287,9 @@ function PagesContent() {
 
                 <Route path="/ESG" element={<ProtectedRoute><ESG /></ProtectedRoute>} />
                 <Route path="/esg" element={<ProtectedRoute><ESG /></ProtectedRoute>} />
+
+                <Route path="/ESG-V2" element={<ProtectedRoute><ESGV2 /></ProtectedRoute>} />
+                <Route path="/esg-v2" element={<ProtectedRoute><ESGV2 /></ProtectedRoute>} />
  
             </Routes>
         </Layout>

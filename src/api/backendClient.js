@@ -15,6 +15,8 @@ const API_URL = import.meta.env.VITE_API_URL || (() => {
   throw new Error('VITE_API_URL environment variable must be set to HTTPS URL in production');
 })();
 
+const getApiBaseUrl = () => API_URL;
+
 // Token management
 let authToken = null;
 
@@ -64,7 +66,7 @@ const apiCall = async (endpoint, options = {}) => {
     if (e.name === 'AbortError') {
       throw new Error('Request timed out. Please check your connection and try again.');
     }
-    throw e;
+    throw new Error(`Failed to fetch (${endpoint}). Please verify backend URL/CORS. API=${API_URL}`);
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
   }
@@ -355,11 +357,13 @@ export const backendApi = {
     },
 
     evidence: {
-      list: async ({ projectId, periodId }) => {
+      list: async ({ projectId, periodId, limit, offset } = {}) => {
         const qs = new URLSearchParams({
           project_id: String(projectId),
           period_id: String(periodId),
         });
+        if (limit != null) qs.set('limit', String(limit));
+        if (offset != null) qs.set('offset', String(offset));
         const response = await apiCall(`/api/esg/evidence?${qs.toString()}`);
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
@@ -399,13 +403,15 @@ export const backendApi = {
     },
 
     suggestions: {
-      list: async ({ projectId, periodId, evidenceDocumentId, status }) => {
+      list: async ({ projectId, periodId, evidenceDocumentId, status, limit, offset } = {}) => {
         const qs = new URLSearchParams({
           project_id: String(projectId),
           period_id: String(periodId),
         });
         if (evidenceDocumentId != null) qs.set('evidence_document_id', String(evidenceDocumentId));
         if (status) qs.set('status', String(status));
+        if (limit != null) qs.set('limit', String(limit));
+        if (offset != null) qs.set('offset', String(offset));
         const response = await apiCall(`/api/esg/suggestions?${qs.toString()}`);
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
@@ -478,12 +484,13 @@ export const backendApi = {
     },
 
     activities: {
-      list: async ({ projectId, periodId, limit = 50 }) => {
+      list: async ({ projectId, periodId, limit = 50, offset = 0 } = {}) => {
         const qs = new URLSearchParams({
           project_id: String(projectId),
           period_id: String(periodId),
           limit: String(limit),
         });
+        if (offset != null) qs.set('offset', String(offset));
         const response = await apiCall(`/api/esg/activities?${qs.toString()}`);
         if (!response.ok) {
           const err = await response.json().catch(() => ({}));
@@ -740,6 +747,132 @@ export const meldraAi = {
           return [subscription];
         }
         return [];
+      },
+    },
+  },
+
+  esgV2: {
+    frameworks: {
+      list: async ({ projectId }) => {
+        const qs = new URLSearchParams({ project_id: String(projectId) });
+        const response = await apiCall(`/api/esg/v2/frameworks?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG v2 frameworks: ${response.status}`);
+        }
+        return response.json();
+      },
+      upsert: async (payload) => {
+        const response = await apiCall('/api/esg/v2/frameworks', {
+          method: 'POST',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to upsert ESG v2 framework: ${response.status}`);
+        }
+        return response.json();
+      },
+    },
+
+    requirements: {
+      list: async ({ projectId, frameworkKey } = {}) => {
+        const qs = new URLSearchParams({ project_id: String(projectId) });
+        if (frameworkKey) qs.set('framework_key', String(frameworkKey));
+        const response = await apiCall(`/api/esg/v2/requirements?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG v2 requirements: ${response.status}`);
+        }
+        return response.json();
+      },
+      upsert: async (payload) => {
+        const response = await apiCall('/api/esg/v2/requirements', {
+          method: 'POST',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to upsert ESG v2 requirement: ${response.status}`);
+        }
+        return response.json();
+      },
+    },
+
+    metricDefinitions: {
+      list: async ({ projectId }) => {
+        const qs = new URLSearchParams({ project_id: String(projectId) });
+        const response = await apiCall(`/api/esg/v2/metric-definitions?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG v2 metric definitions: ${response.status}`);
+        }
+        return response.json();
+      },
+      upsert: async (payload) => {
+        const response = await apiCall('/api/esg/v2/metric-definitions', {
+          method: 'POST',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to upsert ESG v2 metric definition: ${response.status}`);
+        }
+        return response.json();
+      },
+    },
+
+    metricValues: {
+      list: async ({ projectId, periodId, siteId, metricDefinitionId, status } = {}) => {
+        const qs = new URLSearchParams({
+          project_id: String(projectId),
+          period_id: String(periodId),
+        });
+        if (siteId != null) qs.set('site_id', String(siteId));
+        if (metricDefinitionId != null) qs.set('metric_definition_id', String(metricDefinitionId));
+        if (status) qs.set('status', String(status));
+        const response = await apiCall(`/api/esg/v2/metric-values?${qs.toString()}`);
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to load ESG v2 metric values: ${response.status}`);
+        }
+        return response.json();
+      },
+      upsert: async (payload) => {
+        const response = await apiCall('/api/esg/v2/metric-values', {
+          method: 'POST',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to upsert ESG v2 metric value: ${response.status}`);
+        }
+        return response.json();
+      },
+      approve: async (payload) => {
+        const response = await apiCall('/api/esg/v2/metric-values/approve', {
+          method: 'POST',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to approve metric value: ${response.status}`);
+        }
+        return response.json();
+      },
+    },
+
+    evidenceLinks: {
+      create: async (payload) => {
+        const response = await apiCall('/api/esg/v2/evidence-links', {
+          method: 'POST',
+          body: payload,
+        });
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.detail || `Failed to link evidence: ${response.status}`);
+        }
+        return response.json();
       },
     },
   },

@@ -1,7 +1,7 @@
 """
 Database configuration and models for InsightSheet-lite
 """
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Boolean, Text, UniqueConstraint
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Boolean, Text, UniqueConstraint, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -83,6 +83,181 @@ class User(Base):
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
+class EsgFramework(Base):
+    __tablename__ = "esg_frameworks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    project_id = Column(Integer, index=True, nullable=False)
+
+    key = Column(String(50), nullable=False)  # esrs|gri|sasb|custom
+    name = Column(String(255), nullable=False)
+    enabled = Column(Boolean, default=True, nullable=False)
+
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_email", "project_id", "key", name="uq_esg_frameworks_user_project_key"),
+        Index("ix_esg_frameworks_user_project_enabled", "user_email", "project_id", "enabled"),
+    )
+
+
+class EsgFrameworkRequirement(Base):
+    __tablename__ = "esg_framework_requirements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    project_id = Column(Integer, index=True, nullable=False)
+    framework_key = Column(String(50), index=True, nullable=False)
+
+    code = Column(String(255), nullable=False)
+    title = Column(String(500), nullable=False)
+    description = Column(Text, nullable=True)
+
+    granularity = Column(String(20), default="org", nullable=False)  # org|site|both
+    evidence_required = Column(Boolean, default=True, nullable=False)
+
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_email",
+            "project_id",
+            "framework_key",
+            "code",
+            name="uq_esg_req_user_project_framework_code",
+        ),
+        Index("ix_esg_req_user_project_framework", "user_email", "project_id", "framework_key"),
+    )
+
+
+class EsgMetricDefinition(Base):
+    __tablename__ = "esg_metric_definitions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    project_id = Column(Integer, index=True, nullable=False)
+
+    key = Column(String(255), nullable=False)  # stable key (e.g., ghg_scope_1)
+    name = Column(String(500), nullable=False)
+    category = Column(String(50), nullable=True)  # E|S|G
+    unit = Column(String(50), nullable=True)
+    description = Column(Text, nullable=True)
+    granularity = Column(String(20), default="org", nullable=False)  # org|site|both
+
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_email", "project_id", "key", name="uq_esg_metric_defs_user_project_key"),
+        Index("ix_esg_metric_defs_user_project", "user_email", "project_id"),
+    )
+
+
+class EsgMetricValue(Base):
+    __tablename__ = "esg_metric_values"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    project_id = Column(Integer, index=True, nullable=False)
+    period_id = Column(Integer, index=True, nullable=False)
+    site_id = Column(Integer, index=True, nullable=True)
+
+    metric_definition_id = Column(Integer, index=True, nullable=False)
+
+    value = Column(Float, nullable=True)
+    unit = Column(String(50), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    status = Column(String(30), default="missing", index=True)  # missing|in_progress|submitted|needs_changes|approved|locked
+
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_esg_metric_values_user_project_period", "user_email", "project_id", "period_id"),
+        Index("ix_esg_metric_values_user_project_period_status", "user_email", "project_id", "period_id", "status"),
+    )
+
+
+class EsgMetricEvidenceLink(Base):
+    __tablename__ = "esg_metric_evidence_links"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    project_id = Column(Integer, index=True, nullable=False)
+    period_id = Column(Integer, index=True, nullable=False)
+
+    metric_value_id = Column(Integer, index=True, nullable=False)
+    evidence_document_id = Column(Integer, index=True, nullable=False)
+
+    excerpt = Column(Text, nullable=True)
+    page_ref = Column(String(100), nullable=True)
+
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_email",
+            "metric_value_id",
+            "evidence_document_id",
+            name="uq_esg_metric_evidence_link",
+        ),
+        Index("ix_esg_metric_evidence_user_project_period", "user_email", "project_id", "period_id"),
+    )
+
+
+class EsgTask(Base):
+    __tablename__ = "esg_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    project_id = Column(Integer, index=True, nullable=False)
+    period_id = Column(Integer, index=True, nullable=False)
+    site_id = Column(Integer, index=True, nullable=True)
+
+    task_type = Column(String(50), nullable=False)  # collect_data|upload_evidence|review|approve|remediate
+    title = Column(String(500), nullable=False)
+    description = Column(Text, nullable=True)
+
+    metric_value_id = Column(Integer, index=True, nullable=True)
+
+    assigned_to = Column(String(255), nullable=True)
+    due_date = Column(DateTime, nullable=True)
+    status = Column(String(30), default="todo", index=True)  # todo|in_progress|blocked|done|cancelled
+
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_esg_tasks_user_project_period_status", "user_email", "project_id", "period_id", "status"),
+    )
+
+
+class EsgMetricApproval(Base):
+    __tablename__ = "esg_metric_approvals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    project_id = Column(Integer, index=True, nullable=False)
+    period_id = Column(Integer, index=True, nullable=False)
+
+    metric_value_id = Column(Integer, index=True, nullable=False)
+    approved_by = Column(String(255), index=True, nullable=False)
+    approved_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    evidence_waiver = Column(Boolean, default=False, nullable=False)
+    waiver_justification = Column(Text, nullable=True)
+    waiver_risk_level = Column(String(20), nullable=True)  # low|medium|high
+
+    __table_args__ = (
+        Index("ix_esg_approvals_user_project_period", "user_email", "project_id", "period_id"),
+        Index("ix_esg_approvals_metric_value", "metric_value_id"),
+    )
+
+
 class EsgEvidenceDocument(Base):
     __tablename__ = "esg_evidence_documents"
 
@@ -109,6 +284,23 @@ class EsgEvidenceDocument(Base):
     created_date = Column(DateTime, default=datetime.utcnow, index=True)
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+    __table_args__ = (
+        Index(
+            "ix_esg_evidence_user_project_period_created",
+            "user_email",
+            "project_id",
+            "period_id",
+            "created_date",
+        ),
+        Index(
+            "ix_esg_evidence_user_project_period_status",
+            "user_email",
+            "project_id",
+            "period_id",
+            "status",
+        ),
+    )
+
 
 class EsgMetricSuggestion(Base):
     __tablename__ = "esg_metric_suggestions"
@@ -133,6 +325,28 @@ class EsgMetricSuggestion(Base):
 
     created_date = Column(DateTime, default=datetime.utcnow, index=True)
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index(
+            "ix_esg_suggestions_user_project_period_created",
+            "user_email",
+            "project_id",
+            "period_id",
+            "created_date",
+        ),
+        Index(
+            "ix_esg_suggestions_user_project_period_status",
+            "user_email",
+            "project_id",
+            "period_id",
+            "status",
+        ),
+        Index(
+            "ix_esg_suggestions_evidence_status",
+            "evidence_document_id",
+            "status",
+        ),
+    )
 
 
 class EsgProject(Base):

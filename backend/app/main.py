@@ -43,7 +43,7 @@ from email.mime.multipart import MIMEMultipart
 
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func, and_, cast, String
 import httpx
 
 # Import local modules
@@ -3224,14 +3224,15 @@ async def esg_list_activities(
     like_prefix = "esg_%"
     proj_token = f'"project_id": {int(project_id)}'
     period_token = f'"period_id": {int(period_id)}'
+    details_text = cast(UserActivity.details, String)
     rows = (
         db.query(UserActivity)
         .filter(
             UserActivity.user_email == email,
             UserActivity.activity_type.like(like_prefix),
             UserActivity.details.isnot(None),
-            UserActivity.details.contains(proj_token),
-            UserActivity.details.contains(period_token),
+            details_text.contains(proj_token),
+            details_text.contains(period_token),
         )
         .order_by(UserActivity.created_date.desc())
         .offset(offset)

@@ -4,7 +4,7 @@
 import { useEffect } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Bookmark, Calendar, ChevronRight, Home, ListChecks, User } from 'lucide-react';
+import { ArrowLeft, Bookmark, Calendar, ChevronRight, Home, User } from 'lucide-react';
 import CookieConsent from '@/components/CookieConsent';
 import Logo from '@/components/branding/Logo';
 import BlogPromoBanner from '@/components/BlogPromoBanner';
@@ -13,6 +13,10 @@ import remarkGfm from 'remark-gfm';
 import { getPostBySlugOrId } from '@/data/developersBlogPosts';
 
 const INSIGHT = 'https://insight.meldra.ai';
+
+function toBase64Utf8(input) {
+  return btoa(unescape(encodeURIComponent(String(input || ''))));
+}
 
 export default function BlogPost() {
   const { slugOrId } = useParams();
@@ -143,20 +147,61 @@ export default function BlogPost() {
                   {children}
                 </ol>
               ),
-              li: ({ children, ...props }) => (
-                <li className="flex items-start gap-2" {...props}>
-                  <ListChecks className="mt-1 h-4 w-4 flex-shrink-0 text-emerald-700" />
-                  <span className="min-w-0">{children}</span>
-                </li>
-              ),
-              pre: ({ children, ...props }) => (
-                <pre className="my-6 overflow-x-auto rounded-xl bg-slate-900 p-4 text-slate-100" {...props}>
-                  {children}
-                </pre>
-              ),
+              li: ({ children, ordered, index, ...props }) => {
+                if (ordered) {
+                  return (
+                    <li className="flex items-start gap-2" {...props}>
+                      <span className="mt-0.5 w-10 flex-shrink-0 text-slate-900 font-semibold">
+                        {(index ?? 0) + 1} -
+                      </span>
+                      <span className="min-w-0">{children}</span>
+                    </li>
+                  );
+                }
+
+                return (
+                  <li className="flex items-start gap-2" {...props}>
+                    <span className="mt-0.5 w-5 flex-shrink-0 text-slate-900 font-bold">•</span>
+                    <span className="min-w-0">{children}</span>
+                  </li>
+                );
+              },
+              pre: ({ children, ...props }) => {
+                const child = Array.isArray(children) ? children[0] : children;
+                const className = child?.props?.className;
+                const isMermaid = typeof className === 'string' && className.includes('language-mermaid');
+
+                if (isMermaid) {
+                  return (
+                    <div className="my-6" {...props}>
+                      {children}
+                    </div>
+                  );
+                }
+
+                return (
+                  <pre className="my-6 overflow-x-auto rounded-xl bg-slate-900 p-4 text-slate-100" {...props}>
+                    {children}
+                  </pre>
+                );
+              },
               code: ({ className, children, ...props }) => {
                 const isBlock = typeof className === 'string' && className.includes('language-');
                 if (isBlock) {
+                  const isMermaid = className.includes('language-mermaid');
+                  if (isMermaid) {
+                    const mermaidText = String(children || '').replace(/\n$/, '');
+                    const encoded = toBase64Utf8(mermaidText);
+                    const src = `https://mermaid.ink/svg/${encoded}`;
+                    return (
+                      <img
+                        src={src}
+                        alt="Mermaid diagram"
+                        className="my-6 w-full rounded-xl border border-slate-200 bg-white"
+                        loading="lazy"
+                      />
+                    );
+                  }
                   return (
                     <code className={className} {...props}>
                       {children}

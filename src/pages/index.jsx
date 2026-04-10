@@ -56,6 +56,8 @@ import HelpGuide from "./HelpGuide";
 import ESG from "./ESG";
 import ESGV2 from "./ESGV2";
 
+import SupplierRiskDueDiligence from "./SupplierRiskDueDiligence";
+
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
 import Faq from "./Faq";
@@ -118,6 +120,8 @@ const PAGES = {
 
     ESG: ESG,
     ESGV2: ESGV2,
+
+    SupplierRiskDueDiligence: SupplierRiskDueDiligence,
     
 }
 
@@ -128,6 +132,10 @@ function _getCurrentPage(url) {
     let urlLastPart = url.split('/').pop();
     if (urlLastPart.includes('?')) {
         urlLastPart = urlLastPart.split('?')[0];
+    }
+
+    if (urlLastPart.toLowerCase() === 'supplier-risk-due-diligence') {
+        return 'SupplierRiskDueDiligence';
     }
 
     const pageName = Object.keys(PAGES).find(page => page.toLowerCase() === urlLastPart.toLowerCase());
@@ -290,6 +298,9 @@ function PagesContent() {
 
                 <Route path="/ESG-V2" element={<ProtectedRoute><ESGV2 /></ProtectedRoute>} />
                 <Route path="/esg-v2" element={<ProtectedRoute><ESGV2 /></ProtectedRoute>} />
+
+                <Route path="/Supplier-Risk-Due-Diligence" element={<ProtectedRoute><SupplierRiskDueDiligence /></ProtectedRoute>} />
+                <Route path="/supplier-risk-due-diligence" element={<ProtectedRoute><SupplierRiskDueDiligence /></ProtectedRoute>} />
  
             </Routes>
         </Layout>

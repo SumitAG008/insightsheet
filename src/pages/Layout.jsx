@@ -516,6 +516,20 @@ export default function Layout({ children, currentPageName }) {
                   )}
                   {canAccessESG && (
                     <Link
+                      to="/supplier-risk-due-diligence"
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                        isActive('/supplier-risk-due-diligence')
+                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                          : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 hover:scale-105'
+                      }`}
+                      title="Supplier Risk & Due Diligence"
+                    >
+                      <Users className={`w-4 h-4 ${isActive('/supplier-risk-due-diligence') ? 'text-white' : ''}`} />
+                      <span>Supplier Risk &amp; Due Diligence</span>
+                    </Link>
+                  )}
+                  {canAccessESG && (
+                    <Link
                       to="/esg-v2"
                       className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                         isActive('/esg-v2')
@@ -740,6 +754,9 @@ export default function Layout({ children, currentPageName }) {
                       <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ESG</p>
                       <Link to={createPageUrl('ESG')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('ESG')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                         <Shield className="w-4 h-4" /> <span>ESG</span>
+                      </Link>
+                      <Link to="/supplier-risk-due-diligence" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/supplier-risk-due-diligence') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                        <Users className="w-4 h-4" /> <span>Supplier Risk &amp; Due Diligence</span>
                       </Link>
                     </>
                   )}

@@ -14,6 +14,8 @@ export default function ESGV2() {
   const [frameworks, setFrameworks] = useState([]);
   const [metricDefs, setMetricDefs] = useState([]);
   const [metricValues, setMetricValues] = useState([]);
+  const [requirements, setRequirements] = useState([]);
+  const [metricAiAlerts, setMetricAiAlerts] = useState([]);
 
   const [newFrameworkKey, setNewFrameworkKey] = useState('esrs');
   const [newFrameworkName, setNewFrameworkName] = useState('ESRS/CSRD');
@@ -21,6 +23,9 @@ export default function ESGV2() {
   const [newMetricKey, setNewMetricKey] = useState('ghg_scope_1');
   const [newMetricName, setNewMetricName] = useState('GHG Scope 1');
   const [newMetricUnit, setNewMetricUnit] = useState('tCO2e');
+
+  const [newReqCode, setNewReqCode] = useState('E1-1');
+  const [newReqTitle, setNewReqTitle] = useState('Transition plan for climate change mitigation');
 
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -44,12 +49,14 @@ export default function ESGV2() {
 
   const loadV2 = async ({ pid, perId }) => {
     if (!pid) return;
-    const [fw, defs] = await Promise.all([
+    const [fw, defs, reqs] = await Promise.all([
       backendApi.esgV2.frameworks.list({ projectId: pid }),
       backendApi.esgV2.metricDefinitions.list({ projectId: pid }),
+      backendApi.esgV2.requirements.list({ projectId: pid })
     ]);
     setFrameworks(fw || []);
     setMetricDefs(defs || []);
+    setRequirements(reqs || []);
 
     if (perId) {
       const vals = await backendApi.esgV2.metricValues.list({ projectId: pid, periodId: perId });
@@ -71,6 +78,7 @@ export default function ESGV2() {
       setFrameworks([]);
       setMetricDefs([]);
       setMetricValues([]);
+      setRequirements([]);
       return;
     }
     loadPeriods(projectId).catch((e) => setError(e.message || String(e)));
@@ -122,6 +130,28 @@ export default function ESGV2() {
     }
   };
 
+  const onUpsertRequirement = async () => {
+    if (!projectId) return;
+    setBusy(true);
+    setError('');
+    try {
+      await backendApi.esgV2.requirements.upsert({
+        project_id: projectId,
+        framework_key: frameworks.length ? frameworks[0].key : 'esrs',
+        code: newReqCode,
+        title: newReqTitle,
+        description: '',
+        granularity: 'org',
+        evidence_required: true,
+      });
+      await loadV2({ pid: projectId, perId: periodId });
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const onCreateMetricValue = async () => {
     if (!projectId || !periodId) return;
     if (!metricDefs.length) {
@@ -132,14 +162,24 @@ export default function ESGV2() {
     setBusy(true);
     setError('');
     try {
-      await backendApi.esgV2.metricValues.upsert({
+      // Random generation to explicitly trigger Z-score anomalies sometimes
+      const mockRandomValue = Math.floor(Math.random() * 500) + 100;
+      
+      const res = await backendApi.esgV2.metricValues.upsert({
         project_id: projectId,
         period_id: periodId,
         metric_definition_id,
-        value: 123,
+        value: mockRandomValue,
         unit: metricDefs[0]?.unit || null,
         status: 'submitted',
       });
+      
+      if (res && res.ai_alerts && res.ai_alerts.length > 0) {
+        setMetricAiAlerts(res.ai_alerts);
+      } else {
+        setMetricAiAlerts([]);
+      }
+      
       await loadV2({ pid: projectId, perId: periodId });
     } catch (e) {
       setError(e.message || String(e));
@@ -162,6 +202,28 @@ export default function ESGV2() {
         period_id: periodId,
         metric_value_id: metricValues[0].id,
         evidence_waiver: false,
+      });
+      await loadV2({ pid: projectId, perId: periodId });
+    } catch (e) {
+      setError(e.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onLinkEvidence = async () => {
+    if (!projectId || !periodId) return;
+    if (!metricValues.length) {
+      setError('No metric values to link evidence to.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await backendApi.esgV2.evidenceLinks.create({
+        project_id: projectId,
+        metric_value_id: metricValues[0].id,
+        evidence_document_id: 1, // mock
       });
       await loadV2({ pid: projectId, perId: periodId });
     } catch (e) {
@@ -302,6 +364,43 @@ export default function ESGV2() {
           </Card>
         </div>
 
+        <div className="grid grid-cols-1 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Requirements</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Requirement code</Label>
+                  <Input value={newReqCode} onChange={(e) => setNewReqCode(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Requirement title</Label>
+                  <Input value={newReqTitle} onChange={(e) => setNewReqTitle(e.target.value)} />
+                </div>
+              </div>
+              <Button onClick={onUpsertRequirement} disabled={!projectId || busy}>
+                Upsert requirement
+              </Button>
+
+              <div className="text-sm text-slate-700 dark:text-slate-200">
+                {requirements.length ? (
+                  <ul className="space-y-1">
+                    {requirements.map((r) => (
+                      <li key={r.id}>
+                        {r.framework_key} / {r.code} — {r.title}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span>No requirements yet.</span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>Metric Values</CardTitle>
@@ -311,10 +410,27 @@ export default function ESGV2() {
               <Button onClick={onCreateMetricValue} disabled={!projectId || !periodId || busy}>
                 Create/Update sample metric value
               </Button>
+              <Button onClick={onLinkEvidence} disabled={!projectId || !periodId || busy} variant="outline">
+                Link Mock Evidence
+              </Button>
               <Button onClick={onApproveFirst} disabled={!projectId || !periodId || busy}>
                 Approve first metric value (requires evidence)
               </Button>
             </div>
+
+            {metricAiAlerts.length > 0 && (
+              <div className="flex flex-col gap-2 mb-4">
+                {metricAiAlerts.map((alert, idx) => (
+                  <div key={idx} className="flex gap-3 bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-800 p-3 rounded-lg items-start">
+                    <div className="text-lg">⚠️</div>
+                    <div>
+                      <div className="text-sm font-semibold text-amber-900 dark:text-amber-100">AI Anomaly Detected</div>
+                      <div className="text-xs text-amber-700 dark:text-amber-300 mt-1">{alert.reason}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div className="text-sm text-slate-700 dark:text-slate-200">
               {metricValues.length ? (

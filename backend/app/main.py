@@ -98,6 +98,7 @@ from app.services.ocr_service import (
     pdf_from_image,
 )
 from app.services.file_analyzer import FileAnalyzerService
+from app.services.esg_ml_service import ESGIntelligenceService
 from app.services.pl_builder import PLBuilderService
 from app.services.universal_excel_processor import UniversalExcelProcessor
 from app.services.excel_recalc_service import recalc_xlsx_with_libreoffice_bytes, convert_spreadsheet_to_pdf_bytes
@@ -2495,6 +2496,34 @@ async def esg_v2_upsert_metric_value(
             row.status = (payload.status or "").strip().lower()
     db.commit()
     db.refresh(row)
+
+    ai_alerts = []
+    try:
+        if payload.value is not None:
+            float_val = float(payload.value)
+            hist_rows = db.query(EsgMetricValue).filter(
+                EsgMetricValue.user_email == email,
+                EsgMetricValue.project_id == payload.project_id,
+                EsgMetricValue.site_id == payload.site_id,
+                EsgMetricValue.metric_definition_id == payload.metric_definition_id,
+                EsgMetricValue.id != row.id
+            ).all()
+
+            hist_floats = []
+            for h in hist_rows:
+                try:
+                    if h.value is not None:
+                        hist_floats.append(float(h.value))
+                except (ValueError, TypeError):
+                    pass
+
+            if len(hist_floats) >= 2:
+                z_res = ESGIntelligenceService.detect_anomalies_zscore(float_val, hist_floats)
+                if z_res.get("is_anomaly"):
+                    ai_alerts.append(z_res)
+    except (ValueError, TypeError):
+        pass
+
     return {
         "id": row.id,
         "project_id": row.project_id,
@@ -2505,6 +2534,7 @@ async def esg_v2_upsert_metric_value(
         "unit": row.unit,
         "notes": row.notes,
         "status": row.status,
+        "ai_alerts": ai_alerts,
         "created_date": row.created_date,
         "updated_date": row.updated_date,
     }

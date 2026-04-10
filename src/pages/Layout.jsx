@@ -194,11 +194,14 @@ export default function Layout({ children, currentPageName }) {
 
   const canAccessAgenticWorkflows = (user?.email || '').toLowerCase().trim() === 'sumitagaraia@gmail.com';
 
-  const esgAlwaysAllowlist = ['sumitagaraia@gmail.com', 'sumit@meldra.ai'];
+  const esgAlwaysAllowlist = String(import.meta.env.VITE_ESG_ALLOWLIST || '')
+    .split(',')
+    .map((e) => e.toLowerCase().trim())
+    .filter(Boolean);
   const isEsgAlwaysAllowed = esgAlwaysAllowlist.includes((user?.email || '').toLowerCase().trim());
   const subscriptionPlan = (subscription?.plan || 'free').toLowerCase();
   const isEsgPurchased = subscriptionPlan !== 'free';
-  const canAccessESG = !!user?.email && (isEsgAlwaysAllowed || isEsgPurchased);
+  const canAccessESG = !!user?.email && isEsgAlwaysAllowed;
 
   const logLogin = async (email) => {
     try {
@@ -501,46 +504,43 @@ export default function Layout({ children, currentPageName }) {
 
                   {/* Developers (developer.meldra.ai / API docs) — opens /developers on same host */}
                   {canAccessESG && (
-                    <Link
-                      to={createPageUrl('ESG')}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                        isActive(createPageUrl('ESG'))
-                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
-                          : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 hover:scale-105'
-                      }`}
-                      title="ESG"
-                    >
-                      <Shield className={`w-4 h-4 ${isActive(createPageUrl('ESG')) ? 'text-white' : ''}`} />
-                      <span>ESG</span>
-                    </Link>
-                  )}
-                  {canAccessESG && (
-                    <Link
-                      to="/supplier-risk-due-diligence"
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                        isActive('/supplier-risk-due-diligence')
-                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
-                          : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 hover:scale-105'
-                      }`}
-                      title="Supplier Risk & Due Diligence"
-                    >
-                      <Users className={`w-4 h-4 ${isActive('/supplier-risk-due-diligence') ? 'text-white' : ''}`} />
-                      <span>Supplier Risk &amp; Due Diligence</span>
-                    </Link>
-                  )}
-                  {canAccessESG && (
-                    <Link
-                      to="/esg-v2"
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                        isActive('/esg-v2')
-                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
-                          : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 hover:scale-105'
-                      }`}
-                      title="ESG v2"
-                    >
-                      <Shield className={`w-4 h-4 ${isActive('/esg-v2') ? 'text-white' : ''}`} />
-                      <span>ESG v2</span>
-                    </Link>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                            [createPageUrl('ESG'), '/esg-v2', '/supplier-risk-due-diligence'].some(p => isActive(p))
+                              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                              : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
+                          }`}
+                        >
+                          <Shield className="w-4 h-4" />
+                          <span>ESG</span>
+                          <ChevronDown className="w-4 h-4 opacity-70" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="min-w-[260px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
+                        <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">ESG</DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                          <Link to={createPageUrl('ESG')} className="flex items-center gap-2 cursor-pointer">
+                            <Shield className="w-4 h-4" />
+                            ESG (v1)
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to="/esg-v2" className="flex items-center gap-2 cursor-pointer">
+                            <Shield className="w-4 h-4" />
+                            ESG v2
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to="/supplier-risk-due-diligence" className="flex items-center gap-2 cursor-pointer">
+                            <Users className="w-4 h-4" />
+                            Supplier Risk &amp; Due Diligence
+                          </Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                   <Link
                     to="/developers"
@@ -750,15 +750,39 @@ export default function Layout({ children, currentPageName }) {
                     <FileArchive className="w-4 h-4" /> <span>{t('nav_zip_cleaner')}</span>
                   </Link>
                   {canAccessESG && (
-                    <>
-                      <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ESG</p>
-                      <Link to={createPageUrl('ESG')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('ESG')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                        <Shield className="w-4 h-4" /> <span>ESG</span>
-                      </Link>
-                      <Link to="/supplier-risk-due-diligence" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/supplier-risk-due-diligence') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                        <Users className="w-4 h-4" /> <span>Supplier Risk &amp; Due Diligence</span>
-                      </Link>
-                    </>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                          title="ESG"
+                        >
+                          <Shield className="w-4 h-4" />
+                          <span>ESG</span>
+                          <ChevronDown className="w-4 h-4 opacity-70" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="min-w-[220px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
+                        <DropdownMenuItem asChild>
+                          <Link to={createPageUrl('ESG')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 cursor-pointer ${isActive(createPageUrl('ESG')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                            <Shield className="w-4 h-4" />
+                            <span>ESG (v1)</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to="/esg-v2" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 cursor-pointer ${isActive('/esg-v2') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                            <Shield className="w-4 h-4" />
+                            <span>ESG v2</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to="/supplier-risk-due-diligence" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 cursor-pointer ${isActive('/supplier-risk-due-diligence') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                            <Users className="w-4 h-4" />
+                            <span>Supplier Risk &amp; Due Diligence</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                   <Link to="/developers" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
                     <Code className="w-4 h-4" /> <span>{t('nav_developers')}</span>

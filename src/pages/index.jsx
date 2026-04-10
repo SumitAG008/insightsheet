@@ -64,6 +64,12 @@ import Faq from "./Faq";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
+import EsgProtectedRoute from '../components/auth/EsgProtectedRoute';
+
+const ESG_ALLOWLIST = String(import.meta.env.VITE_ESG_ALLOWLIST || '')
+  .split(',')
+  .map((e) => e.trim())
+  .filter(Boolean);
 
 const PAGES = {
     
@@ -293,14 +299,14 @@ function PagesContent() {
                 <Route path="/HelpGuide" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
                 <Route path="/helpguide" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
 
-                <Route path="/ESG" element={<ProtectedRoute><ESG /></ProtectedRoute>} />
-                <Route path="/esg" element={<ProtectedRoute><ESG /></ProtectedRoute>} />
+                <Route path="/ESG" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ESG /></EsgProtectedRoute>} />
+                <Route path="/esg" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ESG /></EsgProtectedRoute>} />
 
-                <Route path="/ESG-V2" element={<ProtectedRoute><ESGV2 /></ProtectedRoute>} />
-                <Route path="/esg-v2" element={<ProtectedRoute><ESGV2 /></ProtectedRoute>} />
+                <Route path="/ESG-V2" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ESGV2 /></EsgProtectedRoute>} />
+                <Route path="/esg-v2" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ESGV2 /></EsgProtectedRoute>} />
 
-                <Route path="/Supplier-Risk-Due-Diligence" element={<ProtectedRoute><SupplierRiskDueDiligence /></ProtectedRoute>} />
-                <Route path="/supplier-risk-due-diligence" element={<ProtectedRoute><SupplierRiskDueDiligence /></ProtectedRoute>} />
+                <Route path="/Supplier-Risk-Due-Diligence" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><SupplierRiskDueDiligence /></EsgProtectedRoute>} />
+                <Route path="/supplier-risk-due-diligence" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><SupplierRiskDueDiligence /></EsgProtectedRoute>} />
  
             </Routes>
         </Layout>

@@ -58,6 +58,7 @@ import ESGV2 from "./ESGV2";
 
 import SupplierRiskDueDiligence from "./SupplierRiskDueDiligence";
 import ComplianceAudit from "./ComplianceAudit";
+import DecarbonizationPlanner from "./DecarbonizationPlanner";
 
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
@@ -130,6 +131,7 @@ const PAGES = {
 
     SupplierRiskDueDiligence: SupplierRiskDueDiligence,
     ComplianceAudit: ComplianceAudit,
+    DecarbonizationPlanner: DecarbonizationPlanner,
     
 }
 
@@ -312,6 +314,10 @@ function PagesContent() {
 
                 <Route path="/Compliance-Audit" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ComplianceAudit /></EsgProtectedRoute>} />
                 <Route path="/compliance-audit" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ComplianceAudit /></EsgProtectedRoute>} />
+
+                <Route path="/Decarbonization-Planner" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><DecarbonizationPlanner /></EsgProtectedRoute>} />
+                <Route path="/decarbonization-planner" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><DecarbonizationPlanner /></EsgProtectedRoute>} />
+
 
  
             </Routes>

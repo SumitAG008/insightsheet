@@ -895,6 +895,14 @@ export const meldraAi = {
       }
       return response.json();
     },
+
+    predictNetZero: async (projectId) => {
+      const response = await apiCall(`/api/esg/v2/predict-net-zero/${projectId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to load ML predictions: ${response.status}`);
+      }
+      return response.json();
+    },
   },
 };
 

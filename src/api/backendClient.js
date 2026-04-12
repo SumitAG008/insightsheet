@@ -875,6 +875,26 @@ export const meldraAi = {
         return response.json();
       },
     },
+
+    export: async (projectId, periodId) => {
+      const response = await apiCall('/api/esg/export', {
+        method: 'POST',
+        body: { project_id: projectId, period_id: periodId },
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Failed to export ESG report: ${response.status}`);
+      }
+      return response.json();
+    },
+
+    auditReport: async (projectId, periodId) => {
+      const response = await apiCall(`/api/esg/v2/audit-report?project_id=${projectId}&period_id=${periodId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch audit report: ${response.status}`);
+      }
+      return response.json();
+    },
   },
 };
 

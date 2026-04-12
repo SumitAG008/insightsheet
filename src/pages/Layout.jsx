@@ -4,7 +4,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, ShieldCheck } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -539,6 +539,12 @@ export default function Layout({ children, currentPageName }) {
                             Supplier Risk &amp; Due Diligence
                           </Link>
                         </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to="/compliance-audit" className="flex items-center gap-2 cursor-pointer">
+                            <ShieldCheck className="w-4 h-4" />
+                            Compliance &amp; Audit
+                          </Link>
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
@@ -779,6 +785,12 @@ export default function Layout({ children, currentPageName }) {
                           <Link to="/supplier-risk-due-diligence" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 cursor-pointer ${isActive('/supplier-risk-due-diligence') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                             <Users className="w-4 h-4" />
                             <span>Supplier Risk &amp; Due Diligence</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to="/compliance-audit" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 cursor-pointer ${isActive('/compliance-audit') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                            <ShieldCheck className="w-4 h-4" />
+                            <span>Compliance Audit</span>
                           </Link>
                         </DropdownMenuItem>
                       </DropdownMenuContent>

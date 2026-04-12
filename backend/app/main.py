@@ -8280,3 +8280,130 @@ if __name__ == "__main__":
         port=port,
         reload=True
     )
+# --- AWS S3 ESG Export ---
+class EsgExportRequest(BaseModel):
+    project_id: int
+    period_id: int
+
+@app.post("/api/esg/export")
+async def esg_export_report(
+    payload: EsgExportRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    email = current_user["email"]
+
+    # Verify project
+    proj = db.query(EsgProject).filter(EsgProject.id == payload.project_id).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == payload.period_id).first()
+    if not period:
+        raise HTTPException(status_code=404, detail="Period not found")
+
+    # Get metrics
+    metrics = db.query(EsgMetricValue).filter(
+        EsgMetricValue.project_id == payload.project_id,
+        EsgMetricValue.period_id == payload.period_id
+    ).all()
+
+    # Generate JSON report
+    import json
+    report_data = {
+        "project": proj.name,
+        "period": period.name,
+        "exported_by": email,
+        "metrics": [{"id": m.id, "value": m.value, "unit": m.unit, "status": m.status} for m in metrics]
+    }
+    
+    report_bytes = json.dumps(report_data, indent=2).encode('utf-8')
+    filename = f"esg_report_{payload.project_id}_{payload.period_id}.json"
+
+    from app.services.aws_s3_service import AWSS3Service
+    s3_service = AWSS3Service()
+    try:
+        url = s3_service.upload_export(report_bytes, filename)
+        return {"url": url, "message": "Export created successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- ESG Audit & Compliance Endpoints ---
+
+@app.get("/api/esg/v2/audit-report")
+async def esg_audit_report(
+    project_id: int = Query(...),
+    period_id: int = Query(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    from app.services.esg_ml_service import ESGIntelligenceService
+    
+    # 1. Fetch metrics and their history for anomaly detection
+    metrics = db.query(EsgMetricValue).filter(
+        EsgMetricValue.project_id == project_id,
+        EsgMetricValue.period_id == period_id
+    ).all()
+    
+    anomalies = []
+    auditable_metrics = []
+    
+    # Simple metric dict for the AI
+    metric_summary = {}
+
+    for m in metrics:
+        metric_summary[f"Metric ID {m.id}"] = f"{m.value} {m.unit} (Status: {m.status})"
+        
+        # Get historical data for the same metric definition to run anomaly detection
+        hist_metrics = db.query(EsgMetricValue).filter(
+            EsgMetricValue.metric_definition_id == m.metric_definition_id,
+            EsgMetricValue.project_id == project_id,
+            EsgMetricValue.period_id != period_id
+        ).all()
+        
+        hist_vals = [hm.value for hm in hist_metrics if hm.value is not None]
+        
+        z_score_info = None
+        if len(hist_vals) >= 2 and m.value is not None:
+            z_score_info = ESGIntelligenceService.detect_anomalies_zscore(m.value, hist_vals)
+            if z_score_info.get("is_anomaly"):
+                anomalies.append({
+                    "metric_id": m.id,
+                    "value": m.value,
+                    "detail": z_score_info.get("reason"),
+                    "algorithm": "Z-Score"
+                })
+        
+        if len(hist_vals) >= 4 and m.value is not None:
+            iqr_info = ESGIntelligenceService.detect_anomalies_iqr(m.value, hist_vals)
+            if iqr_info.get("is_anomaly"):
+                anomalies.append({
+                    "metric_id": m.id,
+                    "value": m.value,
+                    "detail": iqr_info.get("reason"),
+                    "algorithm": "IQR"
+                })
+
+        # Count evidence
+        evidence_count = db.query(EsgMetricEvidenceLink).filter(EsgMetricEvidenceLink.metric_value_id == m.id).count()
+
+        auditable_metrics.append({
+            "id": m.id,
+            "metric_definition_id": m.metric_definition_id,
+            "value": m.value,
+            "unit": m.unit,
+            "status": m.status,
+            "evidence_count": evidence_count,
+            "z_score_info": z_score_info
+        })
+        
+    # Draft Narrative
+    ai_narrative = ESGIntelligenceService.draft_narrative_local_llm("Global ESG Standard", metric_summary)
+    
+    return {
+        "auditable_metrics": auditable_metrics,
+        "anomalies": anomalies,
+        "ai_narrative": ai_narrative,
+        "compliance_score": 100 if not anomalies else max(0, 100 - len(anomalies) * 10)
+    }
+

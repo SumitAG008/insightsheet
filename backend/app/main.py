@@ -8398,7 +8398,9 @@ async def esg_audit_report(
         })
         
     # Draft Narrative
-    ai_narrative = ESGIntelligenceService.draft_narrative_local_llm("Global ESG Standard", metric_summary)
+    fw = db.query(EsgFramework).filter(EsgFramework.project_id == project_id, EsgFramework.enabled == True).first()
+    framework_name = fw.name if fw else "Global ESG Standard"
+    ai_narrative = ESGIntelligenceService.draft_narrative_local_llm(framework_name, metric_summary)
     
     return {
         "auditable_metrics": auditable_metrics,

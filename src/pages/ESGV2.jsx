@@ -295,14 +295,34 @@ export default function ESGV2() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Framework key</Label>
-                  <Input value={newFrameworkKey} onChange={(e) => setNewFrameworkKey(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Framework name</Label>
-                  <Input value={newFrameworkName} onChange={(e) => setNewFrameworkName(e.target.value)} />
-                </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Supported ESG Frameworks</Label>
+                    <select
+                      className="w-full bg-transparent border border-slate-300 dark:border-slate-700 rounded-lg py-2.5 px-3 text-sm focus:ring-2 focus:ring-blue-500"
+                      value={newFrameworkKey}
+                      onChange={(e) => {
+                        setNewFrameworkKey(e.target.value);
+                        const names = {
+                          'esrs': 'ESRS / CSRD (European Sustainability Reporting)',
+                          'gri': 'GRI (Global Reporting Initiative)',
+                          'sasb': 'SASB (Sustainability Accounting Standards Board)',
+                          'tcfd': 'TCFD (Climate-related Financial Disclosures)',
+                          'lksg': 'LkSG / CSDDD (Supply Chain Due Diligence)',
+                          'ghg': 'GHG Protocol (Greenhouse Gas Protocol)',
+                          'ifrs': 'IFRS S1/S2 (International Financial Reporting Standards)'
+                        };
+                        setNewFrameworkName(names[e.target.value] || e.target.value);
+                      }}
+                    >
+                      <option value="esrs">ESRS / CSRD (European Sustainability Reporting)</option>
+                      <option value="gri">GRI (Global Reporting Initiative)</option>
+                      <option value="sasb">SASB (Sustainability Accounting Standards Board)</option>
+                      <option value="tcfd">TCFD (Climate-related Financial Disclosures)</option>
+                      <option value="lksg">LkSG / CSDDD (Supply Chain Due Diligence)</option>
+                      <option value="ghg">GHG Protocol (Greenhouse Gas Protocol)</option>
+                      <option value="ifrs">IFRS S1/S2 (International Financial Reporting Standards)</option>
+                    </select>
+                  </div>
               </div>
               <Button onClick={onUpsertFramework} disabled={!projectId || busy}>
                 Upsert framework

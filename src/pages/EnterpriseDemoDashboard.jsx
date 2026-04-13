@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area
 } from 'recharts';
 import { 
-  Download, CloudUp, Filter, Share2, TrendingDown, Target, AlertTriangle, ShieldCheck 
+  Download, CloudUpload, Filter, Share2, TrendingDown, Target, AlertTriangle, ShieldCheck 
 } from 'lucide-react';
 
 const emissionsData = [
@@ -67,7 +67,7 @@ export default function EnterpriseDemoDashboard() {
             disabled={isExporting}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
           >
-            <CloudUp className="h-4 w-4 mr-2" />
+            <CloudUpload className="h-4 w-4 mr-2" />
             Sync to Corporate S3
           </button>
         </div>

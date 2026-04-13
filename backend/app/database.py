@@ -4,6 +4,7 @@ Database configuration and models for InsightSheet-lite
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Boolean, Text, UniqueConstraint, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import JSON
 from datetime import datetime
 import os
 import logging
@@ -117,6 +118,10 @@ class EsgFrameworkRequirement(Base):
 
     granularity = Column(String(20), default="org", nullable=False)  # org|site|both
     evidence_required = Column(Boolean, default=True, nullable=False)
+
+    # Enterprise AI / Vector Database Integration
+    vector_id = Column(String(255), index=True, nullable=True) 
+    ai_interpretation_rules = Column(Text, nullable=True) # JSON rules the AI must strict follow
 
     created_date = Column(DateTime, default=datetime.utcnow, index=True)
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -280,6 +285,10 @@ class EsgEvidenceDocument(Base):
     extracted_text = Column(Text, nullable=True)
     extraction_json = Column(Text, nullable=True)
     status = Column(String(30), default="uploaded", index=True)
+
+    # Enterprise AI / Confidence Scoring
+    embedding_status = Column(String(50), default="PENDING", index=True) # PENDING, EMBEDDED, FAILED
+    confidence_score_avg = Column(Float, nullable=True)
 
     created_date = Column(DateTime, default=datetime.utcnow, index=True)
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -708,6 +717,26 @@ class ApiBilling(Base):
     invoice_id = Column(String(255), nullable=True)
     created_date = Column(DateTime, default=datetime.utcnow)
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class AIConfiguration(Base):
+    """Enterprise AI and Model Context Protocol configurations"""
+    __tablename__ = "ai_configurations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_email = Column(String(255), index=True, nullable=False)
+    project_id = Column(Integer, index=True, nullable=False)
+    
+    llm_temperature = Column(Float, default=0.1) # low temperature for strictest compliance auditing
+    custom_mcp_params = Column(Text, nullable=True) # JSON rules for the MCP orchestrator
+    custom_prompt_template = Column(Text, nullable=True)
+    
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("user_email", "project_id", name="uq_ai_config_user_project"),
+    )
 
 
 # Create all tables

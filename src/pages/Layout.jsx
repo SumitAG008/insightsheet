@@ -13,6 +13,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { Cpu } from 'lucide-react';
 import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
 import Logo from '@/components/branding/Logo';
 import { meldraAi } from '@/api/meldraClient';
@@ -549,6 +550,18 @@ export default function Layout({ children, currentPageName }) {
                           <Link to="/decarbonization-planner" className="flex items-center gap-2 cursor-pointer">
                             <TrendingDown className="w-4 h-4 text-emerald-400" />
                             Decarbonization Planner
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to="/enterprise-ai-configurator" className="flex items-center gap-2 cursor-pointer">
+                            <Cpu className="w-4 h-4 text-indigo-400" />
+                            Enterprise AI Configurator
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link to="/enterprise-demo" className="flex items-center gap-2 cursor-pointer">
+                            <BarChart3 className="w-4 h-4 text-blue-400" />
+                            Global Executive Dashboard
                           </Link>
                         </DropdownMenuItem>
                       </DropdownMenuContent>

@@ -59,6 +59,8 @@ import ESGV2 from "./ESGV2";
 import SupplierRiskDueDiligence from "./SupplierRiskDueDiligence";
 import ComplianceAudit from "./ComplianceAudit";
 import DecarbonizationPlanner from "./DecarbonizationPlanner";
+import DynamicFrameworkConfigurator from "./DynamicFrameworkConfigurator";
+import EnterpriseDemoDashboard from "./EnterpriseDemoDashboard";
 
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
@@ -132,6 +134,8 @@ const PAGES = {
     SupplierRiskDueDiligence: SupplierRiskDueDiligence,
     ComplianceAudit: ComplianceAudit,
     DecarbonizationPlanner: DecarbonizationPlanner,
+    DynamicFrameworkConfigurator: DynamicFrameworkConfigurator,
+    EnterpriseDemoDashboard: EnterpriseDemoDashboard,
     
 }
 
@@ -146,6 +150,12 @@ function _getCurrentPage(url) {
 
     if (urlLastPart.toLowerCase() === 'supplier-risk-due-diligence') {
         return 'SupplierRiskDueDiligence';
+    }
+    if (urlLastPart.toLowerCase() === 'enterprise-ai-configurator') {
+        return 'DynamicFrameworkConfigurator';
+    }
+    if (urlLastPart.toLowerCase() === 'enterprise-demo') {
+        return 'EnterpriseDemoDashboard';
     }
 
     const pageName = Object.keys(PAGES).find(page => page.toLowerCase() === urlLastPart.toLowerCase());
@@ -318,8 +328,10 @@ function PagesContent() {
                 <Route path="/Decarbonization-Planner" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><DecarbonizationPlanner /></EsgProtectedRoute>} />
                 <Route path="/decarbonization-planner" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><DecarbonizationPlanner /></EsgProtectedRoute>} />
 
-
- 
+                <Route path="/Enterprise-AI-Configurator" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><DynamicFrameworkConfigurator /></EsgProtectedRoute>} />
+                <Route path="/enterprise-ai-configurator" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><DynamicFrameworkConfigurator /></EsgProtectedRoute>} />
+                <Route path="/Enterprise-Demo" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><EnterpriseDemoDashboard /></EsgProtectedRoute>} />
+                <Route path="/enterprise-demo" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><EnterpriseDemoDashboard /></EsgProtectedRoute>} />
             </Routes>
         </Layout>
     );

@@ -8433,7 +8433,7 @@ async def esg_predict_net_zero(
         ).all()
         
         # Calculate total emission for period
-        total_emission = sum(m.value for m in metrics if m.value is not None and "GHG" in (m.category or "").upper() or "SCOPE" in (m.category or "").upper())
+        total_emission = sum(m.value for m in metrics if m.value is not None)
         if total_emission == 0 and len(metrics) > 0:
             total_emission = sum(m.value for m in metrics if m.value is not None)
             

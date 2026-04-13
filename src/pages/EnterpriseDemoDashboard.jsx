@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area
 } from 'recharts';
 import { 
   Download, CloudUpload, Filter, Share2, TrendingDown, Target, AlertTriangle, ShieldCheck 
 } from 'lucide-react';
+import backendApi from '../api/backendClient';
 
-const emissionsData = [
+const defaultEmissionsData = [
   { month: 'Jan', scope1: 4000, scope2: 2400, scope3: 2400 },
   { month: 'Feb', scope1: 3000, scope2: 1398, scope3: 2210 },
   { month: 'Mar', scope1: 2000, scope2: 9800, scope3: 2290 },
@@ -24,6 +25,38 @@ const supplierRiskData = [
 
 export default function EnterpriseDemoDashboard() {
   const [isExporting, setIsExporting] = useState(false);
+  const [liveData, setLiveData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Project ID 1 is established for the Demo "meldra_acme"
+    backendApi.esgV2.predictNetZero(1)
+      .then(res => {
+         setLiveData(res);
+         setIsLoading(false);
+      })
+      .catch(err => {
+         console.error("Failed to load live data, check backend connection", err);
+         setIsLoading(false);
+      });
+  }, []);
+
+  const chartData = liveData?.historical?.map(h => {
+     const d = new Date(h.date);
+     const monthStr = d.toLocaleString('default', { month: 'short' });
+     return {
+       month: monthStr,
+       scope1: Math.round(h.emission * 0.2), // Derived proportional Scope distribution for demo UI breakdown
+       scope2: Math.round(h.emission * 0.3),
+       scope3: Math.round(h.emission * 0.5)
+     };
+  }) || defaultEmissionsData;
+
+  const currentEmission = liveData?.net_zero_projection?.current_metric 
+     ? Math.round(liveData.net_zero_projection.current_metric).toLocaleString()
+     : "42,500";
+     
+  const dropPcnt = liveData?.net_zero_projection?.reduction_percentage || 12;
 
   const handleExportPDF = () => {
     setIsExporting(true);
@@ -84,7 +117,7 @@ export default function EnterpriseDemoDashboard() {
               <div className="ml-5 w-0 flex-1">
                 <dl>
                   <dt className="text-sm font-medium text-gray-500 truncate">Total Emissions (YTD)</dt>
-                  <dd className="text-2xl font-bold text-gray-900">42,500 tCO2e</dd>
+                  <dd className="text-2xl font-bold text-gray-900">{currentEmission} tCO2e</dd>
                 </dl>
               </div>
             </div>
@@ -102,14 +135,14 @@ export default function EnterpriseDemoDashboard() {
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">Net-Zero Target Gap</dt>
-                  <dd className="text-2xl font-bold text-gray-900">12%</dd>
+                  <dt className="text-sm font-medium text-gray-500 truncate">AI Predicted Drop</dt>
+                  <dd className="text-2xl font-bold text-gray-900">{dropPcnt}%</dd>
                 </dl>
               </div>
             </div>
           </div>
           <div className="bg-gray-50 px-5 py-3 border-t border-gray-200 text-sm text-indigo-600 flex items-center">
-             <span className="font-medium">On Track</span> <span className="text-gray-500 ml-2">for 2030 goal</span>
+             <span className="font-medium">On Track</span> <span className="text-gray-500 ml-2">for AI forecast reduction</span>
           </div>
         </div>
 
@@ -158,7 +191,7 @@ export default function EnterpriseDemoDashboard() {
           <h3 className="text-lg font-medium text-gray-900 mb-4">Carbon Trajectory (Scope 1-3)</h3>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={emissionsData}>
+              <AreaChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="month" />
                 <YAxis />

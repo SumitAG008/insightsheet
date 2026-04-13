@@ -13,6 +13,11 @@ export default function EnterpriseTrustCenter() {
   const [geoConfig, setGeoConfig] = useState('EU');
   const [mfaEnabled, setMfaEnabled] = useState(true);
   const [apiEncryption, setApiEncryption] = useState('AES-256-GCM');
+  
+  // Interactive Workflow state
+  const [useAIVerification, setUseAIVerification] = useState(true);
+  const [requireHumanReview, setRequireHumanReview] = useState(true);
+  const [publishToLedger, setPublishToLedger] = useState(true);
 
   const handleSave = () => {
     setSaved(true);
@@ -66,9 +71,9 @@ export default function EnterpriseTrustCenter() {
                 {[
                   { id: 'geography', icon: Globe2, label: 'Geo-Routing & Frameworks', desc: 'Jurisdictional compliance' },
                   { id: 'security', icon: Lock, label: 'Zero-Trust Security', desc: 'MFA, Encryption, IPs' },
-                  { id: 'rbac', icon: Users, label: 'Advanced RBAC Model', desc: 'Field-level access control' },
                   { id: 'integration', icon: Network, label: '3rd-Party API Ingestion', desc: 'SAP, Workday, Snowflake' },
-                  { id: 'workflow', icon: Workflow, label: 'Approval Workflows', desc: 'Multi-stage audit locking' }
+                  { id: 'workflow', icon: Workflow, label: 'Approval Workflows', desc: 'Multi-stage audit locking' },
+                  { id: 'rbac', icon: Users, label: 'Advanced RBAC Model', desc: 'Field-level access control' }
                 ].map((item) => (
                   <button
                     key={item.id}
@@ -270,37 +275,83 @@ export default function EnterpriseTrustCenter() {
                 <div className="p-8">
                   <div className="border-b border-slate-200 pb-5 mb-6">
                     <h2 className="text-xl font-bold text-slate-800">Mandatory Approval Workflows (Maker/Checker)</h2>
-                    <p className="text-sm text-slate-500 mt-1">Define the exact logic chain required before ESG data is codified into a final compliance report.</p>
+                    <p className="text-sm text-slate-500 mt-1">Design the execution chain. As a Data Collector inputs data, define the verification required prior to finalizing it into the core Compliance Ledger.</p>
                   </div>
 
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-8 relative">
-                       {/* Line connector */}
-                       <div className="absolute top-1/2 left-0 w-full h-1 bg-slate-300 -z-10"></div>
-                       
-                       <div className="bg-white border-2 border-indigo-600 rounded-full w-12 h-12 flex items-center justify-center font-bold text-indigo-600 shadow-sm">1</div>
-                       <div className="bg-white border-2 border-slate-300 rounded-full w-12 h-12 flex items-center justify-center font-bold text-slate-400">2</div>
-                       <div className="bg-white border-2 border-slate-300 rounded-full w-12 h-12 flex items-center justify-center font-bold text-slate-400">3</div>
-                       <div className="bg-green-50 border-2 border-green-500 rounded-full w-12 h-12 flex items-center justify-center font-bold text-green-600 shadow-sm"><CheckCircle2 className="w-6 h-6" /></div>
-                    </div>
+                  <div className="mb-6 space-y-4">
+                     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm">LLM Evidence Verification Stage</p>
+                          <p className="text-xs text-slate-500">Require the AI to validate physical documents before Human Review.</p>
+                        </div>
+                        <button onClick={() => setUseAIVerification(!useAIVerification)}>
+                          {useAIVerification ? <ToggleRight className="w-8 h-8 text-indigo-600" /> : <ToggleLeft className="w-8 h-8 text-slate-300" />}
+                        </button>
+                     </div>
+                     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm">Lead Auditor (Maker/Checker) Sign-off</p>
+                          <p className="text-xs text-slate-500">Require manual approval from a human Auditor.</p>
+                        </div>
+                        <button onClick={() => setRequireHumanReview(!requireHumanReview)}>
+                          {requireHumanReview ? <ToggleRight className="w-8 h-8 text-indigo-600" /> : <ToggleLeft className="w-8 h-8 text-slate-300" />}
+                        </button>
+                     </div>
+                     <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200">
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm">Immutable Blockchain Publishing</p>
+                          <p className="text-xs text-slate-500">Lock the final footprint metrics onto the encrypted ledger.</p>
+                        </div>
+                        <button onClick={() => setPublishToLedger(!publishToLedger)}>
+                          {publishToLedger ? <ToggleRight className="w-8 h-8 text-emerald-600" /> : <ToggleLeft className="w-8 h-8 text-slate-300" />}
+                        </button>
+                     </div>
+                  </div>
+
+                  <div className="bg-white border border-indigo-100 rounded-xl p-6 shadow-sm">
+                    <h3 className="mb-6 text-sm font-bold text-indigo-800 uppercase tracking-widest text-center">Live Logic Chain</h3>
                     
-                    <div className="grid grid-cols-4 gap-4 text-center">
-                       <div>
-                         <h5 className="font-bold text-slate-900 text-sm">Data Collation</h5>
-                         <p className="text-xs text-slate-500 mt-1">API Ingests raw data</p>
+                    <div className="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-4">
+                       {/* START Stage */}
+                       <div className="flex flex-col items-center">
+                         <div className="bg-indigo-50 border-2 border-indigo-600 rounded-full w-12 h-12 flex items-center justify-center font-bold text-indigo-600 shadow-sm z-10 relative">1</div>
+                         <h5 className="font-bold text-slate-800 text-xs mt-3">Data Feed</h5>
+                         <p className="text-[10px] text-slate-500">API/Manual</p>
                        </div>
-                       <div>
-                         <h5 className="font-bold text-slate-900 text-sm">AI Verification</h5>
-                         <p className="text-xs text-slate-500 mt-1">LLM checks against CSRD</p>
+
+                       {useAIVerification && (
+                         <>
+                           <ChevronRight className="text-slate-300 w-6 h-6 hidden md:block" />
+                           <div className="flex flex-col items-center">
+                             <div className="bg-white border-2 border-indigo-400 rounded-full w-12 h-12 flex items-center justify-center font-bold text-indigo-500 z-10 relative">Ai</div>
+                             <h5 className="font-bold text-slate-800 text-xs mt-3">AI Verification</h5>
+                             <p className="text-[10px] text-slate-500">LLM Audit</p>
+                           </div>
+                         </>
+                       )}
+
+                       {requireHumanReview && (
+                         <>
+                           <ChevronRight className="text-slate-300 w-6 h-6 hidden md:block" />
+                           <div className="flex flex-col items-center flex-shrink-0">
+                             <div className="bg-white border-2 border-slate-300 rounded-full w-12 h-12 flex items-center justify-center font-bold text-slate-400 z-10 relative">
+                                <Users className="w-5 h-5" />
+                             </div>
+                             <h5 className="font-bold text-slate-800 text-xs mt-3">Maker/Checker</h5>
+                             <p className="text-[10px] text-slate-500">Manual Approval</p>
+                           </div>
+                         </>
+                       )}
+
+                       <ChevronRight className="text-slate-300 w-6 h-6 hidden md:block" />
+                       <div className="flex flex-col items-center">
+                         <div className={`bg-green-50 border-2 border-green-500 rounded-full w-12 h-12 flex items-center justify-center shadow-sm z-10 relative ${publishToLedger ? 'text-green-600' : 'text-slate-400 border-slate-300'}`}>
+                            {publishToLedger ? <Lock className="w-5 h-5" /> : <CheckCircle2 className="w-6 h-6" />}
+                         </div>
+                         <h5 className="font-bold text-slate-800 text-xs mt-3">{publishToLedger ? 'Ledger Lock' : 'Report Finalized'}</h5>
+                         <p className="text-[10px] text-slate-500">{publishToLedger ? 'Immutable record' : 'Saved to DB'}</p>
                        </div>
-                       <div>
-                         <h5 className="font-bold text-slate-900 text-sm">Human Review</h5>
-                         <p className="text-xs text-slate-500 mt-1">Lead Auditor signs off</p>
-                       </div>
-                       <div>
-                         <h5 className="font-bold text-slate-900 text-sm">Blockchain Lock</h5>
-                         <p className="text-xs text-slate-500 mt-1">Immutable ledger entry</p>
-                       </div>
+
                     </div>
                   </div>
                 </div>

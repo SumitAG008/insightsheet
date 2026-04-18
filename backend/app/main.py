@@ -17,6 +17,8 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from typing import List
+from app.services.pdf_ops_service import merge_pdfs, split_pdf
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, Dict, Any, List
 from datetime import timedelta, datetime
@@ -8506,3 +8508,40 @@ async def esg_predict_net_zero(
             }
         }
 
+
+@app.post("/api/pdf/merge")
+async def api_merge_pdfs(
+    files: List[UploadFile] = File(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        pdf_bytes_list = []
+        for file in files:
+            content = await file.read()
+            pdf_bytes_list.append(content)
+        
+        merged_bytes = merge_pdfs(pdf_bytes_list)
+        return Response(content=merged_bytes, media_type="application/pdf", headers={
+            "Content-Disposition": 'attachment; filename="merged.pdf"'
+        })
+    except Exception as e:
+        logger.error(f"Error merging PDFs: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Failed to merge PDFs: {str(e)}")
+
+@app.post("/api/pdf/split")
+async def api_split_pdf(
+    file: UploadFile = File(...),
+    page_ranges: str = Form(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        content = await file.read()
+        split_bytes = split_pdf(content, page_ranges)
+        return Response(content=split_bytes, media_type="application/pdf", headers={
+            "Content-Disposition": 'attachment; filename="split.pdf"'
+        })
+    except Exception as e:
+        logger.error(f"Error splitting PDF: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=400, detail=f"Failed to split PDF: {str(e)}")

@@ -7,6 +7,14 @@ import { Input } from '@/components/ui/input';
 import { FileText, Download, Upload as UploadIcon, AlertCircle, Shield, Scissors, Copy, Plus } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { backendApi } from '@/api/meldraClient';
+import { Document, Page, pdfjs } from 'react-pdf';
+import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
+import 'react-pdf/dist/esm/Page/TextLayer.css';
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
 
 // Helper to make authenticated fetch request directly
 const authFetch = async (endpoint, options = {}) => {
@@ -29,7 +37,9 @@ export default function PDFEditor() {
 
   // --- Split State ---
   const [splitFile, setSplitFile] = useState(null);
-  const [splitRanges, setSplitRanges] = useState('');
+  const [splitFileUrl, setSplitFileUrl] = useState(null);
+  const [numPages, setNumPages] = useState(null);
+  const [selectedPages, setSelectedPages] = useState(new Set());
   const [isSplitting, setIsSplitting] = useState(false);
 
   const navigate = useNavigate();
@@ -84,6 +94,29 @@ export default function PDFEditor() {
       return;
     }
     setSplitFile(file);
+    setSplitFileUrl(URL.createObjectURL(file));
+    setSelectedPages(new Set());
+    setNumPages(null);
+  };
+
+  const togglePageSelection = (pageNumber) => {
+    const newSelected = new Set(selectedPages);
+    if (newSelected.has(pageNumber)) {
+      newSelected.delete(pageNumber);
+    } else {
+      newSelected.add(pageNumber);
+    }
+    setSelectedPages(newSelected);
+  };
+  
+  const selectAllPages = () => {
+    if (!numPages) return;
+    const all = new Set(Array.from({ length: numPages }, (_, i) => i + 1));
+    setSelectedPages(all);
+  };
+  
+  const clearSelection = () => {
+    setSelectedPages(new Set());
   };
 
   const executeSplit = async () => {
@@ -91,10 +124,15 @@ export default function PDFEditor() {
       alert('Please select a PDF file first.');
       return;
     }
-    if (!splitRanges.trim()) {
-      alert('Please enter page ranges (e.g., 1-3,5).');
+    if (selectedPages.size === 0) {
+      alert('Please select at least one page to extract.');
       return;
     }
+    
+    // Sort array of selected pages
+    const sortedPages = Array.from(selectedPages).sort((a, b) => a - b);
+    const splitRanges = sortedPages.join(',');
+
     setIsSplitting(true);
     try {
       const formData = new FormData();
@@ -215,29 +253,75 @@ export default function PDFEditor() {
                      <UploadIcon className="w-4 h-4 mr-2" /> Select PDF to Split
                    </label>
                 ) : (
-                  <div className="flex flex-col items-center gap-4">
+                  <div className="flex flex-col items-center gap-4 w-full">
                     <div className="flex items-center gap-3 bg-slate-50 p-4 rounded-lg border border-slate-200 w-full max-w-md justify-center">
                       <FileText className="text-purple-600 w-6 h-6" />
                       <span className="font-medium text-slate-700 truncate max-w-[200px]">{splitFile.name}</span>
-                      <Button variant="ghost" size="sm" onClick={() => setSplitFile(null)} className="text-red-500 hover:text-red-700 hover:bg-red-50 ml-auto">Change</Button>
+                      <Button variant="ghost" size="sm" onClick={() => { setSplitFile(null); setSplitFileUrl(null); }} className="text-red-500 hover:text-red-700 hover:bg-red-50 ml-auto">Change</Button>
                     </div>
                     
-                    <div className="w-full max-w-md space-y-2 text-left">
-                      <label className="text-sm font-medium text-slate-700">Pages to Extract (e.g., 1-3,5,7-10)</label>
-                      <Input 
-                        placeholder="1-3,5,7" 
-                        value={splitRanges} 
-                        onChange={(e) => setSplitRanges(e.target.value)} 
-                        className="border-slate-300"
-                      />
-                    </div>
+                    {splitFileUrl && (
+                      <div className="w-full mt-2 bg-white p-4 rounded-xl border border-slate-200 shadow-inner">
+                        <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                          <h3 className="font-semibold text-slate-800">Select Pages to Extract/Keep</h3>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={selectAllPages}>Select All</Button>
+                            <Button size="sm" variant="outline" onClick={clearSelection}>Clear</Button>
+                          </div>
+                        </div>
+                        
+                        <div className="h-[400px] overflow-y-auto bg-slate-50 rounded-lg p-6 border border-slate-200">
+                          <Document
+                            file={splitFileUrl}
+                            onLoadSuccess={({ numPages }) => {
+                               setNumPages(numPages);
+                               const all = new Set(Array.from({ length: numPages }, (_, i) => i + 1));
+                               setSelectedPages(all);
+                            }}
+                            className="flex flex-wrap gap-6 justify-center"
+                            loading={<div className="flex justify-center w-full py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div></div>}
+                          >
+                            {Array.from(new Array(numPages), (el, index) => (
+                              <div 
+                                key={`page_${index + 1}`}
+                                onClick={() => togglePageSelection(index + 1)}
+                                className={`relative cursor-pointer transition-all duration-200 rounded-lg overflow-hidden border-4 ${
+                                  selectedPages.has(index + 1) 
+                                    ? 'border-purple-600 shadow-lg shadow-purple-200 scale-105' 
+                                    : 'border-transparent opacity-50 hover:opacity-100 hover:border-purple-300'
+                                }`}
+                              >
+                                <div className={`absolute top-2 left-2 z-10 px-2 py-1 rounded text-xs font-bold shadow transition-colors ${selectedPages.has(index + 1) ? 'bg-purple-600 text-white' : 'bg-white/90 text-slate-800'}`}>
+                                  Page {index + 1}
+                                </div>
+                                {selectedPages.has(index + 1) && (
+                                  <div className="absolute inset-0 bg-purple-600/10 z-0 pointer-events-none" />
+                                )}
+                                <div className="bg-white pointer-events-none">
+                                  <Page 
+                                    pageNumber={index + 1} 
+                                    width={160} 
+                                    renderTextLayer={false} 
+                                    renderAnnotationLayer={false}
+                                    className="shadow-sm"
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </Document>
+                        </div>
+                        <p className="text-sm font-medium text-slate-600 mt-4 text-center">
+                          {selectedPages.size} of {numPages || 0} pages selected for extraction
+                        </p>
+                      </div>
+                    )}
 
                     <Button 
                       onClick={executeSplit} 
-                      disabled={!splitRanges.trim() || isSplitting}
-                      className="bg-purple-600 hover:bg-purple-700 text-white w-full max-w-md mt-4"
+                      disabled={selectedPages.size === 0 || isSplitting}
+                      className="bg-purple-600 hover:bg-purple-700 text-white w-full max-w-md mt-4 text-lg py-6 shadow-xl shadow-purple-600/20"
                     >
-                      <Scissors className="w-4 h-4 mr-2" /> {isSplitting ? 'Splitting...' : 'Extract Pages'}
+                      <Scissors className="w-5 h-5 mr-2" /> {isSplitting ? 'Processing...' : 'Extract Selected Pages'}
                     </Button>
                   </div>
                 )}

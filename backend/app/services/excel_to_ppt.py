@@ -101,20 +101,24 @@ class ExcelToPPTService:
                 worksheet = workbook[sheet_name]
 
                 # Get data from worksheet
-                data = self._extract_worksheet_data(worksheet)
+                tables = self._extract_worksheet_data(worksheet)
 
-                if not data['rows']:
+                if not tables:
                     logger.warning(f"Skipping empty sheet: {sheet_name}")
                     continue
 
-                # Analyze data
-                analysis = self._analyze_data(data)
+                # Analyze largest table
+                largest_table = max(tables, key=lambda t: len(t['rows']))
+                analysis = self._analyze_data(largest_table)
 
                 # Add section slide
                 self._add_section_slide(prs, sheet_name, analysis)
 
-                # Add data table slide
-                self._add_data_table_slide(prs, sheet_name, data)
+                # Add data table slides for each distinct table
+                for idx, t_data in enumerate(tables):
+                    if t_data['headers'] and t_data['rows']:
+                        t_name = sheet_name if len(tables) == 1 else f"{sheet_name} (Table {idx+1})"
+                        self._add_data_table_slide(prs, t_name, t_data)
 
                 # Add embedded images (including pasted charts/screenshots) as individual slides
                 self._add_embedded_image_slides(prs, sheet_name, worksheet)
@@ -475,23 +479,31 @@ class ExcelToPPTService:
                     paragraph.font.size = Pt(10)
                     paragraph.alignment = PP_ALIGN.CENTER
 
-    def _extract_worksheet_data(self, worksheet) -> Dict:
-        """Extract data from worksheet"""
-        data = {
-            'headers': [],
-            'rows': []
-        }
+    def _extract_worksheet_data(self, worksheet) -> list:
+        """Extract data from worksheet into separate tables (blocks)"""
+        tables = []
+        current_table = {'headers': [], 'rows': []}
+        is_first_row = True
 
-        # Get headers from first row
-        first_row = list(worksheet.iter_rows(min_row=1, max_row=1, values_only=True))[0]
-        data['headers'] = [str(h) if h is not None else f'Column{i}' for i, h in enumerate(first_row)]
+        for row in worksheet.iter_rows(min_row=1, values_only=True):
+            is_empty = not any(cell is not None and str(cell).strip() for cell in row)
+            
+            if is_empty:
+                if not is_first_row and (current_table['headers'] or current_table['rows']):
+                    tables.append(current_table)
+                    current_table = {'headers': [], 'rows': []}
+                    is_first_row = True
+            else:
+                if is_first_row:
+                    current_table['headers'] = [str(h) if h is not None else f'Col{i}' for i, h in enumerate(row)]
+                    is_first_row = False
+                else:
+                    current_table['rows'].append(list(row))
+                    
+        if current_table['headers'] or current_table['rows']:
+            tables.append(current_table)
 
-        # Get data rows
-        for row in worksheet.iter_rows(min_row=2, values_only=True):
-            if any(cell is not None and str(cell).strip() for cell in row):
-                data['rows'].append(list(row))
-
-        return data
+        return tables
 
     def _analyze_data(self, data: Dict) -> Dict:
         """Analyze data to determine chart types and columns"""
@@ -1103,7 +1115,8 @@ class ExcelToPPTService:
                 return fig_num
 
             scored.sort(key=lambda t: t[0], reverse=True)
-            best = [c for _s, c in scored[:6]]
+            # Only take the best 1 image to avoid pulling repetitive tables as images
+            best = [c for _s, c in scored[:1]]
 
             for crop in best:
                 fig_num += 1

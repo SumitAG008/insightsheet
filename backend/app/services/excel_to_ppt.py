@@ -719,7 +719,7 @@ class ExcelToPPTService:
                 y += _row_height_px(r)
             return x, y
 
-        def _tighten_to_nonwhite(img_in, threshold: int = 248, pad: int = 6):
+        def _tighten_to_nonwhite(img_in, threshold: int = 254, pad: int = 20):
             try:
                 w0, h0 = img_in.size
                 if w0 <= 0 or h0 <= 0:
@@ -821,28 +821,31 @@ class ExcelToPPTService:
 
                 c0 = int(getattr(fr, "col", 0)) + 1
                 r0 = int(getattr(fr, "row", 0)) + 1
-                if to is not None:
-                    c1 = int(getattr(to, "col", c0)) + 1
-                    r1 = int(getattr(to, "row", r0)) + 1
-                else:
-                    c1 = c0 + 8
-                    r1 = r0 + 18
-
                 x0, y0 = _cell_xy_px(c0, r0)
-                x1, y1 = _cell_xy_px(max(c1, c0 + 1), max(r1, r0 + 1))
-
-                # Anchor offsets (EMU) within the start/end cells
                 try:
                     x0 += _emu_to_px(int(getattr(fr, "colOff", 0) or 0))
                     y0 += _emu_to_px(int(getattr(fr, "rowOff", 0) or 0))
                 except Exception:
                     pass
+
                 if to is not None:
+                    c1 = int(getattr(to, "col", c0)) + 1
+                    r1 = int(getattr(to, "row", r0)) + 1
+                    x1, y1 = _cell_xy_px(max(c1, c0 + 1), max(r1, r0 + 1))
                     try:
                         x1 += _emu_to_px(int(getattr(to, "colOff", 0) or 0))
                         y1 += _emu_to_px(int(getattr(to, "rowOff", 0) or 0))
                     except Exception:
                         pass
+                else:
+                    ext = getattr(a, "ext", None)
+                    if ext:
+                        x1 = x0 + _emu_to_px(getattr(ext, "cx", 0) or 0)
+                        y1 = y0 + _emu_to_px(getattr(ext, "cy", 0) or 0)
+                    else:
+                        c1 = c0 + 8
+                        r1 = r0 + 18
+                        x1, y1 = _cell_xy_px(max(c1, c0 + 1), max(r1, r0 + 1))
 
                 best_crop = None
                 best_score = -1.0
@@ -859,7 +862,7 @@ class ExcelToPPTService:
                         px1 = int(max(min(x1 * scale_x, img_w), px0 + 1))
                         py1 = int(max(min(y1 * scale_y, img_h), py0 + 1))
 
-                        pad = 12
+                        pad = 40
                         px0 = max(px0 - pad, 0)
                         py0 = max(py0 - pad, 0)
                         px1 = min(px1 + pad, img_w)
@@ -995,7 +998,7 @@ class ExcelToPPTService:
             # Identify horizontal content bands (separated by whitespace)
             active_rows = [y for y in range(h) if row_counts[y] > int(w * 0.03)]
             row_runs = _contiguous_runs(active_rows, min_len=8)
-            bands = _split_by_whitespace_gaps(row_runs, gap_min=14)
+            bands = _split_by_whitespace_gaps(row_runs, gap_min=50)
             if not bands:
                 return fig_num
 
@@ -1011,7 +1014,7 @@ class ExcelToPPTService:
 
                 active_cols = [x for x in range(w) if band_col_counts[x] > int((by1 - by0) * 0.03)]
                 col_runs = _contiguous_runs(active_cols, min_len=8)
-                cols = _split_by_whitespace_gaps(col_runs, gap_min=14)
+                cols = _split_by_whitespace_gaps(col_runs, gap_min=50)
                 if not cols:
                     continue
 
@@ -1052,11 +1055,13 @@ class ExcelToPPTService:
                     page_area = w * h
                     if area < page_area * 0.04:
                         continue
-                    if area > page_area * 0.85:
+                    # Allow up to 98% of the page area, so full-page charts/tables aren't skipped
+                    if area > page_area * 0.98:
                         continue
 
                     density = float(nonwhite) / float(max(area, 1))
-                    if density > 0.75:
+                    # Allow denser regions, e.g., for heavy text tables
+                    if density > 0.90:
                         continue
 
                     regions.append((x0, y0, x1, y1))

@@ -126,27 +126,12 @@ class ExcelToPPTService:
                 # Fallback for real Excel chart objects (Insert -> Chart): use rendered PDF page for this sheet
                 try:
                     if rendered_pages:
-                        page_img = rendered_pages
-                        before = fig_num
-                        fig_num = self._add_chart_slides_from_anchors(
-                            prs,
-                            sheet_name,
-                            worksheet,
-                            page_img,
-                            fig_num,
-                        )
-                        if fig_num == before:
-                            # As a last resort, attempt region-detection on each rendered page
-                            for p in page_img:
-                                before2 = fig_num
+                        charts_count = len(getattr(worksheet, "_charts", []))
+                        if charts_count > 0:
+                            for p in rendered_pages:
                                 fig_num = self._add_rendered_figure_slides_from_page_image(
-                                    prs,
-                                    sheet_name,
-                                    p,
-                                    fig_num,
+                                    prs, sheet_name, p, fig_num, charts_count
                                 )
-                                if fig_num != before2:
-                                    break
                 except Exception:
                     pass
 
@@ -943,7 +928,7 @@ class ExcelToPPTService:
         return fig_num
 
 
-    def _add_rendered_figure_slides_from_page_image(self, prs: Presentation, sheet_name: str, page_img, fig_num: int) -> int:
+    def _add_rendered_figure_slides_from_page_image(self, prs: Presentation, sheet_name: str, page_img, fig_num: int, expected_items: int) -> int:
         try:
             from PIL import ImageStat as PILImageStat
         except Exception:
@@ -1115,8 +1100,8 @@ class ExcelToPPTService:
                 return fig_num
 
             scored.sort(key=lambda t: t[0], reverse=True)
-            # Only take the best 1 image to avoid pulling repetitive tables as images
-            best = [c for _s, c in scored[:1]]
+            # Take exactly expected_items to get all charts but avoid pulling repetitive tables
+            best = [c for _s, c in scored[:expected_items]] if expected_items > 0 else []
 
             for crop in best:
                 fig_num += 1

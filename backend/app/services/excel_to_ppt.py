@@ -1093,15 +1093,13 @@ class ExcelToPPTService:
                         continue
 
                     area = bw * bh
-                    page_area = w * h
-                    if area < page_area * 0.04:
+                    if area < 15000:  # ~120x120 minimum
                         continue
                     # Removed upper bound on area so full-page charts are captured
 
                     density = float(nonwhite) / float(max(area, 1))
-                    # Allow denser regions, e.g., for heavy text tables
-                    if density > 0.90:
-                        continue
+                    # Allow denser regions (e.g., charts with solid backgrounds like yellow/blue)
+                    # We no longer need to filter dense tables because tables are wiped in memory.
 
                     regions.append((x0, y0, x1, y1))
 

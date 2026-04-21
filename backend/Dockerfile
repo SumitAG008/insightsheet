@@ -19,17 +19,22 @@ RUN apt-get update && apt-get install -y \
 # Ensure cache is busted
 ARG CACHE_BUSTER=1
 
-# Copy requirements (handles both repo root and backend root contexts)
-COPY requirements.txt* backend/requirements.txt* ./
-RUN cp requirements.txt* requirements.txt || true
-RUN cp backend/requirements.txt requirements.txt || true
+# Copy everything first to bypass Docker lstat strictness
+COPY . /app/
 
-RUN pip install --no-cache-dir -r requirements.txt
+# Find and install requirements depending on context
+RUN if [ -f "/app/backend/requirements.txt" ]; then \
+        pip install --no-cache-dir -r /app/backend/requirements.txt; \
+    else \
+        pip install --no-cache-dir -r /app/requirements.txt; \
+    fi
+
 RUN python -m playwright install --with-deps chromium
 
-# Copy application code (handles both repo root and backend root contexts)
-COPY . /app/
-RUN cp -r /app/backend/* /app/ 2>/dev/null || true
+# Move backend files to root if we were given the monorepo context
+RUN if [ -d "/app/backend" ]; then \
+        cp -r /app/backend/* /app/; \
+    fi
 
 # Create logs directory
 RUN mkdir -p logs

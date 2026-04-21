@@ -77,17 +77,24 @@ class ExcelToPPTService:
 
             rendered_pages = None
             try:
-                pdf_bytes, _ = convert_spreadsheet_to_pdf_bytes(excel_data, filename)
+                # To prevent the vision engine from extracting spreadsheet tables as images and 
+                # to eliminate background gridlines, we surgically modify the Excel zip in-memory 
+                # to make all cell fonts and backgrounds pure white, and disable gridlines.
+                # Charts maintain their own formatting XMLs, so they remain fully visible.
+                vision_excel_data = self._wipe_cells_for_vision(excel_data)
+                
+                pdf_bytes, _ = convert_spreadsheet_to_pdf_bytes(vision_excel_data, filename)
                 if pdf_bytes:
                     rendered_pages = self._render_pdf_pages_to_images(pdf_bytes)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"PDF rendering failed: {e}")
                 rendered_pages = None
 
             # Fallback: if PDF->image rendering isn't available (e.g. PyMuPDF missing),
             # use LibreOffice's direct PNG export.
             if not rendered_pages:
                 try:
-                    png_pages, _msg = convert_spreadsheet_to_png_images(excel_data, filename)
+                    png_pages, _msg = convert_spreadsheet_to_png_images(vision_excel_data, filename)
                     if png_pages:
                         rendered_pages = png_pages
                 except Exception:
@@ -123,17 +130,16 @@ class ExcelToPPTService:
                 # Add embedded images (including pasted charts/screenshots) as individual slides
                 self._add_embedded_image_slides(prs, sheet_name, worksheet)
 
-                # Fallback for real Excel chart objects (Insert -> Chart): use rendered PDF page for this sheet
-                try:
-                    if rendered_pages:
-                        charts_count = len(getattr(worksheet, "_charts", []))
-                        if charts_count > 0:
-                            for p in rendered_pages:
-                                fig_num = self._add_rendered_figure_slides_from_page_image(
-                                    prs, sheet_name, p, fig_num, charts_count
-                                )
-                except Exception:
-                    pass
+                # We will process rendered_pages globally at the end to avoid duplication
+                pass
+
+            # Process all rendered pages once at the end to extract visual elements (charts/tables)
+            if rendered_pages:
+                logger.info(f"Processing {len(rendered_pages)} rendered pages for visual elements")
+                for p_idx, p in enumerate(rendered_pages):
+                    fig_num = self._add_rendered_figure_slides_from_page_image(
+                        prs, f"Visual Extract", p, fig_num
+                    )
 
             # Save to bytes
             output = io.BytesIO()
@@ -622,8 +628,46 @@ class ExcelToPPTService:
                 # Best-effort: skip problematic images
                 continue
 
-
-    def _render_pdf_pages_to_images(self, pdf_bytes: bytes):
+    def _wipe_cells_for_vision(self, excel_bytes: bytes) -> bytes:
+        """
+        Surgically modifies the xlsx zip file to make all cell text and backgrounds pure white
+        and disables gridlines. This forces LibreOffice to render an empty white page with 
+        only charts, shapes, and pictures visible, perfectly isolating them for the vision engine.
+        """
+        import zipfile
+        import re
+        out_io = io.BytesIO()
+        try:
+            with zipfile.ZipFile(io.BytesIO(excel_bytes), 'r') as zin:
+                with zipfile.ZipFile(out_io, 'w') as zout:
+                    for item in zin.infolist():
+                        content = zin.read(item.filename)
+                        
+                        if item.filename == 'xl/styles.xml':
+                            # Force all fonts to white
+                            content = re.sub(b'<color [^>]*/>', b'<color rgb="FFFFFFFF"/>', content)
+                            content = re.sub(b'<color [^>]*>.*?</color>', b'<color rgb="FFFFFFFF"/>', content)
+                            
+                            # Force all pattern fills to white
+                            content = re.sub(b'<fgColor [^>]*/>', b'<fgColor rgb="FFFFFFFF"/>', content)
+                            content = re.sub(b'<bgColor [^>]*/>', b'<bgColor rgb="FFFFFFFF"/>', content)
+                            
+                            # Remove cell borders
+                            for tag in [b'left', b'right', b'top', b'bottom', b'diagonal']:
+                                content = re.sub(b'<' + tag + b' [^>]*/>', b'<' + tag + b'/>', content)
+                                content = re.sub(b'<' + tag + b' [^>]*>.*?</' + tag + b'>', b'<' + tag + b'/>', content)
+                                
+                        elif item.filename.startswith('xl/worksheets/sheet') and item.filename.endswith('.xml'):
+                            # Disable gridlines on all worksheets
+                            content = re.sub(b'showGridLines="1"', b'showGridLines="0"', content)
+                            if b'showGridLines=' not in content:
+                                content = content.replace(b'<sheetView ', b'<sheetView showGridLines="0" ')
+                                
+                        zout.writestr(item, content)
+            return out_io.getvalue()
+        except Exception as e:
+            logger.warning(f"Wipe cells failed: {e}")
+            return excel_bytes
         try:
             import fitz
         except Exception:
@@ -928,7 +972,7 @@ class ExcelToPPTService:
         return fig_num
 
 
-    def _add_rendered_figure_slides_from_page_image(self, prs: Presentation, sheet_name: str, page_img, fig_num: int, expected_items: int) -> int:
+    def _add_rendered_figure_slides_from_page_image(self, prs: Presentation, sheet_name: str, page_img, fig_num: int) -> int:
         try:
             from PIL import ImageStat as PILImageStat
         except Exception:
@@ -1052,9 +1096,7 @@ class ExcelToPPTService:
                     page_area = w * h
                     if area < page_area * 0.04:
                         continue
-                    # Allow up to 98% of the page area, so full-page charts/tables aren't skipped
-                    if area > page_area * 0.98:
-                        continue
+                    # Removed upper bound on area so full-page charts are captured
 
                     density = float(nonwhite) / float(max(area, 1))
                     # Allow denser regions, e.g., for heavy text tables
@@ -1100,8 +1142,8 @@ class ExcelToPPTService:
                 return fig_num
 
             scored.sort(key=lambda t: t[0], reverse=True)
-            # Take exactly expected_items to get all charts but avoid pulling repetitive tables
-            best = [c for _s, c in scored[:expected_items]] if expected_items > 0 else []
+            # Take all good regions found by the vision algorithm
+            best = [c for _s, c in scored]
 
             for crop in best:
                 fig_num += 1

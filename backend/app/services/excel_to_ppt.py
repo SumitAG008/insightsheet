@@ -656,14 +656,42 @@ class ExcelToPPTService:
                         content = zin.read(item.filename)
                         
                         if item.filename == 'xl/styles.xml':
-                            # Safely replace fonts without corrupting the <colors> palette
-                            content = re.sub(b'<font(?: [^>]*)?>.*?</font>', b'<font><color rgb="FFFFFFFF"/></font>', content, flags=re.DOTALL)
-                            
-                            # Safely replace pattern fills
-                            content = re.sub(b'<patternFill(?: [^>]*)?>.*?</patternFill>', b'<patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor rgb="FFFFFFFF"/></patternFill>', content, flags=re.DOTALL)
-                            
-                            # Safely remove cell borders
-                            content = re.sub(b'<border(?: [^>]*)?>.*?</border>', b'<border><left/><right/><top/><bottom/><diagonal/></border>', content, flags=re.DOTALL)
+                            import xml.etree.ElementTree as ET
+                            try:
+                                ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
+                                ET.register_namespace('', ns)
+                                root = ET.fromstring(content)
+                                
+                                # Safely change font colors
+                                for font in root.findall(f'.//{{{ns}}}font'):
+                                    color = font.find(f'{{{ns}}}color')
+                                    if color is not None:
+                                        color.attrib = {'rgb': 'FFFFFFFF'}
+                                    else:
+                                        ET.SubElement(font, f'{{{ns}}}color', {'rgb': 'FFFFFFFF'})
+                                        
+                                # Safely change pattern fill colors
+                                for fill in root.findall(f'.//{{{ns}}}patternFill'):
+                                    fgColor = fill.find(f'{{{ns}}}fgColor')
+                                    if fgColor is not None:
+                                        fgColor.attrib = {'rgb': 'FFFFFFFF'}
+                                    bgColor = fill.find(f'{{{ns}}}bgColor')
+                                    if bgColor is not None:
+                                        bgColor.attrib = {'rgb': 'FFFFFFFF'}
+                                        
+                                # Safely clear borders
+                                for border in root.findall(f'.//{{{ns}}}border'):
+                                    for child in list(border):
+                                        border.remove(child)
+                                    ET.SubElement(border, f'{{{ns}}}left')
+                                    ET.SubElement(border, f'{{{ns}}}right')
+                                    ET.SubElement(border, f'{{{ns}}}top')
+                                    ET.SubElement(border, f'{{{ns}}}bottom')
+                                    ET.SubElement(border, f'{{{ns}}}diagonal')
+                                    
+                                content = ET.tostring(root, encoding='utf-8', xml_declaration=True)
+                            except Exception as e:
+                                logger.warning(f"Failed to cleanly modify styles.xml, keeping original: {e}")
                                 
                         elif item.filename.startswith('xl/worksheets/sheet') and item.filename.endswith('.xml'):
                             # Disable gridlines on all worksheets

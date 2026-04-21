@@ -492,9 +492,21 @@ class ExcelToPPTService:
                     current_table['rows'].append(list(row))
                     
         if current_table['headers'] or current_table['rows']:
-            tables.append(current_table)
+            # Only append if the table actually has some data
+            has_data = any(str(cell).strip() for row in current_table['rows'] for cell in row if cell is not None)
+            if has_data:
+                tables.append(current_table)
 
-        return tables
+        # Clean up empty tables that slipped through
+        valid_tables = []
+        for table in tables:
+            has_data = any(str(cell).strip() for row in table['rows'] for cell in row if cell is not None)
+            # Or if it has meaningful headers
+            has_meaningful_headers = any(h for h in table['headers'] if h and not h.startswith('Col'))
+            if has_data or has_meaningful_headers:
+                valid_tables.append(table)
+
+        return valid_tables
 
     def _analyze_data(self, data: Dict) -> Dict:
         """Analyze data to determine chart types and columns"""
@@ -644,18 +656,14 @@ class ExcelToPPTService:
                         content = zin.read(item.filename)
                         
                         if item.filename == 'xl/styles.xml':
-                            # Force all fonts to white
-                            content = re.sub(b'<color [^>]*/>', b'<color rgb="FFFFFFFF"/>', content)
-                            content = re.sub(b'<color [^>]*>.*?</color>', b'<color rgb="FFFFFFFF"/>', content)
+                            # Safely replace fonts without corrupting the <colors> palette
+                            content = re.sub(b'<font(?: [^>]*)?>.*?</font>', b'<font><color rgb="FFFFFFFF"/></font>', content, flags=re.DOTALL)
                             
-                            # Force all pattern fills to white
-                            content = re.sub(b'<fgColor [^>]*/>', b'<fgColor rgb="FFFFFFFF"/>', content)
-                            content = re.sub(b'<bgColor [^>]*/>', b'<bgColor rgb="FFFFFFFF"/>', content)
+                            # Safely replace pattern fills
+                            content = re.sub(b'<patternFill(?: [^>]*)?>.*?</patternFill>', b'<patternFill patternType="solid"><fgColor rgb="FFFFFFFF"/><bgColor rgb="FFFFFFFF"/></patternFill>', content, flags=re.DOTALL)
                             
-                            # Remove cell borders
-                            for tag in [b'left', b'right', b'top', b'bottom', b'diagonal']:
-                                content = re.sub(b'<' + tag + b' [^>]*/>', b'<' + tag + b'/>', content)
-                                content = re.sub(b'<' + tag + b' [^>]*>.*?</' + tag + b'>', b'<' + tag + b'/>', content)
+                            # Safely remove cell borders
+                            content = re.sub(b'<border(?: [^>]*)?>.*?</border>', b'<border><left/><right/><top/><bottom/><diagonal/></border>', content, flags=re.DOTALL)
                                 
                         elif item.filename.startswith('xl/worksheets/sheet') and item.filename.endswith('.xml'):
                             # Disable gridlines on all worksheets

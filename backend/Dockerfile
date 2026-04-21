@@ -16,15 +16,20 @@ RUN apt-get update && apt-get install -y \
     fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy everything to debug the context
-COPY . /app/debug
-RUN ls -la /app/debug && echo "CONTEXT CONTENTS"
+# Ensure cache is busted
+ARG CACHE_BUSTER=1
 
-# Continue with build using root context
-COPY backend/requirements.txt .
+# Copy requirements (handles both repo root and backend root contexts)
+COPY requirements.txt* backend/requirements.txt* ./
+RUN cp requirements.txt* requirements.txt || true
+RUN cp backend/requirements.txt requirements.txt || true
+
 RUN pip install --no-cache-dir -r requirements.txt
 RUN python -m playwright install --with-deps chromium
-COPY backend/ .
+
+# Copy application code (handles both repo root and backend root contexts)
+COPY . /app/
+RUN cp -r /app/backend/* /app/ 2>/dev/null || true
 
 # Create logs directory
 RUN mkdir -p logs

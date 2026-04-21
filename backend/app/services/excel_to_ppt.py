@@ -656,25 +656,28 @@ class ExcelToPPTService:
                         if item.filename == 'xl/styles.xml':
                             try:
                                 # Target ONLY the specific blocks to avoid corrupting <colors> palette
-                                fonts_block = re.search(b'<fonts.*?</fonts>', content, flags=re.DOTALL)
-                                if fonts_block:
-                                    new_fonts = re.sub(b'<color [^>]*/>', b'<color rgb="FFFFFFFF"/>', fonts_block.group(0))
-                                    new_fonts = re.sub(b'<color [^>]*>.*?</color>', b'<color rgb="FFFFFFFF"/>', new_fonts)
-                                    content = content.replace(fonts_block.group(0), new_fonts)
+                                fonts_match = re.search(b'<fonts.*?</fonts>', content, flags=re.DOTALL)
+                                if fonts_match:
+                                    f_block = fonts_match.group(0)
+                                    f_block = re.sub(b'<color(?: [^>]*)?/>', b'', f_block, flags=re.DOTALL)
+                                    f_block = re.sub(b'<color(?: [^>]*)?>.*?</color>', b'', f_block, flags=re.DOTALL)
+                                    f_block = re.sub(b'</font>', b'<color rgb="FFFFFFFF"/></font>', f_block, flags=re.DOTALL)
+                                    content = content.replace(fonts_match.group(0), f_block)
                                     
-                                fills_block = re.search(b'<fills.*?</fills>', content, flags=re.DOTALL)
-                                if fills_block:
-                                    new_fills = re.sub(b'<fgColor [^>]*/>', b'<fgColor rgb="FFFFFFFF"/>', fills_block.group(0))
-                                    new_fills = re.sub(b'<bgColor [^>]*/>', b'<bgColor rgb="FFFFFFFF"/>', new_fills)
-                                    content = content.replace(fills_block.group(0), new_fills)
+                                fills_match = re.search(b'<fills.*?</fills>', content, flags=re.DOTALL)
+                                if fills_match:
+                                    fl_block = fills_match.group(0)
+                                    fl_block = re.sub(b'<fgColor(?: [^>]*)?/>', b'<fgColor rgb="FFFFFFFF"/>', fl_block, flags=re.DOTALL)
+                                    fl_block = re.sub(b'<bgColor(?: [^>]*)?/>', b'<bgColor rgb="FFFFFFFF"/>', fl_block, flags=re.DOTALL)
+                                    content = content.replace(fills_match.group(0), fl_block)
                                     
-                                borders_block = re.search(b'<borders.*?</borders>', content, flags=re.DOTALL)
-                                if borders_block:
+                                borders_match = re.search(b'<borders.*?</borders>', content, flags=re.DOTALL)
+                                if borders_match:
+                                    b_block = borders_match.group(0)
                                     for tag in [b'left', b'right', b'top', b'bottom', b'diagonal']:
-                                        new_borders = re.sub(b'<' + tag + b' [^>]*/>', b'<' + tag + b'/>', borders_block.group(0))
-                                        new_borders = re.sub(b'<' + tag + b' [^>]*>.*?</' + tag + b'>', b'<' + tag + b'/>', new_borders)
-                                        borders_block = re.match(b'.*', new_borders, flags=re.DOTALL) # dummy update
-                                    content = content.replace(re.search(b'<borders.*?</borders>', content, flags=re.DOTALL).group(0), new_borders)
+                                        b_block = re.sub(b'<' + tag + b'(?: [^>]*)?/>', b'<' + tag + b'/>', b_block, flags=re.DOTALL)
+                                        b_block = re.sub(b'<' + tag + b'(?: [^>]*)?>.*?</' + tag + b'>', b'<' + tag + b'/>', b_block, flags=re.DOTALL)
+                                    content = content.replace(borders_match.group(0), b_block)
                             except Exception as e:
                                 logger.warning(f"Failed to cleanly modify styles.xml, keeping original: {e}")
                                 

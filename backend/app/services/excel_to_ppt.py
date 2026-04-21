@@ -1128,21 +1128,10 @@ class ExcelToPPTService:
                 except Exception:
                     std = 0.0
 
-                if std < 5.0:
+                if std < 10.0:
                     logger.info(f"Skipping region, standard deviation too low (std: {std:.2f})")
                     continue
                     
-                # Use OCR to reject tables: tables have many words and lower variance
-                try:
-                    import pytesseract
-                    text = pytesseract.image_to_string(crop)
-                    words = len(text.split())
-                    if words > 30 and std < 40.0:
-                        logger.info(f"Skipping region, likely a table (words: {words}, std: {std:.2f})")
-                        continue
-                except Exception as e:
-                    pass
-
                 # Region density already filtered; prefer higher color variance
                 score = std
                 scored.append((score, crop))

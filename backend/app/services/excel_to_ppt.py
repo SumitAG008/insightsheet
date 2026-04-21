@@ -653,13 +653,41 @@ class ExcelToPPTService:
                     for item in zin.infolist():
                         content = zin.read(item.filename)
                         
-                        if item.filename.startswith('xl/worksheets/sheet') and item.filename.endswith('.xml'):
+                        if item.filename == 'xl/styles.xml':
+                            try:
+                                # Target ONLY the specific blocks to avoid corrupting <colors> palette
+                                fonts_match = re.search(b'<fonts.*?</fonts>', content, flags=re.DOTALL)
+                                if fonts_match:
+                                    f_block = fonts_match.group(0)
+                                    f_block = re.sub(b'<color(?: [^>]*)?/>', b'', f_block, flags=re.DOTALL)
+                                    f_block = re.sub(b'<color(?: [^>]*)?>.*?</color>', b'', f_block, flags=re.DOTALL)
+                                    f_block = re.sub(b'</font>', b'<color rgb="FFFFFFFF"/></font>', f_block, flags=re.DOTALL)
+                                    content = content.replace(fonts_match.group(0), f_block)
+                                    
+                                fills_match = re.search(b'<fills.*?</fills>', content, flags=re.DOTALL)
+                                if fills_match:
+                                    fl_block = fills_match.group(0)
+                                    fl_block = re.sub(b'<fgColor(?: [^>]*)?/>', b'<fgColor rgb="FFFFFFFF"/>', fl_block, flags=re.DOTALL)
+                                    fl_block = re.sub(b'<bgColor(?: [^>]*)?/>', b'<bgColor rgb="FFFFFFFF"/>', fl_block, flags=re.DOTALL)
+                                    content = content.replace(fills_match.group(0), fl_block)
+                                    
+                                borders_match = re.search(b'<borders.*?</borders>', content, flags=re.DOTALL)
+                                if borders_match:
+                                    b_block = borders_match.group(0)
+                                    for tag in [b'left', b'right', b'top', b'bottom', b'diagonal']:
+                                        b_block = re.sub(b'<' + tag + b'(?: [^>]*)?/>', b'<' + tag + b'/>', b_block, flags=re.DOTALL)
+                                        b_block = re.sub(b'<' + tag + b'(?: [^>]*)?>.*?</' + tag + b'>', b'<' + tag + b'/>', b_block, flags=re.DOTALL)
+                                    content = content.replace(borders_match.group(0), b_block)
+                            except Exception as e:
+                                logger.warning(f"Failed to cleanly modify styles.xml, keeping original: {e}")
+                                
+                        elif item.filename.startswith('xl/worksheets/sheet') and item.filename.endswith('.xml'):
                             # Disable gridlines on all worksheets
                             content = re.sub(b'showGridLines="1"', b'showGridLines="0"', content)
                             if b'showGridLines=' not in content:
                                 content = content.replace(b'<sheetView ', b'<sheetView showGridLines="0" ')
                                 
-                        zout.writestr(item, content)
+                        zout.writestr(item.filename, content, compress_type=zipfile.ZIP_DEFLATED)
             return out_io.getvalue()
         except Exception as e:
             logger.warning(f"Wipe cells failed: {e}")

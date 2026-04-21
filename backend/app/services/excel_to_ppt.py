@@ -501,9 +501,7 @@ class ExcelToPPTService:
         valid_tables = []
         for table in tables:
             has_data = any(str(cell).strip() for row in table['rows'] for cell in row if cell is not None)
-            # Or if it has meaningful headers
-            has_meaningful_headers = any(h for h in table['headers'] if h and not h.startswith('Col'))
-            if has_data or has_meaningful_headers:
+            if has_data:
                 valid_tables.append(table)
 
         return valid_tables
@@ -656,40 +654,27 @@ class ExcelToPPTService:
                         content = zin.read(item.filename)
                         
                         if item.filename == 'xl/styles.xml':
-                            import xml.etree.ElementTree as ET
                             try:
-                                ns = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
-                                ET.register_namespace('', ns)
-                                root = ET.fromstring(content)
-                                
-                                # Safely change font colors
-                                for font in root.findall(f'.//{{{ns}}}font'):
-                                    color = font.find(f'{{{ns}}}color')
-                                    if color is not None:
-                                        color.attrib = {'rgb': 'FFFFFFFF'}
-                                    else:
-                                        ET.SubElement(font, f'{{{ns}}}color', {'rgb': 'FFFFFFFF'})
-                                        
-                                # Safely change pattern fill colors
-                                for fill in root.findall(f'.//{{{ns}}}patternFill'):
-                                    fgColor = fill.find(f'{{{ns}}}fgColor')
-                                    if fgColor is not None:
-                                        fgColor.attrib = {'rgb': 'FFFFFFFF'}
-                                    bgColor = fill.find(f'{{{ns}}}bgColor')
-                                    if bgColor is not None:
-                                        bgColor.attrib = {'rgb': 'FFFFFFFF'}
-                                        
-                                # Safely clear borders
-                                for border in root.findall(f'.//{{{ns}}}border'):
-                                    for child in list(border):
-                                        border.remove(child)
-                                    ET.SubElement(border, f'{{{ns}}}left')
-                                    ET.SubElement(border, f'{{{ns}}}right')
-                                    ET.SubElement(border, f'{{{ns}}}top')
-                                    ET.SubElement(border, f'{{{ns}}}bottom')
-                                    ET.SubElement(border, f'{{{ns}}}diagonal')
+                                # Target ONLY the specific blocks to avoid corrupting <colors> palette
+                                fonts_block = re.search(b'<fonts.*?</fonts>', content, flags=re.DOTALL)
+                                if fonts_block:
+                                    new_fonts = re.sub(b'<color [^>]*/>', b'<color rgb="FFFFFFFF"/>', fonts_block.group(0))
+                                    new_fonts = re.sub(b'<color [^>]*>.*?</color>', b'<color rgb="FFFFFFFF"/>', new_fonts)
+                                    content = content.replace(fonts_block.group(0), new_fonts)
                                     
-                                content = ET.tostring(root, encoding='utf-8', xml_declaration=True)
+                                fills_block = re.search(b'<fills.*?</fills>', content, flags=re.DOTALL)
+                                if fills_block:
+                                    new_fills = re.sub(b'<fgColor [^>]*/>', b'<fgColor rgb="FFFFFFFF"/>', fills_block.group(0))
+                                    new_fills = re.sub(b'<bgColor [^>]*/>', b'<bgColor rgb="FFFFFFFF"/>', new_fills)
+                                    content = content.replace(fills_block.group(0), new_fills)
+                                    
+                                borders_block = re.search(b'<borders.*?</borders>', content, flags=re.DOTALL)
+                                if borders_block:
+                                    for tag in [b'left', b'right', b'top', b'bottom', b'diagonal']:
+                                        new_borders = re.sub(b'<' + tag + b' [^>]*/>', b'<' + tag + b'/>', borders_block.group(0))
+                                        new_borders = re.sub(b'<' + tag + b' [^>]*>.*?</' + tag + b'>', b'<' + tag + b'/>', new_borders)
+                                        borders_block = re.match(b'.*', new_borders, flags=re.DOTALL) # dummy update
+                                    content = content.replace(re.search(b'<borders.*?</borders>', content, flags=re.DOTALL).group(0), new_borders)
                             except Exception as e:
                                 logger.warning(f"Failed to cleanly modify styles.xml, keeping original: {e}")
                                 

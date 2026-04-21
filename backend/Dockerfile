@@ -16,16 +16,14 @@ RUN apt-get update && apt-get install -y \
     fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
+# Copy everything to debug the context
+COPY . /app/debug
+RUN ls -la /app/debug && echo "CONTEXT CONTENTS"
+
+# Continue with build using root context
 COPY backend/requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Install Playwright browser binaries (Chromium) for web automation connectors
 RUN python -m playwright install --with-deps chromium
-
-# Copy application code
 COPY backend/ .
 
 # Create logs directory

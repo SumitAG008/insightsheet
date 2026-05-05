@@ -6754,9 +6754,9 @@ async def excel_to_ppt(
         if not file.filename.endswith((".xlsx", ".xls", ".csv")):
             raise HTTPException(status_code=400, detail="Invalid file type")
 
-        m = (mode or "smart").strip().lower()
+        m = (mode or "exact").strip().lower()
         if m not in ("smart", "exact"):
-            m = "smart"
+            m = "exact"
 
         # Convert to PPT
         if m == "exact":

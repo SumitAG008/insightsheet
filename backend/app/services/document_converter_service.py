@@ -435,8 +435,65 @@ def _sanitize_for_reportlab(s: str) -> str:
     return t
 
 
+def _convert_to_pdf_libreoffice(content: bytes, ext: str) -> Tuple[Optional[bytes], str]:
+    """Convert document to PDF using LibreOffice headless for exact formatting."""
+    try:
+        import os
+        from app.services.excel_recalc_service import _find_soffice_exe
+        exe = _find_soffice_exe()
+        if not exe:
+            return None, "LibreOffice not found"
+        import tempfile, subprocess
+        with tempfile.TemporaryDirectory(prefix="insightsheet_doc_pdf_") as td:
+            in_path = os.path.join(td, f"document{ext}")
+            with open(in_path, "wb") as f:
+                f.write(content)
+            out_dir = os.path.join(td, "out")
+            os.makedirs(out_dir, exist_ok=True)
+            cmd = [
+                exe,
+                "--headless",
+                "--nologo",
+                "--nofirststartwizard",
+                "--norestore",
+                "--convert-to",
+                "pdf",
+                "--outdir",
+                out_dir,
+                in_path,
+            ]
+            subprocess.run(
+                cmd,
+                cwd=td,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=90,
+                check=False,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            )
+            out_path = os.path.join(out_dir, "document.pdf")
+            if not os.path.exists(out_path):
+                for fn in os.listdir(out_dir):
+                    if fn.lower().endswith(".pdf"):
+                        out_path = os.path.join(out_dir, fn)
+                        break
+            if os.path.exists(out_path):
+                with open(out_path, "rb") as f:
+                    out_bytes = f.read()
+                if out_bytes:
+                    return out_bytes, ''
+        return None, "No output from LibreOffice"
+    except Exception as e:
+        return None, str(e)
+
+
 def docx_to_pdf(docx_bytes: bytes) -> Tuple[bytes, str]:
     """Convert .docx to PDF. Returns (pdf_bytes, error)."""
+    # Attempt LibreOffice conversion for exact formatting
+    lo_bytes, lo_err = _convert_to_pdf_libreoffice(docx_bytes, ".docx")
+    if lo_bytes:
+        return lo_bytes, ''
+
     if not DOCX_AVAILABLE or not REPORTLAB_AVAILABLE:
         return b'', "DOC to PDF requires python-docx and reportlab"
     try:
@@ -478,6 +535,11 @@ def docx_to_pdf(docx_bytes: bytes) -> Tuple[bytes, str]:
 
 def pptx_to_pdf(pptx_bytes: bytes) -> Tuple[bytes, str]:
     """Convert .pptx to PDF (one page per slide, text only). Returns (pdf_bytes, error)."""
+    # Attempt LibreOffice conversion for exact formatting
+    lo_bytes, lo_err = _convert_to_pdf_libreoffice(pptx_bytes, ".pptx")
+    if lo_bytes:
+        return lo_bytes, ''
+
     if not PPTX_AVAILABLE or not REPORTLAB_AVAILABLE:
         return b'', "PPT to PDF requires python-pptx and reportlab"
     try:

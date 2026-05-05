@@ -493,44 +493,9 @@ def docx_to_pdf(docx_bytes: bytes) -> Tuple[bytes, str]:
     lo_bytes, lo_err = _convert_to_pdf_libreoffice(docx_bytes, ".docx")
     if lo_bytes:
         return lo_bytes, ''
-
-    if not DOCX_AVAILABLE or not REPORTLAB_AVAILABLE:
-        return b'', "DOC to PDF requires python-docx and reportlab"
-    try:
-        doc = Document(io.BytesIO(docx_bytes))
-        buf = io.BytesIO()
-        doc_pdf = SimpleDocTemplate(buf, pagesize=letter, rightMargin=inch, leftMargin=inch, topMargin=inch, bottomMargin=inch)
-        styles = getSampleStyleSheet()
-        story = []
-        for p in doc.paragraphs:
-            raw = (p.text if p.text is not None else '').strip()
-            if raw:
-                try:
-                    story.append(Paragraph(_sanitize_for_reportlab(raw), styles['Normal']))
-                    story.append(Spacer(1, 6))
-                except Exception:
-                    story.append(Paragraph("(paragraph)", styles['Normal']))
-                    story.append(Spacer(1, 6))
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    raw = (cell.text if cell.text is not None else '').strip()
-                    if raw:
-                        try:
-                            story.append(Paragraph(_sanitize_for_reportlab(raw), styles['Normal']))
-                            story.append(Spacer(1, 4))
-                        except Exception:
-                            story.append(Paragraph("(cell)", styles['Normal']))
-                            story.append(Spacer(1, 4))
-            story.append(Spacer(1, 12))
-        if not story:
-            story.append(Paragraph("(No content)", styles['Normal']))
-        doc_pdf.build(story)
-        buf.seek(0)
-        return buf.read(), ''
-    except Exception as e:
-        logger.exception("docx_to_pdf failed")
-        return b'', str(e)
+    
+    logger.error(f"docx_to_pdf LibreOffice conversion failed: {lo_err}")
+    return b'', "PDF Conversion Engine (LibreOffice) is unavailable or failed to process the document. Please ensure it is installed or wait for deployment."
 
 
 def pptx_to_pdf(pptx_bytes: bytes) -> Tuple[bytes, str]:
@@ -540,36 +505,8 @@ def pptx_to_pdf(pptx_bytes: bytes) -> Tuple[bytes, str]:
     if lo_bytes:
         return lo_bytes, ''
 
-    if not PPTX_AVAILABLE or not REPORTLAB_AVAILABLE:
-        return b'', "PPT to PDF requires python-pptx and reportlab"
-    try:
-        prs = Presentation(io.BytesIO(pptx_bytes))
-        buf = io.BytesIO()
-        doc_pdf = SimpleDocTemplate(buf, pagesize=letter, rightMargin=inch, leftMargin=inch, topMargin=inch, bottomMargin=inch)
-        styles = getSampleStyleSheet()
-        story = []
-        for i, slide in enumerate(prs.slides):
-            if i > 0:
-                story.append(PageBreak())
-            for shape in slide.shapes:
-                raw = (getattr(shape, 'text', None) or '').strip()
-                if raw:
-                    try:
-                        story.append(Paragraph(_sanitize_for_reportlab(raw), styles['Normal']))
-                        story.append(Spacer(1, 6))
-                    except Exception:
-                        story.append(Paragraph("(text)", styles['Normal']))
-                        story.append(Spacer(1, 6))
-            if not any(getattr(s, 'text', None) for s in slide.shapes):
-                story.append(Paragraph(f"(Slide {i+1})", styles['Normal']))
-        if not story:
-            story.append(Paragraph("(No content)", styles['Normal']))
-        doc_pdf.build(story)
-        buf.seek(0)
-        return buf.read(), ''
-    except Exception as e:
-        logger.exception("pptx_to_pdf failed")
-        return b'', str(e)
+    logger.error(f"pptx_to_pdf LibreOffice conversion failed: {lo_err}")
+    return b'', "PDF Conversion Engine (LibreOffice) is unavailable or failed to process the presentation."
 
 
 def pdf_to_pptx(pdf_bytes: bytes) -> Tuple[bytes, str]:

@@ -75,7 +75,34 @@ class ExcelToPPTService:
             # Add title slide
             self._add_title_slide(prs, filename)
 
+            rendered_pages = None
+            try:
+                # To prevent the vision engine from extracting spreadsheet tables as images and 
+                # to eliminate background gridlines, we surgically modify the Excel zip in-memory 
+                # to make all cell fonts and backgrounds pure white, and disable gridlines.
+                # Charts maintain their own formatting XMLs, so they remain fully visible.
+                vision_excel_data = self._wipe_cells_for_vision(excel_data)
+                
+                pdf_bytes, _ = convert_spreadsheet_to_pdf_bytes(vision_excel_data, filename)
+                if pdf_bytes:
+                    rendered_pages = self._render_pdf_pages_to_images(pdf_bytes)
+            except Exception as e:
+                logger.warning(f"PDF rendering failed: {e}")
+                rendered_pages = None
+
+            # Fallback: if PDF->image rendering isn't available (e.g. PyMuPDF missing),
+            # use LibreOffice's direct PNG export.
+            if not rendered_pages:
+                try:
+                    png_pages, _msg = convert_spreadsheet_to_png_images(vision_excel_data, filename)
+                    if png_pages:
+                        rendered_pages = png_pages
+                except Exception:
+                    rendered_pages = None
+
             # Process each worksheet
+            fig_num = 0
+
             for sheet_idx, sheet_name in enumerate(workbook.sheetnames):
                 logger.info(f"Processing sheet: {sheet_name}")
                 worksheet = workbook[sheet_name]
@@ -103,9 +130,16 @@ class ExcelToPPTService:
                 # Add embedded images (including pasted charts/screenshots) as individual slides
                 self._add_embedded_image_slides(prs, sheet_name, worksheet)
 
-                # Add native chart slides using PowerPoint's charting engine
-                if analysis.get('numeric_columns') and analysis.get('categorical_columns'):
-                    self._add_chart_slides(prs, sheet_name, largest_table, analysis)
+                # We will process rendered_pages globally at the end to avoid duplication
+                pass
+
+            # Process all rendered pages once at the end to extract visual elements (charts/tables)
+            if rendered_pages:
+                logger.info(f"Processing {len(rendered_pages)} rendered pages for visual elements")
+                for p_idx, p in enumerate(rendered_pages):
+                    fig_num = self._add_rendered_figure_slides_from_page_image(
+                        prs, f"Visual Extract", p, fig_num
+                    )
 
             # Save to bytes
             output = io.BytesIO()
@@ -630,6 +664,8 @@ class ExcelToPPTService:
         except Exception as e:
             logger.warning(f"Wipe cells failed: {e}")
             return excel_bytes
+
+    def _render_pdf_pages_to_images(self, pdf_bytes: bytes) -> list:
         try:
             import fitz
         except Exception:

@@ -443,15 +443,20 @@ def _convert_to_pdf_libreoffice(content: bytes, ext: str) -> Tuple[Optional[byte
         exe = _find_soffice_exe()
         if not exe:
             return None, "LibreOffice not found"
-        import tempfile, subprocess
+        import tempfile, subprocess, uuid
         with tempfile.TemporaryDirectory(prefix="insightsheet_doc_pdf_") as td:
             in_path = os.path.join(td, f"document{ext}")
             with open(in_path, "wb") as f:
                 f.write(content)
             out_dir = os.path.join(td, "out")
             os.makedirs(out_dir, exist_ok=True)
+            
+            # Use unique profile to avoid Docker permission issues or concurrent execution locks
+            profile_dir = f"file://{os.path.join(td, 'lo_profile')}"
+            
             cmd = [
                 exe,
+                f"-env:UserInstallation={profile_dir}",
                 "--headless",
                 "--nologo",
                 "--nofirststartwizard",
@@ -462,15 +467,20 @@ def _convert_to_pdf_libreoffice(content: bytes, ext: str) -> Tuple[Optional[byte
                 out_dir,
                 in_path,
             ]
-            subprocess.run(
-                cmd,
-                cwd=td,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                timeout=90,
-                check=False,
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-            )
+            
+            try:
+                subprocess.run(
+                    cmd,
+                    cwd=td,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=300,  # Increased timeout for large 10+ page documents
+                    check=False,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                )
+            except subprocess.TimeoutExpired:
+                return None, "LibreOffice conversion timed out after 300 seconds. Document is too large."
+                
             out_path = os.path.join(out_dir, "document.pdf")
             if not os.path.exists(out_path):
                 for fn in os.listdir(out_dir):

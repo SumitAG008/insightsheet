@@ -474,29 +474,30 @@ class ExcelToPPTService:
                                   worksheet, excel_charts: list):
         """
         FIX 4: Read Excel chart metadata via openpyxl and recreate as
-        native editable python-pptx charts.
+        native editable python-pptx charts. Fully generic — works with any spreadsheet.
         """
         for ch_idx, chart_obj in enumerate(excel_charts):
             try:
-                # Determine chart type
                 chart_class = chart_obj.__class__.__name__
                 pptx_chart_type = self._map_chart_type(chart_class)
                 if pptx_chart_type is None:
                     logger.info(f"Unsupported chart type: {chart_class}, skipping native render")
                     continue
 
-                # Extract chart title
+                # Read barDir from actual chart object for BarChart
+                bar_dir = getattr(chart_obj, 'barDir', None)
+                grouping = getattr(chart_obj, 'grouping', None)
+
                 title_text = self._extract_chart_title(chart_obj, ch_idx + 1)
 
-                # Extract series data
                 series_data = self._extract_chart_series(chart_obj, worksheet)
                 if not series_data:
                     logger.warning(f"No series data for chart {ch_idx + 1} in {sheet_name}")
                     continue
 
-                # Build the chart slide
                 self._build_chart_slide(prs, sheet_name, title_text,
-                                        pptx_chart_type, series_data, chart_class)
+                                        pptx_chart_type, series_data, chart_class,
+                                        bar_dir=bar_dir, grouping=grouping)
 
             except Exception as e:
                 logger.warning(f"Failed to create native chart {ch_idx + 1} in {sheet_name}: {e}")
@@ -548,12 +549,16 @@ class ExcelToPPTService:
 
     def _extract_chart_series(self, chart_obj, worksheet) -> list:
         """
-        Extract series data (labels + values) from openpyxl chart object.
+        Generic extraction of series data from ANY openpyxl chart object.
+        Handles: BarChart, LineChart, PieChart, AreaChart, ScatterChart, DoughnutChart, etc.
         Returns list of dicts: [{'name': str, 'categories': [...], 'values': [...]}]
         """
+        is_scatter = chart_obj.__class__.__name__ == 'ScatterChart'
         series_list = []
+
         try:
             for s in chart_obj.series:
+                # --- Series name ---
                 name = "Series"
                 try:
                     tx = getattr(s, "tx", None)
@@ -564,35 +569,54 @@ class ExcelToPPTService:
                 except Exception:
                     pass
 
-                # Extract values
+                # --- Extract values ---
                 values = []
-                try:
-                    val_ref = getattr(s, "val", None)
-                    if val_ref and hasattr(val_ref, "numRef") and val_ref.numRef:
-                        cache = val_ref.numRef.numCache
-                        if cache and cache.pt:
-                            values = [float(pt.v) for pt in cache.pt if pt.v is not None]
-                except Exception:
-                    pass
+                if is_scatter:
+                    # Scatter charts use yVal for values
+                    try:
+                        yval = getattr(s, "yVal", None)
+                        if yval and hasattr(yval, "numRef") and yval.numRef and yval.numRef.numCache:
+                            values = [float(pt.v) for pt in yval.numRef.numCache.pt if pt.v is not None]
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        val_ref = getattr(s, "val", None)
+                        if val_ref and hasattr(val_ref, "numRef") and val_ref.numRef:
+                            cache = val_ref.numRef.numCache
+                            if cache and cache.pt:
+                                values = [float(pt.v) for pt in cache.pt if pt.v is not None]
+                    except Exception:
+                        pass
 
-                # Extract categories
+                # --- Extract categories ---
                 categories = []
-                try:
-                    cat_ref = getattr(s, "cat", None) or getattr(chart_obj, "cat", None)
-                    if cat_ref:
-                        if hasattr(cat_ref, "strRef") and cat_ref.strRef:
-                            cache = cat_ref.strRef.strCache
-                            if cache and cache.pt:
-                                categories = [pt.v for pt in cache.pt]
-                        elif hasattr(cat_ref, "numRef") and cat_ref.numRef:
-                            cache = cat_ref.numRef.numCache
-                            if cache and cache.pt:
-                                categories = [str(pt.v) for pt in cache.pt]
-                except Exception:
-                    pass
+                if is_scatter:
+                    # Scatter charts use xVal for categories (numeric x-axis)
+                    try:
+                        xval = getattr(s, "xVal", None)
+                        if xval and hasattr(xval, "numRef") and xval.numRef and xval.numRef.numCache:
+                            categories = [str(pt.v) for pt in xval.numRef.numCache.pt if pt.v is not None]
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        cat_ref = getattr(s, "cat", None) or getattr(chart_obj, "cat", None)
+                        if cat_ref:
+                            if hasattr(cat_ref, "strRef") and cat_ref.strRef:
+                                cache = cat_ref.strRef.strCache
+                                if cache and cache.pt:
+                                    categories = [pt.v for pt in cache.pt]
+                            elif hasattr(cat_ref, "numRef") and cat_ref.numRef:
+                                cache = cat_ref.numRef.numCache
+                                if cache and cache.pt:
+                                    raw_cats = [pt.v for pt in cache.pt]
+                                    # Auto-detect Excel date serial numbers and convert
+                                    categories = self._maybe_convert_date_categories(raw_cats)
+                    except Exception:
+                        pass
 
                 if values:
-                    # Generate default categories if missing
                     if not categories:
                         categories = [f"Item {i+1}" for i in range(len(values))]
                     series_list.append({
@@ -605,10 +629,29 @@ class ExcelToPPTService:
 
         return series_list
 
+    def _maybe_convert_date_categories(self, raw_values: list) -> list:
+        """
+        If categories look like Excel date serial numbers (e.g. 43101 = Jan 2018),
+        convert them to readable month-year labels. Otherwise return as-is.
+        """
+        from datetime import timedelta
+        try:
+            nums = [float(v) for v in raw_values if v is not None]
+            if not nums:
+                return [str(v) for v in raw_values]
+            # Excel date serials for years 2000-2040 are roughly 36526 to 51135
+            if all(20000 < n < 60000 for n in nums):
+                base = datetime(1899, 12, 30)
+                return [(base + timedelta(days=int(n))).strftime("%b %Y") for n in nums]
+        except Exception:
+            pass
+        return [str(v) for v in raw_values]
+
     def _build_chart_slide(self, prs: Presentation, sheet_name: str,
                             title_text: str, chart_type, series_data: list,
-                            chart_class: str):
-        """Build a slide with a native python-pptx chart."""
+                            chart_class: str, bar_dir: str = None,
+                            grouping: str = None):
+        """Build a slide with a native python-pptx chart. Fully generic."""
         slide = prs.slides.add_slide(prs.slide_layouts[6])
 
         # Title
@@ -622,23 +665,32 @@ class ExcelToPPTService:
         title_para.font.bold = True
         title_para.font.color.rgb = self.theme_colors['dark']
 
-        # Determine if this is a bar chart that should be columnar
+        # Determine actual chart type from barDir and grouping
         actual_type = chart_type
         if chart_class in ('BarChart', 'BarChart3D'):
-            # openpyxl BarChart with barDir='col' is actually a column chart
-            bar_dir = getattr(series_data, 'barDir', None) if hasattr(series_data, 'barDir') else None
-            if bar_dir is None:
-                # Default to column (vertical bars) which is more common
-                actual_type = XL_CHART_TYPE.COLUMN_CLUSTERED
+            if bar_dir == 'col':
+                # "col" direction = vertical column chart
+                if grouping == 'stacked':
+                    actual_type = XL_CHART_TYPE.COLUMN_STACKED
+                elif grouping == 'percentStacked':
+                    actual_type = XL_CHART_TYPE.COLUMN_STACKED_100
+                else:
+                    actual_type = XL_CHART_TYPE.COLUMN_CLUSTERED
+            else:
+                # "bar" direction = horizontal bar chart
+                if grouping == 'stacked':
+                    actual_type = XL_CHART_TYPE.BAR_STACKED
+                elif grouping == 'percentStacked':
+                    actual_type = XL_CHART_TYPE.BAR_STACKED_100
+                else:
+                    actual_type = XL_CHART_TYPE.BAR_CLUSTERED
 
         # Build chart data
         chart_data = CategoryChartData()
 
-        # Use categories from first series
         if series_data:
             chart_data.categories = series_data[0]['categories']
             for s in series_data:
-                # Ensure values match category count
                 vals = s['values']
                 cats_len = len(series_data[0]['categories'])
                 if len(vals) < cats_len:
@@ -655,14 +707,13 @@ class ExcelToPPTService:
             )
             chart = chart_shape.chart
 
-            # Style the chart
+            # Show legend when multiple series
             chart.has_legend = len(series_data) > 1
             if chart.has_legend:
                 chart.legend.include_in_layout = False
 
         except Exception as e:
             logger.warning(f"Failed to add chart: {e}")
-            # Add error text instead
             err_box = slide.shapes.add_textbox(Inches(1), Inches(2.5), Inches(8), Inches(1))
             err_frame = err_box.text_frame
             err_frame.text = f"Chart could not be rendered: {str(e)}"

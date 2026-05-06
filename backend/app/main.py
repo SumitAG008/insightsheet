@@ -93,6 +93,7 @@ from app.services.ai_service import (
 )
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
+from app.services.windows_excel_to_ppt import WindowsExcelToPPTService, WINDOWS_COM_AVAILABLE
 from app.services.ocr_service import (
     OCRService,
     OCR_SPACE_MAX_BYTES,
@@ -6767,14 +6768,23 @@ async def excel_to_ppt(
             if err:
                 raise HTTPException(status_code=400, detail=f"Exact conversion failed: {err}")
         else:
-            ppt_service = ExcelToPPTService()
             gen_name = (current_user or {}).get("full_name") or (current_user or {}).get("email")
-            ppt_data = await ppt_service.convert_excel_to_ppt(
-                io.BytesIO(file_content),
-                file.filename,
-                author_name="Meldra",
-                last_modified_by=gen_name,
-            )
+            if WINDOWS_COM_AVAILABLE:
+                logger.info("Using Windows COM for high-fidelity PPT conversion")
+                com_service = WindowsExcelToPPTService()
+                ppt_data = await com_service.convert_excel_to_ppt(
+                    io.BytesIO(file_content),
+                    file.filename
+                )
+            else:
+                logger.info("Using standard ExcelToPPTService for PPT conversion")
+                ppt_service = ExcelToPPTService()
+                ppt_data = await ppt_service.convert_excel_to_ppt(
+                    io.BytesIO(file_content),
+                    file.filename,
+                    author_name="Meldra",
+                    last_modified_by=gen_name,
+                )
 
         if should_apply_watermark(getattr(subscription, "plan", None)):
             ppt_data = watermark_pptx_bytes(ppt_data)

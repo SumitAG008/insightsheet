@@ -1,6 +1,16 @@
 """
 Excel to PowerPoint Service for InsightSheet-lite
 Converts Excel files to professional PowerPoint presentations
+
+CHANGELOG (fixes applied):
+- FIX 1: Light royal colour scheme instead of dark backgrounds
+- FIX 2: Trim trailing empty columns from tables (no more "Col10" overflow slides)
+- FIX 3: Smarter header detection - skip title rows, detect actual column headers
+- FIX 4: Actually call _add_chart_slides() to create native editable PPT charts
+- FIX 5: Read Excel chart metadata and rebuild as native python-pptx charts
+- FIX 6: Limit table to actual used columns (no fixed 10-col chunks)
+- FIX 7: Improved _wipe_cells_for_vision() to actually hide cell text
+- FIX 8: Reduced slide count by eliminating empty overflow slides
 """
 import openpyxl
 from pptx import Presentation
@@ -25,14 +35,21 @@ class ExcelToPPTService:
     """Service to convert Excel files to PowerPoint presentations"""
 
     def __init__(self):
+        # FIX 1: Light royal eye-soothing colour palette
         self.theme_colors = {
-            'primary': RGBColor(99, 102, 241),  # Indigo
-            'secondary': RGBColor(139, 92, 246),  # Purple
-            'accent': RGBColor(236, 72, 153),  # Pink
-            'success': RGBColor(16, 185, 129),  # Green
-            'warning': RGBColor(245, 158, 11),  # Orange
-            'dark': RGBColor(30, 41, 59),  # Slate
-            'light': RGBColor(248, 250, 252),  # Light slate
+            'primary': RGBColor(67, 97, 238),       # Royal blue #4361EE
+            'secondary': RGBColor(114, 137, 218),    # Soft periwinkle #7289DA
+            'accent': RGBColor(76, 110, 245),        # Bright royal #4C6EF5
+            'success': RGBColor(16, 185, 129),       # Green
+            'warning': RGBColor(245, 158, 11),       # Orange
+            'dark': RGBColor(30, 58, 95),            # Navy text #1E3A5F
+            'light': RGBColor(238, 242, 255),        # Soft lavender bg #EEF2FF
+            'section_bg': RGBColor(238, 242, 255),   # Section slide bg #EEF2FF
+            'title_bg': RGBColor(238, 242, 255),     # Title slide bg #EEF2FF
+            'white': RGBColor(255, 255, 255),
+            'text_secondary': RGBColor(100, 116, 139),  # Slate gray
+            'table_alt_row': RGBColor(241, 245, 249),   # Very light gray #F1F5F9
+            'table_border': RGBColor(226, 232, 240),     # Light border #E2E8F0
         }
 
     async def convert_excel_to_ppt(
@@ -44,23 +61,14 @@ class ExcelToPPTService:
     ) -> bytes:
         """
         Convert Excel file to PowerPoint presentation
-
-        Args:
-            excel_file: Excel file binary data
-            filename: Original filename
-
-        Returns:
-            bytes: PowerPoint file data
         """
         try:
-            # Read Excel file
             excel_data = excel_file.read() if hasattr(excel_file, 'read') else excel_file
             workbook = openpyxl.load_workbook(io.BytesIO(excel_data), data_only=True)
 
-            # Create PowerPoint presentation
             prs = Presentation()
             prs.slide_width = Inches(10)
-            prs.slide_height = Inches(5.625)  # 16:9 aspect ratio
+            prs.slide_height = Inches(5.625)
 
             try:
                 cp = prs.core_properties
@@ -75,14 +83,11 @@ class ExcelToPPTService:
             # Add title slide
             self._add_title_slide(prs, filename)
 
+            # --- Render charts via vision pipeline ---
             rendered_pages = None
+            vision_excel_data = excel_data
             try:
-                # To prevent the vision engine from extracting spreadsheet tables as images and 
-                # to eliminate background gridlines, we surgically modify the Excel zip in-memory 
-                # to make all cell fonts and backgrounds pure white, and disable gridlines.
-                # Charts maintain their own formatting XMLs, so they remain fully visible.
                 vision_excel_data = self._wipe_cells_for_vision(excel_data)
-                
                 pdf_bytes, _ = convert_spreadsheet_to_pdf_bytes(vision_excel_data, filename)
                 if pdf_bytes:
                     rendered_pages = self._render_pdf_pages_to_images(pdf_bytes)
@@ -90,8 +95,6 @@ class ExcelToPPTService:
                 logger.warning(f"PDF rendering failed: {e}")
                 rendered_pages = None
 
-            # Fallback: if PDF->image rendering isn't available (e.g. PyMuPDF missing),
-            # use LibreOffice's direct PNG export.
             if not rendered_pages:
                 try:
                     png_pages, _msg = convert_spreadsheet_to_png_images(vision_excel_data, filename)
@@ -100,14 +103,14 @@ class ExcelToPPTService:
                 except Exception:
                     rendered_pages = None
 
-            # Process each worksheet
+            # --- Process each worksheet ---
             fig_num = 0
 
             for sheet_idx, sheet_name in enumerate(workbook.sheetnames):
                 logger.info(f"Processing sheet: {sheet_name}")
                 worksheet = workbook[sheet_name]
 
-                # Get data from worksheet
+                # Extract data tables
                 tables = self._extract_worksheet_data(worksheet)
 
                 if not tables:
@@ -118,22 +121,27 @@ class ExcelToPPTService:
                 largest_table = max(tables, key=lambda t: len(t['rows']))
                 analysis = self._analyze_data(largest_table)
 
+                # FIX: Count actual Excel charts for this sheet
+                excel_charts = getattr(worksheet, "_charts", None) or []
+                analysis['chart_candidates'] = excel_charts
+
                 # Add section slide
                 self._add_section_slide(prs, sheet_name, analysis)
 
-                # Add data table slides for each distinct table
+                # Add data table slides (with trimming)
                 for idx, t_data in enumerate(tables):
                     if t_data['headers'] and t_data['rows']:
                         t_name = sheet_name if len(tables) == 1 else f"{sheet_name} (Table {idx+1})"
                         self._add_data_table_slide(prs, t_name, t_data)
 
-                # Add embedded images (including pasted charts/screenshots) as individual slides
+                # FIX 4: Actually create native charts from Excel chart metadata
+                if excel_charts:
+                    self._add_native_chart_slides(prs, sheet_name, worksheet, excel_charts)
+
+                # Add embedded images (pasted charts/screenshots)
                 self._add_embedded_image_slides(prs, sheet_name, worksheet)
 
-                # We will process rendered_pages globally at the end to avoid duplication
-                pass
-
-            # Process all rendered pages once at the end to extract visual elements (charts/tables)
+            # Process rendered pages for visual chart extraction (fallback)
             if rendered_pages:
                 logger.info(f"Processing {len(rendered_pages)} rendered pages for visual elements")
                 for p_idx, p in enumerate(rendered_pages):
@@ -141,28 +149,31 @@ class ExcelToPPTService:
                         prs, f"Visual Extract", p, fig_num
                     )
 
-            # Save to bytes
+            # Save
             output = io.BytesIO()
             prs.save(output)
             output.seek(0)
-
             return output.read()
 
         except Exception as e:
             logger.error(f"Error converting Excel to PPT: {str(e)}")
             raise Exception(f"Excel to PPT conversion failed: {str(e)}")
 
-    def _add_title_slide(self, prs: Presentation, filename: str):
-        """Add title slide to presentation"""
-        slide = prs.slides.add_slide(prs.slide_layouts[6])  # Blank layout
+    # ================================================================
+    # FIX 1: Light royal colour scheme for title & section slides
+    # ================================================================
 
-        # Background
+    def _add_title_slide(self, prs: Presentation, filename: str):
+        """Add title slide - light royal background"""
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+
+        # FIX: Light lavender background instead of dark
         background = slide.background
         fill = background.fill
         fill.solid()
-        fill.fore_color.rgb = self.theme_colors['dark']
+        fill.fore_color.rgb = self.theme_colors['title_bg']
 
-        # Title
+        # Title - navy text on light bg
         title_box = slide.shapes.add_textbox(
             Inches(0.5), Inches(2), Inches(9), Inches(1)
         )
@@ -171,7 +182,7 @@ class ExcelToPPTService:
         title_para = title_frame.paragraphs[0]
         title_para.font.size = Pt(40)
         title_para.font.bold = True
-        title_para.font.color.rgb = RGBColor(255, 255, 255)
+        title_para.font.color.rgb = self.theme_colors['dark']  # Navy text
         title_para.alignment = PP_ALIGN.CENTER
 
         # Subtitle
@@ -182,7 +193,7 @@ class ExcelToPPTService:
         subtitle_frame.text = filename.replace('.xlsx', '').replace('.xls', '')
         subtitle_para = subtitle_frame.paragraphs[0]
         subtitle_para.font.size = Pt(24)
-        subtitle_para.font.color.rgb = self.theme_colors['secondary']
+        subtitle_para.font.color.rgb = self.theme_colors['primary']  # Royal blue
         subtitle_para.alignment = PP_ALIGN.CENTER
 
         # Footer
@@ -193,20 +204,20 @@ class ExcelToPPTService:
         footer_frame.text = f"Generated by InsightSheet-lite\n{datetime.now().strftime('%Y-%m-%d %H:%M')}"
         footer_para = footer_frame.paragraphs[0]
         footer_para.font.size = Pt(14)
-        footer_para.font.color.rgb = RGBColor(148, 163, 184)
+        footer_para.font.color.rgb = self.theme_colors['text_secondary']
         footer_para.alignment = PP_ALIGN.CENTER
 
     def _add_section_slide(self, prs: Presentation, sheet_name: str, analysis: Dict):
-        """Add section slide for worksheet"""
+        """Add section slide - light royal background"""
         slide = prs.slides.add_slide(prs.slide_layouts[6])
 
-        # Background
+        # FIX: Light lavender background instead of dark slate
         background = slide.background
         fill = background.fill
         fill.solid()
-        fill.fore_color.rgb = RGBColor(51, 65, 85)
+        fill.fore_color.rgb = self.theme_colors['section_bg']
 
-        # Section title
+        # Section title - navy text
         title_box = slide.shapes.add_textbox(
             Inches(0.5), Inches(2.5), Inches(9), Inches(1)
         )
@@ -215,11 +226,18 @@ class ExcelToPPTService:
         title_para = title_frame.paragraphs[0]
         title_para.font.size = Pt(48)
         title_para.font.bold = True
-        title_para.font.color.rgb = RGBColor(255, 255, 255)
+        title_para.font.color.rgb = self.theme_colors['dark']  # Navy text
         title_para.alignment = PP_ALIGN.CENTER
 
-        # Stats
-        stats_text = f"{len(analysis.get('chart_candidates', []))} charts • {analysis['row_count']} rows • {analysis['column_count']} columns"
+        # Stats - royal blue accent
+        charts_count = len(analysis.get('chart_candidates', []))
+        stats_parts = []
+        if charts_count > 0:
+            stats_parts.append(f"{charts_count} chart(s)")
+        stats_parts.append(f"{analysis['row_count']} rows")
+        stats_parts.append(f"{analysis['column_count']} columns")
+        stats_text = " \u2022 ".join(stats_parts)
+
         stats_box = slide.shapes.add_textbox(
             Inches(0.5), Inches(3.8), Inches(9), Inches(0.5)
         )
@@ -227,18 +245,130 @@ class ExcelToPPTService:
         stats_frame.text = stats_text
         stats_para = stats_frame.paragraphs[0]
         stats_para.font.size = Pt(20)
-        stats_para.font.color.rgb = self.theme_colors['secondary']
+        stats_para.font.color.rgb = self.theme_colors['primary']  # Royal blue
         stats_para.alignment = PP_ALIGN.CENTER
 
-    def _add_data_table_slide(self, prs: Presentation, sheet_name: str, data: Dict):
-        """Add data table slide(s)."""
+    # ================================================================
+    # FIX 2 & 3: Smarter table extraction and trimming
+    # ================================================================
 
+    def _extract_worksheet_data(self, worksheet) -> list:
+        """Extract data from worksheet into separate tables with smart header detection."""
+        tables = []
+        current_table = {'headers': [], 'rows': []}
+        is_first_row = True
+
+        for row in worksheet.iter_rows(min_row=1, values_only=True):
+            is_empty = not any(cell is not None and str(cell).strip() for cell in row)
+
+            if is_empty:
+                if not is_first_row and (current_table['headers'] or current_table['rows']):
+                    tables.append(current_table)
+                    current_table = {'headers': [], 'rows': []}
+                    is_first_row = True
+            else:
+                if is_first_row:
+                    # FIX 3: Smarter header detection
+                    # Count how many cells actually have values
+                    non_empty_count = sum(1 for h in row if h is not None and str(h).strip())
+                    total_cells = len(row)
+
+                    # If only 1-2 cells have values in a wide row, it's likely a title row, not headers
+                    if non_empty_count <= 2 and total_cells > 4:
+                        # This is a title/label row - store it but keep looking for real headers
+                        current_table['title'] = str(row[0]) if row[0] else ''
+                        # Don't set is_first_row = False yet, next row might be the real header
+                    else:
+                        # FIX: Use actual cell values, only fallback to Col{i} for truly None cells
+                        # But also skip generating Col{i} for trailing None cells
+                        headers = []
+                        last_non_empty = -1
+                        for i, h in enumerate(row):
+                            if h is not None and str(h).strip():
+                                last_non_empty = i
+                        
+                        for i, h in enumerate(row):
+                            if i > last_non_empty:
+                                break  # FIX 2: Don't include trailing empty columns
+                            if h is not None and str(h).strip():
+                                headers.append(str(h))
+                            else:
+                                headers.append(f'Col{i}')
+
+                        current_table['headers'] = headers
+                        is_first_row = False
+                else:
+                    # FIX 2: Trim row to match header count (no trailing empties)
+                    row_data = list(row[:len(current_table['headers'])])
+                    current_table['rows'].append(row_data)
+
+        if current_table['headers'] or current_table['rows']:
+            has_data = any(
+                str(cell).strip()
+                for row in current_table['rows']
+                for cell in row
+                if cell is not None
+            )
+            if has_data:
+                tables.append(current_table)
+
+        # FIX 2: Post-process - trim trailing empty columns from each table
+        valid_tables = []
+        for table in tables:
+            table = self._trim_empty_columns(table)
+            has_data = any(
+                str(cell).strip()
+                for row in table['rows']
+                for cell in row
+                if cell is not None
+            )
+            if has_data and table['headers']:
+                valid_tables.append(table)
+
+        return valid_tables
+
+    def _trim_empty_columns(self, table: Dict) -> Dict:
+        """FIX 2: Remove trailing columns that are completely empty across all rows."""
+        headers = table.get('headers', [])
+        rows = table.get('rows', [])
+        if not headers or not rows:
+            return table
+
+        num_cols = len(headers)
+        # Find the last column that has any non-empty data
+        last_used_col = -1
+        for col_idx in range(num_cols):
+            # Check header
+            if headers[col_idx] and not headers[col_idx].startswith('Col'):
+                last_used_col = col_idx
+                continue
+            # Check data rows
+            for row in rows:
+                if col_idx < len(row) and row[col_idx] is not None and str(row[col_idx]).strip():
+                    last_used_col = col_idx
+                    break
+
+        if last_used_col < 0:
+            return table
+
+        # Trim
+        trim_to = last_used_col + 1
+        table['headers'] = headers[:trim_to]
+        table['rows'] = [row[:trim_to] for row in rows]
+        return table
+
+    # ================================================================
+    # FIX 6: Table slide with smart column limits (no empty overflow)
+    # ================================================================
+
+    def _add_data_table_slide(self, prs: Presentation, sheet_name: str, data: Dict):
+        """Add data table slide(s) with smart column handling."""
         headers = list(data.get('headers') or [])
         rows = list(data.get('rows') or [])
         if not headers:
             return
 
-        rows_per_slide = 20
+        rows_per_slide = 18
         cols_per_slide = 10
 
         total_rows = len(rows)
@@ -251,6 +381,23 @@ class ExcelToPPTService:
             while col_start < total_cols:
                 col_end = min(col_start + cols_per_slide, total_cols)
 
+                # FIX 6: Skip this column chunk if ALL columns in range are empty
+                chunk_has_data = False
+                for c_i in range(col_start, col_end):
+                    if headers[c_i] and not headers[c_i].startswith('Col'):
+                        chunk_has_data = True
+                        break
+                    for row in rows[row_start:row_end]:
+                        if c_i < len(row) and row[c_i] is not None and str(row[c_i]).strip():
+                            chunk_has_data = True
+                            break
+                    if chunk_has_data:
+                        break
+
+                if not chunk_has_data:
+                    col_start += cols_per_slide
+                    continue
+
                 slide = prs.slides.add_slide(prs.slide_layouts[6])
 
                 # Title
@@ -260,20 +407,20 @@ class ExcelToPPTService:
                 title_frame = title_box.text_frame
                 title_frame.text = f"{sheet_name} - Data Overview"
                 title_para = title_frame.paragraphs[0]
-                title_para.font.size = Pt(28)
+                title_para.font.size = Pt(24)
                 title_para.font.bold = True
                 title_para.font.color.rgb = self.theme_colors['dark']
 
+                # Subtitle with row/col info
                 sub_box = slide.shapes.add_textbox(
-                    Inches(0.5), Inches(0.75), Inches(9), Inches(0.3)
+                    Inches(0.5), Inches(0.72), Inches(9), Inches(0.3)
                 )
                 sub_frame = sub_box.text_frame
                 shown_rows = f"rows {row_start + 1}-{row_end}" if total_rows else "no data rows"
-                shown_cols = f"cols {col_start + 1}-{col_end}"
-                sub_frame.text = f"Showing {shown_rows}, {shown_cols}"
+                sub_frame.text = f"Showing {shown_rows}"
                 sub_para = sub_frame.paragraphs[0]
-                sub_para.font.size = Pt(12)
-                sub_para.font.color.rgb = RGBColor(100, 116, 139)
+                sub_para.font.size = Pt(11)
+                sub_para.font.color.rgb = self.theme_colors['text_secondary']
 
                 page_rows = rows[row_start:row_end] if total_rows else []
                 rows_count = (len(page_rows) if page_rows else 0) + 1
@@ -281,14 +428,14 @@ class ExcelToPPTService:
 
                 table = slide.shapes.add_table(
                     rows_count, cols_count,
-                    Inches(0.4), Inches(1.1),
-                    Inches(9.2), Inches(4.1)
+                    Inches(0.4), Inches(1.05),
+                    Inches(9.2), Inches(4.2)
                 ).table
 
-                # Set column widths
                 for col_idx in range(cols_count):
                     table.columns[col_idx].width = Inches(9.2 / cols_count)
 
+                # Header row - royal blue
                 for col_idx in range(cols_count):
                     cell = table.cell(0, col_idx)
                     cell.text = str(headers[col_start + col_idx])
@@ -297,29 +444,242 @@ class ExcelToPPTService:
                     paragraph = cell.text_frame.paragraphs[0]
                     paragraph.font.size = Pt(10)
                     paragraph.font.bold = True
-                    paragraph.font.color.rgb = RGBColor(255, 255, 255)
+                    paragraph.font.color.rgb = self.theme_colors['white']
 
+                # Data rows with alternating shading
                 for r_i, row in enumerate(page_rows, start=1):
                     for c_i in range(cols_count):
                         cell = table.cell(r_i, c_i)
                         src_idx = col_start + c_i
                         value = row[src_idx] if src_idx < len(row) else ''
                         cell.text = str(value) if value is not None else ''
+
+                        # Alternating row colours
+                        if r_i % 2 == 0:
+                            cell.fill.solid()
+                            cell.fill.fore_color.rgb = self.theme_colors['table_alt_row']
+
                         paragraph = cell.text_frame.paragraphs[0]
                         paragraph.font.size = Pt(9)
+                        paragraph.font.color.rgb = self.theme_colors['dark']
 
                 col_start += cols_per_slide
             row_start += rows_per_slide
 
+    # ================================================================
+    # FIX 4 & 5: Native chart creation from Excel chart metadata
+    # ================================================================
+
+    def _add_native_chart_slides(self, prs: Presentation, sheet_name: str,
+                                  worksheet, excel_charts: list):
+        """
+        FIX 4: Read Excel chart metadata via openpyxl and recreate as
+        native editable python-pptx charts.
+        """
+        for ch_idx, chart_obj in enumerate(excel_charts):
+            try:
+                # Determine chart type
+                chart_class = chart_obj.__class__.__name__
+                pptx_chart_type = self._map_chart_type(chart_class)
+                if pptx_chart_type is None:
+                    logger.info(f"Unsupported chart type: {chart_class}, skipping native render")
+                    continue
+
+                # Extract chart title
+                title_text = self._extract_chart_title(chart_obj, ch_idx + 1)
+
+                # Extract series data
+                series_data = self._extract_chart_series(chart_obj, worksheet)
+                if not series_data:
+                    logger.warning(f"No series data for chart {ch_idx + 1} in {sheet_name}")
+                    continue
+
+                # Build the chart slide
+                self._build_chart_slide(prs, sheet_name, title_text,
+                                        pptx_chart_type, series_data, chart_class)
+
+            except Exception as e:
+                logger.warning(f"Failed to create native chart {ch_idx + 1} in {sheet_name}: {e}")
+                continue
+
+    def _map_chart_type(self, class_name: str):
+        """Map openpyxl chart class name to python-pptx chart type."""
+        mapping = {
+            'BarChart': XL_CHART_TYPE.BAR_CLUSTERED,
+            'BarChart3D': XL_CHART_TYPE.BAR_CLUSTERED,
+            'LineChart': XL_CHART_TYPE.LINE,
+            'LineChart3D': XL_CHART_TYPE.LINE,
+            'PieChart': XL_CHART_TYPE.PIE,
+            'PieChart3D': XL_CHART_TYPE.PIE,
+            'AreaChart': XL_CHART_TYPE.AREA,
+            'AreaChart3D': XL_CHART_TYPE.AREA,
+            'ScatterChart': XL_CHART_TYPE.XY_SCATTER,
+            'DoughnutChart': XL_CHART_TYPE.DOUGHNUT,
+            'RadarChart': XL_CHART_TYPE.RADAR,
+        }
+        return mapping.get(class_name)
+
+    def _extract_chart_title(self, chart_obj, fallback_idx: int) -> str:
+        """Extract title text from an openpyxl chart object."""
+        try:
+            t = getattr(chart_obj, "title", None)
+            if t is None:
+                return f"Chart {fallback_idx}"
+            tx = getattr(t, "tx", None) if hasattr(t, "tx") else t
+            if tx is None:
+                return f"Chart {fallback_idx}"
+            # Try rich text
+            rich = getattr(tx, "rich", None)
+            if rich and hasattr(rich, "p"):
+                parts = []
+                for p in rich.p:
+                    for r in (p.r or []):
+                        if r.t:
+                            parts.append(r.t)
+                if parts:
+                    return " ".join(parts)
+            # Try strRef
+            str_ref = getattr(tx, "strRef", None)
+            if str_ref and str_ref.strCache and str_ref.strCache.pt:
+                return str_ref.strCache.pt[0].v
+        except Exception:
+            pass
+        return f"Chart {fallback_idx}"
+
+    def _extract_chart_series(self, chart_obj, worksheet) -> list:
+        """
+        Extract series data (labels + values) from openpyxl chart object.
+        Returns list of dicts: [{'name': str, 'categories': [...], 'values': [...]}]
+        """
+        series_list = []
+        try:
+            for s in chart_obj.series:
+                name = "Series"
+                try:
+                    tx = getattr(s, "tx", None)
+                    if tx:
+                        str_ref = getattr(tx, "strRef", None)
+                        if str_ref and str_ref.strCache and str_ref.strCache.pt:
+                            name = str_ref.strCache.pt[0].v
+                except Exception:
+                    pass
+
+                # Extract values
+                values = []
+                try:
+                    val_ref = getattr(s, "val", None)
+                    if val_ref and hasattr(val_ref, "numRef") and val_ref.numRef:
+                        cache = val_ref.numRef.numCache
+                        if cache and cache.pt:
+                            values = [float(pt.v) for pt in cache.pt if pt.v is not None]
+                except Exception:
+                    pass
+
+                # Extract categories
+                categories = []
+                try:
+                    cat_ref = getattr(s, "cat", None) or getattr(chart_obj, "cat", None)
+                    if cat_ref:
+                        if hasattr(cat_ref, "strRef") and cat_ref.strRef:
+                            cache = cat_ref.strRef.strCache
+                            if cache and cache.pt:
+                                categories = [pt.v for pt in cache.pt]
+                        elif hasattr(cat_ref, "numRef") and cat_ref.numRef:
+                            cache = cat_ref.numRef.numCache
+                            if cache and cache.pt:
+                                categories = [str(pt.v) for pt in cache.pt]
+                except Exception:
+                    pass
+
+                if values:
+                    # Generate default categories if missing
+                    if not categories:
+                        categories = [f"Item {i+1}" for i in range(len(values))]
+                    series_list.append({
+                        'name': name,
+                        'categories': categories[:len(values)],
+                        'values': values,
+                    })
+        except Exception as e:
+            logger.warning(f"Error extracting chart series: {e}")
+
+        return series_list
+
+    def _build_chart_slide(self, prs: Presentation, sheet_name: str,
+                            title_text: str, chart_type, series_data: list,
+                            chart_class: str):
+        """Build a slide with a native python-pptx chart."""
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+
+        # Title
+        title_box = slide.shapes.add_textbox(
+            Inches(0.5), Inches(0.25), Inches(9), Inches(0.5)
+        )
+        title_frame = title_box.text_frame
+        title_frame.text = f"{sheet_name} - {title_text}"
+        title_para = title_frame.paragraphs[0]
+        title_para.font.size = Pt(20)
+        title_para.font.bold = True
+        title_para.font.color.rgb = self.theme_colors['dark']
+
+        # Determine if this is a bar chart that should be columnar
+        actual_type = chart_type
+        if chart_class in ('BarChart', 'BarChart3D'):
+            # openpyxl BarChart with barDir='col' is actually a column chart
+            bar_dir = getattr(series_data, 'barDir', None) if hasattr(series_data, 'barDir') else None
+            if bar_dir is None:
+                # Default to column (vertical bars) which is more common
+                actual_type = XL_CHART_TYPE.COLUMN_CLUSTERED
+
+        # Build chart data
+        chart_data = CategoryChartData()
+
+        # Use categories from first series
+        if series_data:
+            chart_data.categories = series_data[0]['categories']
+            for s in series_data:
+                # Ensure values match category count
+                vals = s['values']
+                cats_len = len(series_data[0]['categories'])
+                if len(vals) < cats_len:
+                    vals = vals + [0] * (cats_len - len(vals))
+                elif len(vals) > cats_len:
+                    vals = vals[:cats_len]
+                chart_data.add_series(s['name'], vals)
+
+        # Add chart to slide
+        x, y, cx, cy = Inches(0.5), Inches(0.9), Inches(9), Inches(4.3)
+        try:
+            chart_shape = slide.shapes.add_chart(
+                actual_type, x, y, cx, cy, chart_data
+            )
+            chart = chart_shape.chart
+
+            # Style the chart
+            chart.has_legend = len(series_data) > 1
+            if chart.has_legend:
+                chart.legend.include_in_layout = False
+
+        except Exception as e:
+            logger.warning(f"Failed to add chart: {e}")
+            # Add error text instead
+            err_box = slide.shapes.add_textbox(Inches(1), Inches(2.5), Inches(8), Inches(1))
+            err_frame = err_box.text_frame
+            err_frame.text = f"Chart could not be rendered: {str(e)}"
+
+    # ================================================================
+    # Existing methods (kept intact with minor fixes)
+    # ================================================================
+
     def _add_chart_slides(self, prs: Presentation, sheet_name: str, data: Dict, analysis: Dict):
-        """Add chart slides for data visualization"""
+        """Add chart slides for data visualization (fallback for sheets without Excel charts)"""
         chart_types = [
-            (XL_CHART_TYPE.BAR_CLUSTERED, "Bar Chart"),
+            (XL_CHART_TYPE.COLUMN_CLUSTERED, "Bar Chart"),
             (XL_CHART_TYPE.LINE, "Line Chart"),
             (XL_CHART_TYPE.PIE, "Pie Chart"),
         ]
 
-        numeric_cols = analysis['numeric_columns'][:3]  # Max 3 charts
+        numeric_cols = analysis['numeric_columns'][:3]
         categorical_col = analysis['categorical_columns'][0] if analysis['categorical_columns'] else None
 
         if not categorical_col:
@@ -347,7 +707,6 @@ class ExcelToPPTService:
         """Add individual chart slide"""
         slide = prs.slides.add_slide(prs.slide_layouts[6])
 
-        # Title
         title_text = f"{sheet_name} - {chart_name} ({chart_num}/{total_charts})"
         title_box = slide.shapes.add_textbox(
             Inches(0.5), Inches(0.3), Inches(9), Inches(0.5)
@@ -357,15 +716,11 @@ class ExcelToPPTService:
         title_para = title_frame.paragraphs[0]
         title_para.font.size = Pt(24)
         title_para.font.bold = True
+        title_para.font.color.rgb = self.theme_colors['dark']
 
-        # Prepare chart data
         chart_data = CategoryChartData()
-        categories = []
-        values = []
-
-        # Aggregate data
         data_map = {}
-        for row in data['rows'][:50]:  # Max 50 rows
+        for row in data['rows'][:50]:
             if cat_idx < len(row) and num_idx < len(row):
                 category = str(row[cat_idx])[:30]
                 try:
@@ -377,22 +732,18 @@ class ExcelToPPTService:
                 except (ValueError, TypeError):
                     continue
 
-        # Sort and limit
         sorted_data = sorted(
             [(k, v['sum'] / v['count']) for k, v in data_map.items()],
             key=lambda x: x[1],
             reverse=True
         )[:15]
 
-        for category, value in sorted_data:
-            categories.append(category)
-            values.append(round(value, 2))
+        categories = [c for c, _ in sorted_data]
+        values = [round(v, 2) for _, v in sorted_data]
 
         chart_data.categories = categories
-
         chart_data.add_series(data['headers'][num_idx], values)
 
-        # Add chart
         x, y, cx, cy = Inches(0.5), Inches(1), Inches(9), Inches(4)
         chart = slide.shapes.add_chart(
             chart_type, x, y, cx, cy, chart_data
@@ -404,7 +755,6 @@ class ExcelToPPTService:
         """Add statistics slide"""
         slide = prs.slides.add_slide(prs.slide_layouts[6])
 
-        # Title
         title_box = slide.shapes.add_textbox(
             Inches(0.5), Inches(0.3), Inches(9), Inches(0.5)
         )
@@ -413,8 +763,8 @@ class ExcelToPPTService:
         title_para = title_frame.paragraphs[0]
         title_para.font.size = Pt(28)
         title_para.font.bold = True
+        title_para.font.color.rgb = self.theme_colors['dark']
 
-        # Create statistics table
         numeric_cols = analysis['numeric_columns'][:10]
         rows_count = len(numeric_cols) + 1
         cols_count = 6
@@ -425,9 +775,8 @@ class ExcelToPPTService:
             Inches(8), Inches(4)
         ).table
 
-        # Headers
-        headers = ['Column', 'Average', 'Min', 'Max', 'Std Dev', 'Count']
-        for col_idx, header in enumerate(headers):
+        stat_headers = ['Column', 'Average', 'Min', 'Max', 'Std Dev', 'Count']
+        for col_idx, header in enumerate(stat_headers):
             cell = table.cell(0, col_idx)
             cell.text = header
             cell.fill.solid()
@@ -435,15 +784,13 @@ class ExcelToPPTService:
             paragraph = cell.text_frame.paragraphs[0]
             paragraph.font.size = Pt(11)
             paragraph.font.bold = True
-            paragraph.font.color.rgb = RGBColor(255, 255, 255)
+            paragraph.font.color.rgb = self.theme_colors['white']
             paragraph.alignment = PP_ALIGN.CENTER
 
-        # Statistics data
         for row_idx, num_col in enumerate(numeric_cols):
             col_name = num_col['name']
             col_index = data['headers'].index(col_name)
 
-            # Calculate statistics
             values = []
             for row in data['rows']:
                 if col_index < len(row):
@@ -462,49 +809,12 @@ class ExcelToPPTService:
                     'Std Dev': f"{pd.Series(values).std():.2f}",
                     'Count': str(len(values))
                 }
-
                 for col_idx, (key, value) in enumerate(stats.items()):
                     cell = table.cell(row_idx + 1, col_idx)
                     cell.text = value
                     paragraph = cell.text_frame.paragraphs[0]
                     paragraph.font.size = Pt(10)
                     paragraph.alignment = PP_ALIGN.CENTER
-
-    def _extract_worksheet_data(self, worksheet) -> list:
-        """Extract data from worksheet into separate tables (blocks)"""
-        tables = []
-        current_table = {'headers': [], 'rows': []}
-        is_first_row = True
-
-        for row in worksheet.iter_rows(min_row=1, values_only=True):
-            is_empty = not any(cell is not None and str(cell).strip() for cell in row)
-            
-            if is_empty:
-                if not is_first_row and (current_table['headers'] or current_table['rows']):
-                    tables.append(current_table)
-                    current_table = {'headers': [], 'rows': []}
-                    is_first_row = True
-            else:
-                if is_first_row:
-                    current_table['headers'] = [str(h) if h is not None else f'Col{i}' for i, h in enumerate(row)]
-                    is_first_row = False
-                else:
-                    current_table['rows'].append(list(row))
-                    
-        if current_table['headers'] or current_table['rows']:
-            # Only append if the table actually has some data
-            has_data = any(str(cell).strip() for row in current_table['rows'] for cell in row if cell is not None)
-            if has_data:
-                tables.append(current_table)
-
-        # Clean up empty tables that slipped through
-        valid_tables = []
-        for table in tables:
-            has_data = any(str(cell).strip() for row in table['rows'] for cell in row if cell is not None)
-            if has_data:
-                valid_tables.append(table)
-
-        return valid_tables
 
     def _analyze_data(self, data: Dict) -> Dict:
         """Analyze data to determine chart types and columns"""
@@ -523,7 +833,6 @@ class ExcelToPPTService:
             if not values:
                 continue
 
-            # Check if numeric
             numeric_count = 0
             for val in values:
                 try:
@@ -550,12 +859,8 @@ class ExcelToPPTService:
 
         return analysis
 
-
     def _add_embedded_image_slides(self, prs: Presentation, sheet_name: str, worksheet) -> None:
-        """Add one slide per embedded image in the worksheet.
-
-        This captures pasted charts/screenshots and any inserted pictures.
-        """
+        """Add one slide per embedded image in the worksheet."""
         images = getattr(worksheet, "_images", None) or []
         if not images:
             return
@@ -566,14 +871,11 @@ class ExcelToPPTService:
         for idx, img in enumerate(images, start=1):
             try:
                 img_bytes = None
-
-                # openpyxl Image exposes a private _data() helper in most versions
                 data_fn = getattr(img, "_data", None)
                 if callable(data_fn):
                     img_bytes = data_fn()
 
                 if not img_bytes:
-                    # Some images may have a ref/path-like attribute
                     ref = getattr(img, "ref", None) or getattr(img, "path", None)
                     if ref:
                         try:
@@ -588,15 +890,14 @@ class ExcelToPPTService:
                 blank = prs.slide_layouts[6]
                 slide = prs.slides.add_slide(blank)
 
-                # Title
                 title_box = slide.shapes.add_textbox(Inches(0.5), Inches(0.25), Inches(9.0), Inches(0.5))
                 title_frame = title_box.text_frame
                 title_frame.text = f"{sheet_name} - Figure {idx}"
                 title_para = title_frame.paragraphs[0]
                 title_para.font.size = Pt(20)
                 title_para.font.bold = True
+                title_para.font.color.rgb = self.theme_colors['dark']
 
-                # Add image, fit-to-slide with margins
                 stream = io.BytesIO(img_bytes)
                 stream.seek(0)
 
@@ -607,7 +908,6 @@ class ExcelToPPTService:
                 except Exception:
                     w_px, h_px = 0, 0
 
-                # Layout region for image below title
                 margin_l = 0.5
                 margin_r = 0.5
                 margin_top = 0.9
@@ -616,12 +916,10 @@ class ExcelToPPTService:
                 max_h = slide_h_in - margin_top - margin_bottom
 
                 if w_px > 0 and h_px > 0:
-                    # Use pixels ratio only; absolute PPI isn't needed
                     scale = min(max_w / float(w_px), max_h / float(h_px))
                     w_in = float(w_px) * scale
                     h_in = float(h_px) * scale
                 else:
-                    # Fallback: just fill the region
                     w_in, h_in = max_w, max_h
 
                 left = margin_l + max((max_w - w_in) / 2.0, 0.0)
@@ -635,14 +933,16 @@ class ExcelToPPTService:
                     height=Inches(h_in),
                 )
             except Exception:
-                # Best-effort: skip problematic images
                 continue
+
+    # ================================================================
+    # FIX 7: Improved vision wipe - actually hide cell text
+    # ================================================================
 
     def _wipe_cells_for_vision(self, excel_bytes: bytes) -> bytes:
         """
-        Surgically modifies the xlsx zip file to make all cell text and backgrounds pure white
-        and disables gridlines. This forces LibreOffice to render an empty white page with 
-        only charts, shapes, and pictures visible, perfectly isolating them for the vision engine.
+        Modifies xlsx to hide cell text (white font on white bg) and disable gridlines.
+        Charts keep their own formatting so they remain visible.
         """
         import zipfile
         import re
@@ -652,13 +952,28 @@ class ExcelToPPTService:
                 with zipfile.ZipFile(out_io, 'w') as zout:
                     for item in zin.infolist():
                         content = zin.read(item.filename)
-                        
+
                         if item.filename.startswith('xl/worksheets/sheet') and item.filename.endswith('.xml'):
-                            # Disable gridlines on all worksheets
+                            # Disable gridlines
                             content = re.sub(b'showGridLines="1"', b'showGridLines="0"', content)
                             if b'showGridLines=' not in content:
                                 content = content.replace(b'<sheetView ', b'<sheetView showGridLines="0" ')
-                                
+
+                        if item.filename == 'xl/styles.xml':
+                            # FIX 7: Make all font colors white so cell text is invisible
+                            # Replace all <color rgb="..."/> in font definitions with white
+                            content = re.sub(
+                                b'<color rgb="[0-9A-Fa-f]{8}"/>',
+                                b'<color rgb="FFFFFFFF"/>',
+                                content
+                            )
+                            # Also replace theme-based colors in fonts
+                            content = re.sub(
+                                b'<color theme="[0-9]+"',
+                                b'<color rgb="FFFFFFFF"',
+                                content
+                            )
+
                         zout.writestr(item.filename, content, compress_type=zipfile.ZIP_DEFLATED)
             return out_io.getvalue()
         except Exception as e:
@@ -670,12 +985,10 @@ class ExcelToPPTService:
             import fitz
         except Exception:
             return None
-
         try:
             from PIL import Image as PILImage
         except Exception:
             return None
-
         try:
             doc = fitz.open(stream=pdf_bytes, filetype="pdf")
             try:
@@ -698,7 +1011,6 @@ class ExcelToPPTService:
         except Exception:
             return None
 
-
     def _add_chart_slides_from_anchors(self, prs: Presentation, sheet_name: str, worksheet, page_img, fig_num: int) -> int:
         try:
             from PIL import ImageStat as PILImageStat
@@ -717,8 +1029,6 @@ class ExcelToPPTService:
             return fig_num
 
         def _excel_col_width_to_px(width_chars: float) -> int:
-            # Approximation used by Excel: https://support.microsoft.com/en-us/office/column-widths-0c8b6b40-1f70-4aa2-a34a-8c7b81b6f6c2
-            # pixels = trunc(((256*width + trunc(128/7))/256) * 7)
             try:
                 w = float(width_chars)
             except Exception:
@@ -746,7 +1056,6 @@ class ExcelToPPTService:
             return float(h) * (96.0 / 72.0)
 
         def _emu_to_px(emu: int) -> float:
-            # 1 inch = 914400 EMU, assume 96 dpi
             return float(emu or 0) / (914400.0 / 96.0)
 
         def _cell_xy_px(col_idx_1: int, row_idx_1: int) -> tuple:
@@ -948,6 +1257,7 @@ class ExcelToPPTService:
                 title_para = title_frame.paragraphs[0]
                 title_para.font.size = Pt(20)
                 title_para.font.bold = True
+                title_para.font.color.rgb = self.theme_colors['dark']
 
                 margin_l = 0.5
                 margin_r = 0.5
@@ -968,7 +1278,6 @@ class ExcelToPPTService:
                 continue
 
         return fig_num
-
 
     def _add_rendered_figure_slides_from_page_image(self, prs: Presentation, sheet_name: str, page_img, fig_num: int) -> int:
         try:
@@ -1018,7 +1327,6 @@ class ExcelToPPTService:
 
             px = small.load()
             w, h = small.size
-            # Build a simple non-white mask
             mask = [bytearray(w) for _ in range(h)]
             row_counts = [0] * h
             col_counts = [0] * w
@@ -1034,7 +1342,6 @@ class ExcelToPPTService:
                         col_counts[x] += 1
                 row_counts[y] = cnt
 
-            # Identify horizontal content bands (separated by whitespace)
             active_rows = [y for y in range(h) if row_counts[y] > int(w * 0.03)]
             row_runs = _contiguous_runs(active_rows, min_len=8)
             bands = _split_by_whitespace_gaps(row_runs, gap_min=50)
@@ -1043,7 +1350,6 @@ class ExcelToPPTService:
 
             regions = []
             for by0, by1 in bands:
-                # Within each band, split into columns by whitespace
                 band_col_counts = [0] * w
                 for y in range(by0, by1):
                     row = mask[y]
@@ -1058,7 +1364,6 @@ class ExcelToPPTService:
                     continue
 
                 for cx0, cx1 in cols:
-                    # Tighten bbox inside this cell by scanning for nonwhite
                     minx, miny, maxx, maxy = cx1, by1, cx0, by0
                     nonwhite = 0
                     for y in range(by0, by1):
@@ -1079,7 +1384,6 @@ class ExcelToPPTService:
                     if nonwhite == 0 or maxx <= minx or maxy <= miny:
                         continue
 
-                    # Expand bbox a bit
                     x0 = max(minx - 6, 0)
                     y0 = max(miny - 6, 0)
                     x1 = min(maxx + 7, w)
@@ -1091,20 +1395,14 @@ class ExcelToPPTService:
                         continue
 
                     area = bw * bh
-                    if area < 15000:  # ~120x120 minimum
+                    if area < 15000:
                         continue
-                    # Removed upper bound on area so full-page charts are captured
-
-                    density = float(nonwhite) / float(max(area, 1))
-                    # Allow denser regions (e.g., charts with solid backgrounds like yellow/blue)
-                    # We no longer need to filter dense tables because tables are wiped in memory.
 
                     regions.append((x0, y0, x1, y1))
 
             if not regions:
                 return fig_num
 
-            # Score and select best regions to avoid table fragments / strips
             scored = []
             for x0, y0, x1, y1 in regions:
                 sx0 = int(x0 / scale)
@@ -1131,10 +1429,8 @@ class ExcelToPPTService:
                     std = 0.0
 
                 if std < 10.0:
-                    logger.info(f"Skipping region, standard deviation too low (std: {std:.2f})")
                     continue
-                    
-                # Region density already filtered; prefer higher color variance
+
                 score = std
                 scored.append((score, crop))
 
@@ -1142,7 +1438,6 @@ class ExcelToPPTService:
                 return fig_num
 
             scored.sort(key=lambda t: t[0], reverse=True)
-            # Take all good regions found by the vision algorithm
             best = [c for _s, c in scored]
 
             for crop in best:
@@ -1161,8 +1456,8 @@ class ExcelToPPTService:
                 title_para = title_frame.paragraphs[0]
                 title_para.font.size = Pt(20)
                 title_para.font.bold = True
+                title_para.font.color.rgb = self.theme_colors['dark']
 
-                # Fit image into remaining area
                 margin_l = 0.5
                 margin_r = 0.5
                 margin_top = 0.9

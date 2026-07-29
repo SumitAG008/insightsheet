@@ -4,6 +4,7 @@ Privacy-first data analysis platform with ZERO data storage
 """
 from fastapi import (
     FastAPI,
+    BackgroundTasks,
     Depends,
     HTTPException,
     status,
@@ -4028,7 +4029,7 @@ async def run_free_trial_lifecycle(
 
 
 @app.post("/api/auth/login")
-async def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db)):
+async def login(user_data: UserLogin, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Login user and return OTP challenge (MFA)."""
     try:
         # Normalize email
@@ -4090,7 +4091,9 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
         db.add(challenge)
         db.commit()
 
-        await send_login_otp_email(user.email, otp, expires_minutes=otp_ttl_minutes)
+        # Send the OTP by email in the background so a slow/unreachable email
+        # provider can never hang this request past the frontend's timeout.
+        background_tasks.add_task(send_login_otp_email, user.email, otp, otp_ttl_minutes)
 
         # Log successful login (IP + geo + browser/device for security and compliance)
         # IMPORTANT: This tracks ALL users who log in, not just one user

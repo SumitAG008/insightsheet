@@ -3,6 +3,7 @@ Email Service for sending password reset and notification emails
 Supports both SMTP and Resend API (Resend recommended for cloud platforms)
 """
 import os
+import asyncio
 import logging
 import aiosmtplib
 from email.mime.text import MIMEText
@@ -11,6 +12,10 @@ from typing import Optional
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+# resend.Emails.send() is a blocking network call with no built-in timeout.
+# Run it off the event loop and bound how long we'll wait for it.
+EMAIL_SEND_TIMEOUT_SECONDS = 15
 
 
 def get_new_year_message() -> str:
@@ -1260,37 +1265,49 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
             else:
                 from_email = configured_from
             try:
-                resend.Emails.send({
-                    "from": f"Meldra <{from_email}>",
-                    "to": [email],
-                    "subject": subject,
-                    "html": html_content,
-                    "text": text_content,
-                    "reply_to": "hello@meldra.ai",
-                    "headers": {
-                        "X-Mailer": "Meldra Email Service",
-                        "X-Entity-Ref-ID": "meldra-login-otp",
-                        "List-Unsubscribe": "<https://insight.meldra.ai/unsubscribe>",
-                    },
-                })
+                await asyncio.wait_for(
+                    asyncio.to_thread(
+                        resend.Emails.send,
+                        {
+                            "from": f"Meldra <{from_email}>",
+                            "to": [email],
+                            "subject": subject,
+                            "html": html_content,
+                            "text": text_content,
+                            "reply_to": "hello@meldra.ai",
+                            "headers": {
+                                "X-Mailer": "Meldra Email Service",
+                                "X-Entity-Ref-ID": "meldra-login-otp",
+                                "List-Unsubscribe": "<https://insight.meldra.ai/unsubscribe>",
+                            },
+                        },
+                    ),
+                    timeout=EMAIL_SEND_TIMEOUT_SECONDS,
+                )
                 logger.info(f"✅ Login OTP email sent via Resend to {email}")
                 return True
             except Exception as resend_error:
                 if "not verified" in str(resend_error).lower() and from_email != "onboarding@resend.dev":
                     from_email = "onboarding@resend.dev"
-                    resend.Emails.send({
-                        "from": f"Meldra <{from_email}>",
-                        "to": [email],
-                        "subject": subject,
-                        "html": html_content,
-                        "text": text_content,
-                        "reply_to": "hello@meldra.ai",
-                        "headers": {
-                            "X-Mailer": "Meldra Email Service",
-                            "X-Entity-Ref-ID": "meldra-login-otp",
-                            "List-Unsubscribe": "<https://insight.meldra.ai/unsubscribe>",
-                        },
-                    })
+                    await asyncio.wait_for(
+                        asyncio.to_thread(
+                            resend.Emails.send,
+                            {
+                                "from": f"Meldra <{from_email}>",
+                                "to": [email],
+                                "subject": subject,
+                                "html": html_content,
+                                "text": text_content,
+                                "reply_to": "hello@meldra.ai",
+                                "headers": {
+                                    "X-Mailer": "Meldra Email Service",
+                                    "X-Entity-Ref-ID": "meldra-login-otp",
+                                    "List-Unsubscribe": "<https://insight.meldra.ai/unsubscribe>",
+                                },
+                            },
+                        ),
+                        timeout=EMAIL_SEND_TIMEOUT_SECONDS,
+                    )
                     logger.info(f"✅ Login OTP email sent via Resend (test email) to {email}")
                     return True
                 raise
@@ -1317,13 +1334,16 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
         message["X-Entity-Ref-ID"] = "meldra-login-otp"
         message.attach(MIMEText(text_content, "plain"))
         message.attach(MIMEText(html_content, "html"))
-        await aiosmtplib.send(
-            message,
-            hostname=smtp_host,
-            port=smtp_port,
-            username=smtp_user,
-            password=smtp_password,
-            use_tls=True,
+        await asyncio.wait_for(
+            aiosmtplib.send(
+                message,
+                hostname=smtp_host,
+                port=smtp_port,
+                username=smtp_user,
+                password=smtp_password,
+                use_tls=True,
+            ),
+            timeout=EMAIL_SEND_TIMEOUT_SECONDS,
         )
         logger.info(f"✅ Login OTP email sent via SMTP to {email}")
         return True

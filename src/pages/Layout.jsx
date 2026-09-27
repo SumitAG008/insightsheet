@@ -4,7 +4,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, ShieldCheck, TrendingDown } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +13,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { Cpu } from 'lucide-react';
 import SubscriptionChecker from '@/components/subscription/SubscriptionChecker';
 import Logo from '@/components/branding/Logo';
 import { meldraAi } from '@/api/meldraClient';
@@ -34,7 +33,6 @@ export default function Layout({ children, currentPageName }) {
   const isHome = currentPageName === 'Dashboard';
   const navigate = useNavigate();
   const [user, setUser] = React.useState(null);
-  const [subscription, setSubscription] = React.useState(null);
   const [brandPrefs, setBrandPrefs] = React.useState({ brandName: null, logoUrl: null });
   const [loginTime, setLoginTime] = React.useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -98,21 +96,6 @@ export default function Layout({ children, currentPageName }) {
     loadUser();
   }, [loadUser]);
 
-  useEffect(() => {
-    const loadSubscription = async () => {
-      try {
-        if (!user?.email) {
-          setSubscription(null);
-          return;
-        }
-        const mySub = await meldraAi.subscriptions.getMy();
-        setSubscription(mySub || null);
-      } catch {
-        setSubscription(null);
-      }
-    };
-    loadSubscription();
-  }, [user?.email]);
 
   useEffect(() => {
     const applyFromPrefs = (email) => {
@@ -195,14 +178,6 @@ export default function Layout({ children, currentPageName }) {
 
   const canAccessAgenticWorkflows = (user?.email || '').toLowerCase().trim() === 'sumitagaraia@gmail.com';
 
-  const esgAlwaysAllowlist = String(import.meta.env.VITE_ESG_ALLOWLIST || '')
-    .split(',')
-    .map((e) => e.toLowerCase().trim())
-    .filter(Boolean);
-  const isEsgAlwaysAllowed = esgAlwaysAllowlist.includes((user?.email || '').toLowerCase().trim());
-  const subscriptionPlan = (subscription?.plan || 'free').toLowerCase();
-  const isEsgPurchased = subscriptionPlan !== 'free';
-  const canAccessESG = !!user?.email && isEsgAlwaysAllowed;
 
   const logLogin = async (email) => {
     try {
@@ -425,6 +400,19 @@ export default function Layout({ children, currentPageName }) {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
+                  {/* Unified Reporting */}
+                  <Link
+                    to="/unified-reporting"
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                      isActive('/unified-reporting')
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
+                        : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400'
+                    }`}
+                  >
+                    <LineChart className="w-4 h-4" />
+                    <span>{t('nav_unified_reporting')}</span>
+                  </Link>
+
                   {/* Data & Schema — group */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -510,69 +498,6 @@ export default function Layout({ children, currentPageName }) {
                   </DropdownMenu>
 
                   {/* Developers (developer.meldra.ai / API docs) — opens /developers on same host */}
-                  {canAccessESG && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                            [createPageUrl('ESG'), '/esg-v2', '/supplier-risk-due-diligence'].some(p => isActive(p))
-                              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
-                              : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
-                          }`}
-                        >
-                          <Shield className="w-4 h-4" />
-                          <span>ESG</span>
-                          <ChevronDown className="w-4 h-4 opacity-70" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="start" className="min-w-[260px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                        <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">ESG</DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                          <Link to={createPageUrl('ESG')} className="flex items-center gap-2 cursor-pointer">
-                            <Shield className="w-4 h-4" />
-                            ESG (v1)
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/esg-v2" className="flex items-center gap-2 cursor-pointer">
-                            <Shield className="w-4 h-4" />
-                            ESG v2
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/supplier-risk-due-diligence" className="flex items-center gap-2 cursor-pointer">
-                            <Users className="w-4 h-4" />
-                            Supplier Risk &amp; Due Diligence
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/compliance-audit" className="flex items-center gap-2 cursor-pointer">
-                            <ShieldCheck className="w-4 h-4" />
-                            Compliance &amp; Audit
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/decarbonization-planner" className="flex items-center gap-2 cursor-pointer">
-                            <TrendingDown className="w-4 h-4 text-emerald-400" />
-                            Decarbonization Planner
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/enterprise-ai-configurator" className="flex items-center gap-2 cursor-pointer">
-                            <Cpu className="w-4 h-4 text-indigo-400" />
-                            Enterprise AI Configurator
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/enterprise-demo" className="flex items-center gap-2 cursor-pointer">
-                            <BarChart3 className="w-4 h-4 text-blue-400" />
-                            Global Executive Dashboard
-                          </Link>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
                   <Link
                     to="/developers"
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
@@ -759,6 +684,10 @@ export default function Layout({ children, currentPageName }) {
                     </Link>
                   )}
 
+                  <Link to="/unified-reporting" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/unified-reporting') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    <LineChart className="w-4 h-4" /> <span>{t('nav_unified_reporting')}</span>
+                  </Link>
+
                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_data_schema')}</p>
                   <Link to={createPageUrl('DataModelCreator')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('DataModelCreator')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <Database className="w-4 h-4" /> <span>{t('nav_db_schema')}</span>
@@ -783,53 +712,6 @@ export default function Layout({ children, currentPageName }) {
                   <Link to={createPageUrl('FilenameCleaner')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FilenameCleaner')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <FileArchive className="w-4 h-4" /> <span>{t('nav_zip_cleaner')}</span>
                   </Link>
-                  {canAccessESG && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          type="button"
-                          className="flex items-center gap-2 px-4 py-2.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                          title="ESG"
-                        >
-                          <Shield className="w-4 h-4" />
-                          <span>ESG</span>
-                          <ChevronDown className="w-4 h-4 opacity-70" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="min-w-[220px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                        <DropdownMenuItem asChild>
-                          <Link to={createPageUrl('ESG')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 cursor-pointer ${isActive(createPageUrl('ESG')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                            <Shield className="w-4 h-4" />
-                            <span>ESG (v1)</span>
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/esg-v2" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 cursor-pointer ${isActive('/esg-v2') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                            <Shield className="w-4 h-4" />
-                            <span>ESG v2</span>
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/supplier-risk-due-diligence" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 cursor-pointer ${isActive('/supplier-risk-due-diligence') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                            <Users className="w-4 h-4" />
-                            <span>Supplier Risk &amp; Due Diligence</span>
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/compliance-audit" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 cursor-pointer ${isActive('/compliance-audit') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                            <ShieldCheck className="w-4 h-4" />
-                            <span>Compliance Audit</span>
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link to="/decarbonization-planner" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 cursor-pointer ${isActive('/decarbonization-planner') ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                            <TrendingDown className="w-4 h-4 text-emerald-500" />
-                            <span>Decarbonization Planner</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
                   <Link to="/developers" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
                     <Code className="w-4 h-4" /> <span>{t('nav_developers')}</span>
                   </Link>

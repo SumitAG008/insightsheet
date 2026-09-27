@@ -53,14 +53,7 @@ import PlaywrightConnector from "./PlaywrightConnector";
 import InvoiceExtractor from "./InvoiceExtractor";
 import HelpGuide from "./HelpGuide";
 
-import ESG from "./ESG";
-import ESGV2 from "./ESGV2";
-
-import SupplierRiskDueDiligence from "./SupplierRiskDueDiligence";
-import ComplianceAudit from "./ComplianceAudit";
-import DecarbonizationPlanner from "./DecarbonizationPlanner";
-import DynamicFrameworkConfigurator from "./DynamicFrameworkConfigurator";
-import EnterpriseDemoDashboard from "./EnterpriseDemoDashboard";
+import UnifiedReporting from "./UnifiedReporting";
 
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
@@ -68,12 +61,6 @@ import Faq from "./Faq";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
-import EsgProtectedRoute from '../components/auth/EsgProtectedRoute';
-
-const ESG_ALLOWLIST = String(import.meta.env.VITE_ESG_ALLOWLIST || '')
-  .split(',')
-  .map((e) => e.trim())
-  .filter(Boolean);
 
 const PAGES = {
     
@@ -128,14 +115,7 @@ const PAGES = {
 
     HelpGuide: HelpGuide,
 
-    ESG: ESG,
-    ESGV2: ESGV2,
-
-    SupplierRiskDueDiligence: SupplierRiskDueDiligence,
-    ComplianceAudit: ComplianceAudit,
-    DecarbonizationPlanner: DecarbonizationPlanner,
-    DynamicFrameworkConfigurator: DynamicFrameworkConfigurator,
-    EnterpriseDemoDashboard: EnterpriseDemoDashboard,
+    UnifiedReporting: UnifiedReporting,
     
 }
 
@@ -148,14 +128,8 @@ function _getCurrentPage(url) {
         urlLastPart = urlLastPart.split('?')[0];
     }
 
-    if (urlLastPart.toLowerCase() === 'supplier-risk-due-diligence') {
-        return 'SupplierRiskDueDiligence';
-    }
-    if (urlLastPart.toLowerCase() === 'enterprise-ai-configurator') {
-        return 'DynamicFrameworkConfigurator';
-    }
-    if (urlLastPart.toLowerCase() === 'enterprise-demo') {
-        return 'EnterpriseDemoDashboard';
+    if (urlLastPart.toLowerCase() === 'unified-reporting') {
+        return 'UnifiedReporting';
     }
 
     const pageName = Object.keys(PAGES).find(page => page.toLowerCase() === urlLastPart.toLowerCase());
@@ -313,25 +287,9 @@ function PagesContent() {
                 <Route path="/HelpGuide" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
                 <Route path="/helpguide" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
 
-                <Route path="/ESG" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ESG /></EsgProtectedRoute>} />
-                <Route path="/esg" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ESG /></EsgProtectedRoute>} />
-
-                <Route path="/ESG-V2" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ESGV2 /></EsgProtectedRoute>} />
-                <Route path="/esg-v2" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ESGV2 /></EsgProtectedRoute>} />
-
-                <Route path="/Supplier-Risk-Due-Diligence" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><SupplierRiskDueDiligence /></EsgProtectedRoute>} />
-                <Route path="/supplier-risk-due-diligence" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><SupplierRiskDueDiligence /></EsgProtectedRoute>} />
-
-                <Route path="/Compliance-Audit" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ComplianceAudit /></EsgProtectedRoute>} />
-                <Route path="/compliance-audit" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><ComplianceAudit /></EsgProtectedRoute>} />
-
-                <Route path="/Decarbonization-Planner" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><DecarbonizationPlanner /></EsgProtectedRoute>} />
-                <Route path="/decarbonization-planner" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><DecarbonizationPlanner /></EsgProtectedRoute>} />
-
-                <Route path="/Enterprise-AI-Configurator" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><DynamicFrameworkConfigurator /></EsgProtectedRoute>} />
-                <Route path="/enterprise-ai-configurator" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><DynamicFrameworkConfigurator /></EsgProtectedRoute>} />
-                <Route path="/Enterprise-Demo" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><EnterpriseDemoDashboard /></EsgProtectedRoute>} />
-                <Route path="/enterprise-demo" element={<EsgProtectedRoute allowlist={ESG_ALLOWLIST}><EnterpriseDemoDashboard /></EsgProtectedRoute>} />
+                <Route path="/unified-reporting" element={<ProtectedRoute><UnifiedReporting /></ProtectedRoute>} />
+                <Route path="/UnifiedReporting" element={<ProtectedRoute><UnifiedReporting /></ProtectedRoute>} />
+                <Route path="/unifiedreporting" element={<ProtectedRoute><UnifiedReporting /></ProtectedRoute>} />
             </Routes>
         </Layout>
     );

@@ -91,6 +91,7 @@ from app.services.ai_service import (
     invoke_llm, generate_image, generate_formula, analyze_data, suggest_chart_type,
     generate_transform, explain_sql
 )
+from app.services.unified_reporting_service import plan_report, write_insight
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
 from app.services.windows_excel_to_ppt import WindowsExcelToPPTService, WINDOWS_COM_AVAILABLE
@@ -1866,6 +1867,19 @@ class TransformRequest(BaseModel):
 class ExplainSqlRequest(BaseModel):
     sql: str
     db_schema: Optional[Dict[str, Any]] = Field(None, alias="schema")
+
+
+class UnifiedPlanRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=500)
+    previous_question: Optional[str] = Field(None, max_length=500)
+    catalog: Dict[str, Any]
+
+
+class UnifiedInsightRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=500)
+    columns: List[str] = Field(..., max_length=10)
+    rows: List[List[Any]] = Field(..., max_length=25)
+    notes: Optional[str] = Field(None, max_length=600)
 
 
 class ZipProcessingOptions(BaseModel):
@@ -5847,6 +5861,37 @@ async def generate_transform_endpoint(
     except Exception as e:
         logger.error(f"AI transform error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/unified-reporting/plan")
+async def unified_reporting_plan_endpoint(
+    request: UnifiedPlanRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Turn a business question into a query spec over the unified model (metadata only, no rows)."""
+    try:
+        spec = await plan_report(request.question, request.previous_question, request.catalog)
+        db.add(UserActivity(user_email=current_user["email"], activity_type="unified_report_plan"))
+        db.commit()
+        return {"spec": spec}
+    except Exception as e:
+        logger.error(f"Unified reporting plan error: {str(e)}")
+        raise HTTPException(status_code=502, detail="The report planner is unavailable right now.")
+
+
+@app.post("/api/unified-reporting/insight")
+async def unified_reporting_insight_endpoint(
+    request: UnifiedInsightRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Write a short plain-English answer for an already computed report."""
+    try:
+        text = await write_insight(request.question, request.columns, request.rows, request.notes)
+        return {"text": text}
+    except Exception as e:
+        logger.error(f"Unified reporting insight error: {str(e)}")
+        raise HTTPException(status_code=502, detail="The answer writer is unavailable right now.")
 
 
 @app.post("/api/ai/explain-sql")

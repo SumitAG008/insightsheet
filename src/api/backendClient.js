@@ -697,6 +697,35 @@ export const backendApi = {
     },
   },
 
+  // Unified Reporting (planner sees catalog metadata only, never rows)
+  unifiedReporting: {
+    plan: async ({ question, previousQuestion, catalog }) => {
+      const response = await apiCall('/api/unified-reporting/plan', {
+        method: 'POST',
+        body: { question, previous_question: previousQuestion || null, catalog },
+        timeoutMs: 45000,
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Report planner failed');
+      }
+      return response.json();
+    },
+
+    insight: async ({ question, columns, rows, notes }) => {
+      const response = await apiCall('/api/unified-reporting/insight', {
+        method: 'POST',
+        body: { question, columns, rows, notes: notes || null },
+        timeoutMs: 45000,
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Answer writer failed');
+      }
+      return response.json();
+    },
+  },
+
   // Admin (requires admin role)
   admin: {
     getUsers: async () => {

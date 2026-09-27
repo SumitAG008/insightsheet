@@ -1,0 +1,95 @@
+"""
+Unified Reporting service.
+
+Turns a business question into a query *spec* over the unified model, and
+writes the plain-English answer for a computed result.
+
+The planner only ever sees catalog metadata (views, dimensions, measures and a
+few known values), never rows. The spec it returns is validated again by the
+frontend engine, which alone decides how systems are aggregated and joined.
+
+ZERO DATA STORAGE: prompts and responses are not persisted.
+"""
+import json
+from typing import Any, Dict, List, Optional
+
+from app.services.ai_service import invoke_llm
+
+MAX_VIEWS = 20
+MAX_LIST = 40
+MAX_TEXT = 400
+
+
+def _clip(value: Any, limit: int = MAX_TEXT) -> str:
+    return str(value if value is not None else "")[:limit]
+
+
+def _clip_list(values: Any, limit: int = MAX_LIST) -> List[str]:
+    if not isinstance(values, list):
+        return []
+    return [_clip(v, 120) for v in values[:limit]]
+
+
+def build_plan_prompt(question: str, previous_question: Optional[str], catalog: Dict[str, Any]) -> str:
+    views = catalog.get("views") if isinstance(catalog.get("views"), list) else []
+    view_lines = []
+    for v in views[:MAX_VIEWS]:
+        if not isinstance(v, dict):
+            continue
+        view_lines.append(
+            f"- {_clip(v.get('name'), 40)} (from {_clip(v.get('system'), 40)}): {_clip(v.get('description'))} "
+            f"Dimensions: {', '.join(_clip_list(v.get('dimensions')))}. "
+            f"Measures: {', '.join(_clip_list(v.get('measures')))}."
+        )
+    known = "\n".join(_clip_list(catalog.get("known_values")))
+    notes = " ".join(_clip_list(catalog.get("notes"), 10))
+    customers = ", ".join(_clip_list(catalog.get("customers")))
+    prev = (
+        f'The previous question was: "{_clip(previous_question, 300)}". Treat short follow-ups as refinements of it.\n'
+        if previous_question
+        else ""
+    )
+
+    return f"""You are Meldra, an analytics assistant for business users. Turn the question into a query spec over Meldra's unified data model, which combines several business systems and matches shared entities (customers, departments, months) across them. Data covers {_clip(catalog.get('data_range'), 40)}. Today is {_clip(catalog.get('today'), 20)}. Money is {_clip(catalog.get('currency') or 'GBP', 8)}.
+Views:
+{chr(10).join(view_lines)}
+Customers: {customers}.
+Known values:
+{known}
+{notes}
+Return ONLY a JSON object:
+{{"title": short answer title,
+ "chart": "bar"|"line"|"pie"|"scatter"|"table"|"number",
+ "groupBy": one dimension that every series has, or null for totals,
+ "series": [{{"view": view name, "measure": measure name or null to count rows, "agg": "sum"|"count"|"avg"|"min"|"max", "filters": [{{"dim": dimension, "op": "eq"|"neq"|"gte"|"lte", "value": string}}], "label": short series name}}],
+ "derived": [{{"label": short name, "numerator": [series indexes to add, 0-based], "denominator": series index or null}}],
+ "sort": "desc"|"asc"|"label", "limit": 3 to 25,
+ "followups": [three short, specific next questions a manager might ask]}}
+Rules:
+- Use up to 4 series. Use 2 or more only to combine systems, and they must all share groupBy (for example orders vs invoices by customer, or headcount vs expenses by department).
+- Never average ratios row by row. For ratios such as cost per head, return the totals as series and a "derived" entry, e.g. salaries, expenses and spend over headcount.
+- Chart from the shape of the answer: one breakdown and one number gives bar; time (groupBy "month") gives line; two or three numbers per item compared against each other gives scatter (x, y, and bubble size); parts of a whole with 6 or fewer groups can be pie.
+- If the question is ambiguous in a way that changes the numbers (for example "cost" could mean salaries only or fully loaded cost), return {{"clarify": one short question, "options": [2 to 4 short answers]}} instead.
+- If the question needs data these views don't have, or two things share no dimension, return {{"cannot": one friendly sentence naming what's missing and suggesting the closest question that can be answered}}.
+{prev}Question: {_clip(question, 500)}"""
+
+
+def build_insight_prompt(question: str, columns: List[str], rows: List[List[Any]], notes: Optional[str]) -> str:
+    safe_rows = rows[:25] if isinstance(rows, list) else []
+    note = f"\nNote: {_clip(notes, 600)} Mention this in one short clause." if notes else ""
+    return f"""Write 2 or 3 short sentences for a business manager answering: "{_clip(question, 500)}". Lead with the direct answer, name the biggest and smallest values, and point out one thing worth acting on. If two series are compared, comment on the gap between them. Money is GBP; write amounts like £1.2M or £340K. No markdown, no preamble.
+Columns: {' | '.join(_clip_list(columns, 10))}
+Rows: {json.dumps(safe_rows, default=str)[:6000]}{note}"""
+
+
+async def plan_report(question: str, previous_question: Optional[str], catalog: Dict[str, Any]) -> Dict[str, Any]:
+    prompt = build_plan_prompt(question, previous_question, catalog or {})
+    spec = await invoke_llm(prompt=prompt, response_schema={"type": "json_object"}, max_tokens=1200)
+    if not isinstance(spec, dict):
+        raise ValueError("Planner did not return a JSON object")
+    return spec
+
+
+async def write_insight(question: str, columns: List[str], rows: List[List[Any]], notes: Optional[str] = None) -> str:
+    text = await invoke_llm(prompt=build_insight_prompt(question, columns, rows, notes), max_tokens=300)
+    return str(text or "").strip()

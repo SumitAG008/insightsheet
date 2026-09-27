@@ -4,7 +4,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart, ArrowRightLeft } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -289,7 +289,7 @@ export default function Layout({ children, currentPageName }) {
               />
             </Link>
 
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden xl:flex items-center gap-1 [&>a>svg:first-child]:hidden [&>button>svg:first-child]:hidden 2xl:[&>a>svg:first-child]:block 2xl:[&>button>svg:first-child]:block">
               {/* Show menu items only when user is logged in */}
               {user && user.email ? (
                 <>
@@ -298,7 +298,7 @@ export default function Layout({ children, currentPageName }) {
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                           [createPageUrl('Dashboard')].some(p => isActive(p))
                             ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
                             : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
@@ -325,7 +325,7 @@ export default function Layout({ children, currentPageName }) {
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                           [createPageUrl('FileAnalyzer'), createPageUrl('PLBuilder'), createPageUrl('AutoStandardize'), createPageUrl('Reconciliation')].some(p => isActive(p))
                             ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
                             : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
@@ -370,7 +370,7 @@ export default function Layout({ children, currentPageName }) {
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                           [createPageUrl('AgenticAI'), ...(canAccessAgenticWorkflows ? [createPageUrl('AgenticWorkflows')] : [])].some(p => isActive(p))
                             ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
                             : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
@@ -403,7 +403,7 @@ export default function Layout({ children, currentPageName }) {
                   {/* Unified Reporting */}
                   <Link
                     to="/unified-reporting"
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                       isActive('/unified-reporting')
                         ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
                         : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400'
@@ -413,12 +413,25 @@ export default function Layout({ children, currentPageName }) {
                     <span>{t('nav_unified_reporting')}</span>
                   </Link>
 
+                  {/* Next-Gen Migration */}
+                  <Link
+                    to="/migration"
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                      isActive('/migration')
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
+                        : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400'
+                    }`}
+                  >
+                    <ArrowRightLeft className="w-4 h-4" />
+                    <span>{t('nav_migration')}</span>
+                  </Link>
+
                   {/* Data & Schema — group */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                           [createPageUrl('DataModelCreator'), createPageUrl('DatabaseConnection')].some(p => isActive(p))
                             ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
                             : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
@@ -451,7 +464,7 @@ export default function Layout({ children, currentPageName }) {
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                           [createPageUrl('FileToPPT'), createPageUrl('OCRConverter'), createPageUrl('PdfDocConverter'), createPageUrl('FilenameCleaner'), '/pdfeditor'].some(p => isActive(p))
                             ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
                             : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
@@ -500,7 +513,7 @@ export default function Layout({ children, currentPageName }) {
                   {/* Developers (developer.meldra.ai / API docs) — opens /developers on same host */}
                   <Link
                     to="/developers"
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                       location.pathname.toLowerCase() === '/developers'
                         ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
                         : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 hover:scale-105'
@@ -586,7 +599,8 @@ export default function Layout({ children, currentPageName }) {
                         className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                         title="Account"
                       >
-                        <span className="text-sm text-slate-700 dark:text-slate-300 font-medium hidden sm:inline max-w-[180px] truncate">{user.email}</span>
+                        <span className="2xl:hidden grid h-7 w-7 place-items-center rounded-full bg-blue-600 text-xs font-semibold text-white" aria-hidden="true">{user.email.charAt(0).toUpperCase()}</span>
+                        <span className="text-sm text-slate-700 dark:text-slate-300 font-medium hidden 2xl:inline max-w-[180px] truncate">{user.email}</span>
                         <ChevronDown className="w-4 h-4 opacity-70" />
                       </button>
                     </DropdownMenuTrigger>
@@ -635,7 +649,7 @@ export default function Layout({ children, currentPageName }) {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="xl:hidden p-2 rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -643,7 +657,7 @@ export default function Layout({ children, currentPageName }) {
 
           {/* Mobile menu */}
           {mobileMenuOpen && (
-            <div className="md:hidden border-t border-slate-200 dark:border-slate-800 py-4 space-y-1">
+            <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 py-4 space-y-1">
               {user && user.email ? (
                 <>
                   <p className="px-4 pt-1 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_dashboard')}</p>
@@ -686,6 +700,9 @@ export default function Layout({ children, currentPageName }) {
 
                   <Link to="/unified-reporting" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/unified-reporting') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <LineChart className="w-4 h-4" /> <span>{t('nav_unified_reporting')}</span>
+                  </Link>
+                  <Link to="/migration" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/migration') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    <ArrowRightLeft className="w-4 h-4" /> <span>{t('nav_migration')}</span>
                   </Link>
 
                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_data_schema')}</p>

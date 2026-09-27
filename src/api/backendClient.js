@@ -697,6 +697,22 @@ export const backendApi = {
     },
   },
 
+  // Next-Gen Migration (column headers only, never employee values)
+  migration: {
+    suggestMapping: async ({ sourceSystem, sheets, concepts }) => {
+      const response = await apiCall('/api/migration/suggest-mapping', {
+        method: 'POST',
+        body: { source_system: sourceSystem, sheets, concepts },
+        timeoutMs: 60000,
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Mapping assistant failed');
+      }
+      return response.json();
+    },
+  },
+
   // Unified Reporting (planner sees catalog metadata only, never rows)
   unifiedReporting: {
     plan: async ({ question, previousQuestion, catalog }) => {

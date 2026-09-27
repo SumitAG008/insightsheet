@@ -54,6 +54,7 @@ import InvoiceExtractor from "./InvoiceExtractor";
 import HelpGuide from "./HelpGuide";
 
 import UnifiedReporting from "./UnifiedReporting";
+import Migration from "./Migration";
 
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
@@ -116,6 +117,7 @@ const PAGES = {
     HelpGuide: HelpGuide,
 
     UnifiedReporting: UnifiedReporting,
+    Migration: Migration,
     
 }
 
@@ -290,6 +292,9 @@ function PagesContent() {
                 <Route path="/unified-reporting" element={<ProtectedRoute><UnifiedReporting /></ProtectedRoute>} />
                 <Route path="/UnifiedReporting" element={<ProtectedRoute><UnifiedReporting /></ProtectedRoute>} />
                 <Route path="/unifiedreporting" element={<ProtectedRoute><UnifiedReporting /></ProtectedRoute>} />
+
+                <Route path="/migration" element={<ProtectedRoute><Migration /></ProtectedRoute>} />
+                <Route path="/Migration" element={<ProtectedRoute><Migration /></ProtectedRoute>} />
             </Routes>
         </Layout>
     );

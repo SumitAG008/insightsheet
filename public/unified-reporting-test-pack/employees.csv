@@ -1,0 +1,25 @@
+Employee ID,Name,Department,Country,Salary (£),Status,Hire Date
+E1001,Ava A.,Sales,UK,38000,Active,2019-01-01
+E1002,Ben H.,Engineering,Germany,58500,Active,2020-04-02
+E1003,Chloe O.,Finance,USA,63000,Active,2021-07-03
+E1004,Dev V.,People,UK,48000,Active,2022-10-04
+E1005,Ella C.,Operations,Germany,60500,Left,2023-01-05
+E1006,Finn J.,Sales,USA,45500,Active,2024-04-06
+E1007,Grace Q.,Engineering,UK,66000,Active,2019-07-07
+E1008,Hugo X.,Finance,Germany,43000,Active,2020-10-08
+E1009,Isla E.,People,USA,55500,Active,2021-01-09
+E1010,Jack L.,Operations,UK,40500,Active,2022-04-10
+E1011,Kai S.,Sales,Germany,53000,Active,2023-07-11
+E1012,Lena Z.,Engineering,USA,46000,Active,2024-10-12
+E1013,Max G.,Finance,UK,50500,Active,2019-01-13
+E1014,Nina N.,People,Germany,63000,Active,2020-04-14
+E1015,Omar U.,Operations,USA,48000,Active,2021-07-15
+E1016,Priya B.,Sales,UK,60500,Active,2022-10-16
+E1017,Quinn I.,Engineering,Germany,53500,Active,2023-01-17
+E1018,Rosa P.,Finance,USA,58000,Left,2024-04-18
+E1019,Sam W.,People,UK,43000,Active,2019-07-19
+E1020,Tara D.,Operations,Germany,55500,Active,2020-10-20
+E1021,Umar K.,Sales,USA,40500,Active,2021-01-21
+E1022,Vera R.,Engineering,UK,61000,Active,2022-04-22
+E1023,Will Y.,Finance,Germany,38000,Active,2023-07-23
+E1024,Zoe F.,People,USA,50500,Active,2024-10-24

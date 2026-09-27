@@ -185,5 +185,28 @@ export function sampleSuggestions(m) {
         ],
       },
     },
+    {
+      q: 'Expenses by department and category',
+      src: 'Concur + SuccessFactors',
+      spec: {
+        title: 'Expenses by department and category',
+        groupBy: 'department',
+        splitBy: 'category',
+        chart: 'heatmap',
+        series: [{ view: 'expenses', measure: 'amount', agg: 'sum', label: 'Expenses' }],
+        followups: ['Expenses by month and category', 'Share of expenses by category', 'Expenses by category'],
+      },
+    },
+    {
+      q: 'Orders by month, 3-month rolling',
+      src: 'SAP S/4',
+      spec: {
+        title: 'Orders by month, 3-month rolling',
+        groupBy: 'month',
+        chart: 'line',
+        window: 3,
+        series: [{ view: 'sales_orders', measure: 'amount', agg: 'sum', label: 'Orders' }],
+      },
+    },
   ];
 }

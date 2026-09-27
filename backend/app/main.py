@@ -91,7 +91,8 @@ from app.services.ai_service import (
     invoke_llm, generate_image, generate_formula, analyze_data, suggest_chart_type,
     generate_transform, explain_sql, explain_ai_error
 )
-from app.services.unified_reporting_service import plan_report, write_insight
+from app.services.unified_reporting_service import build_report, plan_report, write_insight
+from app.services.api_connector_service import ConnectorError, allow_call, egress_info, fetch_records, public_presets, safe_summary
 from app.services.migration_service import suggest_mapping
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
@@ -805,6 +806,10 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# Meldra lakehouse (Apache Iceberg tables via Apache Polaris, Arrow + DuckDB queries)
+from app.routes.lakehouse import router as lakehouse_router  # noqa: E402
+app.include_router(lakehouse_router)
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -1874,6 +1879,36 @@ class UnifiedPlanRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=500)
     previous_question: Optional[str] = Field(None, max_length=500)
     catalog: Dict[str, Any]
+
+
+class ConnectorFetchRequest(BaseModel):
+    """One API call made on the user's behalf. Credentials are used once and never stored."""
+    url: str = Field(..., min_length=8, max_length=4000)
+    method: str = Field("GET", max_length=6)
+    headers: Optional[Dict[str, str]] = None
+    body: Optional[Any] = None
+    body_type: str = Field("json", max_length=10)
+    variables: Optional[Dict[str, Any]] = None
+    # Any: a malformed value is rejected by the connector without echoing it back in a 422.
+    auth: Optional[Any] = None
+    records_path: Optional[str] = Field(None, max_length=200)
+    paging: str = Field("auto", max_length=20)
+    next_path: Optional[str] = Field(None, max_length=100)
+    page_size: Optional[int] = Field(None, ge=1, le=10000)
+    offset_param: Optional[str] = Field(None, max_length=40)
+    limit_param: Optional[str] = Field(None, max_length=40)
+    page_param: Optional[str] = Field(None, max_length=40)
+    start_page: Optional[int] = Field(None, ge=0, le=1000)
+    cursor_param: Optional[str] = Field(None, max_length=40)
+    cursor_path: Optional[str] = Field(None, max_length=100)
+    has_more_path: Optional[str] = Field(None, max_length=100)
+    max_rows: Optional[int] = Field(None, ge=1, le=200000)
+
+
+class UnifiedBuildReportRequest(BaseModel):
+    request: str = Field(..., min_length=1, max_length=600)
+    catalog: Dict[str, Any]
+    tiles: int = Field(6, ge=2, le=8)
 
 
 class MigrationMappingRequest(BaseModel):
@@ -5888,6 +5923,19 @@ async def unified_reporting_plan_endpoint(
         raise HTTPException(status_code=502, detail=f"The report planner is unavailable: {explain_ai_error(e)}.")
 
 
+@app.post("/api/unified-reporting/build-report")
+async def unified_reporting_build_report_endpoint(
+    request: UnifiedBuildReportRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Design a multi-chart report from a prompt (catalog metadata only, never rows)."""
+    try:
+        return {"report": await build_report(request.request, request.catalog, request.tiles)}
+    except Exception as e:
+        logger.error(f"Unified reporting build-report error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"The report builder is unavailable: {explain_ai_error(e)}.")
+
+
 @app.post("/api/unified-reporting/insight")
 async def unified_reporting_insight_endpoint(
     request: UnifiedInsightRequest,
@@ -5900,6 +5948,42 @@ async def unified_reporting_insight_endpoint(
     except Exception as e:
         logger.error(f"Unified reporting insight error: {str(e)}")
         raise HTTPException(status_code=502, detail=f"The answer writer is unavailable: {explain_ai_error(e)}.")
+
+
+@app.get("/api/unified-reporting/connector/presets")
+async def unified_reporting_connector_presets(current_user: dict = Depends(get_current_user)):
+    """Ready-made settings for common business APIs (no secrets), and whether outbound calls use a fixed IP."""
+    return {"presets": public_presets(), "egress": egress_info()}
+
+
+@app.post("/api/unified-reporting/connector/fetch")
+async def unified_reporting_connector_fetch(
+    request: ConnectorFetchRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Fetch records from a business API (HTTPS, public hosts only) so they can be used as a source.
+    ZERO STORAGE: credentials and records are not stored; only the host name is logged."""
+    config = request.model_dump()
+    host = safe_summary(config)
+    if not allow_call(str(current_user.get("email") or "?")):
+        raise HTTPException(status_code=429, detail="Too many API pulls in a short time. Wait a few minutes and try again.")
+    if config.get("auth") is not None and not isinstance(config.get("auth"), dict):
+        raise HTTPException(status_code=400, detail="Authentication settings are not valid.")
+    try:
+        result = await fetch_records(config)
+    except ConnectorError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Connector fetch error for host {host}: {type(e).__name__}")
+        raise HTTPException(status_code=502, detail="The API could not be read. Check the address and try again.")
+    try:
+        db.add(UserActivity(user_email=current_user["email"], activity_type="unified_connector_fetch"))
+        db.commit()
+    except Exception:
+        db.rollback()
+    logger.info(f"Connector fetch: host={host} rows={result['row_count']} pages={result['pages']}")
+    return result
 
 
 @app.post("/api/migration/suggest-mapping")

@@ -3,13 +3,17 @@ import { ArrowUp, Database, LayoutDashboard, MessageSquareText, Server, Sparkles
 import { Button } from '@/components/ui/button';
 import { backendApi } from '@/api/backendClient';
 import AnswerCard from '@/components/unifiedReporting/AnswerCard';
+import ReportCard from '@/components/unifiedReporting/ReportCard';
 import DashboardView from '@/components/unifiedReporting/DashboardView';
 import SourcesView, { UploadZone } from '@/components/unifiedReporting/SourcesView';
 import DatabaseSourceDialog from '@/components/unifiedReporting/DatabaseSourceDialog';
 import {
-  buildCatalog, columnsOf, compute, fallbackFollowups, fallbackInsight, heuristic, sanitize, suggestQuestions,
+  buildCatalog, columnsOf, defaultReport, fallbackFollowups, fallbackInsight, heuristic, sanitize, suggestQuestions,
 } from '@/lib/unifiedReporting/engine';
-import { buildModel, parseFile, refreshSource, toKey } from '@/lib/unifiedReporting/model';
+import { buildModel, isLake, parseFile, refreshSource, rowCountOf, toKey } from '@/lib/unifiedReporting/model';
+import useLakehouse, { namedRows } from '@/components/unifiedReporting/useLakehouse';
+import { downloadBlob, downloadWorkbook, slug, toCSV } from '@/lib/unifiedReporting/export';
+import { computeAsync } from '@/lib/unifiedReporting/remote';
 import { buildSampleSources, sampleSuggestions } from '@/lib/unifiedReporting/sampleData';
 import * as store from '@/lib/unifiedReporting/storage';
 
@@ -21,10 +25,14 @@ export default function UnifiedReporting() {
   const [relationships, setRelationships] = useState([]);
   const [thread, setThread] = useState([]);
   const [board, setBoard] = useState([]);
+  const [boardFilters, setBoardFilters] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [view, setView] = useState('ask');
   const [draft, setDraft] = useState('');
+  const [mode, setMode] = useState('ask'); // 'ask' a question, or 'report': build a whole report from one prompt
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(null); // { text, pct } while files are read or uploaded
+  const [sourcesReady, setSourcesReady] = useState(false); // true once stored sources (if any) have been loaded
   const [toastMsg, setToastMsg] = useState('');
   const [dbDialog, setDbDialog] = useState(null); // null | { refreshOf?: source }
   const inputRef = useRef(null);
@@ -44,8 +52,9 @@ export default function UnifiedReporting() {
         setRelationships(data.relationships || []);
       }
       if (ui) {
-        setThread((ui.thread || []).filter((x) => x && x.spec).map((x) => ({ ...x, status: 'done' })));
+        setThread((ui.thread || []).filter((x) => x && (x.spec || x.report)).map((x) => ({ ...x, status: 'done' })));
         setBoard(ui.board || []);
+        setBoardFilters(ui.boardFilters || []);
       }
       if (!data?.sources?.length) setView('data');
       setLoaded(true);
@@ -54,9 +63,9 @@ export default function UnifiedReporting() {
   useEffect(() => { if (loaded) store.save('data', { sources, relationships }); }, [loaded, sources, relationships]);
   useEffect(() => {
     if (!loaded) return;
-    const t = thread.filter((x) => x.status === 'done').slice(-30).map(({ id, q, spec, insight, used }) => ({ id, q, spec, insight, used }));
-    store.save('ui', { thread: t, board });
-  }, [loaded, thread, board]);
+    const t = thread.filter((x) => x.status === 'done').slice(-30).map(({ id, q, spec, insight, used, kind, report }) => ({ id, q, spec, insight, used, kind, report }));
+    store.save('ui', { thread: t, board, boardFilters });
+  }, [loaded, thread, board, boardFilters]);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   const toast = useCallback((msg) => {
@@ -65,13 +74,104 @@ export default function UnifiedReporting() {
     toastTimer.current = setTimeout(() => setToastMsg(''), 3800);
   }, []);
 
+  /* ---------- Meldra lakehouse (Iceberg tables on the server) ---------- */
+  const lakehouse = useLakehouse({ sources, setSources, toast });
+  const { lake, active: toLake } = lakehouse;
+  useEffect(() => {
+    if (!loaded || !lake.checked) return;
+    if (!lake.enabled) {
+      setSourcesReady(true);
+      return;
+    }
+    lakehouse.reconcile()
+      .then((n) => { if (n) setView((v) => (v === 'data' ? 'ask' : v)); })
+      .catch((e) => toast(e.message))
+      .finally(() => setSourcesReady(true));
+  }, [loaded, lake.checked, lake.enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Answers and dashboard tiles whose data was removed are cleared, instead of piling up as
+  // "this answer used data that has since been removed".
+  useEffect(() => {
+    if (!sourcesReady) return;
+    const alive = (sp) => Boolean(sp) && sp.series.every((x) => m.views[x.view]);
+    setThread((t) => {
+      const next = t.flatMap((x) => {
+        if (x.status !== 'done') return [x];
+        if (x.kind === 'report') {
+          const specs = x.report.specs.filter(alive);
+          if (!specs.length) return [];
+          return specs.length === x.report.specs.length ? [x] : [{ ...x, report: { ...x.report, specs } }];
+        }
+        return alive(x.spec) ? [x] : [];
+      });
+      return next.length === t.length && next.every((x, i) => x === t[i]) ? t : next;
+    });
+    setBoard((b) => (b.every((x) => alive(x.spec)) ? b : b.filter((x) => alive(x.spec))));
+  }, [sourcesReady, m]);
+  // Links whose source is gone (deleted here or on another device) are dropped.
+  useEffect(() => {
+    if (!loaded) return;
+    const ids = new Set(sources.map((x) => x.id));
+    setRelationships((rs) => (rs.every((r) => ids.has(r.from.source) && ids.has(r.to.source)) ? rs : rs.filter((r) => ids.has(r.from.source) && ids.has(r.to.source))));
+  }, [loaded, sources]);
+
+  /** Add sources: straight into the lakehouse when that is switched on, else kept in this browser. */
+  const addSources = async (list) => {
+    if (!toLake) {
+      appendSources(list);
+      return list;
+    }
+    setBusy(true);
+    try {
+      const stored = await lakehouse.moveMany(list);
+      appendSources(stored);
+      return stored;
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const moveToLake = async (ids) => {
+    const list = sources.filter((x) => ids.includes(x.id) && !isLake(x));
+    if (!list.length) return;
+    setBusy(true);
+    try {
+      for (const src of list) {
+        const stored = await lakehouse.moveToLake(src);
+        setSources((ss) => ss.map((x) => (x.id === src.id ? stored : x)));
+      }
+      toast(`Stored ${list.length === 1 ? list[0].name : `${list.length} sources`} in the Meldra lakehouse.`);
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   /* ---------- data sources ---------- */
   const addFiles = async (files) => {
     if (!files.length) return;
     setBusy(true);
+    if (toLake) {
+      const { added, errors } = await lakehouse.uploadFiles(files, (p) => setProgress({
+        text: p.phase === 'upload'
+          ? `Uploading ${p.file}${p.count > 1 ? ` (${p.index} of ${p.count})` : ''}… ${p.pct}%`
+          : `Storing ${p.file} in the Meldra lakehouse: checking types and building the table…`,
+        pct: p.phase === 'upload' ? p.pct : null,
+      }));
+      setProgress(null);
+      setBusy(false);
+      if (added.length) {
+        appendSources(added);
+        toast(`Stored ${added.map((x) => x.name).join(', ')} in the Meldra lakehouse (${added.reduce((a, x) => a + x.rowCount, 0).toLocaleString()} rows).`);
+      }
+      if (errors.length) toast(errors.join(' '));
+      return;
+    }
     const added = [];
     const errors = [];
-    for (const f of files) {
+    for (const [i, f] of files.entries()) {
+      setProgress({ text: `Reading ${f.name}${files.length > 1 ? ` (${i + 1} of ${files.length})` : ''}…`, pct: Math.round((i / files.length) * 100) });
       if (f.size > MAX_FILE_BYTES) {
         errors.push(`${f.name} is larger than 50 MB.`);
         continue;
@@ -82,6 +182,7 @@ export default function UnifiedReporting() {
         errors.push(e.message || `${f.name} could not be read.`);
       }
     }
+    setProgress(null);
     setBusy(false);
     if (added.length) {
       appendSources(added);
@@ -100,31 +201,104 @@ export default function UnifiedReporting() {
     })];
   });
 
-  const addDatabaseSources = (added, links) => {
-    appendSources(added);
+  const addDatabaseSources = async (added, links) => {
+    try {
+      await addSources(added);
+    } catch (e) {
+      toast(e.message);
+      return;
+    }
     if (links.length) setRelationships((rs) => [...rs, ...links]);
     const n = links.length ? ` Linked ${links.length} foreign key${links.length === 1 ? '' : 's'}.` : '';
     toast(`Added ${added.map((x) => x.name).join(', ')} from the database.${n}`);
     setView('data');
   };
 
-  const refreshFromDatabase = (id, columns, rows, truncated) => {
-    const name = sources.find((x) => x.id === id)?.name || 'the source';
+  const refreshFromDatabase = async (id, columns, rows, truncated) => {
+    const src = sources.find((x) => x.id === id);
+    const name = src?.name || 'the source';
+    if (isLake(src)) {
+      try {
+        await lakehouse.replaceRows(src, columns, rows, 'database', src.origin);
+        toast(`Refreshed ${name} in the lakehouse: ${rows.length.toLocaleString()} rows.`);
+      } catch (e) {
+        toast(e.message);
+      }
+      return;
+    }
     setSources((ss) => ss.map((x) => (x.id === id ? { ...refreshSource(x, columns, rows), truncated } : x)));
     toast(`Refreshed ${name}: ${rows.length.toLocaleString()} rows.`);
   };
 
-  const loadSample = () => {
-    const { sources: ss, relationships: rs } = buildSampleSources();
-    setSources((cur) => [...cur.filter((x) => x.kind !== 'sample'), ...ss]);
-    setRelationships((cur) => [...cur, ...rs]);
-    setView('ask');
-    toast('Loaded a sample company with six systems.');
+  const addSource = async (src, msg) => {
+    try {
+      await addSources([src]);
+      toast(`Added ${src.name}: ${msg}${toLake ? ', stored in the Meldra lakehouse' : ''}. Check the suggested links on the right.`);
+    } catch (e) {
+      toast(e.message);
+    }
   };
 
-  const updateSource = (id, patch) => setSources((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+  // An API pull comes back as a new source; refresh it in place, keeping the user's column choices.
+  const refreshApiSource = async (id, fresh, msg) => {
+    const target = sources.find((x) => x.id === id);
+    if (isLake(target)) {
+      try {
+        await lakehouse.replaceRows(target, fresh.columns.map((c) => c.name), namedRows(fresh), 'api', fresh.origin);
+        toast(`Refreshed in the lakehouse: ${msg}.`);
+      } catch (e) {
+        toast(e.message);
+      }
+      return;
+    }
+    const byKey = Object.fromEntries(fresh.columns.map((c) => [c.key, c.name]));
+    const rows = fresh.rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [byKey[k] || k, v])));
+    setSources((ss) => ss.map((x) => (x.id === id ? { ...refreshSource(x, fresh.columns.map((c) => c.name), rows), truncated: fresh.truncated, origin: fresh.origin } : x)));
+    toast(`Refreshed: ${msg}.`);
+  };
 
-  const removeSource = (id) => {
+  const loadSample = async () => {
+    const { sources: ss, relationships: rs } = buildSampleSources();
+    let list = ss;
+    if (toLake) {
+      setBusy(true);
+      try {
+        list = await lakehouse.moveMany(ss);
+      } catch (e) {
+        toast(e.message);
+        return;
+      } finally {
+        setBusy(false);
+      }
+    }
+    setSources((cur) => [...cur.filter((x) => x.kind !== 'sample' && x.storedKind !== 'sample'), ...list]);
+    setRelationships((cur) => [...cur, ...rs]);
+    setView('ask');
+    toast(`Loaded a sample company with six systems${toLake ? ', stored in the Meldra lakehouse' : ''}.`);
+  };
+
+  const saveTimers = useRef({});
+  const updateSource = (id, patch) => {
+    const src = sources.find((x) => x.id === id);
+    setSources((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+    if (!isLake(src)) return;
+    // Typing a system name shouldn't save on every key: save the last value after a short pause.
+    const key = `${id}:${Object.keys(patch).sort().join(',')}`;
+    clearTimeout(saveTimers.current[key]);
+    saveTimers.current[key] = setTimeout(() => lakehouse.saveChoices({ ...src, ...patch }, patch), 700);
+  };
+
+  const removeSource = async (id) => {
+    const src = sources.find((x) => x.id === id);
+    if (isLake(src)) {
+      if (!window.confirm(`Delete ${src.name} from the Meldra lakehouse? The stored data is removed permanently.`)) return;
+      try {
+        await lakehouse.remove(src);
+      } catch (e) {
+        toast(e.message);
+        return;
+      }
+    }
     setSources((s) => s.filter((x) => x.id !== id));
     setRelationships((r) => r.filter((x) => x.from.source !== id && x.to.source !== id));
   };
@@ -137,7 +311,9 @@ export default function UnifiedReporting() {
       toast(`${src.name} already has a column named ${newKey}.`);
       return oldKey;
     }
-    updateSource(id, {
+    if (isLake(src)) {
+      updateSource(id, { columns: src.columns.map((c) => (c.key === oldKey ? { ...c, key: newKey } : c)) });
+    } else updateSource(id, {
       columns: src.columns.map((c) => (c.key === oldKey ? { ...c, key: newKey } : c)),
       rows: src.rows.map((r) => {
         const o = { ...r, [newKey]: r[oldKey] };
@@ -153,12 +329,22 @@ export default function UnifiedReporting() {
     return newKey;
   };
 
-  const clearAll = () => {
+  const clearAll = async () => {
+    if (sources.some(isLake)) {
+      if (!window.confirm('Remove all data, including everything stored in the Meldra lakehouse? This cannot be undone.')) return;
+      try {
+        await lakehouse.removeAll();
+      } catch (e) {
+        toast(e.message);
+        return;
+      }
+    }
     setSources([]);
     setRelationships([]);
     setThread([]);
     setBoard([]);
-    toast('All data removed from this browser.');
+    setBoardFilters([]);
+    toast('All data removed.');
   };
 
   /* ---------- asking ---------- */
@@ -168,7 +354,7 @@ export default function UnifiedReporting() {
     const model = mRef.current;
     let res;
     try {
-      res = compute(spec, model);
+      res = await computeAsync(spec, model);
     } catch {
       return;
     }
@@ -177,7 +363,7 @@ export default function UnifiedReporting() {
       patchItem(id, { insight: fallback });
       return;
     }
-    const cols = columnsOf(res);
+    const cols = columnsOf(res).slice(0, 9); // the answer writer takes at most 10 columns
     const rows = res.labels.slice(0, 25).map((l, i) => [l, ...cols.map((c) => (c.data[i] === null ? null : Math.round(c.data[i] * 100) / 100))]);
     try {
       const out = await backendApi.unifiedReporting.insight({
@@ -248,6 +434,84 @@ export default function UnifiedReporting() {
     await writeInsight(id, it.q, sp);
   };
 
+  /** Change filters or analysis options on an answer, then re-write its summary. */
+  const refine = async (id, patch) => {
+    const it = thread.find((x) => x.id === id);
+    if (!it?.spec) return;
+    let sp;
+    try {
+      sp = sanitize({ ...it.spec, ...patch }, m);
+    } catch {
+      return;
+    }
+    sp.followups = it.spec.followups;
+    patchItem(id, { spec: sp, insight: '' });
+    await writeInsight(id, it.q, sp);
+  };
+
+  /** Build a whole report from one prompt: the AI designs the charts from column names; rules take over without AI. */
+  const buildReport = async (raw) => {
+    const q = String(raw || '').trim();
+    if (!q) return;
+    const model = mRef.current;
+    setView('ask');
+    const id = uid();
+    if (model.empty) {
+      setThread((t) => [...t, { id, q, kind: 'report', status: 'error', err: 'Add some data first: upload an export from any system, or load the sample company.' }]);
+      return;
+    }
+    setThread((t) => [...t, { id, q, kind: 'report', status: 'thinking', stage: `Designing a report across ${Object.keys(model.views).length} sources…` }]);
+    scrollToItem(id);
+    let report = null;
+    let used = 'ai';
+    try {
+      const out = await backendApi.unifiedReporting.buildReport({ request: q, catalog: buildCatalog(model), tiles: 6 });
+      const r = out?.report || {};
+      if (r.cannot) {
+        patchItem(id, { status: 'cannot', err: String(r.cannot) });
+        return;
+      }
+      const specs = (Array.isArray(r.tiles) ? r.tiles : []).map((t) => {
+        try {
+          const sp = sanitize(t, model);
+          return sp.cannot || sp.clarify ? null : sp;
+        } catch {
+          return null;
+        }
+      }).filter(Boolean);
+      if (specs.length) report = { title: String(r.title || q).slice(0, 120), summary: String(r.summary || '').slice(0, 400), specs };
+    } catch {
+      report = null;
+    }
+    if (!report) {
+      used = 'rules';
+      const specs = defaultReport(q, model);
+      if (!specs.length) {
+        patchItem(id, { status: 'error', err: 'No report could be built from this data. Try naming the numbers and breakdowns you want.' });
+        return;
+      }
+      report = { title: q.replace(/^./, (c) => c.toUpperCase()), summary: '', specs };
+    }
+    patchItem(id, { status: 'done', report, used });
+    scrollToItem(id);
+  };
+
+  const pinAll = (id) => {
+    const it = thread.find((x) => x.id === id);
+    if (!it?.report) return;
+    setBoard((b) => [...b, ...it.report.specs.map((sp, i) => ({ id: `${id}_${i}`, spec: JSON.parse(JSON.stringify(sp)) })).filter((x) => !b.some((y) => y.id === x.id))]);
+    toast(`Added ${it.report.specs.length} charts to your dashboard.`);
+  };
+
+  const reportExcel = async (id) => {
+    const it = thread.find((x) => x.id === id);
+    try {
+      await downloadWorkbook(it.report.specs.map((spec) => ({ spec })), m, `${slug(it.report.title)}.xlsx`, [], computeAsync);
+    } catch {
+      toast('The Excel file could not be created.');
+    }
+  };
+
   const pin = (id) => {
     const it = thread.find((x) => x.id === id);
     if (!it || board.some((b) => b.id === id)) return;
@@ -255,31 +519,39 @@ export default function UnifiedReporting() {
     toast('Added to your dashboard.');
   };
 
-  const download = (id) => {
+  const download = async (id) => {
     const it = thread.find((x) => x.id === id);
-    const res = compute(it.spec, m);
-    const cols = columnsOf(res);
-    const cell = (v) => {
-      const s = String(v ?? '');
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const csv = [
-      [it.spec.groupBy || 'total', ...cols.map((c) => c.label)].map(cell).join(','),
-      ...res.labels.map((l, i) => [l, ...cols.map((c) => (c.data[i] === null ? '' : Math.round(c.data[i] * 100) / 100))].map(cell).join(',')),
-    ].join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${it.spec.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'report'}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      downloadBlob(new Blob([toCSV(it.spec, await computeAsync(it.spec, m))], { type: 'text/csv' }), `${slug(it.spec.title)}.csv`);
+    } catch {
+      toast('The CSV file could not be created.');
+    }
+  };
+
+  const downloadExcel = async (id) => {
+    const it = thread.find((x) => x.id === id);
+    try {
+      await downloadWorkbook([{ spec: it.spec }], m, `${slug(it.spec.title)}.xlsx`, [], computeAsync);
+    } catch {
+      toast('The Excel file could not be created.');
+    }
+  };
+
+  const exportBoard = async () => {
+    try {
+      const n = await downloadWorkbook(board, m, `meldra-dashboard-${new Date().toISOString().slice(0, 10)}.xlsx`, boardFilters, computeAsync);
+      toast(`Exported ${n} tile${n === 1 ? '' : 's'} to Excel.`);
+    } catch {
+      toast('Nothing on the dashboard could be exported.');
+    }
   };
 
   const submit = (e) => {
     e.preventDefault();
     const v = draft;
     setDraft('');
-    ask(v);
+    if (mode === 'report') buildReport(v);
+    else ask(v);
   };
 
   useEffect(() => {
@@ -290,7 +562,7 @@ export default function UnifiedReporting() {
   }, [draft]);
 
   const suggestions = useMemo(() => (m.empty ? [] : [...sampleSuggestions(m), ...suggestQuestions(m)].slice(0, 6)), [m]);
-  const totalRows = sources.reduce((a, s) => a + s.rows.length, 0);
+  const totalRows = sources.reduce((a, s) => a + rowCountOf(s), 0);
 
   const TABS = [
     ['ask', 'Ask', MessageSquareText, null],
@@ -333,9 +605,17 @@ export default function UnifiedReporting() {
             m={m}
             busy={busy}
             onFiles={addFiles}
+            progress={progress}
             onConnectDatabase={() => setDbDialog({})}
             onRefreshSource={(src) => setDbDialog({ refreshOf: src })}
             onLoadSample={loadSample}
+            onAddSource={addSource}
+            lake={lake}
+            storeInLake={lakehouse.storeInLake}
+            onStoreInLake={lakehouse.setStoreInLake}
+            onMoveToLake={moveToLake}
+            lakeLinks={lakehouse.lakeLinks}
+            onRefreshApiSource={refreshApiSource}
             onUpdateSource={updateSource}
             onRemoveSource={removeSource}
             onRenameColumn={renameColumn}
@@ -349,6 +629,9 @@ export default function UnifiedReporting() {
           <DashboardView
             board={board}
             m={m}
+            filters={boardFilters}
+            onFilters={setBoardFilters}
+            onExport={exportBoard}
             onRemove={(id) => setBoard((b) => b.filter((x) => x.id !== id))}
             onChart={(id, chart) => setBoard((b) => b.map((x) => (x.id === id ? { ...x, spec: { ...x.spec, chart } } : x)))}
             onGoAsk={() => setView('ask')}
@@ -361,7 +644,7 @@ export default function UnifiedReporting() {
             <p className="mx-auto mt-2 max-w-xl text-center text-slate-500">
               Upload exports from HR, finance, sales or procurement. Meldra finds the columns they share, links them, and answers questions with a chart and the sources behind every number.
             </p>
-            <div className="mt-8"><UploadZone onFiles={addFiles} busy={busy} /></div>
+            <div className="mt-8"><UploadZone onFiles={addFiles} busy={busy} progress={progress} lake={lake} storeInLake={lakehouse.storeInLake} onStoreInLake={lakehouse.setStoreInLake} /></div>
             <div className="mt-4 text-center">
               <Button variant="outline" onClick={() => setDbDialog({})}><Server className="mr-2 h-4 w-4" />Connect a database</Button>
               <Button variant="outline" className="ml-2" onClick={loadSample}><Sparkles className="mr-2 h-4 w-4" />Try it with a sample company</Button>
@@ -384,7 +667,7 @@ export default function UnifiedReporting() {
                         <span className="block truncate font-medium">{s.system}</span>
                         <span className="block truncate text-xs text-slate-500">{s.name}</span>
                       </span>
-                      <span className="flex-none text-xs tabular-nums text-slate-500">{s.rows.length.toLocaleString()}</span>
+                      <span className="flex-none text-xs tabular-nums text-slate-500">{rowCountOf(s).toLocaleString()}</span>
                     </li>
                   ))}
                 </ul>
@@ -412,6 +695,15 @@ export default function UnifiedReporting() {
             </aside>
 
             <section className="flex min-h-[60vh] min-w-0 flex-col">
+              {sources.length === 1 && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm dark:border-amber-900 dark:bg-amber-950">
+                  <span>
+                    <strong>You have one source.</strong> Unified reporting combines systems: add another export (for example expenses, budgets or CRM
+                    opportunities) and Meldra links them so you can ask questions across both.
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => setView('data')}><Database className="mr-1.5 h-4 w-4" />Add another source</Button>
+                </div>
+              )}
               {!thread.length && (
                 <div className="pb-6">
                   <h2 className="m-0 text-xl font-semibold tracking-tight">What would you like to know?</h2>
@@ -428,7 +720,16 @@ export default function UnifiedReporting() {
               )}
 
               <div className="flex-1">
-                {thread.map((it) => (
+                {thread.map((it) => (it.kind === 'report' ? (
+                  <ReportCard
+                    key={it.id}
+                    item={it}
+                    m={m}
+                    onChart={(id, i, chart) => setThread((t) => t.map((x) => (x.id === id ? { ...x, report: { ...x.report, specs: x.report.specs.map((sp, k) => (k === i ? { ...sp, chart } : sp)) } } : x)))}
+                    onPinAll={pinAll}
+                    onExcel={reportExcel}
+                  />
+                ) : (
                   <AnswerCard
                     key={it.id}
                     item={it}
@@ -438,14 +739,30 @@ export default function UnifiedReporting() {
                     onPin={pin}
                     onChart={(id, chart) => patchItem(id, { spec: { ...thread.find((x) => x.id === id).spec, chart } })}
                     onDownload={download}
+                    onDownloadExcel={downloadExcel}
                     onRunSpec={runSpec}
+                    onRefine={refine}
                   />
-                ))}
+                )))}
               </div>
 
               <div className="sticky bottom-0 z-10 -mx-1 bg-gradient-to-t from-slate-50 via-slate-50 to-transparent px-1 pb-3 pt-4 dark:from-slate-950 dark:via-slate-950">
+                <div className="mb-2 flex gap-1" role="tablist" aria-label="What to do with your prompt">
+                  {[['ask', 'Ask a question', MessageSquareText], ['report', 'Build a report', Sparkles]].map(([k, label, Icon]) => (
+                    <button
+                      key={k}
+                      type="button"
+                      role="tab"
+                      aria-selected={mode === k}
+                      onClick={() => setMode(k)}
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${mode === k ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-blue-400 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700'}`}
+                    >
+                      <Icon className="h-3.5 w-3.5" />{label}
+                    </button>
+                  ))}
+                </div>
                 <form onSubmit={submit} className="flex items-end gap-2 rounded-2xl border border-slate-300 bg-white py-2 pl-4 pr-2 shadow-lg shadow-slate-900/5 focus-within:border-blue-500 dark:border-slate-700 dark:bg-slate-900">
-                  <label htmlFor="ur-q" className="sr-only">Ask a question about your data</label>
+                  <label htmlFor="ur-q" className="sr-only">{mode === 'report' ? 'Describe the report you need' : 'Ask a question about your data'}</label>
                   <textarea
                     id="ur-q"
                     ref={inputRef}
@@ -453,10 +770,12 @@ export default function UnifiedReporting() {
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) submit(e); }}
-                    placeholder={`Ask across ${sources.map((s) => s.system).slice(0, 3).join(', ')}${sources.length > 3 ? '…' : ''}`}
+                    placeholder={mode === 'report'
+                      ? 'Describe the report, e.g. "Board pack on workforce cost and revenue by department, last 12 months"'
+                      : `Ask across ${sources.map((s) => s.system).slice(0, 3).join(', ')}${sources.length > 3 ? '…' : ''}`}
                     className="max-h-40 min-h-6 flex-1 resize-none border-0 bg-transparent py-2 text-base leading-snug outline-none"
                   />
-                  <button type="submit" disabled={!draft.trim()} aria-label="Ask" className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-blue-600 text-white disabled:opacity-40">
+                  <button type="submit" disabled={!draft.trim()} aria-label={mode === 'report' ? 'Build report' : 'Ask'} className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-blue-600 text-white disabled:opacity-40">
                     <ArrowUp className="h-[18px] w-[18px]" />
                   </button>
                 </form>

@@ -49,3 +49,20 @@ def test_insight_prompt_uses_data_currency():
     prompt = build_insight_prompt("Revenue by region", ["region", "Revenue"], [["North", 10]], None, "$")
     assert "$1.2M" in prompt
     assert "GBP" not in prompt
+
+
+def test_plan_prompt_describes_analysis_options():
+    prompt = build_plan_prompt("Expenses vs last year", None, CATALOG)
+    for token in ('"splitBy"', '"compare"', '"prior_year"', '"window"', '"share"', '"heatmap"', '"waterfall"'):
+        assert token in prompt
+    assert '{"dim": "month", "op": "gte", "value": "2026-01"}' in prompt
+
+
+def test_report_prompt_uses_catalog_schema_and_tile_cap():
+    from app.services.unified_reporting_service import build_report_prompt
+    prompt = build_report_prompt("Workforce cost report for the board", CATALOG, tiles=20)
+    assert "- employees (from SuccessFactors)" in prompt and "Money is in GBP." in prompt
+    assert '"tiles": [up to 8 chart specs' in prompt  # capped
+    for token in ('"treemap"', '"funnel"', '"radar"', '"combo"', '"area"', '"cannot"', '"summary"'):
+        assert token in prompt
+    assert "Workforce cost report for the board" in prompt

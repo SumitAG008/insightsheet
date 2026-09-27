@@ -8,6 +8,8 @@
  * APP_LOCAL_STORAGE_KEYS so they are cleared here.
  */
 
+import { clearAll as clearUnifiedReporting } from '@/lib/unifiedReporting/storage';
+
 const APP_LOCAL_STORAGE_KEYS = [
   'auth_token',
   'user',
@@ -15,10 +17,13 @@ const APP_LOCAL_STORAGE_KEYS = [
 ];
 
 /**
- * Clears all sessionStorage and known app keys in localStorage.
+ * Clears all sessionStorage, known app keys in localStorage, and the
+ * uploaded reporting data kept in IndexedDB (so the next person to sign in
+ * on this browser cannot see it).
  * Does not clear in-memory token; the API client's setToken(null) does that.
  */
 export function clearAllAppSessionData() {
   sessionStorage.clear();
   APP_LOCAL_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
+  clearUnifiedReporting();
 }

@@ -17,7 +17,7 @@ export const CHARTS = ['bar', 'line', 'area', 'combo', 'pie', 'treemap', 'funnel
 export const COMPARE = { prior_year: 12, prior_period: 1 };
 const MAX_SERIES = 4;
 const MAX_DERIVED = 2;
-const MAX_SPLIT = 8;
+export const MAX_SPLIT = 8;
 const MAX_FILTERS = 8;
 
 /* ---------------- catalog for the AI planner ---------------- */
@@ -83,7 +83,7 @@ export function buildCatalog(m) {
 
 /* ---------------- spec validation ---------------- */
 
-const unitOf = (m, view, measure, agg) => (agg === 'count' || !measure ? 'count' : m.views[view]?.units[measure] || 'number');
+export const unitOf = (m, view, measure, agg) => (agg === 'count' || !measure ? 'count' : m.views[view]?.units[measure] || 'number');
 
 function cleanFilters(list, allowed) {
   return (Array.isArray(list) ? list : [])
@@ -92,7 +92,7 @@ function cleanFilters(list, allowed) {
     .slice(0, MAX_FILTERS);
 }
 
-const ADDITIVE = ['sum', 'count'];
+export const ADDITIVE = ['sum', 'count'];
 
 /**
  * Validate and normalise a spec from the AI, the rules, or the user's edit
@@ -101,6 +101,7 @@ const ADDITIVE = ['sum', 'count'];
 export function sanitize(sp, m) {
   if (!sp || typeof sp !== 'object') throw new Error('empty spec');
   if (sp.cannot) return { cannot: String(sp.cannot).slice(0, 300) };
+  if (typeof sp.sql === 'string' && sp.sql.trim()) return sanitizeSql(sp, m);
   if (sp.clarify) {
     const options = (Array.isArray(sp.options) ? sp.options : []).map(String).filter(Boolean).slice(0, 4);
     if (options.length >= 2) return { clarify: String(sp.clarify).slice(0, 200), options };
@@ -188,8 +189,45 @@ export function sanitize(sp, m) {
   };
 }
 
+/** Source tables a SQL query names (a source's table is called like its key in the model). */
+export function tablesIn(sql, m) {
+  const text = String(sql || '').toLowerCase();
+  return Object.keys(m.views).filter((k) => new RegExp(`(^|[^a-z0-9_])"?${k}"?($|[^a-z0-9_])`).test(text));
+}
+
+/**
+ * A chart defined by the customer's own SQL (edited in the Query panel). The
+ * first column labels the rows; number columns become series. meta keeps
+ * units and column roles from the generated SQL it was edited from.
+ */
+function sanitizeSql(sp, m) {
+  const meta = sp.sqlMeta && typeof sp.sqlMeta === 'object' ? sp.sqlMeta : null;
+  const chart = CHARTS.includes(sp.chart) && !['scatter', 'waterfall', 'treemap', 'funnel'].includes(sp.chart) ? sp.chart : 'bar';
+  return {
+    title: String(sp.title || 'Custom query').slice(0, 90),
+    chart: chart === 'heatmap' && !meta?.split ? 'bar' : chart,
+    sql: sp.sql.slice(0, 20000),
+    sqlMeta: meta,
+    tables: tablesIn(sp.sql, m),
+    // The answer this SQL was edited from, to go back to.
+    origin: sp.origin && typeof sp.origin === 'object' && !sp.origin.sql ? sp.origin : null,
+    groupBy: meta ? meta.label : 'label',
+    splitBy: meta?.split || null,
+    series: [],
+    derived: [],
+    filters: [],
+    compare: null,
+    window: null,
+    share: false,
+    sort: 'desc',
+    limit: 50,
+    followups: [],
+  };
+}
+
 /** Chart types that make sense for a spec, for the chart switcher. */
 export function chartOptions(sp) {
+  if (sp.sql) return sp.splitBy ? ['bar', 'line', 'area', 'table', 'heatmap'] : ['bar', 'line', 'area', 'combo', 'pie', 'radar', 'table', 'number'];
   if (!sp.groupBy) return ['number'];
   const monthly = sp.groupBy === 'month';
   const opts = ['bar', 'line', 'area', 'table'];
@@ -217,7 +255,7 @@ function pass(v, f) {
   return f.op === 'gte' ? cmp >= 0 : cmp <= 0;
 }
 
-function derivedUnit(d, series) {
+export function derivedUnit(d, series) {
   const numUnits = d.numerator.map((i) => series[i].unit);
   const numUnit = numUnits.every((u) => u === numUnits[0]) ? numUnits[0] : 'number';
   if (d.denominator === null) return numUnit;
@@ -275,7 +313,7 @@ export const requestKey = (req) => JSON.stringify(req);
  * months outside a date filter, so month filters then apply to the result's
  * labels instead of the rows.
  */
-function seriesFilters(sp, m) {
+export function seriesFilters(sp, m) {
   const global = sp.filters || [];
   const deferMonths = Boolean(sp.compare || sp.window);
   const monthFilters = [];
@@ -323,7 +361,15 @@ export function lakeRequests(sp, m) {
  * Browser sources are aggregated from rows here; lakehouse sources arrive as the
  * same accumulators from the server, so everything after that is shared.
  */
+/** Results of custom SQL per model (runs are async; remote.js fills this before compute() reads it). */
+export const sqlResults = new WeakMap();
+
 export function compute(sp, m) {
+  if (sp.sql) {
+    const hit = sqlResults.get(m)?.get(sp.sql);
+    if (!hit) throw new PendingError([]);
+    return hit;
+  }
   const { perSeries, monthFilters } = seriesFilters(sp, m);
   const missing = [];
 
@@ -507,61 +553,7 @@ export function chartColumns(res) {
   return [...base, ...prior];
 }
 
-/* ---------------- SQL preview ---------------- */
-
-export function toSQL(sp, m) {
-  const opm = { eq: '=', neq: '<>', gte: '>=', lte: '<=' };
-  const keys = [sp.groupBy, sp.splitBy].filter(Boolean);
-  const one = (s, i) => {
-    const V = m.views[s.view];
-    const filters = [...s.filters, ...(sp.filters || []).filter((f) => V.dims.includes(f.dim))];
-    const agg = s.agg === 'count' ? 'COUNT(*)' : `${s.agg.toUpperCase()}(${s.measure})`;
-    const w = filters.length
-      ? `\n  WHERE ${filters.map((f) => `${f.dim} ${opm[f.op]} '${f.value.replace(/'/g, "''")}'`).join('\n    AND ')}`
-      : '';
-    const lookups = V.borrowed.filter((b) => keys.includes(b.key) || filters.some((f) => f.dim === b.key));
-    const via = [...new Set(lookups.map((b) => b.via))];
-    const joins = via.map((r) => {
-      const t = Object.values(m.views).find((x) => x.id === r.to.source);
-      return `\n  LEFT JOIN ${t ? t.key : 'lookup'} USING (${r.from.col})   -- lookup in ${t ? t.sys : 'source'}`;
-    }).join('');
-    return `SELECT ${keys.length ? `${keys.join(', ')}, ` : ''}${agg} AS s${i + 1}\n  FROM ${s.view}   -- from ${V.sys}${joins}${w}${keys.length ? `\n  GROUP BY ${keys.join(', ')}` : ''}`;
-  };
-  const derivedCols = (sp.derived || []).map((d, i) => {
-    const num = d.numerator.map((n) => `COALESCE(s${n + 1}, 0)`).join(' + ');
-    const expr = d.denominator === null ? num : `(${num}) / NULLIF(s${d.denominator + 1}, 0)`;
-    return `${expr} AS d${i + 1}`;
-  });
-  const sortCol = derivedCols.length ? 'd1' : 's1';
-  const order = sp.groupBy
-    ? sp.groupBy === 'month'
-      ? '\nORDER BY month'
-      : `\nORDER BY ${sortCol} ${sp.sort === 'asc' ? 'ASC' : 'DESC'}\nLIMIT ${sp.limit}`
-    : '';
-
-  // Period comparisons, rolling windows and shares are window functions over the joined totals.
-  const post = [];
-  const headCol = derivedCols.length ? 'd1' : 's1';
-  if (sp.window) post.push(`SUM(${headCol}) OVER (ORDER BY month ROWS BETWEEN ${sp.window - 1} PRECEDING AND CURRENT ROW) AS rolling_${sp.window}m   -- missing months count as 0`);
-  if (sp.compare) {
-    const lag = COMPARE[sp.compare];
-    post.push(`LAG(${headCol}, ${lag}) OVER (ORDER BY month) AS prior   -- same month ${lag === 12 ? 'last year' : 'previous month'}`);
-    post.push(`(${headCol} - prior) / ABS(NULLIF(prior, 0)) AS change_pct`);
-  }
-  if (sp.share) post.push(`s1 / NULLIF(SUM(s1) OVER (), 0) AS share_of_total`);
-  const wrap = (sql) => (post.length ? `SELECT t.*,\n  ${post.join(',\n  ')}\nFROM (\n${sql.replace(/;$/, '')}\n) t;` : sql);
-  const pivot = sp.splitBy ? `\n-- One column per ${sp.splitBy} (top ${MAX_SPLIT}, the rest as Other).` : '';
-
-  if (sp.series.length === 1 && !derivedCols.length) return wrap(`${one(sp.series[0], 0)}${order};`) + pivot;
-
-  const ctes = sp.series.map((s, i) => `s${i + 1} AS (\n  ${one(s, i).replace(/\n/g, '\n  ')}\n)`).join(',\n');
-  const cols = [...sp.series.map((_, i) => `s${i + 1}`), ...derivedCols];
-  if (!sp.groupBy) {
-    return `-- Each source is aggregated first, then combined.\nWITH ${ctes}\nSELECT ${cols.join(', ')}\nFROM ${sp.series.map((_, i) => `s${i + 1}`).join(' CROSS JOIN ')};`;
-  }
-  const joins = sp.series.slice(1).map((_, i) => `\nFULL JOIN s${i + 2} USING (${sp.groupBy})`).join('');
-  return wrap(`-- Each source is aggregated to ${sp.groupBy} first, then joined.\nWITH ${ctes}\nSELECT ${sp.groupBy}, ${cols.join(', ')}\nFROM s1${joins}${order};`);
-}
+/* SQL for an answer: see sqlQuery.js (specToSql), which is checked to give these same numbers. */
 
 /* ---------------- rules planner (no AI needed) ---------------- */
 

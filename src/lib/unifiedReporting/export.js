@@ -11,7 +11,8 @@ const exact = (v) => (v === null || v === undefined || Number.isNaN(v) ? null : 
 /** Header + rows for one computed answer. */
 export function resultTable(spec, res) {
   const cols = columnsOf(res);
-  const header = [spec.groupBy ? spec.groupBy.replace(/_/g, ' ') : 'total', ...cols.map((c) => (c.unit === 'pct' ? `${c.label} (%)` : c.label))];
+  const first = res.labelName || spec.groupBy;
+  const header = [first ? first.replace(/_/g, ' ') : 'total', ...cols.map((c) => (c.unit === 'pct' ? `${c.label} (%)` : c.label))];
   const rows = res.labels.map((l, i) => [l, ...cols.map((c) => (c.unit === 'pct' ? exact(c.data[i]) : round(c.data[i])))]);
   return { header, rows, units: ['text', ...cols.map((c) => c.unit)] };
 }

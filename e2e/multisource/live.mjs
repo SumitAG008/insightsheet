@@ -75,9 +75,10 @@ const askCsv = async (q) => {
   await page.locator('#ur-q').fill(q);
   await page.locator('#ur-q').press('Enter');
   const card = page.locator('[id^="qa-"]').last();
-  await card.getByRole('button', { name: 'CSV' }).waitFor({ timeout: 120000 });
+  await card.getByRole('button', { name: /^Download/ }).waitFor({ timeout: 120000 });
+  await card.getByRole('button', { name: /^Download/ }).click();
   await card.locator('.recharts-surface, table').first().waitFor({ timeout: 120000 });
-  const [dl] = await Promise.all([page.waitForEvent('download'), card.getByRole('button', { name: 'CSV' }).click()]);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: 'CSV' }).click()]);
   const text = fs.readFileSync(await dl.path(), 'utf8');
   const [header, ...lines] = XLSX.utils.sheet_to_json(XLSX.read(text, { type: 'string', raw: true }).Sheets.Sheet1, { header: 1, raw: true });
   return { card, header, rows: lines.map((r) => [String(r[0]), ...r.slice(1).map(Number)]) };

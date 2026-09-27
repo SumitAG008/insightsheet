@@ -2,12 +2,14 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
 import {
-  Pin, Download, Code2, HelpCircle, BarChart3, LineChart, Table2, PieChart, ScatterChart, Hash, AlertCircle, Grid3x3, ChartColumnStacked,
-  FileSpreadsheet, ChartArea, ChartNoAxesCombined, LayoutGrid, Filter, Radar,
+  Pin, Code2, HelpCircle, BarChart3, LineChart, Table2, PieChart, ScatterChart, Hash, AlertCircle, Grid3x3, ChartColumnStacked,
+  ChartArea, ChartNoAxesCombined, LayoutGrid, Filter, Radar,
 } from 'lucide-react';
 import ReportChart, { Heatmap } from './ReportChart';
 import { AnalyseBar, FilterBar } from './AnalysisControls';
-import { chartOptions, columnsOf, fmt, toSQL } from '@/lib/unifiedReporting/engine';
+import { chartOptions, columnsOf, fmt } from '@/lib/unifiedReporting/engine';
+import QueryPanel from './QueryPanel';
+import DownloadMenu from './DownloadMenu';
 import { useResult } from '@/lib/unifiedReporting/remote';
 
 const OP_WORD = { eq: 'is', neq: 'is not', gte: '≥', lte: '≤' };
@@ -35,14 +37,14 @@ export function KpiRow({ res, currency }) {
 KpiRow.propTypes = { res: PropTypes.object.isRequired, currency: PropTypes.string };
 
 export function ResultTable({ spec, res, currency, compact }) {
-  if (!spec.groupBy) return null;
+  if (!spec.groupBy && !res.labelName) return null;
   const cols = columnsOf(res);
   return (
     <div className={`mt-3 overflow-auto ${compact ? 'max-h-60' : 'max-h-[420px]'}`}>
       <table className="w-full border-collapse text-sm">
         <thead className="sticky top-0 bg-white dark:bg-slate-900">
           <tr className="border-b border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            <th className="px-3 py-2 text-left font-medium capitalize">{spec.groupBy.replace(/_/g, ' ')}</th>
+            <th className="px-3 py-2 text-left font-medium capitalize">{(res.labelName || spec.groupBy).replace(/_/g, ' ')}</th>
             {cols.map((c, k) => (
               <th key={`${k}-${c.label}`} className={`px-3 py-2 text-right font-medium ${c.derived ? 'text-blue-600 dark:text-blue-400' : ''}`}>{c.label}</th>
             ))}
@@ -68,9 +70,9 @@ export function ReportBody({ spec, res, height, currency, compact }) {
   if (!res.labels.length) return <p className="mt-4 text-sm text-slate-500">No rows matched.</p>;
   if (spec.chart === 'number') return <KpiRow res={res} currency={currency} />;
   if (spec.chart === 'table') return <ResultTable spec={spec} res={res} currency={currency} compact={compact} />;
-  if (spec.chart === 'heatmap' && spec.splitBy) return <div className="mt-4"><Heatmap spec={spec} res={res} currency={currency} compact={compact} /></div>;
+  if (spec.chart === 'heatmap' && spec.splitBy) return <div className="mt-4" data-export-chart><Heatmap spec={spec} res={res} currency={currency} compact={compact} /></div>;
   return (
-    <div className="mt-4">
+    <div className="mt-4" data-export-chart>
       <ReportChart spec={spec} res={res} height={height} currency={currency} />
     </div>
   );
@@ -138,7 +140,7 @@ function describe(res, m, sp) {
 
 const USED_LABEL = { ai: 'Planned by Meldra AI from your column names.', rules: 'Read with built-in rules (AI was not needed or not available).', edited: 'Run from your edited definition.', suggested: 'Suggested from your data.' };
 
-export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onDownload, onDownloadExcel, onRunSpec, onRefine }) {
+export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onDownload, onRunSpec, onRefine, onUseSql, onResetSql }) {
   const [open, setOpen] = useState(false);
   const { res, loading, error: resError } = useResult(item.status === 'done' ? item.spec : null, m);
   const [draft, setDraft] = useState(null);
@@ -218,29 +220,33 @@ export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onD
         <h2 className="m-0 text-lg font-semibold tracking-tight">{sp.title}</h2>
         <ChartSwitcher spec={sp} onChange={(c) => onChart(item.id, c)} />
       </div>
-      <div className="mt-3 space-y-2 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-slate-950">
-        <FilterBar m={m} viewKeys={[...new Set(sp.series.map((s) => s.view))]} filters={sp.filters || []} onChange={(filters) => onRefine(item.id, { filters })} />
-        <AnalyseBar m={m} spec={sp} onChange={(patch) => onRefine(item.id, patch)} />
-      </div>
+      {sp.sql ? (
+        <p className="mt-2 text-xs text-slate-500">From your own SQL. Open <strong>Query</strong> below to change it, or go back to Meldra&apos;s query.</p>
+      ) : (
+        <div className="mt-3 space-y-2 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-slate-950">
+          <FilterBar m={m} viewKeys={[...new Set(sp.series.map((s) => s.view))]} filters={sp.filters || []} onChange={(filters) => onRefine(item.id, { filters })} />
+          <AnalyseBar m={m} spec={sp} onChange={(patch) => onRefine(item.id, patch)} />
+        </div>
+      )}
       <ReportBody spec={sp} res={res} currency={m.currency} />
       {tableAlso && <ResultTable spec={sp} res={res} currency={m.currency} compact />}
       <p className="mt-4 leading-relaxed">{item.insight || 'Writing the answer…'}</p>
 
       <div className="mt-4 flex flex-wrap gap-1.5">
-        {res.series.map((s) => (
-          <span key={s.label} className="whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-            {s.sys} · {s.rows.toLocaleString()} rows
+        {res.series.filter((s, i, all) => all.findIndex((x) => x.sys === s.sys && x.rows === s.rows) === i).map((s) => (
+          <span key={`${s.sys}-${s.label}`} className="whitespace-nowrap rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            {s.sys}{s.rows !== null && s.rows !== undefined ? ` · ${s.rows.toLocaleString()} rows` : ''}
           </span>
         ))}
-        {new Set(res.series.map((s) => s.sys)).size > 1 && <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs text-blue-700 dark:bg-blue-950 dark:text-blue-300">Joined on {sp.groupBy ? sp.groupBy.replace(/_/g, ' ') : 'totals'}</span>}
+        {sp.sql && <span className="rounded-full bg-violet-50 px-2.5 py-0.5 text-xs text-violet-700 dark:bg-violet-950 dark:text-violet-300">Custom SQL</span>}
+        {!sp.sql && new Set(res.series.map((s) => s.sys)).size > 1 && <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs text-blue-700 dark:bg-blue-950 dark:text-blue-300">Joined on {sp.groupBy ? sp.groupBy.replace(/_/g, ' ') : 'totals'}</span>}
         {res.derived.length > 0 && <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs text-blue-700 dark:bg-blue-950 dark:text-blue-300">Ratios calculated after totals</span>}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-1 border-t border-slate-200 pt-2.5 dark:border-slate-800">
         <Button variant="ghost" size="sm" onClick={() => onPin(item.id)} disabled={pinned}><Pin className="mr-1.5 h-3.5 w-3.5" />{pinned ? 'On dashboard' : 'Add to dashboard'}</Button>
-        <Button variant="ghost" size="sm" onClick={() => onDownload(item.id)}><Download className="mr-1.5 h-3.5 w-3.5" />CSV</Button>
-        <Button variant="ghost" size="sm" onClick={() => onDownloadExcel(item.id)}><FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />Excel</Button>
-        <Button variant="ghost" size="sm" onClick={() => setOpen(!open)} aria-expanded={open}><Code2 className="mr-1.5 h-3.5 w-3.5" />{open ? 'Hide calculation' : 'How it’s calculated'}</Button>
+        <DownloadMenu formats={['pdf', 'pptx', 'docx', 'xlsx', 'csv']} onPick={(f) => onDownload(item.id, f)} />
+        <Button variant="ghost" size="sm" onClick={() => setOpen(!open)} aria-expanded={open}><Code2 className="mr-1.5 h-3.5 w-3.5" />{open ? 'Hide query' : 'Query: SQL, columns, joins'}</Button>
       </div>
 
       {sp.followups?.length > 0 && (
@@ -252,23 +258,30 @@ export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onD
       )}
 
       {open && (
-        <div className="mt-3 space-y-2 border-t border-dashed border-slate-200 pt-3 dark:border-slate-700">
-          <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">Where the numbers come from</h4>
-          <ul className="m-0 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">
-            {describe({ ...res, groupBy: sp.groupBy }, m, sp).map((p) => <li key={p}>{p}</li>)}
-          </ul>
-          <p className="m-0 text-xs text-slate-400">{USED_LABEL[item.used] || ''}</p>
-          <h4 className="pt-2 text-xs font-medium uppercase tracking-wider text-slate-400">Equivalent SQL</h4>
-          <pre className="overflow-auto rounded-lg bg-slate-100 p-3 font-mono text-xs leading-relaxed dark:bg-slate-800">{toSQL(sp, m)}</pre>
-          <h4 className="pt-2 text-xs font-medium uppercase tracking-wider text-slate-400">Report definition (edit and run)</h4>
-          <textarea
-            className="min-h-[200px] w-full resize-y rounded-lg border-0 bg-slate-100 p-3 font-mono text-xs leading-relaxed dark:bg-slate-800"
-            spellCheck={false}
-            value={specText}
-            onChange={(e) => setDraft(e.target.value)}
-          />
-          <Button variant="outline" size="sm" onClick={run}>Run edited definition</Button>
-          {specErr && <p className="text-sm text-red-600">{specErr}</p>}
+        <div className="mt-3 space-y-3 border-t border-dashed border-slate-200 pt-3 dark:border-slate-700">
+          {!sp.sql && (
+            <>
+              <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">Where the numbers come from</h4>
+              <ul className="m-0 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">
+                {describe({ ...res, groupBy: sp.groupBy }, m, sp).map((p) => <li key={p}>{p}</li>)}
+              </ul>
+              <p className="m-0 text-xs text-slate-400">{USED_LABEL[item.used] || ''}</p>
+            </>
+          )}
+          <QueryPanel spec={sp} m={m} onUseSql={(sql, meta) => onUseSql(item.id, sql, meta)} onReset={sp.origin ? () => onResetSql(item.id) : undefined} />
+          {!sp.sql && (
+            <details className="text-sm">
+              <summary className="cursor-pointer text-xs font-medium uppercase tracking-wider text-slate-400">Report definition (JSON)</summary>
+              <textarea
+                className="mt-2 min-h-[200px] w-full resize-y rounded-lg border-0 bg-slate-100 p-3 font-mono text-xs leading-relaxed dark:bg-slate-800"
+                spellCheck={false}
+                value={specText}
+                onChange={(e) => setDraft(e.target.value)}
+              />
+              <Button variant="outline" size="sm" onClick={run}>Run edited definition</Button>
+              {specErr && <p className="text-sm text-red-600">{specErr}</p>}
+            </details>
+          )}
         </div>
       )}
     </>,
@@ -283,7 +296,8 @@ AnswerCard.propTypes = {
   onPin: PropTypes.func.isRequired,
   onChart: PropTypes.func.isRequired,
   onDownload: PropTypes.func.isRequired,
-  onDownloadExcel: PropTypes.func.isRequired,
   onRunSpec: PropTypes.func.isRequired,
   onRefine: PropTypes.func.isRequired,
+  onUseSql: PropTypes.func.isRequired,
+  onResetSql: PropTypes.func.isRequired,
 };

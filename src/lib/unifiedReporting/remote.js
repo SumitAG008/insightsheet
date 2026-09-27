@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { backendApi } from '@/api/backendClient';
-import { PendingError, compute, lakeRequests, remoteCache, requestKey } from './engine';
+import { PendingError, compute, lakeRequests, remoteCache, requestKey, sqlResults } from './engine';
 
 const inflight = new Map();
 const MAX_CACHE = 500;
@@ -16,7 +16,28 @@ const MAX_CACHE = 500;
 /** Drop the server-only version field before sending; it only keys the cache. */
 const toServer = ({ version, lookups, ...req }) => ({ ...req, lookups: lookups.map(({ version: _v, ...l }) => l) }); // eslint-disable-line no-unused-vars
 
+/** Run a custom-SQL spec once per data version and keep its result for compute(). */
+const sqlPending = new WeakMap();
+
+async function ensureSql(spec, m) {
+  if (!sqlResults.has(m)) sqlResults.set(m, new Map());
+  if (!sqlPending.has(m)) sqlPending.set(m, new Map());
+  const done = sqlResults.get(m);
+  const pending = sqlPending.get(m);
+  if (done.has(spec.sql)) return;
+  if (!pending.has(spec.sql)) {
+    pending.set(spec.sql, import('./sqlQuery')
+      .then(({ runSql, sqlToResult }) => runSql(spec.sql, m).then((out) => { done.set(spec.sql, sqlToResult(out, spec.sqlMeta, m.currency)); }))
+      .finally(() => pending.delete(spec.sql)));
+  }
+  await pending.get(spec.sql);
+}
+
 export async function ensure(spec, m) {
+  if (spec.sql) {
+    await ensureSql(spec, m);
+    return;
+  }
   const missing = lakeRequests(spec, m).filter((r) => !remoteCache.has(requestKey(r)));
   if (!missing.length) return;
   const keys = missing.map(requestKey);

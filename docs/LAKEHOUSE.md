@@ -46,6 +46,7 @@ LAKEHOUSE_WAREHOUSE=file:///data/lakehouse            # mount a Railway volume a
 - `LAKEHOUSE_NAMESPACE_PREFIX=prod`: separates environments that share one catalog.
 - `LAKEHOUSE_MAX_UPLOAD_MB=1024`: the largest file a user can upload.
 - `LAKEHOUSE_DUCKDB_MEMORY=1GB`: DuckDB's memory cap; larger work spills to a temporary directory.
+- `LAKEHOUSE_SQL_TIMEOUT=30`: seconds a customer's own SQL query may run before it is stopped.
 
 Without `LAKEHOUSE_CATALOG` the lakehouse is off and Unified Reporting keeps data in the
 browser exactly as before. The frontend needs no change; it asks `/api/lakehouse/status`.
@@ -64,6 +65,26 @@ API connector settings (see CONNECTOR_SECURITY.md): `CONNECTOR_EGRESS_PROXY`,
 - **Secrets:** connector credentials are never stored. Only non-secret settings (address, token URL,
   client ID) are kept with the source, for refresh.
 - **Encryption at rest:** provided by the object store (e.g. S3 SSE-KMS). Use TLS to Polaris and the store.
+
+## Customer SQL (the Query panel)
+
+Every chart has a **Query** panel: the tables, columns, lookups and joins it uses, and the SQL that
+gives exactly its numbers. Customers can edit that SQL, run it and use the result in the chart.
+The same SQL runs in both places, because each source is presented as a table named like the source,
+with its own column names, numbers as numbers and `month` from its date column:
+- sources kept in the browser: SQLite in the browser (sql.js); the data never leaves the device;
+- sources in the lakehouse: `POST /api/lakehouse/sql` runs it in DuckDB over the Iceberg tables.
+
+Guard rails for `/api/lakehouse/sql`:
+- one read-only `SELECT` (or `WITH … SELECT`), checked by DuckDB's parser; PRAGMA, COPY, ATTACH and
+  anything that writes are refused;
+- only the signed-in account's tables are loaded, and only the ones the query names;
+- file, network and extension access are switched off and the configuration locked before it runs;
+- the query runs on its own thread, so DuckDB cannot resolve names to in-process Python objects;
+- time limit (`LAKEHOUSE_SQL_TIMEOUT`), 5,000 result rows, and the DuckDB memory cap.
+
+The generated SQL is tested to give the browser engine's numbers on 20 answer shapes, in SQLite
+(`src/lib/unifiedReporting/sqlQuery.test.js`) and in DuckDB over Iceberg (`tests/test_lakehouse_sql.py`).
 
 ## Performance (measured)
 

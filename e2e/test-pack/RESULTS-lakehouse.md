@@ -1,6 +1,6 @@
 # Unified Reporting test pack: results (lakehouse mode)
 
-Run 2026-09-27 19:33 UTC against http://localhost:5173, data stored in the Meldra lakehouse (Apache Polaris (Iceberg REST)).
+Run 2026-09-27 20:49 UTC against http://localhost:5173, data stored in the Meldra lakehouse (Iceberg SQL catalog).
 **17 of 17 checks passed.** Files: employees.csv, expenses.csv, budget.xlsx, opportunities.xlsx (public/unified-reporting-test-pack).
 
 | # | Check | Result | Detail |

@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { sanitize, compute, heuristic, toSQL, fmt, suggestQuestions, buildCatalog, chartOptions as chartOptionsOf, distinctValues as distinctValuesOf } from './engine';
+import { sanitize, compute, heuristic, fmt, suggestQuestions, buildCatalog, chartOptions as chartOptionsOf, distinctValues as distinctValuesOf } from './engine';
 import { buildModel, profileColumns, sourceFromRows, suggestRelationships, toMonth, parseNumber } from './model';
 import { buildSampleSources, sampleSuggestions } from './sampleData';
+import { specToSql } from './sqlQuery';
+
+const toSQL = (sp, m) => specToSql(sp, m).sql;
 
 const sample = () => {
   const { sources, relationships } = buildSampleSources();
@@ -122,9 +125,9 @@ describe('engine', () => {
   it('emits aggregate-then-join SQL with the lookup and derived columns', () => {
     const m = sample();
     const sql = toSQL(sanitize(sampleSuggestions(m)[0].spec, m), m);
-    expect(sql).toMatch(/LEFT JOIN employees USING \(employee_id\)/);
-    expect(sql).toMatch(/FULL JOIN s4 USING \(department\)/);
-    expect(sql).toMatch(/NULLIF\(s1, 0\) AS d1/);
+    expect(sql).toMatch(/LEFT JOIN \( -- one row per employee_id in Employees/);
+    expect(sql).toMatch(/LEFT JOIN s4 AS x4 ON x4\.department = l\.department/);
+    expect(sql).toMatch(/NULLIF\(COALESCE\(x1\.agg_value, 0\), 0\) AS "Cost per head"/);
   });
 
   it('passes through cannot and clarify answers', () => {
@@ -177,7 +180,7 @@ describe('filters, splits and period analysis', () => {
     expect(sp.filters).toEqual([{ dim: 'department', op: 'eq', value: 'Sales' }]);
     const res = compute(sp, m);
     expect(res.labels).toEqual(['Sales']);
-    expect(toSQL(sp, m)).toMatch(/department = 'Sales'/);
+    expect(toSQL(sp, m)).toMatch(/lower\(src\.department\) = 'sales'/);
   });
 
   it('splits one series by a second breakdown without changing the total', () => {
@@ -212,7 +215,7 @@ describe('filters, splits and period analysis', () => {
     expect(prior.data).toEqual([150, 161, 172]); // 2025: (100+50), (110+51), (120+52)
     expect(res.series[0].data[0]).toBe(130 + 53);
     expect(change.data[0]).toBeCloseTo((183 - 150) / 150, 6);
-    expect(toSQL(sp, m)).toMatch(/LAG\(s1, 12\)/);
+    expect(toSQL(sp, m)).toMatch(/LEFT JOIN t AS p ON p\.month_idx = t\.month_idx - 12/);
     // Comparisons need a monthly breakdown.
     expect(sanitize({ groupBy: 'region', compare: 'prior_year', series: [{ view: 'sales', measure: 'revenue' }] }, m).compare).toBeNull();
   });

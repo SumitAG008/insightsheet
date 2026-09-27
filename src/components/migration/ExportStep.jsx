@@ -10,11 +10,15 @@ const STAGE_TONE = {
   Employment: 'bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300',
   Contact: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
   Compensation: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  Payroll: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
 };
+
+const maskValue = (v) => (v.length <= 4 ? v : `${'•'.repeat(Math.min(8, v.length - 4))}${v.slice(-4)}`);
 
 function Preview({ file, settings }) {
   const rows = fileRows(file, settings);
   const head = rows[0];
+  const sensitive = file.entity.fields.map((f) => !!f.sensitive);
   const body = rows.slice(settings.labelRow ? 2 : 1, (settings.labelRow ? 2 : 1) + 8);
   return (
     <div className="overflow-auto rounded-xl border border-slate-200 dark:border-slate-800">
@@ -25,7 +29,7 @@ function Preview({ file, settings }) {
         <tbody>
           {body.map((r, i) => (
             <tr key={i} className="border-t border-slate-100 dark:border-slate-800">
-              {r.map((v, j) => <td key={j} className={`whitespace-nowrap px-2.5 py-1 ${v === '' ? 'text-slate-300' : ''}`}>{v === '' ? '·' : v}</td>)}
+              {r.map((v, j) => <td key={j} className={`whitespace-nowrap px-2.5 py-1 ${v === '' ? 'text-slate-300' : ''}`}>{v === '' ? '·' : sensitive[j] ? maskValue(v) : v}</td>)}
             </tr>
           ))}
         </tbody>
@@ -104,6 +108,8 @@ export default function ExportStep({ result, settings, onDownload, busy }) {
               <h3 className="m-0 text-[15px] font-semibold">{current.fileName}</h3>
               <span className="text-sm text-slate-500">· {current.entity.label} · {current.rows.length} rows{current.entity.dependsOn.length ? ` · needs ${current.entity.dependsOn.filter((d) => result.files.some((f) => f.entity.id === d)).join(', ')}` : ''}</span>
             </div>
+            {current.entity.mdf && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">Payment Information is an MDF object: download its template from Import and Export Data in your instance and match these columns to it. Bank numbers are masked here and complete in the download.</p>}
+            {current.entity.payroll && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:bg-rose-950 dark:text-rose-200">Year-to-date balances are loaded by payroll (Employee Central Payroll or your payroll provider), not by an Employee Central import. Map the wage types to your payroll’s codes on the Cleanse step.</p>}
             <Preview file={current} settings={settings} />
           </div>
         )}

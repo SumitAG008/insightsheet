@@ -3,7 +3,55 @@ import PropTypes from 'prop-types';
 import { AlertCircle, AlertTriangle, CheckCircle2, Info, Wand2 } from 'lucide-react';
 import { PICKLISTS } from '@/lib/migration/dictionaries';
 
-const TYPE_LABEL = { ...Object.fromEntries(Object.entries(PICKLISTS).map(([k, v]) => [k, v.label])), reason: 'Termination reason → event reason code' };
+const TYPE_LABEL = {
+  ...Object.fromEntries(Object.entries(PICKLISTS).map(([k, v]) => [k, v.label])),
+  reason: 'Termination reason → event reason code',
+  paycomp: 'Pay component → pay component code',
+  wagetype: 'Payroll balance → wage type',
+  paymethod: 'Payment method → payment method code',
+};
+const fmtAmount = (v, unit) => (unit === 'money' ? v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : v.toLocaleString());
+
+function Reconciliation({ rows }) {
+  if (!rows.length) return null;
+  const bad = rows.filter((r) => !r.ok).length;
+  return (
+    <section className={card}>
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="m-0 text-[15px] font-semibold">Reconciliation</h3>
+        <span className={`rounded-full px-2 py-0.5 text-xs ${bad ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}`}>
+          {bad ? `${bad} control total${bad > 1 ? 's' : ''} differ` : 'All control totals match'}
+        </span>
+      </div>
+      <p className="mt-1 text-sm text-slate-500">The same totals summed from your source tabs and from the files produced. A difference means rows were dropped or merged on the way.</p>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-700">
+              <th className="py-1.5 pr-3 font-medium">Control</th>
+              <th className="py-1.5 pr-3 text-right font-medium">Source</th>
+              <th className="py-1.5 pr-3 text-right font-medium">Output</th>
+              <th className="py-1.5 pr-3 text-right font-medium">Difference</th>
+              <th className="py-1.5" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.label} className="border-b border-slate-100 dark:border-slate-800">
+                <td className="py-1.5 pr-3">{r.label}</td>
+                <td className="py-1.5 pr-3 text-right tabular-nums">{fmtAmount(r.source, r.unit)}</td>
+                <td className="py-1.5 pr-3 text-right tabular-nums">{fmtAmount(r.target, r.unit)}</td>
+                <td className={`py-1.5 pr-3 text-right tabular-nums ${r.ok ? 'text-slate-400' : 'font-semibold text-red-600'}`}>{fmtAmount(Math.round((r.target - r.source) * 100) / 100, r.unit)}</td>
+                <td className="py-1.5">{r.ok ? <CheckCircle2 className="h-4 w-4 text-emerald-600" aria-label="Matches" /> : <AlertCircle className="h-4 w-4 text-red-600" aria-label="Differs" />}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+Reconciliation.propTypes = { rows: PropTypes.array.isRequired };
 const SEV = {
   error: { icon: AlertCircle, cls: 'text-red-600', label: 'Errors' },
   warning: { icon: AlertTriangle, cls: 'text-amber-600', label: 'Warnings' },
@@ -113,6 +161,8 @@ export default function ReviewStep({ result, picklistRows, onSetPicklist }) {
           </div>
         </section>
       </div>
+
+      <Reconciliation rows={result.reconciliation || []} />
 
       {Object.keys(picklistRows).length > 0 && (
         <section className={card}>

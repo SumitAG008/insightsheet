@@ -42,8 +42,11 @@ function SettingsPanel({ settings, onChange }) {
     <div className={`${card} grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4`}>
       {field('dateFormat', 'Output date format', 'Match what your instance’s import expects.', select('dateFormat', [['MM/dd/yyyy', 'MM/dd/yyyy'], ['yyyy-MM-dd', 'yyyy-MM-dd'], ['dd/MM/yyyy', 'dd/MM/yyyy']]))}
       {field('sourceDateOrder', 'Source date order', 'Auto reads it from dates like 25/04 or 04/25.', select('sourceDateOrder', [['auto', 'Detect per column'], ['MDY', 'Month / day / year'], ['DMY', 'Day / month / year']]))}
-      {field('hireEventReason', 'Hire event reason', 'Event reason code for the first job record.')}
-      {field('changeEventReason', 'Job change event reason', 'For later job history records.')}
+      {field('hireEventReason', 'Hire event reason', 'First job record.')}
+      {field('jobChangeEventReason', 'Job change event reason', 'Later records where the job, title or grade changed.')}
+      {field('transferEventReason', 'Transfer event reason', 'Later records where the org, location or cost center changed.')}
+      {field('changeEventReason', 'Data change event reason', 'Any other later record.')}
+      {field('paymentMethod', 'Default payment method code', 'Used when the extract has none.')}
       {field('defaultTimezone', 'Default time zone', 'Used when neither the job nor its location has one.')}
       {field('basePayComponent', 'Base pay component', 'Pay component code for base salary.')}
       {field('workEmailType', 'Work email type code')}
@@ -203,7 +206,7 @@ export default function Migration() {
         <div>
           <h1 className="m-0 text-2xl font-semibold tracking-tight">Next-Gen Migration</h1>
           <p className="mt-1 text-sm text-slate-500">
-            <strong className="text-slate-700 dark:text-slate-200">Workday</strong> <ArrowRight className="inline h-3.5 w-3.5" /> <strong className="text-slate-700 dark:text-slate-200">SAP SuccessFactors Employee Central</strong> · Core HR · runs in your browser, employee data never leaves it
+            <strong className="text-slate-700 dark:text-slate-200">Workday</strong> <ArrowRight className="inline h-3.5 w-3.5" /> <strong className="text-slate-700 dark:text-slate-200">SAP SuccessFactors Employee Central</strong> · Core HR, pay history, payroll and cost centers · runs in your browser, employee data never leaves it
           </p>
         </div>
         <div className="flex gap-2">
@@ -251,7 +254,7 @@ export default function Migration() {
               {busy === 'upload' ? <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" /> : <Upload className="mx-auto h-8 w-8 text-blue-600" />}
               <h2 className="mt-3 text-xl font-semibold">Drop your Workday extract</h2>
               <p className="mx-auto mt-1 max-w-lg text-sm text-slate-500">
-                One workbook with many tabs, or several CSVs: worker data, job history, compensation, addresses, terminations, org lists. Tab and column names don’t need to match anything.
+                One workbook with many tabs, or several CSVs: worker data, job and pay history, one-time payments, bank details, payroll balances, addresses, terminations, legal entities, cost centers and other org lists. Tab and column names don’t need to match anything.
               </p>
               <Button className="mt-5" onClick={() => fileInput.current?.click()} disabled={busy === 'upload'}>Choose files</Button>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -264,7 +267,8 @@ export default function Migration() {
               <ol className="mt-3 space-y-3 text-sm">
                 <li><strong>1. Map.</strong> Every column is matched to a SuccessFactors field by name, synonyms and its values (<code>Legal_First_Name</code>, <code>Given_Name</code> → first name). Tabs are joined on the employee ID, with no VLOOKUPs.</li>
                 <li><strong>2. Resolve.</strong> Legal entities, departments, locations and jobs are built first, including any referenced but missing, then people, jobs, contact details, pay and terminations.</li>
-                <li><strong>3. Cleanse.</strong> Dates, genders, countries, FTEs and picklists are converted to the target’s rules, and every change is logged. A pre-flight check lists what SuccessFactors would reject.</li>
+                <li><strong>History.</strong> Every job and pay record is kept per employee. Job records are classified as hire, job change, transfer or data change, and each pay date keeps all its components.</li>
+                <li><strong>3. Cleanse.</strong> Dates, genders, countries, FTEs and picklists are converted to the target’s rules, and every change is logged. IBANs are checksum-validated. A pre-flight check lists what SuccessFactors would reject, and a reconciliation proves pay, bonus and balance totals match the source to the cent.</li>
                 <li><strong>4. Export.</strong> A ZIP of numbered CSVs in load order, with a README and reports.</li>
               </ol>
             </div>

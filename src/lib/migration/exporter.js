@@ -33,7 +33,7 @@ export function readme(result, target, settings) {
     '',
     'Settings used:',
     `  Date format: ${settings.dateFormat}`,
-    `  Hire / change event reasons: ${settings.hireEventReason} / ${settings.changeEventReason}`,
+    `  Event reasons: hire ${settings.hireEventReason}, job change ${settings.jobChangeEventReason}, transfer ${settings.transferEventReason}, data change ${settings.changeEventReason}`,
     `  Default time zone: ${settings.defaultTimezone}`,
     `  Second header row with labels: ${settings.labelRow ? 'yes' : 'no'}`,
     '',
@@ -41,6 +41,10 @@ export function readme(result, target, settings) {
     'generated per instance: compare with the templates downloaded from your own',
     'instance (Admin Center > Import Employee Data / Import Foundation Data) and add',
     'any custom fields there before loading.',
+    '',
+    ...(result.files.some((f) => f.entity.mdf) ? ['', 'PaymentInformation is an MDF object: use Import and Export Data with the template', 'from your instance. It contains bank details; handle the file accordingly.'] : []),
+    ...(result.files.some((f) => f.entity.payroll) ? ['', 'PayrollYTD is for payroll (Employee Central Payroll or your provider), not an', 'Employee Central import.'] : []),
+    ...(result.reconciliation?.length ? ['', 'Reconciliation (source -> output):', ...result.reconciliation.map((r) => `  ${r.ok ? 'OK  ' : 'DIFF'} ${r.label}: ${r.source} -> ${r.target}`)] : []),
     '',
     'Also included: mapping_report.csv (source column -> field), change_log.csv',
     '(every automatic correction) and issues.csv (what still needs attention).',
@@ -66,6 +70,7 @@ export async function buildZip({ result, target, settings, sheets, mapping }) {
   zip.file('README.txt', readme(result, target, settings));
   zip.file('mapping_report.csv', mappingReport(sheets, mapping));
   zip.file('change_log.csv', toCsv([['change', 'count', 'examples'], ...result.data.changes.map((c) => [c.text, c.count, c.examples.map(([a, b]) => `${a} → ${b}`).join(' | ')])]));
+  if (result.reconciliation?.length) zip.file('reconciliation.csv', toCsv([['control', 'source', 'output', 'difference', 'status'], ...result.reconciliation.map((r) => [r.label, r.source, r.target, Math.round((r.target - r.source) * 100) / 100, r.ok ? 'match' : 'DIFFERS'])]));
   zip.file('issues.csv', toCsv([['severity', 'file', 'record', 'field', 'message'], ...result.issues.map((i) => [i.severity, i.entity, i.key, i.field || '', i.message])]));
   return zip.generateAsync({ type: 'blob' });
 }

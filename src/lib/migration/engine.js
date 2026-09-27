@@ -19,6 +19,19 @@ import { PICKLISTS, suggestCode, toCountry, toCurrency } from './dictionaries';
 const norm = (s) => String(s ?? '').toLowerCase().replace(/[_\-./#()%]+/g, ' ').replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 const tokens = (s) => norm(s).split(' ').filter(Boolean);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const BIC_RE = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
+
+/** ISO 13616 IBAN check (mod 97 = 1). */
+export function validIban(iban) {
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(iban)) return false;
+  const moved = iban.slice(4) + iban.slice(0, 4);
+  let rem = 0;
+  for (const ch of moved) {
+    const d = /[A-Z]/.test(ch) ? String(ch.charCodeAt(0) - 55) : ch;
+    for (const x of d) rem = (rem * 10 + Number(x)) % 97;
+  }
+  return rem === 1;
+}
 
 function sampleValues(sheet, key, n = 60) {
   const out = [];
@@ -63,6 +76,8 @@ function valueScore(vals, concept) {
     case 'frequency': return frac((v) => suggestCode('frequency', v)) > 0.7 ? 0.2 : -0.2;
     case 'country': { const f = frac((v) => toCountry(v)); return f > 0.7 ? 0.25 : f < 0.3 ? -0.5 : 0; }
     case 'currency': return frac((v) => toCurrency(v)) > 0.8 ? 0.3 : -0.4;
+    case 'iban': return frac((v) => /^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(String(v).replace(/\s/g, '').toUpperCase())) > 0.7 ? 0.3 : -0.5;
+    case 'bic': return frac((v) => BIC_RE.test(String(v).trim().toUpperCase())) > 0.7 ? 0.3 : -0.5;
     case 'number':
     case 'fte': return frac((v) => Number.isFinite(parseNum(v))) > 0.9 ? 0.1 : -0.5;
     default: return 0;
@@ -82,7 +97,8 @@ export function mapSheets(sheets) {
       for (const c of CONCEPTS) {
         const ns = nameScore(col.name, c);
         if (ns < 0.3) continue;
-        cand.push({ col: col.key, concept: c.id, score: Math.min(1, ns + valueScore(vals, c)) });
+        // Uncapped so an exact name match (1.0) beats a partial one that the values also support.
+        cand.push({ col: col.key, concept: c.id, score: ns + valueScore(vals, c) });
       }
     }
     cand.sort((a, b) => b.score - a.score);
@@ -93,7 +109,7 @@ export function mapSheets(sheets) {
       if (x.score < 0.55 || usedCol.has(x.col) || usedConcept.has(x.concept)) continue;
       usedCol.add(x.col);
       usedConcept.add(x.concept);
-      m[x.col] = { concept: x.concept, confidence: Math.round(x.score * 100) / 100, method: 'rules' };
+      m[x.col] = { concept: x.concept, confidence: Math.min(1, Math.round(x.score * 100) / 100), method: 'rules' };
     }
     contextualise(m);
     mapping[sheet.id] = m;
@@ -106,10 +122,14 @@ function contextualise(m) {
   const has = (id) => Object.values(m).some((x) => x.concept === id);
   const swap = (from, to) => Object.values(m).forEach((x) => { if (x.concept === from && !has(to)) x.concept = to; });
   if (has('employee_id')) {
+    // "Amount" means a bonus on a one-time payment tab and a balance on a YTD tab.
+    if (has('one_time_date') || has('one_time_component')) { swap('salary_amount', 'one_time_amount'); swap('comp_effective_date', 'one_time_date'); swap('job_effective_date', 'one_time_date'); swap('pay_component', 'one_time_component'); return; }
+    if (has('tax_year') || has('wage_type')) { swap('salary_amount', 'ytd_amount'); return; }
     // A generic effective date on a pay-only sheet is the compensation date.
     if (has('salary_amount') && !has('job_code') && !has('department_code')) swap('job_effective_date', 'comp_effective_date');
     return;
   }
+  if (has('cost_center') && has('cost_center_name')) { swap('company_code', 'cost_center_company'); return; }
   if (has('company_code')) { swap('address_country', 'company_country'); swap('currency', 'company_currency'); }
   else if (has('location_code')) swap('address_country', 'location_country');
 }
@@ -232,6 +252,28 @@ export function cleanValue(conceptId, raw, ctx) {
       if (!code) return { value: '', error: `No ${PICKLISTS[c.type].label.toLowerCase()} code for “${s}”`, picklist: c.type };
       return { value: code, rule: code !== s ? `picklist:${c.type}` : null };
     }
+    case 'paycomp':
+    case 'paymethod':
+    case 'wagetype': {
+      // Pay component and wage type codes are instance-specific: pass through unless mapped.
+      const code = ctx.picklists?.[c.type]?.[t.toLowerCase()] || t;
+      return { value: code, rule: code !== t ? `picklist:${c.type}` : trimmed };
+    }
+    case 'iban': {
+      const v = t.replace(/[\s-]/g, '').toUpperCase();
+      if (!validIban(v)) return { value: '', error: `IBAN ${mask(v)} fails its checksum` };
+      return { value: v, rule: v !== s ? 'iban' : null };
+    }
+    case 'bic': {
+      const v = t.replace(/\s/g, '').toUpperCase();
+      if (!BIC_RE.test(v)) return { value: '', error: `“${s}” is not a valid BIC/SWIFT code` };
+      return { value: v, rule: v !== s ? 'bic' : null };
+    }
+    case 'digits': {
+      const v = typeof raw === 'number' ? String(raw) : t.replace(/[\s.-]/g, '');
+      if (!/^[A-Za-z0-9]+$/.test(v)) return { value: '', error: `“${mask(s)}” is not a valid account or bank code` };
+      return { value: v, rule: v !== s ? 'digits' : null };
+    }
     case 'reason': {
       // Event reason codes are instance-specific: pass through unless the user mapped one.
       const code = ctx.picklists?.reason?.[t.toLowerCase()] || t;
@@ -259,6 +301,12 @@ export function cleanValue(conceptId, raw, ctx) {
   }
 }
 
+/** Show only the last 4 characters of a sensitive value. */
+export const mask = (v) => {
+  const s = String(v ?? '');
+  return s.length <= 4 ? s : `${'•'.repeat(Math.min(8, s.length - 4))}${s.slice(-4)}`;
+};
+
 export const RULE_TEXT = {
   date: 'Rewrote dates into one standard format',
   email: 'Lower-cased email addresses',
@@ -271,6 +319,13 @@ export const RULE_TEXT = {
   'picklist:yesno': 'Translated yes / no values',
   'picklist:frequency': 'Translated pay frequencies to picklist codes',
   'picklist:reason': 'Translated termination reasons to event reason codes',
+  'picklist:paycomp': 'Translated pay component names to pay component codes',
+  'picklist:wagetype': 'Translated payroll balances to wage type codes',
+  'picklist:paymethod': 'Translated payment methods to payment method codes',
+  iban: 'Normalised IBANs (spaces removed, upper case) after checksum validation',
+  bic: 'Normalised BIC/SWIFT codes',
+  digits: 'Removed spaces and dashes from account numbers and sort codes',
+  'cc-created': 'Created cost centers that were referenced but missing from the cost center list',
   fte: 'Converted FTE percentages (100 → 1.0)',
   number: 'Removed symbols and separators from numbers',
   id: 'Restored IDs that Excel had turned into numbers',
@@ -306,6 +361,8 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
   const people = new Map();
   const jobRows = [];
   const compRows = [];
+  const oneTimeRows = [];
+  const ytdRows = [];
   const org = Object.fromEntries(ORG_LISTS.map((l) => [l.id, new Map()]));
   const sheetRoles = {};
 
@@ -343,7 +400,7 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
     };
 
     if (!conceptCol.employee_id) {
-      const list = ORG_LISTS.find((l) => conceptCol[l.code]);
+      const list = ORG_LISTS.find((l) => conceptCol[l.code] && l.name && conceptCol[l.name]) || ORG_LISTS.find((l) => conceptCol[l.code]);
       if (!list) { sheetRoles[sheet.id] = 'unused'; continue; }
       sheetRoles[sheet.id] = `org:${list.id}`;
       for (const r of sheet.rows) {
@@ -363,8 +420,14 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
     const repeats = [...counts.values()].some((n) => n > 1);
     const hasJob = cols.some(([, x]) => JOB_GROUPS.has(groupOf(x.concept)) && x.concept !== 'manager_id') || conceptCol.manager_id;
     const hasComp = cols.some(([, x]) => groupOf(x.concept) === 'Compensation');
-    const isHistory = repeats && (conceptCol.job_effective_date || conceptCol.comp_effective_date);
-    sheetRoles[sheet.id] = isHistory ? (hasComp && !hasJob ? 'history:comp' : 'history:job') : 'employee';
+    const hasOneTime = conceptCol.one_time_amount || conceptCol.one_time_date || conceptCol.one_time_component;
+    const hasYtd = conceptCol.ytd_amount || conceptCol.wage_type || conceptCol.tax_year;
+    // Bonus and balance tabs are always event lists; job and pay tabs are history when employees repeat.
+    const isHistory = hasOneTime || hasYtd || (repeats && (conceptCol.job_effective_date || conceptCol.comp_effective_date));
+    sheetRoles[sheet.id] = !isHistory ? 'employee'
+      : hasOneTime ? 'history:onetime'
+        : hasYtd ? 'history:ytd'
+          : hasComp && !hasJob ? 'history:comp' : 'history:job';
 
     for (const r of sheet.rows) {
       const o = cleanRow(r);
@@ -375,7 +438,7 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
       p.sources.add(sheet.name);
       (o.__errors || []).forEach((e) => p.errors.push({ ...e, sheet: sheet.name }));
       if (isHistory) {
-        const target = sheetRoles[sheet.id] === 'history:comp' ? compRows : jobRows;
+        const target = { 'history:comp': compRows, 'history:onetime': oneTimeRows, 'history:ytd': ytdRows }[sheetRoles[sheet.id]] || jobRows;
         target.push({ id, values: o, sheet: sheet.name });
         continue;
       }
@@ -400,8 +463,15 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
   compRows.sort(byDate('comp_effective_date'));
   const jobsFor = new Map();
   for (const j of jobRows) (jobsFor.get(j.id) || jobsFor.set(j.id, []).get(j.id)).push(j);
-  const compsFor = new Map();
-  for (const c of compRows) (compsFor.get(c.id) || compsFor.set(c.id, []).get(c.id)).push(c);
+  oneTimeRows.sort(byDate('one_time_date'));
+  const group = (rows) => {
+    const out = new Map();
+    for (const r of rows) (out.get(r.id) || out.set(r.id, []).get(r.id)).push(r);
+    return out;
+  };
+  const compsFor = group(compRows);
+  const oneTimeFor = group(oneTimeRows);
+  const ytdFor = group(ytdRows);
   for (const p of people.values()) {
     if (!jobsFor.has(p.id) && Object.keys(p.values).some((k) => JOB_GROUPS.has(groupOf(k)))) {
       jobsFor.set(p.id, [{ id: p.id, values: {}, sheet: 'worker data', derived: true }]);
@@ -414,7 +484,7 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
   const refs = [
     ['company', 'company_code', 'company_name'], ['department', 'department_code', 'department_name'],
     ['location', 'location_code', 'location_name'], ['job', 'job_code', 'job_name'],
-    ['business_unit', 'business_unit', null], ['division', 'division', null],
+    ['business_unit', 'business_unit', null], ['division', 'division', null], ['cost_center', 'cost_center', 'cost_center_name'],
   ];
   const allJobValues = [...people.values()].flatMap((p) => [p.values, ...(jobsFor.get(p.id) || []).map((j) => j.values)]);
   for (const [list, codeKey, nameKey] of refs) {
@@ -424,11 +494,20 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
       const rec = org[list].get(code);
       if (!rec) {
         org[list].set(code, { code, name: (nameKey && v[nameKey]) || '', extra: { cost_center: v.cost_center || '', timezone: v.timezone || '', location_country: v.location_country || '' }, listed: false });
-        logChange('org-created', code, `${list} ${code}`);
+        logChange(list === 'cost_center' ? 'cc-created' : 'org-created', code, `${list.replace('_', ' ')} ${code}`);
       } else if (nameKey && !rec.name && v[nameKey]) {
         rec.name = v[nameKey];
         logChange('org-name', code, v[nameKey]);
       }
+    }
+  }
+
+  // Cost centers named on department records must exist too.
+  for (const d of org.department.values()) {
+    const cc = d.extra.cost_center;
+    if (cc && !org.cost_center.has(cc)) {
+      org.cost_center.set(cc, { code: cc, name: '', extra: { cost_center_company: '', cost_center_parent: '' }, listed: false });
+      logChange('cc-created', cc, `cost center ${cc}`);
     }
   }
 
@@ -455,6 +534,8 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
     people: [...people.values()],
     jobsFor,
     compsFor,
+    oneTimeFor,
+    ytdFor,
     org,
     changes: Object.values(changes).sort((a, b) => b.count - a.count),
     issues,
@@ -464,6 +545,82 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
 }
 
 /* ======================= 3. outputs & validation ======================= */
+
+const COUNTRY_A2 = { GBR: 'GB', DEU: 'DE', USA: 'US', FRA: 'FR', ESP: 'ES', ITA: 'IT', NLD: 'NL', IRL: 'IE', BEL: 'BE', CHE: 'CH', AUT: 'AT', IND: 'IN', SWE: 'SE', NOR: 'NO', DNK: 'DK', POL: 'PL', PRT: 'PT', CAN: 'CA', AUS: 'AU' };
+
+const EVENT_SETTING = { hire: 'hireEventReason', jobChange: 'jobChangeEventReason', transfer: 'transferEventReason', data: 'changeEventReason' };
+export const EVENT_TEXT = { hire: 'Hire', jobChange: 'Job change', transfer: 'Transfer', data: 'Data change' };
+
+/** Classify a job history record by what changed since the previous one. */
+export function jobEventKind(prev, cur) {
+  const changed = (k) => (prev[k] || '') !== (cur[k] || '');
+  if (['job_code', 'pay_grade', 'job_title'].some(changed)) return 'jobChange';
+  if (['company_code', 'department_code', 'location_code', 'cost_center', 'business_unit', 'division'].some(changed)) return 'transfer';
+  return 'data';
+}
+
+/* ======================= reconciliation ======================= */
+
+/**
+ * Control totals: the same measure summed from the raw source tabs and from
+ * the files we produce. A difference means rows were dropped or merged.
+ */
+export function reconcile(sheets, mapping, files) {
+  const rows = [];
+  const fileOf = (id) => files.find((f) => f.entity.id === id);
+
+  // Employees: distinct IDs in any tab vs basic user rows.
+  const ids = new Set();
+  for (const s of sheets) {
+    const col = Object.entries(mapping[s.id] || {}).find(([, m]) => m?.concept === 'employee_id')?.[0];
+    if (!col) continue;
+    s.rows.forEach((r) => { const v = cleanValue('employee_id', r[col], {}).value; if (v) ids.add(v); });
+  }
+  if (ids.size) rows.push({ label: 'Employees', source: ids.size, target: fileOf('User')?.rows.length || 0, unit: 'count' });
+
+  const sumSource = (concept, roleOk) => {
+    const out = {};
+    let n = 0;
+    for (const s of sheets) {
+      const m = Object.entries(mapping[s.id] || {});
+      const amt = m.find(([, x]) => x?.concept === concept)?.[0];
+      if (!amt || !roleOk(s)) continue;
+      const cur = m.find(([, x]) => x?.concept === 'currency')?.[0];
+      const idCol = m.find(([, x]) => x?.concept === 'employee_id')?.[0];
+      for (const r of s.rows) {
+        if (idCol && !cleanValue('employee_id', r[idCol], {}).value) continue;
+        const a = parseNum(r[amt]);
+        if (!Number.isFinite(a)) continue;
+        const c = (cur && toCurrency(r[cur])) || '—';
+        out[c] = (out[c] || 0) + a;
+        n++;
+      }
+    }
+    return { totals: out, n };
+  };
+  const sumTarget = (fileId, amountField, currencyField) => {
+    const out = {};
+    for (const r of fileOf(fileId)?.rows || []) {
+      const a = parseFloat(r[amountField]);
+      if (!Number.isFinite(a)) continue;
+      const c = r[currencyField] || '—';
+      out[c] = (out[c] || 0) + a;
+    }
+    return out;
+  };
+  const money = (label, concept, fileId, amountField, currencyField) => {
+    const src = sumSource(concept, () => true);
+    if (!src.n) return;
+    const tgt = sumTarget(fileId, amountField, currencyField);
+    for (const c of new Set([...Object.keys(src.totals), ...Object.keys(tgt)])) {
+      rows.push({ label: `${label} (${c})`, source: Math.round((src.totals[c] || 0) * 100) / 100, target: Math.round((tgt[c] || 0) * 100) / 100, unit: 'money' });
+    }
+  };
+  money('Recurring pay', 'salary_amount', 'EmpPayCompRecurring', 'paycompvalue', 'currency-code');
+  money('One-time payments', 'one_time_amount', 'EmpPayCompNonRecurring', 'value', 'currency-code');
+  money('Payroll YTD balances', 'ytd_amount', 'PayrollYTD', 'amount', 'currency');
+  return rows.map((r) => ({ ...r, ok: Math.abs(r.source - r.target) < 0.005 }));
+}
 
 /** Topological order of entities by dependsOn (ignoring entities with no rows). */
 export function loadOrder(entities) {
@@ -515,7 +672,16 @@ export function buildOutputs(target, data, settings) {
   const recordsFor = (entity) => {
     const [kind, list] = entity.grain.split(':');
     if (kind === 'org') {
-      return [...data.org[list].values()].map((rec) => ({ key: rec.code, ctx: { settings, code: rec.code, name: rec.name, extra: rec.extra } }));
+      const recs = [...data.org[list].values()];
+      // Hierarchies (cost center parents) load top-down within the file.
+      const depth = (rec, seen = new Set()) => {
+        const parent = rec.extra.cost_center_parent;
+        if (!parent || seen.has(rec.code) || !data.org[list].has(parent)) return 0;
+        seen.add(rec.code);
+        return 1 + depth(data.org[list].get(parent), seen);
+      };
+      if (list === 'cost_center') recs.sort((a, b) => depth(a) - depth(b));
+      return recs.map((rec) => ({ key: rec.code, ctx: { settings, code: rec.code, name: rec.name, extra: rec.extra } }));
     }
     const out = [];
     for (const p of data.people) {
@@ -524,11 +690,39 @@ export function buildOutputs(target, data, settings) {
         case 'employee':
           out.push({ key: p.id, ctx: makeCtx(p) });
           break;
-        case 'job':
-          (data.jobsFor.get(p.id) || []).forEach((j, i) => out.push({ key: `${p.id} @ ${j.values.job_effective_date || p.values.hire_date || '?'}`, person: p.id, ctx: withRow(p, j.values, { isFirstJob: i === 0 }) }));
+        case 'job': {
+          const jobs = data.jobsFor.get(p.id) || [];
+          const seqOn = {};
+          jobs.forEach((j, i) => {
+            const date = j.values.job_effective_date || p.values.hire_date || '';
+            seqOn[date] = (seqOn[date] || 0) + 1;
+            const kind = i === 0 ? 'hire' : jobEventKind({ ...p.values, ...jobs[i - 1].values }, { ...p.values, ...j.values });
+            out.push({ key: `${p.id} @ ${date || '?'}`, person: p.id, ctx: withRow(p, j.values, { isFirstJob: i === 0, eventKind: kind, eventReason: settings[EVENT_SETTING[kind]], seq: seqOn[date] }) });
+          });
           break;
+        }
+        case 'compEvent': {
+          // One compensation record per effective date; its pay components go in the recurring file.
+          const seen = new Set();
+          for (const c of data.compsFor.get(p.id) || []) {
+            const date = c.values.comp_effective_date || '';
+            if (seen.has(date)) continue;
+            seen.add(date);
+            out.push({ key: `${p.id} @ ${date || '?'}`, person: p.id, ctx: withRow(p, c.values) });
+          }
+          break;
+        }
         case 'comp':
-          (data.compsFor.get(p.id) || []).forEach((c) => out.push({ key: `${p.id} @ ${c.values.comp_effective_date || '?'}`, person: p.id, ctx: withRow(p, c.values) }));
+          (data.compsFor.get(p.id) || []).forEach((c) => out.push({ key: `${p.id} @ ${c.values.comp_effective_date || '?'} ${c.values.pay_component || ''}`.trim(), person: p.id, ctx: withRow(p, c.values) }));
+          break;
+        case 'onetime':
+          (data.oneTimeFor.get(p.id) || []).forEach((c) => out.push({ key: `${p.id} @ ${c.values.one_time_date || '?'}`, person: p.id, ctx: withRow(p, c.values) }));
+          break;
+        case 'ytd':
+          (data.ytdFor.get(p.id) || []).forEach((c) => out.push({ key: `${p.id} ${c.values.tax_year || ''} ${c.values.wage_type || ''}`.trim(), person: p.id, ctx: withRow(p, c.values) }));
+          break;
+        case 'bank':
+          if (p.values.iban || p.values.account_number) out.push({ key: p.id, ctx: makeCtx(p) });
           break;
         case 'termination':
           if (terminated) out.push({ key: p.id, ctx: makeCtx(p) });
@@ -553,7 +747,7 @@ export function buildOutputs(target, data, settings) {
   };
 
   const orgCodes = Object.fromEntries(Object.entries(data.org).map(([k, v]) => [k, new Set(v.keys())]));
-  const refSet = { employee: personIds, FOCompany: orgCodes.company, FOBusinessUnit: orgCodes.business_unit, FODivision: orgCodes.division, FODepartment: orgCodes.department, FOLocation: orgCodes.location, FOJobCode: orgCodes.job };
+  const refSet = { employee: personIds, FOCostCenter: orgCodes.cost_center, FOCompany: orgCodes.company, FOBusinessUnit: orgCodes.business_unit, FODivision: orgCodes.division, FODepartment: orgCodes.department, FOLocation: orgCodes.location, FOJobCode: orgCodes.job };
 
   const files = [];
   for (const entity of target.entities) {
@@ -591,6 +785,29 @@ export function buildOutputs(target, data, settings) {
       if (age < 14 || age > 90) issues.push({ severity: 'warning', entity: 'Biographical Information', key: p.id, field: 'date-of-birth', message: `Age at hire would be ${Math.floor(age)}; check the date order` });
     }
   }
+  for (const p of data.people) {
+    const v = p.values;
+    // Cost center must belong to the legal entity the person is employed by.
+    for (const j of data.jobsFor.get(p.id) || []) {
+      const row = { ...v, ...j.values };
+      const ccCode = row.cost_center || data.org.department.get(row.department_code)?.extra.cost_center;
+      const cc = ccCode && data.org.cost_center.get(ccCode);
+      const ccCompany = cc?.extra.cost_center_company;
+      if (ccCompany && row.company_code && ccCompany !== row.company_code) {
+        issues.push({ severity: 'warning', entity: 'Job History', key: `${p.id} @ ${row.job_effective_date || '?'}`, field: 'cost-center', message: `Cost center ${ccCode} belongs to ${ccCompany}, but the employee is in ${row.company_code}` });
+      }
+    }
+    if (v.iban && v.bank_country && v.iban.slice(0, 2) !== (COUNTRY_A2[v.bank_country] || v.bank_country.slice(0, 2))) {
+      issues.push({ severity: 'warning', entity: 'Payment Information', key: p.id, field: 'iban', message: `IBAN country ${v.iban.slice(0, 2)} differs from bank country ${v.bank_country}` });
+    }
+    if (v.bank_country === 'GBR' && v.bank_routing && !/^\d{6}$/.test(v.bank_routing)) {
+      issues.push({ severity: 'error', entity: 'Payment Information', key: p.id, field: 'routing', message: `UK sort code must be 6 digits (has ${v.bank_routing.length})` });
+    }
+    if (v.bank_country === 'USA' && v.bank_routing && !/^\d{9}$/.test(v.bank_routing)) {
+      issues.push({ severity: 'error', entity: 'Payment Information', key: p.id, field: 'routing', message: 'US routing number must be 9 digits' });
+    }
+  }
+
   const emails = new Map();
   for (const p of data.people) if (p.values.email_work) emails.set(p.values.email_work, [...(emails.get(p.values.email_work) || []), p.id]);
   for (const [e, ids] of emails) if (ids.length > 1) issues.push({ severity: 'warning', entity: 'Email Information', key: ids.join(', '), field: 'email-address', message: `${e} is shared by ${ids.length} employees` });
@@ -609,12 +826,13 @@ export function buildOutputs(target, data, settings) {
 export function runMigration(target, sheets, mapping, settings, picklists) {
   const data = assemble(sheets, mapping, settings, picklists);
   const out = buildOutputs(target, data, settings);
-  return { data, ...out };
+  return { data, ...out, reconciliation: reconcile(sheets, mapping, out.files) };
 }
 
 /* ======================= picklist review ======================= */
 
-export const REVIEW_TYPES = ['gender', 'marital', 'status', 'yesno', 'frequency', 'reason'];
+export const REVIEW_TYPES = ['gender', 'marital', 'status', 'yesno', 'frequency', 'reason', 'paycomp', 'wagetype', 'paymethod'];
+const PASS_THROUGH = new Set(['reason', 'paycomp', 'wagetype', 'paymethod']);
 
 /**
  * Every distinct source value of each picklist-like concept, with the code it
@@ -639,7 +857,7 @@ export function picklistValues(sheets, mapping, picklists = {}) {
   }
   return Object.fromEntries(Object.entries(out).map(([type, m]) => [type, [...m.entries()].map(([key, v]) => {
     const override = picklists[type]?.[key];
-    const suggested = type === 'reason' ? v.raw : suggestCode(type, v.raw);
+    const suggested = PASS_THROUGH.has(type) ? v.raw : suggestCode(type, v.raw);
     return { key, raw: v.raw, count: v.count, code: override ?? suggested ?? '', source: override !== undefined ? 'you' : suggested ? 'suggested' : 'missing' };
   }).sort((a, b) => b.count - a.count)]));
 }

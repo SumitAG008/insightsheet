@@ -63,6 +63,9 @@ export const CONCEPTS = [
   { id: 'location_country', label: 'Location country', group: 'Organization', type: 'country', synonyms: ['location country', 'site country'] },
   { id: 'timezone', label: 'Time zone', group: 'Organization', type: 'text', synonyms: ['time zone', 'timezone', 'tz'] },
   { id: 'cost_center', label: 'Cost center', group: 'Organization', type: 'id', synonyms: ['cost center', 'cost centre', 'cost center id', 'cost center code', 'kostl'] },
+  { id: 'cost_center_name', label: 'Cost center name', group: 'Finance', type: 'text', synonyms: ['cost center name', 'cost centre name', 'cost center description'] },
+  { id: 'cost_center_company', label: 'Cost center legal entity', group: 'Finance', type: 'id', synonyms: ['cost center company', 'controlling area company', 'cost center legal entity'] },
+  { id: 'cost_center_parent', label: 'Parent cost center', group: 'Finance', type: 'id', synonyms: ['parent cost center', 'parent cost centre', 'parent', 'cost center group', 'rollup'] },
   { id: 'manager_id', label: 'Manager ID', group: 'Job', type: 'id', synonyms: ['manager employee id', 'manager id', 'supervisor id', 'reports to', 'manager', 'line manager id'] },
   { id: 'employee_class', label: 'Employee class / worker type', group: 'Job', type: 'text', synonyms: ['worker type', 'employee type', 'employee class', 'worker sub type', 'employment type'] },
   { id: 'fte', label: 'FTE', group: 'Job', type: 'fte', synonyms: ['fte', 'full time equivalent', 'scheduled fte', 'fte percent', 'fte %'] },
@@ -72,10 +75,30 @@ export const CONCEPTS = [
   // Compensation
   { id: 'comp_effective_date', label: 'Compensation effective date', group: 'Compensation', type: 'date', synonyms: ['compensation effective date', 'comp effective date', 'salary effective date', 'pay effective date'] },
   { id: 'pay_group', label: 'Pay group', group: 'Compensation', type: 'id', synonyms: ['pay group', 'payroll group', 'pay group id'] },
-  { id: 'pay_component', label: 'Pay component', group: 'Compensation', type: 'id', synonyms: ['pay component', 'compensation element', 'compensation plan', 'pay element'] },
+  { id: 'pay_component', label: 'Pay component', group: 'Compensation', type: 'paycomp', synonyms: ['pay component', 'compensation element', 'compensation plan', 'pay element', 'allowance plan', 'earning code', 'earning'] },
   { id: 'salary_amount', label: 'Base pay amount', group: 'Compensation', type: 'number', synonyms: ['base pay amount', 'base pay', 'salary', 'annual salary', 'base salary', 'amount', 'pay rate'] },
   { id: 'currency', label: 'Currency', group: 'Compensation', type: 'currency', synonyms: ['currency', 'currency code', 'pay currency'] },
   { id: 'pay_frequency', label: 'Pay frequency', group: 'Compensation', type: 'frequency', synonyms: ['frequency', 'pay frequency', 'salary frequency', 'pay rate frequency'] },
+
+  // One-time payments (bonuses, awards)
+  { id: 'one_time_date', label: 'One-time payment date', group: 'One-time pay', type: 'date', synonyms: ['payment date', 'pay date', 'one time payment date', 'award date', 'bonus date'] },
+  { id: 'one_time_component', label: 'One-time payment type', group: 'One-time pay', type: 'paycomp', synonyms: ['one time payment plan', 'one time payment type', 'bonus type', 'payment type', 'award type', 'one time plan'] },
+  { id: 'one_time_amount', label: 'One-time payment amount', group: 'One-time pay', type: 'number', synonyms: ['one time payment amount', 'bonus amount', 'award amount', 'payment amount'] },
+
+  // Bank / payment information
+  { id: 'payment_method', label: 'Payment method', group: 'Bank', type: 'paymethod', synonyms: ['payment method', 'payment type method', 'pay method'] },
+  { id: 'account_holder', label: 'Account holder', group: 'Bank', type: 'text', synonyms: ['account holder', 'account owner', 'account name', 'name on account'] },
+  { id: 'iban', label: 'IBAN', group: 'Bank', type: 'iban', synonyms: ['iban', 'iban number', 'international bank account number'] },
+  { id: 'account_number', label: 'Bank account number', group: 'Bank', type: 'digits', synonyms: ['account number', 'bank account number', 'bank account', 'acct number'] },
+  { id: 'bank_routing', label: 'Sort code / routing number', group: 'Bank', type: 'digits', synonyms: ['sort code', 'routing number', 'routing', 'bank code', 'blz', 'aba', 'transit number', 'bank id'] },
+  { id: 'bic', label: 'BIC / SWIFT', group: 'Bank', type: 'bic', synonyms: ['bic', 'swift', 'swift code', 'bic code'] },
+  { id: 'bank_name', label: 'Bank name', group: 'Bank', type: 'text', synonyms: ['bank name', 'bank', 'financial institution'] },
+  { id: 'bank_country', label: 'Bank country', group: 'Bank', type: 'country', synonyms: ['bank country', 'country of bank'] },
+
+  // Payroll year-to-date balances
+  { id: 'tax_year', label: 'Tax year', group: 'Payroll balances', type: 'text', synonyms: ['tax year', 'payroll year', 'fiscal year', 'balance year'] },
+  { id: 'wage_type', label: 'Wage type / balance', group: 'Payroll balances', type: 'wagetype', synonyms: ['wage type', 'balance type', 'pay balance', 'earning deduction code', 'payroll balance', 'balance'] },
+  { id: 'ytd_amount', label: 'YTD amount', group: 'Payroll balances', type: 'number', synonyms: ['ytd amount', 'year to date amount', 'ytd', 'ytd total', 'balance amount'] },
 ];
 
 export const CONCEPT_BY_ID = Object.fromEntries(CONCEPTS.map((c) => [c.id, c]));
@@ -84,6 +107,7 @@ export const CONCEPT_BY_ID = Object.fromEntries(CONCEPTS.map((c) => [c.id, c]));
 export const ORG_LISTS = [
   { id: 'company', code: 'company_code', name: 'company_name', extra: ['company_country', 'company_currency'] },
   { id: 'department', code: 'department_code', name: 'department_name', extra: ['cost_center'] },
+  { id: 'cost_center', code: 'cost_center', name: 'cost_center_name', extra: ['cost_center_company', 'cost_center_parent'] },
   { id: 'location', code: 'location_code', name: 'location_name', extra: ['location_country', 'timezone'] },
   { id: 'job', code: 'job_code', name: 'job_name', extra: [] },
   { id: 'business_unit', code: 'business_unit', name: null, extra: [] },

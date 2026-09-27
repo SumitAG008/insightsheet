@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { mapSheets, runMigration, cleanValue, detectDateOrder, toIsoDate, loadOrder, picklistValues } from './engine';
+import { mapSheets, runMigration, cleanValue, detectDateOrder, toIsoDate, loadOrder, picklistValues, validIban, jobEventKind } from './engine';
+import { sourceFromRows } from '@/lib/unifiedReporting/model';
 import { SUCCESSFACTORS, DEFAULT_SETTINGS } from './targets/successfactors';
 import { buildWorkdaySample } from './sampleWorkday';
 import { fileRows } from './exporter';
@@ -27,7 +28,11 @@ describe('schema mapping', () => {
     expect(conceptOf(sheets, mapping, 'Job_History', 'Supervisory_Org')).toBe('department_code');
     expect(conceptOf(sheets, mapping, 'Job_History', 'Manager_Employee_ID')).toBe('manager_id');
     expect(conceptOf(sheets, mapping, 'Job_History', 'Job_Profile_ID')).toBe('job_code');
-    expect(conceptOf(sheets, mapping, 'Compensation', 'Base_Pay_Amount')).toBe('salary_amount');
+    expect(conceptOf(sheets, mapping, 'Compensation_History', 'Amount')).toBe('salary_amount');
+    expect(conceptOf(sheets, mapping, 'One_Time_Payments', 'Amount')).toBe('one_time_amount');
+    expect(conceptOf(sheets, mapping, 'Payroll_YTD', 'YTD_Amount')).toBe('ytd_amount');
+    expect(conceptOf(sheets, mapping, 'Cost_Centers', 'Company')).toBe('cost_center_company');
+    expect(conceptOf(sheets, mapping, 'Bank_Accounts', 'Bank_Country')).toBe('bank_country');
     expect(conceptOf(sheets, mapping, 'Terminations', 'Primary_Reason')).toBe('termination_reason');
   });
 
@@ -127,10 +132,67 @@ describe('lookups and messages', () => {
   it('fills cost centre and time zone from org lists, and reports a missing termination once', () => {
     const { result } = run();
     const job = file(result, 'EmpJob').rows.find((r) => r['user-id'] === '21000');
-    expect(job['cost-center']).toBe('CC1000');
+    expect(job['cost-center']).toBe('GB01-100');
     const berlin = file(result, 'EmpJob').rows.find((r) => r.location === 'BER');
     if (berlin) expect(berlin.timezone).toBe('Europe/Berlin');
     expect(result.issues.filter((i) => i.key === '21031')).toHaveLength(1);
     expect(cleanValue('phone_work', '+44 (0)20 7946 1000', {}).value).toBe('+442079461000');
+  });
+});
+
+describe('payroll, finance and history', () => {
+  it('builds cost centers top-down and checks them against legal entities', () => {
+    const { result } = run();
+    const cc = file(result, 'FOCostCenter');
+    const pos = (code) => cc.rows.findIndex((r) => r.externalCode === code);
+    expect(pos('GB01-000')).toBeLessThan(pos('GB01-200'));
+    expect(file(result, 'FODepartment').order).toBeGreaterThan(cc.order);
+    const msgs = result.issues.map((i) => i.message);
+    expect(msgs).toContain('FR01 does not exist in FOCompany');
+    expect(msgs.some((m) => /^Cost center \S+ belongs to \w+, but the employee is in \w+$/.test(m))).toBe(true);
+  });
+
+  it('keeps full pay history with several components per date', () => {
+    const { result } = run();
+    const recurring = file(result, 'EmpPayCompRecurring').rows;
+    const comp = file(result, 'EmpCompensation').rows;
+    expect(recurring.length).toBeGreaterThan(comp.length); // car allowance shares a date with base pay
+    expect(new Set(comp.map((r) => `${r['user-id']}|${r['start-date']}`)).size).toBe(comp.length);
+    expect(recurring.some((r) => r['pay-component'] === 'Car Allowance')).toBe(true);
+  });
+
+  it('classifies job history events', () => {
+    expect(jobEventKind({ job_code: 'A', department_code: 'D' }, { job_code: 'B', department_code: 'D' })).toBe('jobChange');
+    expect(jobEventKind({ job_code: 'A', department_code: 'D' }, { job_code: 'A', department_code: 'E' })).toBe('transfer');
+    expect(jobEventKind({ job_code: 'A' }, { job_code: 'A', fte: '0.5' })).toBe('data');
+    const reasons = new Set(file(run().result, 'EmpJob').rows.map((r) => r['event-reason']));
+    expect([...reasons].sort()).toEqual(['DATACHG', 'HIRNEW', 'JOBCHG', 'TRANSFER']);
+  });
+
+  it('validates bank details and one-time payments', () => {
+    expect(validIban('GB82WEST12345698765432')).toBe(true);
+    expect(validIban('GB82WEST12345698765433')).toBe(false);
+    expect(cleanValue('iban', 'gb82 west 1234 5698 7654 32', {})).toMatchObject({ value: 'GB82WEST12345698765432', rule: 'iban' });
+    const { result } = run();
+    const errs = result.issues.filter((i) => i.severity === 'error').map((i) => i.message);
+    expect(errs.some((m) => /^IBAN •+\d{4} fails its checksum$/.test(m))).toBe(true);
+    expect(errs).toContain('UK sort code must be 6 digits (has 5)');
+    expect(file(result, 'EmpPayCompNonRecurring').rows[0]['pay-component-code']).toBe('Annual Bonus');
+    expect(file(result, 'PayrollYTD').rows.length).toBeGreaterThan(0);
+  });
+
+  it('reconciles money to the cent and catches values lost in a merge', () => {
+    const { result } = run();
+    expect(result.reconciliation.length).toBeGreaterThan(5);
+    expect(result.reconciliation.every((r) => r.ok)).toBe(true);
+
+    // The same employee twice on a one-row-per-employee tab: only one salary survives.
+    const sheets = [sourceFromRows('Workers', [
+      { Employee_ID: 'E1', Legal_First_Name: 'A', Legal_Last_Name: 'B', Hire_Date: '2020-01-01', Base_Pay_Amount: '100', Currency: 'GBP' },
+      { Employee_ID: 'E1', Legal_First_Name: 'A', Legal_Last_Name: 'B', Hire_Date: '2020-01-01', Base_Pay_Amount: '150', Currency: 'GBP' },
+    ], 'Workday', 'file')];
+    const r2 = runMigration(SUCCESSFACTORS, sheets, mapSheets(sheets), settings, {});
+    const pay = r2.reconciliation.find((r) => r.label === 'Recurring pay (GBP)');
+    expect(pay).toMatchObject({ source: 250, target: 100, ok: false });
   });
 });

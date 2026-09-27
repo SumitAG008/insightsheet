@@ -104,6 +104,13 @@ export const CONCEPTS = [
   { id: 'employer_contribution', label: 'Employer contribution %', group: 'Pension', type: 'number', synonyms: ['employer contribution pct', 'employer contribution', 'er contribution', 'employer contribution percent', 'employer rate'] },
   { id: 'pension_payout_amount', label: 'Pension payout amount', group: 'Pension', type: 'number', synonyms: ['monthly pension', 'pension amount', 'pension payout', 'annual pension', 'pension paid', 'pension payment'] },
 
+  // Payroll results per period (legacy payroll history)
+  { id: 'pay_period_start', label: 'Pay period start', group: 'Payroll results', type: 'date', synonyms: ['pay period start', 'period start', 'period begin', 'period start date', 'pay period begin date'] },
+  { id: 'pay_period_end', label: 'Pay period end', group: 'Payroll results', type: 'date', synonyms: ['pay period end', 'period end', 'period end date', 'pay period end date'] },
+  { id: 'pay_date', label: 'Pay date', group: 'Payroll results', type: 'date', synonyms: ['check date', 'payroll date', 'pay date', 'payment date', 'paid on'] },
+  { id: 'run_type', label: 'Payroll run type', group: 'Payroll results', type: 'text', synonyms: ['run type', 'payroll run type', 'payroll type', 'run category', 'off cycle'] },
+  { id: 'payroll_amount', label: 'Payroll result amount', group: 'Payroll results', type: 'number', synonyms: ['result amount', 'wage type amount', 'period amount', 'current amount'] },
+
   // Payroll year-to-date balances
   { id: 'tax_year', label: 'Tax year', group: 'Payroll balances', type: 'text', synonyms: ['tax year', 'payroll year', 'fiscal year', 'balance year'] },
   { id: 'wage_type', label: 'Wage type / balance', group: 'Payroll balances', type: 'wagetype', synonyms: ['wage type', 'balance type', 'pay balance', 'earning deduction code', 'payroll balance', 'balance'] },

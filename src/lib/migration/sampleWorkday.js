@@ -71,6 +71,7 @@ export function buildWorkdaySample() {
   const oneTime = [];
   const bank = [];
   const ytd = [];
+  const results = [];
   const retirees = [];
   const pension = [];
   const dependents = [];
@@ -197,12 +198,20 @@ export function buildWorkdaySample() {
     }
 
     if (!leaver) {
-      const gross = Math.round((salary / 12) * 6 * 100) / 100;
+      // Six monthly payroll runs (Jan–Jun 2026); YTD balances are their exact sums.
+      const monthly = Math.round((salary / 12) * 100) / 100;
       const taxYear = cur === 'GBP' ? '2026-27' : '2026';
-      const bal = (name, amount) => ytd.push({ Employee_ID: `${id}`, Tax_Year: taxYear, Pay_Balance: name, YTD_Amount: amount.toFixed(2), Currency: cur });
-      bal('Gross Pay', gross);
-      bal(cur === 'USD' ? 'Federal Income Tax' : cur === 'EUR' ? 'Lohnsteuer' : 'PAYE Tax', Math.round(gross * 0.22 * 100) / 100);
-      bal(cur === 'USD' ? 'Social Security' : cur === 'EUR' ? 'Rentenversicherung' : 'Employee NIC', Math.round(gross * 0.08 * 100) / 100);
+      const names = [['Gross Pay', 1], [cur === 'USD' ? 'Federal Income Tax' : cur === 'EUR' ? 'Lohnsteuer' : 'PAYE Tax', 0.22], [cur === 'USD' ? 'Social Security' : cur === 'EUR' ? 'Rentenversicherung' : 'Employee NIC', 0.08]];
+      const totals = {};
+      for (let m = 1; m <= 6; m++) {
+        const lastDay = new Date(Date.UTC(2026, m, 0)).getUTCDate();
+        for (const [name, rate] of names) {
+          const amount = Math.round(monthly * rate * 100) / 100;
+          totals[name] = Math.round(((totals[name] || 0) + amount) * 100) / 100;
+          results.push({ Employee_ID: `${id}`, Pay_Period_Start: us(2026, m, 1), Pay_Period_End: us(2026, m, lastDay), Pay_Date: us(2026, m, Math.min(25, lastDay)), Run_Type: 'Regular', Wage_Type: name, Amount: amount.toFixed(2), Currency: cur });
+        }
+      }
+      for (const [name] of names) ytd.push({ Employee_ID: `${id}`, Tax_Year: taxYear, Pay_Balance: name, YTD_Amount: totals[name].toFixed(2), Currency: cur });
     }
     addresses.push({
       Employee_ID: `${id}`,
@@ -231,6 +240,7 @@ export function buildWorkdaySample() {
     ['One_Time_Payments', oneTime],
     ['Bank_Accounts', bank],
     ['Payroll_YTD', ytd],
+    ['Payroll_Results', results],
     ['Retirees', retirees],
     ['Pension_Enrolment', pension],
     ['Dependents', dependents],

@@ -248,3 +248,85 @@ describe('multi-tab cases: retirees, pension, dependents, unknown data', () => {
     expect(unmapped.entity.fields.map((f) => f.id)).toContain('Worker_Data.Union_Member');
   });
 });
+
+describe('SAP payroll legacy transfer (T558B / T558C) and profiles', () => {
+  const sapSettings = { ...settings, sapPayrollTransfer: true, sapCountryGrouping: '08' };
+
+  it('only builds SAP files when switched on', () => {
+    expect(file(run().result, 'SAP_T558B')).toBeUndefined();
+  });
+
+  it('numbers payroll runs per employee and writes one line per wage type', () => {
+    const sheets = buildWorkdaySample();
+    const r = runMigration(SUCCESSFACTORS, sheets, mapSheets(sheets), sapSettings, {});
+    const b = file(r, 'SAP_T558B');
+    const c = file(r, 'SAP_T558C');
+    expect(b.fileName).toMatch(/_SAP_T558B\.txt$/);
+    expect(file(r, 'SAP_T558C').order).toBeGreaterThan(b.order);
+    const emp = b.rows.filter((x) => x.PERNR === '21000');
+    expect(emp.map((x) => x.SEQNR)).toEqual(['00001', '00002', '00003', '00004', '00005', '00006']);
+    expect(emp[0]).toMatchObject({ PABRJ: '2026', PABRP: '01', FPBEG: '20260101', FPEND: '20260131', PERMO: '01' });
+    expect(c.rows.filter((x) => x.PERNR === '21000' && x.SEQNR === '00001')).toHaveLength(3);
+    expect(c.rows[0].MOLGA).toBe('08');
+  });
+
+  it('flags wage types that are not SAP codes until mapped', () => {
+    const sheets = buildWorkdaySample();
+    const m = mapSheets(sheets);
+    const before = runMigration(SUCCESSFACTORS, sheets, m, sapSettings, {});
+    expect(before.issues.some((i) => i.field === 'LGART' && i.key === 'Gross Pay')).toBe(true);
+    const after = runMigration(SUCCESSFACTORS, sheets, m, sapSettings, { wagetype: { 'gross pay': '/101' } });
+    expect(after.issues.some((i) => i.field === 'LGART' && i.key === 'Gross Pay')).toBe(false);
+    expect(file(after, 'SAP_T558C').rows.some((x) => x.LGART === '/101')).toBe(true);
+  });
+
+  it('reconciles results to T558C and to the YTD balances', () => {
+    const sheets = buildWorkdaySample();
+    const r = runMigration(SUCCESSFACTORS, sheets, mapSheets(sheets), sapSettings, {});
+    const rows = r.reconciliation.filter((x) => /T558C|Results vs YTD/.test(x.label));
+    expect(rows.length).toBeGreaterThan(6);
+    expect(rows.every((x) => x.ok)).toBe(true);
+  });
+
+  it('writes SAP files tab-delimited without header lines', async () => {
+    const JSZip = (await import('jszip')).default;
+    const { buildZip } = await import('./exporter');
+    const sheets = buildWorkdaySample();
+    const m = mapSheets(sheets);
+    const r = runMigration(SUCCESSFACTORS, sheets, m, sapSettings, {});
+    const blob = await buildZip({ result: r, target: SUCCESSFACTORS, settings: sapSettings, sheets, mapping: m });
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const name = Object.keys(zip.files).find((n) => /SAP_T558B\.txt$/.test(n));
+    const text = await zip.file(name).async('string');
+    expect(text.split('\r\n')[0]).toMatch(/^21000\t00001\t\t\t20260125\t01\t2026\t01\t20260101\t20260131$/);
+    expect(text).not.toMatch(/PERNR/);
+  });
+});
+
+describe('migration profile (reuse mappings across mock loads)', () => {
+  it('round-trips user choices, translations and settings onto a new extract', async () => {
+    const { exportProfile, applyProfile } = await import('./profile');
+    const sheets = buildWorkdaySample();
+    const m = mapSheets(sheets);
+    const worker = sheets.find((s) => s.name === 'Worker_Data');
+    const union = worker.columns.find((c) => c.name === 'Union_Member').key;
+    m[worker.id][union] = { concept: 'employee_class', confidence: 1, method: 'you' };
+    const profile = exportProfile({ sheets, mapping: m, settings: { ...settings, hireEventReason: 'H01' }, picklists: { gender: { 'not declared': 'X' } }, tabInfo: {} });
+    const json = JSON.parse(JSON.stringify(profile));
+
+    // Next mock load: same tabs, new IDs, names prefixed with the workbook name.
+    const next = buildWorkdaySample().map((s) => ({ ...s, name: `mock2 · ${s.name}` }));
+    const applied = applyProfile(json, next, mapSheets(next), DEFAULT_SETTINGS);
+    const w2 = next.find((s) => s.name.endsWith('Worker_Data'));
+    const union2 = w2.columns.find((c) => c.name === 'Union_Member').key;
+    expect(applied.mapping[w2.id][union2]).toMatchObject({ concept: 'employee_class', method: 'profile' });
+    expect(applied.settings.hireEventReason).toBe('H01');
+    expect(applied.picklists.gender['not declared']).toBe('X');
+    expect(applied.stats.matchedTabs).toBe(next.length);
+  });
+
+  it('rejects files that are not profiles', async () => {
+    const { applyProfile } = await import('./profile');
+    expect(() => applyProfile({ foo: 1 }, [], {}, {})).toThrow(/not a Meldra migration profile/);
+  });
+});

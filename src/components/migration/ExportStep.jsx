@@ -11,6 +11,7 @@ const STAGE_TONE = {
   Contact: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
   Compensation: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
   Payroll: 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300',
+  'Carry-over': 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',
 };
 
 const maskValue = (v) => (v.length <= 4 ? v : `${'•'.repeat(Math.min(8, v.length - 4))}${v.slice(-4)}`);
@@ -39,7 +40,7 @@ function Preview({ file, settings }) {
 }
 Preview.propTypes = { file: PropTypes.object.isRequired, settings: PropTypes.object.isRequired };
 
-export default function ExportStep({ result, settings, onDownload, busy }) {
+export default function ExportStep({ result, settings, onDownload, onDownloadWorkbook, busy }) {
   const [selected, setSelected] = useState(result.files[0]?.entity.id);
   const current = result.files.find((f) => f.entity.id === selected) || result.files[0];
   const errorsFor = (label) => result.issues.filter((i) => i.severity === 'error' && i.entity === label).length;
@@ -82,13 +83,16 @@ export default function ExportStep({ result, settings, onDownload, busy }) {
             <div className="flex-1">
               <h3 className="m-0 text-lg font-semibold">Migration package</h3>
               <p className="mt-1 text-sm text-slate-500">
-                {result.files.length} CSV files in load order, a README with the sequence, and reports of the mapping, every automatic fix and open issues.
+                {result.files.length} files in load order. SuccessFactors imports take CSV, so the ZIP holds one CSV per file plus a README and reports. The review workbook puts everything in one Excel file for checking with the business.
               </p>
             </div>
-            <Button size="lg" onClick={onDownload} disabled={busy}>
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-              Download ZIP
-            </Button>
+            <div className="flex flex-col items-stretch gap-2">
+              <Button size="lg" onClick={onDownload} disabled={busy}>
+                {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                Download ZIP for SuccessFactors
+              </Button>
+              <Button variant="outline" onClick={onDownloadWorkbook} disabled={busy}><FileText className="mr-2 h-4 w-4" />Review workbook (.xlsx)</Button>
+            </div>
           </div>
           {result.counts.error > 0 && (
             <p className="mt-3 flex items-start gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950 dark:text-red-200">
@@ -109,6 +113,7 @@ export default function ExportStep({ result, settings, onDownload, busy }) {
               <span className="text-sm text-slate-500">· {current.entity.label} · {current.rows.length} rows{current.entity.dependsOn.length ? ` · needs ${current.entity.dependsOn.filter((d) => result.files.some((f) => f.entity.id === d)).join(', ')}` : ''}</span>
             </div>
             {current.entity.mdf && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">Payment Information is an MDF object: download its template from Import and Export Data in your instance and match these columns to it. Bank numbers are masked here and complete in the download.</p>}
+            {current.entity.custom && <p className="mb-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">No standard SuccessFactors file for this data yet ({current.entity.reason?.toLowerCase()}). It is carried as-is so nothing is lost: load it into a custom MDF object, or hand it to payroll or benefits.</p>}
             {current.entity.payroll && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:bg-rose-950 dark:text-rose-200">Year-to-date balances are loaded by payroll (Employee Central Payroll or your payroll provider), not by an Employee Central import. Map the wage types to your payroll’s codes on the Cleanse step.</p>}
             <Preview file={current} settings={settings} />
           </div>
@@ -122,5 +127,6 @@ ExportStep.propTypes = {
   result: PropTypes.object.isRequired,
   settings: PropTypes.object.isRequired,
   onDownload: PropTypes.func.isRequired,
+  onDownloadWorkbook: PropTypes.func.isRequired,
   busy: PropTypes.bool,
 };

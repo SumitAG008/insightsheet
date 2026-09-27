@@ -103,7 +103,7 @@ export const PICKLISTS = {
     label: 'Employment status',
     codes: [
       { code: 'active', synonyms: ['active', 'a', 'employed', 'current', 'on leave', 'leave of absence', 'yes', 'y', '1'] },
-      { code: 'inactive', synonyms: ['terminated', 't', 'inactive', 'i', 'separated', 'left', 'former', 'no', 'n', '0'] },
+      { code: 'inactive', synonyms: ['terminated', 't', 'inactive', 'i', 'separated', 'left', 'former', 'no', 'n', '0', 'retired', 'retiree', 'pensioner', 'deceased', 'r'] },
     ],
   },
   yesno: {

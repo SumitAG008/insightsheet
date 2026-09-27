@@ -8,7 +8,7 @@ import ReviewStep from '@/components/migration/ReviewStep';
 import ExportStep from '@/components/migration/ExportStep';
 import { CONCEPTS } from '@/lib/migration/concepts';
 import { mapSheets, picklistValues, runMigration } from '@/lib/migration/engine';
-import { buildZip } from '@/lib/migration/exporter';
+import { buildReviewWorkbook, buildZip } from '@/lib/migration/exporter';
 import { buildWorkdaySample, downloadWorkdaySampleXlsx } from '@/lib/migration/sampleWorkday';
 import { DEFAULT_SETTINGS, SUCCESSFACTORS } from '@/lib/migration/targets/successfactors';
 import { parseFile } from '@/lib/unifiedReporting/model';
@@ -47,6 +47,8 @@ function SettingsPanel({ settings, onChange }) {
       {field('transferEventReason', 'Transfer event reason', 'Later records where the org, location or cost center changed.')}
       {field('changeEventReason', 'Data change event reason', 'Any other later record.')}
       {field('paymentMethod', 'Default payment method code', 'Used when the extract has none.')}
+      {field('retirementEventReason', 'Retirement event reason', 'Termination reason code used for retirees.')}
+      {field('pensionPayoutFrequency', 'Pension payout frequency code', 'Used when the retirees tab has none.')}
       {field('defaultTimezone', 'Default time zone', 'Used when neither the job nor its location has one.')}
       {field('basePayComponent', 'Base pay component', 'Pay component code for base salary.')}
       {field('workEmailType', 'Work email type code')}
@@ -68,6 +70,9 @@ export default function Migration() {
   const [mapping, setMapping] = useState({});
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [picklists, setPicklists] = useState({});
+  // What the AI says each tab is: { [sheetId]: { purpose, note } }.
+  const [tabInfo, setTabInfo] = useState({});
+  const [aiStatus, setAiStatus] = useState(null);
   const [step, setStep] = useState('upload');
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState('');
@@ -83,24 +88,28 @@ export default function Migration() {
         setMapping(saved.mapping || {});
         setSettings({ ...DEFAULT_SETTINGS, ...(saved.settings || {}) });
         setPicklists(saved.picklists || {});
+        setTabInfo(saved.tabInfo || {});
         setStep(saved.step || 'map');
       }
       setLoaded(true);
     })();
   }, []);
   useEffect(() => {
-    if (loaded) store.save(STORE_KEY, { sheets, mapping, settings, picklists, step });
-  }, [loaded, sheets, mapping, settings, picklists, step]);
+    if (loaded) store.save(STORE_KEY, { sheets, mapping, settings, picklists, step, tabInfo });
+  }, [loaded, sheets, mapping, settings, picklists, step, tabInfo]);
 
-  const result = useMemo(() => (sheets.length ? runMigration(SUCCESSFACTORS, sheets, mapping, settings, picklists) : null), [sheets, mapping, settings, picklists]);
+  const purposes = useMemo(() => Object.fromEntries(Object.entries(tabInfo).map(([k, v]) => [k, v.purpose])), [tabInfo]);
+  const result = useMemo(() => (sheets.length ? runMigration(SUCCESSFACTORS, sheets, mapping, settings, picklists, purposes) : null), [sheets, mapping, settings, picklists, purposes]);
   const picklistRows = useMemo(() => (sheets.length ? picklistValues(sheets, mapping, picklists) : {}), [sheets, mapping, picklists]);
 
   const addSheets = (added) => {
     const next = [...sheets, ...added];
-    setSheets(next);
     // Map only the new sheets; keep the user's choices on existing ones.
-    setMapping((m) => ({ ...m, ...mapSheets(added) }));
+    const nextMapping = { ...mapping, ...mapSheets(added) };
+    setSheets(next);
+    setMapping(nextMapping);
     setStep('map');
+    runAi(next, nextMapping, { auto: true });
   };
 
   const onFiles = async (files) => {
@@ -127,17 +136,21 @@ export default function Migration() {
       delete copy.rawRows;
       return copy;
     });
-    setSheets([]);
-    setMapping(mapSheets(sample));
+    const sampleMapping = mapSheets(sample);
+    setMapping(sampleMapping);
     setSheets(sample);
     setPicklists({});
+    setTabInfo({});
     setStep('map');
+    runAi(sample, sampleMapping, { auto: true });
   };
 
   const reset = () => {
     setSheets([]);
     setMapping({});
     setPicklists({});
+    setTabInfo({});
+    setAiStatus(null);
     setSettings(DEFAULT_SETTINGS);
     setStep('upload');
   };
@@ -147,35 +160,63 @@ export default function Migration() {
     [sheetId]: { ...(m[sheetId] || {}), [col]: concept ? { concept, confidence: 1, method: 'you' } : { concept: null, method: 'you' } },
   }));
 
-  const refineWithAi = async () => {
+  /**
+   * AI pass: classify every tab and map what the rules could not place
+   * confidently. Sends tab and column names only, never values. The user's
+   * own choices and confident rule matches are never overwritten.
+   */
+  const runAi = async (sheetList, baseMapping, { auto = false } = {}) => {
     setBusy('ai');
-    setMessage('');
+    setAiStatus({ state: 'running' });
     try {
       const out = await backendApi.migration.suggestMapping({
         sourceSystem: 'Workday',
-        sheets: sheets.map((s) => ({ name: s.name, columns: s.columns.map((c) => c.name) })),
+        sheets: sheetList.map((s) => ({ name: s.name, columns: s.columns.map((c) => c.name) })),
         concepts: CONCEPTS.map((c) => ({ id: c.id, label: `${c.label} (${c.group})` })),
       });
+      const next = { ...baseMapping };
       let applied = 0;
-      setMapping((m) => {
-        const next = { ...m };
-        for (const x of out.mappings || []) {
-          const sheet = sheets.find((s) => s.name === x.sheet);
-          const col = sheet?.columns.find((c) => c.name === x.column);
-          if (!col) continue;
-          const cur = next[sheet.id]?.[col.key];
-          // Never override the user's own choices or confident rule matches.
-          if (cur?.method === 'you' || (cur?.concept && cur.confidence >= 0.85)) continue;
-          const taken = Object.entries(next[sheet.id] || {}).some(([k, v]) => k !== col.key && v?.concept === x.concept);
-          if (taken) continue;
-          next[sheet.id] = { ...(next[sheet.id] || {}), [col.key]: { concept: x.concept, confidence: Number(x.confidence) || 0.8, method: 'ai' } };
-          applied++;
-        }
-        return next;
-      });
-      setMessage(applied ? `AI refined ${applied} column${applied > 1 ? 's' : ''}.` : 'AI agreed with the current mapping.');
-    } catch {
-      setMessage('The AI assistant is not available right now; the rule-based mapping is unchanged.');
+      for (const x of out.mappings || []) {
+        const sheet = sheetList.find((s) => s.name === x.sheet);
+        const col = sheet?.columns.find((c) => c.name === x.column);
+        if (!col) continue;
+        const cur = next[sheet.id]?.[col.key];
+        if (cur?.method === 'you' || (cur?.concept && cur.confidence >= 0.85)) continue;
+        if (cur?.concept === x.concept) continue;
+        const taken = Object.entries(next[sheet.id] || {}).some(([k, v]) => k !== col.key && v?.concept === x.concept);
+        if (taken) continue;
+        next[sheet.id] = { ...(next[sheet.id] || {}), [col.key]: { concept: x.concept, confidence: Math.min(1, Number(x.confidence) || 0.8), method: 'ai' } };
+        applied++;
+      }
+      const info = {};
+      for (const t of out.tabs || []) {
+        const sheet = sheetList.find((s) => s.name === t.sheet);
+        if (sheet) info[sheet.id] = { purpose: t.purpose, note: t.note };
+      }
+      setMapping(next);
+      setTabInfo((cur) => ({ ...cur, ...info }));
+      setAiStatus({ state: 'ok', applied, tabs: Object.keys(info).length });
+    } catch (e) {
+      setAiStatus({ state: 'error', reason: e.message, auto });
+    }
+    setBusy('');
+  };
+  const refineWithAi = () => runAi(sheets, mapping);
+
+  const saveBlob = (blob, name) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  const downloadWorkbook = async () => {
+    setBusy('zip');
+    try {
+      saveBlob(await buildReviewWorkbook({ result, settings }), `migration_review_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (e) {
+      setMessage(`The workbook could not be built: ${e.message}`);
     }
     setBusy('');
   };
@@ -254,7 +295,7 @@ export default function Migration() {
               {busy === 'upload' ? <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" /> : <Upload className="mx-auto h-8 w-8 text-blue-600" />}
               <h2 className="mt-3 text-xl font-semibold">Drop your Workday extract</h2>
               <p className="mx-auto mt-1 max-w-lg text-sm text-slate-500">
-                One workbook with many tabs, or several CSVs: worker data, job and pay history, one-time payments, bank details, payroll balances, addresses, terminations, legal entities, cost centers and other org lists. Tab and column names don’t need to match anything.
+                Your Excel workbook exactly as exported — any number of tabs: workers, job and pay history, bonuses, bank details, payroll balances, retirees, pension, dependents, terminations, legal entities, cost centers and other org lists. Tab and column names don’t need to match anything. CSV files work too.
               </p>
               <Button className="mt-5" onClick={() => fileInput.current?.click()} disabled={busy === 'upload'}>Choose files</Button>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
@@ -291,7 +332,7 @@ export default function Migration() {
         )}
 
         {step === 'map' && result && (
-          <MappingStep sheets={sheets} mapping={mapping} roles={result.data.sheetRoles} onChange={setColumn} onAi={refineWithAi} aiBusy={busy === 'ai'} />
+          <MappingStep sheets={sheets} mapping={mapping} roles={result.data.sheetRoles} tabInfo={tabInfo} aiStatus={aiStatus} onChange={setColumn} onAi={refineWithAi} aiBusy={busy === 'ai'} />
         )}
         {step === 'cleanse' && result && (
           <ReviewStep
@@ -300,7 +341,7 @@ export default function Migration() {
             onSetPicklist={(type, key, code) => setPicklists((p) => ({ ...p, [type]: { ...(p[type] || {}), [key]: code } }))}
           />
         )}
-        {step === 'export' && result && <ExportStep result={result} settings={settings} onDownload={download} busy={busy === 'zip'} />}
+        {step === 'export' && result && <ExportStep result={result} settings={settings} onDownload={download} onDownloadWorkbook={downloadWorkbook} busy={busy === 'zip'} />}
       </div>
 
       {sheets.length > 0 && stepIdx < STEPS.length - 1 && step !== 'upload' && (

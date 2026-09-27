@@ -20,3 +20,20 @@ def test_prompt_caps_sheet_and_column_counts():
     prompt = build_mapping_prompt(many, CONCEPTS, "Workday")
     assert '"S39"' in prompt and '"S40"' not in prompt
     assert '"c79"' in prompt and '"c80"' not in prompt
+
+
+def test_prompt_asks_for_tab_purposes_and_protects_dependents():
+    prompt = build_mapping_prompt(SHEETS, CONCEPTS, "Workday")
+    assert '"tabs"' in prompt and "retirees" in prompt and "pension" in prompt
+    assert "belong to the dependent, NOT the employee" in prompt
+
+
+def test_explain_ai_error_is_safe_and_specific(monkeypatch):
+    from app.services.ai_service import explain_ai_error, assistant_model
+    assert "model" in explain_ai_error(Exception("OpenAI Error: The model `gpt-4-turbo-preview` does not exist"))
+    assert "API key" in explain_ai_error(Exception("Error code: 401 - Incorrect API key provided: sk-abc"))
+    assert "sk-abc" not in explain_ai_error(Exception("Error code: 401 - Incorrect API key provided: sk-abc"))
+    monkeypatch.delenv("AI_ASSISTANT_MODEL", raising=False)
+    assert assistant_model() == "gpt-4o-mini"
+    monkeypatch.setenv("AI_ASSISTANT_MODEL", "gpt-4.1-mini")
+    assert assistant_model() == "gpt-4.1-mini"

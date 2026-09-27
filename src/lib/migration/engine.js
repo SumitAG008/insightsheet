@@ -326,6 +326,7 @@ export const RULE_TEXT = {
   bic: 'Normalised BIC/SWIFT codes',
   digits: 'Removed spaces and dashes from account numbers and sort codes',
   'cc-created': 'Created cost centers that were referenced but missing from the cost center list',
+  retirement: 'Turned retirement dates into terminations with the retirement reason',
   fte: 'Converted FTE percentages (100 → 1.0)',
   number: 'Removed symbols and separators from numbers',
   id: 'Restored IDs that Excel had turned into numbers',
@@ -347,7 +348,10 @@ const groupOf = (id) => CONCEPT_BY_ID[id]?.group;
  * employee; sheets with several rows per employee and an effective date are
  * history (job or pay events). Sheets without an employee key are org lists.
  */
-export function assemble(sheets, mapping, settings, picklists = {}) {
+const DETAIL_PURPOSES = new Set(['dependents', 'leave_balances', 'work_permits', 'benefits']);
+const DETAIL_NAME_RE = /depend|beneficiar|emergency|next.?of.?kin|family|spouse|child/i;
+
+export function assemble(sheets, mapping, settings, picklists = {}, tabPurposes = {}) {
   const changes = {};
   const issues = [];
   const unmappedPicklist = {};
@@ -365,6 +369,10 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
   const ytdRows = [];
   const org = Object.fromEntries(ORG_LISTS.map((l) => [l.id, new Map()]));
   const sheetRoles = {};
+  // Data with no standard target yet: whole tabs, and unmapped columns of worker tabs.
+  const carried = [];
+  const carryValues = new Map();
+  const carryColumns = [];
 
   for (const sheet of sheets) {
     const m = mapping[sheet.id] || {};
@@ -401,7 +409,11 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
 
     if (!conceptCol.employee_id) {
       const list = ORG_LISTS.find((l) => conceptCol[l.code] && l.name && conceptCol[l.name]) || ORG_LISTS.find((l) => conceptCol[l.code]);
-      if (!list) { sheetRoles[sheet.id] = 'unused'; continue; }
+      if (!list) {
+        sheetRoles[sheet.id] = 'unused';
+        carried.push({ sheet, employeeCol: null, reason: 'No employee ID or org code was recognised' });
+        continue;
+      }
       sheetRoles[sheet.id] = `org:${list.id}`;
       for (const r of sheet.rows) {
         const o = cleanRow(r);
@@ -429,6 +441,36 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
         : hasYtd ? 'history:ytd'
           : hasComp && !hasJob ? 'history:comp' : 'history:job';
 
+    // One-to-many detail (dependents, beneficiaries…): never merge its names and
+    // birth dates into the employee. Carry the tab as its own file instead.
+    const repeating = [...counts.values()].filter((n) => n > 1).length;
+    const purpose = tabPurposes[sheet.id];
+    const isDetail = !isHistory && (DETAIL_PURPOSES.has(purpose) || DETAIL_NAME_RE.test(sheet.name) || (repeating >= 3 && repeating / Math.max(1, counts.size) >= 0.3));
+    if (isDetail) {
+      // Notes about this tab's columns don't apply: it is carried, not processed.
+      for (let k = issues.length - 1; k >= 0; k--) if (issues[k].entity === sheet.name && issues[k].severity === 'info') issues.splice(k, 1);
+      sheetRoles[sheet.id] = 'detail';
+      carried.push({ sheet, employeeCol: conceptCol.employee_id, reason: purpose ? `AI identified it as ${purpose.replace('_', ' ')}` : 'Several rows per employee and no effective date' });
+      issues.push({ severity: 'info', entity: sheet.name, key: '', field: '', message: 'Several rows per employee (such as dependents) with no standard SuccessFactors file here: carried as its own file, not merged into the employee record.' });
+      continue;
+    }
+    if (sheetRoles[sheet.id] === 'employee') {
+      const unmapped = sheet.columns.filter((c) => !m[c.key]?.concept);
+      unmapped.forEach((c) => carryColumns.push({ sheet: sheet.name, key: c.key, name: `${sheet.name}.${c.name}` }));
+      if (unmapped.length) {
+        for (const r of sheet.rows) {
+          const id = cleanValue('employee_id', r[conceptCol.employee_id], {}).value;
+          if (!id) continue;
+          const bucket = carryValues.get(id) || {};
+          unmapped.forEach((c) => {
+            const v = r[c.key];
+            if (v !== null && v !== undefined && String(v).trim() !== '' && bucket[`${sheet.name}.${c.name}`] === undefined) bucket[`${sheet.name}.${c.name}`] = String(v).trim();
+          });
+          carryValues.set(id, bucket);
+        }
+      }
+    }
+
     for (const r of sheet.rows) {
       const o = cleanRow(r);
       const id = o.employee_id;
@@ -455,6 +497,17 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
         }
       }
     }
+  }
+
+  // Retirees: a retirement date is a termination with the retirement reason.
+  for (const p of people.values()) {
+    const v = p.values;
+    if (!v.retirement_date || v.termination_date) continue;
+    v.termination_date = v.retirement_date;
+    v.termination_reason = v.termination_reason || settings.retirementEventReason;
+    v.last_day_worked = v.last_day_worked || v.retirement_date;
+    v.status = 'inactive';
+    logChange('retirement', `${p.id} retired ${v.retirement_date}`, `termination (${v.termination_reason})`);
   }
 
   // Order history; derive single rows when no history sheet exists.
@@ -540,6 +593,9 @@ export function assemble(sheets, mapping, settings, picklists = {}) {
     changes: Object.values(changes).sort((a, b) => b.count - a.count),
     issues,
     sheetRoles,
+    carried,
+    carryValues,
+    carryColumns,
     unmappedPicklist: Object.fromEntries(Object.entries(unmappedPicklist).map(([k, v]) => [k, [...v.entries()].map(([raw, count]) => ({ raw, count }))])),
   };
 }
@@ -619,6 +675,7 @@ export function reconcile(sheets, mapping, files) {
   money('Recurring pay', 'salary_amount', 'EmpPayCompRecurring', 'paycompvalue', 'currency-code');
   money('One-time payments', 'one_time_amount', 'EmpPayCompNonRecurring', 'value', 'currency-code');
   money('Payroll YTD balances', 'ytd_amount', 'PayrollYTD', 'amount', 'currency');
+  money('Pension payouts', 'pension_payout_amount', 'PensionPayout', 'amount', 'currency');
   return rows.map((r) => ({ ...r, ok: Math.abs(r.source - r.target) < 0.005 }));
 }
 
@@ -720,6 +777,12 @@ export function buildOutputs(target, data, settings) {
           break;
         case 'ytd':
           (data.ytdFor.get(p.id) || []).forEach((c) => out.push({ key: `${p.id} ${c.values.tax_year || ''} ${c.values.wage_type || ''}`.trim(), person: p.id, ctx: withRow(p, c.values) }));
+          break;
+        case 'pension':
+          if (p.values.pension_scheme || p.values.pension_member_id) out.push({ key: p.id, ctx: makeCtx(p) });
+          break;
+        case 'pensionPayout':
+          if (p.values.pension_payout_amount) out.push({ key: p.id, ctx: makeCtx(p) });
           break;
         case 'bank':
           if (p.values.iban || p.values.account_number) out.push({ key: p.id, ctx: makeCtx(p) });
@@ -823,10 +886,66 @@ export function buildOutputs(target, data, settings) {
 }
 
 /** Run the whole pipeline. */
-export function runMigration(target, sheets, mapping, settings, picklists) {
-  const data = assemble(sheets, mapping, settings, picklists);
+export function runMigration(target, sheets, mapping, settings, picklists, tabPurposes = {}) {
+  const data = assemble(sheets, mapping, settings, picklists, tabPurposes);
   const out = buildOutputs(target, data, settings);
-  return { data, ...out, reconciliation: reconcile(sheets, mapping, out.files) };
+  const custom = carryOverFiles(data, out.files.length);
+  const files = [...out.files, ...custom];
+  return { data, ...out, files, reconciliation: reconcile(sheets, mapping, files), coverage: coverage(sheets, mapping, data, tabPurposes) };
+}
+
+const safeName = (s) => String(s).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'tab';
+
+/** Files for data that has no standard target yet, so nothing is silently dropped. */
+export function carryOverFiles(data, start) {
+  const files = [];
+  const add = (entity, rows) => files.push({ entity, rows, order: start + files.length + 1, fileName: `custom/${String(start + files.length + 1).padStart(2, '0')}_${entity.id}.csv` });
+  for (const { sheet, employeeCol, reason } of data.carried) {
+    const cols = sheet.columns.filter((c) => c.key !== employeeCol);
+    const fields = [
+      ...(employeeCol ? [{ id: 'employee-id', label: 'Employee ID' }] : []),
+      ...cols.map((c) => ({ id: c.name, label: c.name })),
+    ];
+    const rows = sheet.rows.map((r) => {
+      const o = {};
+      if (employeeCol) o['employee-id'] = cleanValue('employee_id', r[employeeCol], {}).value;
+      cols.forEach((c) => { o[c.name] = r[c.key] === null || r[c.key] === undefined ? '' : String(r[c.key]).trim(); });
+      return o;
+    }).filter((o) => Object.values(o).some((v) => v !== ''));
+    add({ id: `Custom_${safeName(sheet.name)}`, label: `${sheet.name} (carried as-is)`, stage: 'Carry-over', custom: true, reason, dependsOn: [], fields }, rows);
+  }
+  if (data.carryColumns.length) {
+    const fields = [{ id: 'employee-id', label: 'Employee ID' }, ...data.carryColumns.map((c) => ({ id: c.name, label: c.name }))];
+    const rows = [...data.carryValues.entries()]
+      .filter(([, v]) => Object.keys(v).length)
+      .map(([id, v]) => ({ 'employee-id': id, ...v }));
+    if (rows.length) add({ id: 'Custom_Unmapped_Fields', label: 'Unmapped worker fields', stage: 'Carry-over', custom: true, reason: 'Columns on worker tabs with no SuccessFactors field chosen', dependsOn: [], fields }, rows);
+  }
+  return files;
+}
+
+/** Account for every source column: migrated, carried in a custom file, or left behind. */
+export function coverage(sheets, mapping, data, tabPurposes = {}) {
+  const tabs = sheets.map((s) => {
+    const role = data.sheetRoles[s.id];
+    const m = mapping[s.id] || {};
+    const mappedCols = s.columns.filter((c) => m[c.key]?.concept);
+    const unmapped = s.columns.filter((c) => !m[c.key]?.concept);
+    const wholeTabCarried = role === 'detail' || role === 'unused';
+    return {
+      id: s.id,
+      name: s.name,
+      role,
+      purpose: tabPurposes[s.id] || null,
+      rows: s.rows.length,
+      total: s.columns.length,
+      mapped: wholeTabCarried ? 0 : mappedCols.length,
+      carried: wholeTabCarried ? s.columns.length : role === 'employee' ? unmapped.length : 0,
+      left: wholeTabCarried || role === 'employee' ? [] : unmapped.map((c) => c.name),
+    };
+  });
+  const sum = (k) => tabs.reduce((a, t) => a + (Array.isArray(t[k]) ? t[k].length : t[k]), 0);
+  return { tabs, total: sum('total'), mapped: sum('mapped'), carried: sum('carried'), left: sum('left') };
 }
 
 /* ======================= picklist review ======================= */

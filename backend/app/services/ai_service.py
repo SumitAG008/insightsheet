@@ -13,6 +13,25 @@ load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
+def assistant_model() -> str:
+    """The model configured for AI features (same setting the AI Assistant uses)."""
+    return (os.getenv("AI_ASSISTANT_MODEL") or "gpt-4o-mini").strip() or "gpt-4o-mini"
+
+
+def explain_ai_error(e: Exception) -> str:
+    """A short, safe reason for an AI failure that can be shown to the user."""
+    msg = str(e).lower()
+    if "api key" in msg or "api_key" in msg or "401" in msg or "authentication" in msg:
+        return "the OpenAI API key on the server is missing or invalid"
+    if "model" in msg and ("not found" in msg or "does not exist" in msg or "access" in msg):
+        return "the configured AI model is not available to this API key"
+    if "rate limit" in msg or "quota" in msg or "429" in msg:
+        return "the OpenAI rate limit or quota was reached"
+    if "timeout" in msg or "timed out" in msg:
+        return "the AI service took too long to respond"
+    return "the AI service returned an error"
+
+
 async def invoke_llm(
     prompt: str,
     add_context: bool = False,

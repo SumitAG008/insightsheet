@@ -12,6 +12,42 @@ const TYPE_LABEL = {
 };
 const fmtAmount = (v, unit) => (unit === 'money' ? v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : v.toLocaleString());
 
+function Coverage({ coverage }) {
+  if (!coverage) return null;
+  const pct = coverage.total ? Math.round(((coverage.mapped + coverage.carried) / coverage.total) * 100) : 100;
+  const ROLE = { employee: 'Worker data', 'history:job': 'Job history', 'history:comp': 'Pay history', 'history:onetime': 'One-time pay', 'history:ytd': 'Payroll balances', detail: 'Carried as-is', unused: 'Carried as-is' };
+  return (
+    <section className={card}>
+      <div className="flex flex-wrap items-center gap-2">
+        <h3 className="m-0 text-[15px] font-semibold">Data coverage</h3>
+        <span className={`rounded-full px-2 py-0.5 text-xs ${coverage.left ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}`}>
+          {coverage.left ? `${coverage.left} column${coverage.left > 1 ? 's' : ''} left behind` : 'Nothing left behind'}
+        </span>
+      </div>
+      <p className="mt-1 text-sm text-slate-500">
+        {coverage.total} source columns: <strong>{coverage.mapped}</strong> migrated into SuccessFactors files, <strong>{coverage.carried}</strong> carried in custom files (no standard target yet, e.g. dependents), <strong>{coverage.left}</strong> left behind — {pct}% accounted for.
+      </p>
+      <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-sm">
+          <tbody>
+            {coverage.tabs.map((t) => (
+              <tr key={t.id} className="border-b border-slate-100 dark:border-slate-800">
+                <td className="py-1.5 pr-3 font-medium">{t.name}</td>
+                <td className="py-1.5 pr-3 text-slate-500">{ROLE[t.role] || (t.role?.startsWith('org:') ? `${t.role.slice(4).replace('_', ' ')} list` : t.role)}</td>
+                <td className="py-1.5 pr-3 text-right tabular-nums text-slate-500">{t.rows.toLocaleString()} rows</td>
+                <td className="py-1.5 pr-3 text-right tabular-nums">{t.mapped} migrated</td>
+                <td className="py-1.5 pr-3 text-right tabular-nums">{t.carried ? `${t.carried} carried` : ''}</td>
+                <td className="py-1.5 text-amber-700 dark:text-amber-400">{t.left.length ? `left: ${t.left.join(', ')}` : ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+Coverage.propTypes = { coverage: PropTypes.object };
+
 function Reconciliation({ rows }) {
   if (!rows.length) return null;
   const bad = rows.filter((r) => !r.ok).length;
@@ -163,6 +199,7 @@ export default function ReviewStep({ result, picklistRows, onSetPicklist }) {
       </div>
 
       <Reconciliation rows={result.reconciliation || []} />
+      <Coverage coverage={result.coverage} />
 
       {Object.keys(picklistRows).length > 0 && (
         <section className={card}>

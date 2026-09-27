@@ -14,16 +14,19 @@ const tooltipStyle = {
 };
 const short = (s, n = 16) => (typeof s === 'string' && s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
-function ScatterView({ res, height }) {
+function ScatterView({ res, height, currency }) {
+  const f = (v, u) => fmt(v, u, currency);
   const [x, y, z] = res.series;
-  const points = res.labels.map((label, i) => ({ label, x: x.data[i], y: y.data[i], z: z ? z.data[i] : 1 }));
+  const points = res.labels
+    .map((label, i) => ({ label, x: x.data[i], y: y.data[i] ?? 0, z: z ? z.data[i] ?? 0 : 1 }))
+    .filter((p) => p.x !== null);
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ScatterChart margin={{ top: 10, right: 20, bottom: 24, left: 10 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
-        <XAxis type="number" dataKey="x" name={x.label} tick={axisTick} tickFormatter={(v) => fmt(v, x.unit)}
+        <XAxis type="number" dataKey="x" name={x.label} tick={axisTick} tickFormatter={(v) => f(v, x.unit)}
           label={{ value: x.label, position: 'insideBottom', offset: -12, fill: 'currentColor', fontSize: 12 }} />
-        <YAxis type="number" dataKey="y" name={y.label} tick={axisTick} tickFormatter={(v) => fmt(v, y.unit)} width={70} />
+        <YAxis type="number" dataKey="y" name={y.label} tick={axisTick} tickFormatter={(v) => f(v, y.unit)} width={70} />
         {z && <ZAxis type="number" dataKey="z" range={[60, 900]} name={z.label} />}
         <Tooltip
           {...tooltipStyle}
@@ -34,9 +37,9 @@ function ScatterView({ res, height }) {
             return (
               <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow dark:border-slate-700 dark:bg-slate-800">
                 <div className="font-semibold">{p.label}</div>
-                <div>{x.label}: {fmt(p.x, x.unit)}</div>
-                <div>{y.label}: {fmt(p.y, y.unit)}</div>
-                {z && <div>{z.label}: {fmt(p.z, z.unit)}</div>}
+                <div>{x.label}: {f(p.x, x.unit)}</div>
+                <div>{y.label}: {f(p.y, y.unit)}</div>
+                {z && <div>{z.label}: {f(p.z, z.unit)}</div>}
               </div>
             );
           }}
@@ -46,10 +49,11 @@ function ScatterView({ res, height }) {
     </ResponsiveContainer>
   );
 }
-ScatterView.propTypes = { res: PropTypes.object.isRequired, height: PropTypes.number.isRequired };
+ScatterView.propTypes = { res: PropTypes.object.isRequired, height: PropTypes.number.isRequired, currency: PropTypes.string };
 
-export default function ReportChart({ spec, res, height = 280 }) {
-  if (spec.chart === 'scatter') return <ScatterView res={res} height={height} />;
+export default function ReportChart({ spec, res, height = 300, currency = '' }) {
+  if (spec.chart === 'scatter') return <ScatterView res={res} height={height} currency={currency} />;
+  const fmtU = (v, u) => fmt(v, u, currency);
 
   const cols = chartColumns(res);
   const unit = cols[0].unit;
@@ -60,13 +64,13 @@ export default function ReportChart({ spec, res, height = 280 }) {
   });
   const tip = (v, name, item) => {
     const k = Number(String(item.dataKey).slice(1));
-    return [fmt(v, cols[k]?.unit ?? unit), name];
+    return [fmtU(v, cols[k]?.unit ?? unit), name];
   };
   const multi = cols.length > 1;
   // A second unit (e.g. headcount next to £) gets its own right-hand axis.
   const rightUnit = cols.find((c) => c.unit !== unit)?.unit;
   const axisOf = (c) => (rightUnit && c.unit === rightUnit ? 'right' : 'left');
-  const rightAxis = rightUnit ? <YAxis yAxisId="right" orientation="right" tick={axisTick} tickFormatter={(v) => fmt(v, rightUnit)} width={70} /> : null;
+  const rightAxis = rightUnit ? <YAxis yAxisId="right" orientation="right" tick={axisTick} tickFormatter={(v) => fmtU(v, rightUnit)} width={70} /> : null;
 
   if (spec.chart === 'pie') {
     return (
@@ -75,7 +79,7 @@ export default function ReportChart({ spec, res, height = 280 }) {
           <Pie data={rows} dataKey="c0" nameKey="label" innerRadius="45%" outerRadius="80%" paddingAngle={1} stroke="none">
             {rows.map((r, i) => <Cell key={r.label} fill={PALETTE[i % PALETTE.length]} />)}
           </Pie>
-          <Tooltip {...tooltipStyle} formatter={(v, name) => [fmt(v, unit), name]} />
+          <Tooltip {...tooltipStyle} formatter={(v, name) => [fmtU(v, unit), name]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
         </PieChart>
       </ResponsiveContainer>
@@ -88,7 +92,7 @@ export default function ReportChart({ spec, res, height = 280 }) {
         <LineChart data={rows} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200 dark:stroke-slate-700" />
           <XAxis dataKey="label" tick={axisTick} />
-          <YAxis yAxisId="left" tick={axisTick} tickFormatter={(v) => fmt(v, unit)} width={70} />
+          <YAxis yAxisId="left" tick={axisTick} tickFormatter={(v) => fmtU(v, unit)} width={70} />
           {rightAxis}
           <Tooltip {...tooltipStyle} formatter={tip} />
           {multi && <Legend wrapperStyle={{ fontSize: 12 }} />}
@@ -108,13 +112,13 @@ export default function ReportChart({ spec, res, height = 280 }) {
         <CartesianGrid strokeDasharray="3 3" vertical={horizontal} horizontal={!horizontal} className="stroke-slate-200 dark:stroke-slate-700" />
         {horizontal ? (
           <>
-            <XAxis type="number" tick={axisTick} tickFormatter={(v) => fmt(v, unit)} />
+            <XAxis type="number" tick={axisTick} tickFormatter={(v) => fmtU(v, unit)} />
             <YAxis type="category" dataKey="label" tick={axisTick} width={140} tickFormatter={(v) => short(v, 20)} />
           </>
         ) : (
           <>
             <XAxis dataKey="label" tick={axisTick} tickFormatter={(v) => short(v)} interval={0} />
-            <YAxis yAxisId="left" tick={axisTick} tickFormatter={(v) => fmt(v, unit)} width={70} />
+            <YAxis yAxisId="left" tick={axisTick} tickFormatter={(v) => fmtU(v, unit)} width={70} />
             {rightAxis}
           </>
         )}
@@ -132,4 +136,5 @@ ReportChart.propTypes = {
   spec: PropTypes.object.isRequired,
   res: PropTypes.object.isRequired,
   height: PropTypes.number,
+  currency: PropTypes.string,
 };

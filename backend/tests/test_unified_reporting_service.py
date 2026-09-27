@@ -13,7 +13,7 @@ CATALOG = {
             "measures": ["salary"],
         }
     ],
-    "customers": ["Barclays"],
+    "shared_dimensions": ["department", "month"],
     "known_values": ["department (employees): Sales, Engineering"],
     "notes": ["Employee status is \"Active\" or \"Left\"."],
 }
@@ -26,6 +26,8 @@ def test_plan_prompt_lists_catalog_and_rules():
     assert '"derived"' in prompt
     assert '"clarify"' in prompt
     assert "Headcount by department" in prompt
+    assert "combined on them): department, month." in prompt
+    assert "Money is in GBP." in prompt
     assert prompt.rstrip().endswith("Question: Cost per employee by department")
 
 
@@ -41,3 +43,9 @@ def test_insight_prompt_limits_rows():
     prompt = build_insight_prompt("Headcount by department", ["department", "Headcount"], rows, None)
     assert '"D24"' in prompt
     assert '"D25"' not in prompt
+
+
+def test_insight_prompt_uses_data_currency():
+    prompt = build_insight_prompt("Revenue by region", ["region", "Revenue"], [["North", 10]], None, "$")
+    assert "$1.2M" in prompt
+    assert "GBP" not in prompt

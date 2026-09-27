@@ -92,6 +92,7 @@ from app.services.ai_service import (
     generate_transform, explain_sql
 )
 from app.services.unified_reporting_service import plan_report, write_insight
+from app.services.migration_service import suggest_mapping
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
 from app.services.windows_excel_to_ppt import WindowsExcelToPPTService, WINDOWS_COM_AVAILABLE
@@ -1875,11 +1876,18 @@ class UnifiedPlanRequest(BaseModel):
     catalog: Dict[str, Any]
 
 
+class MigrationMappingRequest(BaseModel):
+    source_system: str = Field("Workday", max_length=60)
+    sheets: List[Dict[str, Any]] = Field(..., max_length=40)
+    concepts: List[Dict[str, Any]] = Field(..., max_length=150)
+
+
 class UnifiedInsightRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=500)
     columns: List[str] = Field(..., max_length=10)
     rows: List[List[Any]] = Field(..., max_length=25)
     notes: Optional[str] = Field(None, max_length=600)
+    currency: Optional[str] = Field(None, max_length=4)
 
 
 class ZipProcessingOptions(BaseModel):
@@ -5887,11 +5895,28 @@ async def unified_reporting_insight_endpoint(
 ):
     """Write a short plain-English answer for an already computed report."""
     try:
-        text = await write_insight(request.question, request.columns, request.rows, request.notes)
+        text = await write_insight(request.question, request.columns, request.rows, request.notes, request.currency)
         return {"text": text}
     except Exception as e:
         logger.error(f"Unified reporting insight error: {str(e)}")
         raise HTTPException(status_code=502, detail="The answer writer is unavailable right now.")
+
+
+@app.post("/api/migration/suggest-mapping")
+async def migration_suggest_mapping_endpoint(
+    request: MigrationMappingRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Map extract column headers to canonical HR fields (headers only, never values)."""
+    try:
+        mappings = await suggest_mapping(request.sheets, request.concepts, request.source_system)
+        db.add(UserActivity(user_email=current_user["email"], activity_type="migration_mapping"))
+        db.commit()
+        return {"mappings": mappings}
+    except Exception as e:
+        logger.error(f"Migration mapping error: {str(e)}")
+        raise HTTPException(status_code=502, detail="The mapping assistant is unavailable right now.")
 
 
 @app.post("/api/ai/explain-sql")

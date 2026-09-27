@@ -370,8 +370,8 @@ class DatabaseConnectionService:
             }
     
     @staticmethod
-    def execute_query(connection_id: str, db_type: str, query: str) -> Dict[str, Any]:
-        """Execute SQL query and return results"""
+    def execute_query(connection_id: str, db_type: str, query: str, max_rows: Optional[int] = None) -> Dict[str, Any]:
+        """Execute SQL query and return results (at most max_rows rows when given)"""
         try:
             if connection_id not in _connection_pool:
                 raise ValueError("Connection not found")
@@ -399,31 +399,36 @@ class DatabaseConnectionService:
                     conn.row_factory = sqlite3.Row
                 
                 cursor.execute(query)
+                fetch = (lambda: cursor.fetchmany(max_rows + 1)) if max_rows else cursor.fetchall
                 
                 if db_type == "postgresql":
-                    rows = cursor.fetchall()
+                    rows = fetch()
                     data = [dict(row) for row in rows]
                     columns = list(data[0].keys()) if data else []
                 elif db_type == "mysql":
                     columns = [desc[0] for desc in cursor.description] if cursor.description else []
-                    rows = cursor.fetchall()
+                    rows = fetch()
                     data = [dict(zip(columns, row)) for row in rows]
                 elif db_type == "mssql":
                     columns = [desc[0] for desc in cursor.description] if cursor.description else []
-                    rows = cursor.fetchall()
+                    rows = fetch()
                     data = [dict(zip(columns, row)) for row in rows]
                 elif db_type == "sqlite":
-                    rows = cursor.fetchall()
+                    rows = fetch()
                     data = [dict(row) for row in rows]
                     columns = list(data[0].keys()) if data else []
                 
                 cursor.close()
+                truncated = bool(max_rows) and len(data) > max_rows
+                if truncated:
+                    data = data[:max_rows]
                 
                 return {
                     "success": True,
                     "columns": columns,
                     "data": data,
-                    "rowCount": len(data)
+                    "rowCount": len(data),
+                    "truncated": truncated
                 }
             else:
                 raise ValueError(f"Query execution not yet supported for {db_type}")

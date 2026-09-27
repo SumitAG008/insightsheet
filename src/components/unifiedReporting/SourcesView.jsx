@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Database, FileSpreadsheet, Link2, Loader2, Trash2, Upload, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Database, FileSpreadsheet, Link2, Loader2, Plug, RefreshCw, Trash2, Upload, X } from 'lucide-react';
 import { suggestRelationships } from '@/lib/unifiedReporting/model';
+import { ApiConnector, DatabaseSource } from './ConnectSources';
 
 const ROLE_LABEL = { dimension: 'Break down by', measure: 'Number to add up', ignore: 'Ignore' };
 const TYPE_LABEL = { number: '123', date: 'date', text: 'abc' };
@@ -29,18 +30,29 @@ export function UploadZone({ onFiles, busy, compact }) {
 }
 UploadZone.propTypes = { onFiles: PropTypes.func.isRequired, busy: PropTypes.bool, compact: PropTypes.bool };
 
-function SourceCard({ s, onUpdate, onRemove, onRenameColumn }) {
+const KIND_ICON = { api: Plug, database: Database };
+const hostOf = (url) => {
+  try { return new URL(url).hostname; } catch { return ''; }
+};
+
+function SourceCard({ s, onUpdate, onRemove, onRenameColumn, onRefresh }) {
   const [open, setOpen] = useState(false);
+  const Icon = KIND_ICON[s.kind] || FileSpreadsheet;
   const measures = s.columns.filter((c) => c.role === 'measure').length;
   const dims = s.columns.filter((c) => c.role === 'dimension').length;
   return (
     <div className={card}>
       <div className="flex items-start gap-3">
-        <FileSpreadsheet className="mt-1 h-5 w-5 flex-none text-blue-600" />
+        <Icon className="mt-1 h-5 w-5 flex-none text-blue-600" />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="m-0 truncate text-[15px] font-semibold">{s.name}</h3>
             {s.kind === 'sample' && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">Sample</span>}
+            {s.origin && (
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                {s.origin.type === 'api' ? `API · ${hostOf(s.origin.url)}` : `Database · ${s.origin.conn?.database || ''}`}
+              </span>
+            )}
           </div>
           <label className="mt-1.5 flex items-center gap-2 text-sm text-slate-500">
             System
@@ -52,9 +64,11 @@ function SourceCard({ s, onUpdate, onRemove, onRenameColumn }) {
             />
           </label>
           <p className="mt-1.5 text-xs text-slate-500">
-            {s.rows.length.toLocaleString()} rows{s.truncated ? ' (first 200,000 kept)' : ''} · {dims} breakdowns · {measures} numbers
+            {s.rows.length.toLocaleString()} rows{s.truncated ? ` (row limit reached${s.origin ? '' : ': first 200,000 kept'})` : ''} · {dims} breakdowns · {measures} numbers
+            {s.refreshedAt && ` · fetched ${new Date(s.refreshedAt).toLocaleString()}`}
           </p>
         </div>
+        {s.origin && <Button variant="ghost" size="icon" aria-label={`Refresh ${s.name}`} title="Fetch again" onClick={onRefresh}><RefreshCw className="h-4 w-4" /></Button>}
         <Button variant="ghost" size="icon" aria-label={`Remove ${s.name}`} onClick={onRemove}><Trash2 className="h-4 w-4" /></Button>
       </div>
       <button type="button" onClick={() => setOpen(!open)} className="mt-3 flex items-center gap-1 text-sm font-medium text-blue-700 dark:text-blue-400" aria-expanded={open}>
@@ -111,7 +125,7 @@ function SourceCard({ s, onUpdate, onRemove, onRenameColumn }) {
     </div>
   );
 }
-SourceCard.propTypes = { s: PropTypes.object.isRequired, onUpdate: PropTypes.func.isRequired, onRemove: PropTypes.func.isRequired, onRenameColumn: PropTypes.func.isRequired };
+SourceCard.propTypes = { s: PropTypes.object.isRequired, onUpdate: PropTypes.func.isRequired, onRemove: PropTypes.func.isRequired, onRenameColumn: PropTypes.func.isRequired, onRefresh: PropTypes.func };
 
 function RelationshipForm({ sources, onAdd }) {
   const [from, setFrom] = useState({ source: '', col: '' });
@@ -143,8 +157,15 @@ function RelationshipForm({ sources, onAdd }) {
 }
 RelationshipForm.propTypes = { sources: PropTypes.array.isRequired, onAdd: PropTypes.func.isRequired };
 
-export default function SourcesView({ m, busy, onFiles, onLoadSample, onUpdateSource, onRemoveSource, onRenameColumn, onAddRelationship, onRemoveRelationship, onClearAll }) {
+export default function SourcesView({ m, busy, onFiles, onLoadSample, onAddSource, onRefreshSource, onUpdateSource, onRemoveSource, onRenameColumn, onAddRelationship, onRemoveRelationship, onClearAll }) {
   const name = (id) => m.sources.find((s) => s.id === id)?.name || '?';
+  // Which connector form is open: { kind: 'api' | 'database', refresh?: source }.
+  const [connect, setConnect] = useState(null);
+  const done = (src, msg) => {
+    if (connect?.refresh) onRefreshSource(connect.refresh.id, src, msg);
+    else onAddSource(src, msg);
+    setConnect(null);
+  };
   const suggestions = useMemo(() => suggestRelationships(m.sources, m.relationships), [m.sources, m.relationships]);
   const hasSample = m.sources.some((s) => s.kind === 'sample');
 
@@ -152,6 +173,15 @@ export default function SourcesView({ m, busy, onFiles, onLoadSample, onUpdateSo
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
       <div className="space-y-4">
         <UploadZone onFiles={onFiles} busy={busy} compact={!m.empty} />
+        {!connect && (
+          <div className="flex flex-wrap items-center justify-center gap-2 text-sm">
+            <span className="text-slate-500">Or pull live data:</span>
+            <Button variant="outline" size="sm" onClick={() => setConnect({ kind: 'api' })}><Plug className="mr-1.5 h-4 w-4" />Connect an API</Button>
+            <Button variant="outline" size="sm" onClick={() => setConnect({ kind: 'database' })}><Database className="mr-1.5 h-4 w-4" />Query a database</Button>
+          </div>
+        )}
+        {connect?.kind === 'api' && <ApiConnector key={connect.refresh?.id || 'new'} initial={connect.refresh?.origin} onAdd={done} onCancel={() => setConnect(null)} />}
+        {connect?.kind === 'database' && <DatabaseSource key={connect.refresh?.id || 'new'} initial={connect.refresh?.origin} onAdd={done} onCancel={() => setConnect(null)} />}
         {!hasSample && (
           <p className="text-center text-sm text-slate-500">
             No exports to hand?{' '}
@@ -166,6 +196,7 @@ export default function SourcesView({ m, busy, onFiles, onLoadSample, onUpdateSo
             onUpdate={(patch) => onUpdateSource(s.id, patch)}
             onRemove={() => onRemoveSource(s.id)}
             onRenameColumn={(oldKey, newKey) => onRenameColumn(s.id, oldKey, newKey)}
+            onRefresh={() => { setConnect({ kind: s.origin?.type, refresh: s }); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
           />
         ))}
         {!m.empty && (
@@ -220,6 +251,8 @@ SourcesView.propTypes = {
   busy: PropTypes.bool,
   onFiles: PropTypes.func.isRequired,
   onLoadSample: PropTypes.func.isRequired,
+  onAddSource: PropTypes.func.isRequired,
+  onRefreshSource: PropTypes.func.isRequired,
   onUpdateSource: PropTypes.func.isRequired,
   onRemoveSource: PropTypes.func.isRequired,
   onRenameColumn: PropTypes.func.isRequired,

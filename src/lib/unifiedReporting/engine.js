@@ -13,9 +13,12 @@
 
 export const AGG = ['sum', 'count', 'avg', 'min', 'max'];
 export const OPS = ['eq', 'neq', 'gte', 'lte'];
-export const CHARTS = ['bar', 'line', 'pie', 'scatter', 'table', 'number'];
+export const CHARTS = ['bar', 'line', 'pie', 'scatter', 'table', 'number', 'heatmap', 'waterfall'];
+export const COMPARE = { prior_year: 12, prior_period: 1 };
 const MAX_SERIES = 4;
 const MAX_DERIVED = 2;
+const MAX_SPLIT = 8;
+const MAX_FILTERS = 8;
 
 /* ---------------- catalog for the AI planner ---------------- */
 
@@ -74,6 +77,15 @@ export function buildCatalog(m) {
 
 const unitOf = (m, view, measure, agg) => (agg === 'count' || !measure ? 'count' : m.views[view]?.units[measure] || 'number');
 
+function cleanFilters(list, allowed) {
+  return (Array.isArray(list) ? list : [])
+    .filter((f) => f && typeof f === 'object' && allowed(f.dim) && OPS.includes(f.op))
+    .map((f) => ({ dim: String(f.dim), op: f.op, value: String(f.value ?? '').slice(0, 120) }))
+    .slice(0, MAX_FILTERS);
+}
+
+const ADDITIVE = ['sum', 'count'];
+
 /**
  * Validate and normalise a spec from the AI, the rules, or the user's edit
  * box. Anything not in the model is dropped, never guessed.
@@ -94,9 +106,7 @@ export function sanitize(sp, m) {
       const measure = V.measures.includes(s.measure) ? s.measure : null;
       let agg = AGG.includes(s.agg) ? s.agg : measure ? 'sum' : 'count';
       if (!measure) agg = 'count';
-      const filters = (Array.isArray(s.filters) ? s.filters : [])
-        .filter((f) => f && V.dims.includes(f.dim) && OPS.includes(f.op))
-        .map((f) => ({ dim: f.dim, op: f.op, value: String(f.value ?? '') }));
+      const filters = cleanFilters(s.filters, (d) => V.dims.includes(d));
       const fallback = agg === 'count' ? `${V.label} (count)` : `${measure.replace(/_/g, ' ')}`;
       return { view: s.view, measure: agg === 'count' ? null : measure, agg, filters, label: String(s.label || fallback).slice(0, 40) };
     });
@@ -126,18 +136,40 @@ export function sanitize(sp, m) {
     .filter(Boolean)
     .slice(0, MAX_DERIVED);
 
+  // Filters for the whole answer apply to every series whose source has that column.
+  const dimsOf = new Set(series.flatMap((s) => m.views[s.view].dims));
+  const filters = cleanFilters(sp.filters, (d) => dimsOf.has(d));
+
+  // A second breakdown splits the one series into a series per value (stacked bars, heatmap).
+  let splitBy = null;
+  if (groupBy && sp.splitBy && sp.splitBy !== groupBy && series.length === 1 && !derived.length && m.views[series[0].view].dims.includes(sp.splitBy)) {
+    splitBy = String(sp.splitBy);
+  }
+  const monthly = groupBy === 'month';
+  const compare = monthly && !splitBy && COMPARE[sp.compare] ? sp.compare : null;
+  const win = monthly ? parseInt(sp.window, 10) : NaN;
+  const window = Number.isInteger(win) && win >= 2 && win <= 24 ? win : null;
+  const share = Boolean(sp.share) && Boolean(groupBy) && !splitBy;
+
   let chart = CHARTS.includes(sp.chart) ? sp.chart : null;
   if (!groupBy) chart = 'number';
-  else if (chart === 'scatter' && (series.length < 2 || groupBy === 'month')) chart = null;
-  if (groupBy && (!chart || chart === 'number')) chart = groupBy === 'month' ? 'line' : 'bar';
-  if (chart === 'pie' && (series.length > 1 || derived.length)) chart = 'bar';
+  else if (chart === 'scatter' && (series.length < 2 || monthly || splitBy)) chart = null;
+  if (chart === 'heatmap' && !splitBy) chart = null;
+  if (chart === 'waterfall' && !(series.length === 1 && !derived.length && !splitBy && ADDITIVE.includes(series[0].agg) && !window)) chart = null;
+  if (groupBy && (!chart || chart === 'number')) chart = monthly ? 'line' : 'bar';
+  if (chart === 'pie' && (series.length > 1 || derived.length || splitBy)) chart = 'bar';
 
   return {
     title: String(sp.title || 'Answer').slice(0, 90),
     chart,
     groupBy,
+    splitBy,
     series,
     derived,
+    filters,
+    compare,
+    window,
+    share,
     sort: ['desc', 'asc', 'label'].includes(sp.sort) ? sp.sort : 'desc',
     limit: Math.min(50, Math.max(3, parseInt(sp.limit, 10) || 12)),
     followups: (Array.isArray(sp.followups) ? sp.followups : []).map(String).filter(Boolean).slice(0, 3),
@@ -148,8 +180,10 @@ export function sanitize(sp, m) {
 export function chartOptions(sp) {
   if (!sp.groupBy) return ['number'];
   const opts = ['bar', 'line', 'table'];
+  if (sp.splitBy) return [...opts, 'heatmap'];
   if (sp.series.length === 1 && !sp.derived.length) opts.push('pie');
   if (sp.series.length >= 2 && sp.groupBy !== 'month') opts.push('scatter');
+  if (sp.series.length === 1 && !sp.derived.length && ADDITIVE.includes(sp.series[0].agg) && !sp.window) opts.push('waterfall');
   return opts;
 }
 
@@ -173,41 +207,124 @@ function derivedUnit(d, series) {
   return series[d.denominator].unit === numUnit ? 'pct' : numUnit;
 }
 
+/** Shift a 'YYYY-MM' label by n months. */
+export function shiftMonth(label, n) {
+  const mm = /^(\d{4})-(\d{2})$/.exec(label || '');
+  if (!mm) return null;
+  const t = Number(mm[1]) * 12 + Number(mm[2]) - 1 + n;
+  return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`;
+}
+
+const newAcc = () => ({ n: 0, cnt: 0, sum: 0, min: Infinity, max: -Infinity });
+function addTo(a, b) {
+  a.n += b.n;
+  a.cnt += b.cnt;
+  a.sum += b.sum;
+  a.min = Math.min(a.min, b.min);
+  a.max = Math.max(a.max, b.max);
+  return a;
+}
+function finalize(a, agg) {
+  if (!a) return null;
+  if (agg === 'count') return a.n;
+  if (!a.cnt) return null;
+  return agg === 'avg' ? a.sum / a.cnt : agg === 'min' ? a.min : agg === 'max' ? a.max : a.sum;
+}
+const labelOf = (raw) => (raw === null || raw === undefined || raw === '' ? '(blank)' : String(raw));
+
 /**
  * Aggregate each series within its own source, then join on groupBy.
- * Returns { labels, series[], derived[] } with values aligned to labels.
+ * Returns { labels, series[], derived[], extra[] } with values aligned to labels.
+ * extra holds period comparisons and share of total, computed on the totals.
  */
 export function compute(sp, m) {
-  const out = sp.series.map((s) => {
-    const rows = m.rowsOf(s.view).filter((x) => s.filters.every((f) => pass(x[f.dim], f)));
-    const groups = new Map();
-    for (const x of rows) {
-      const raw = sp.groupBy ? x[sp.groupBy] : 'All';
-      const k = raw === null || raw === undefined || raw === '' ? '(blank)' : String(raw);
-      const a = groups.get(k) || { n: 0, cnt: 0, sum: 0, min: Infinity, max: -Infinity };
-      a.n++;
-      if (s.measure) {
-        const v = x[s.measure];
-        if (typeof v === 'number') {
-          a.cnt++;
-          a.sum += v;
-          a.min = Math.min(a.min, v);
-          a.max = Math.max(a.max, v);
+  const global = sp.filters || [];
+  // Rolling windows and prior-period comparisons need months outside a date
+  // filter, so month filters are applied to the result's labels instead.
+  const deferMonths = Boolean(sp.compare || sp.window);
+  const monthFilters = [];
+
+  let parts = [];
+  sp.series.forEach((s) => {
+    const V = m.views[s.view];
+    const all = [...s.filters, ...global.filter((f) => V.dims.includes(f.dim))];
+    const rowFilters = deferMonths ? all.filter((f) => f.dim !== 'month') : all;
+    if (deferMonths && !monthFilters.length) monthFilters.push(...all.filter((f) => f.dim === 'month'));
+    const rows = m.rowsOf(s.view).filter((x) => rowFilters.every((f) => pass(x[f.dim], f)));
+    const unit = unitOf(m, s.view, s.measure, s.agg);
+    const base = { ...s, rows: rows.length, sys: V.sys, source: V.label, unit };
+
+    const accumulate = (list) => {
+      const groups = new Map();
+      for (const x of list) {
+        const k = sp.groupBy ? labelOf(x[sp.groupBy]) : 'All';
+        const a = groups.get(k) || newAcc();
+        a.n++;
+        if (s.measure) {
+          const v = x[s.measure];
+          if (typeof v === 'number') {
+            a.cnt++;
+            a.sum += v;
+            a.min = Math.min(a.min, v);
+            a.max = Math.max(a.max, v);
+          }
         }
+        groups.set(k, a);
       }
-      groups.set(k, a);
+      return groups;
+    };
+
+    if (!sp.splitBy) {
+      parts.push({ ...base, groups: accumulate(rows) });
+      return;
     }
-    const vals = {};
-    groups.forEach((a, k) => {
-      if (s.agg === 'count') vals[k] = a.n;
-      else if (!a.cnt) vals[k] = null;
-      else vals[k] = s.agg === 'avg' ? a.sum / a.cnt : s.agg === 'min' ? a.min : s.agg === 'max' ? a.max : a.sum;
-    });
-    return { s, vals, rows: rows.length };
+    // Split one series into one per value of splitBy: the biggest values, the rest as "Other".
+    const bySplit = new Map();
+    for (const x of rows) {
+      const k = labelOf(x[sp.splitBy]);
+      if (!bySplit.has(k)) bySplit.set(k, []);
+      bySplit.get(k).push(x);
+    }
+    const ranked = [...bySplit.entries()].map(([k, list]) => {
+      const groups = accumulate(list);
+      const tot = [...groups.values()].reduce((acc, a) => addTo(acc, { ...a }), newAcc());
+      // Rank split values by their total (or row count when the measure isn't additive).
+      return { k, groups, rank: Math.abs(finalize(tot, ADDITIVE.includes(s.agg) ? s.agg : 'count') || 0) };
+    }).sort((a, b) => b.rank - a.rank);
+    const keep = ranked.slice(0, MAX_SPLIT);
+    const rest = ranked.slice(MAX_SPLIT);
+    keep.sort((a, b) => (a.k === '(blank)') - (b.k === '(blank)') || (sp.splitBy === 'month' ? a.k.localeCompare(b.k) : 0));
+    keep.forEach((x) => parts.push({ ...base, label: x.k.slice(0, 40), split: x.k, groups: x.groups }));
+    if (rest.length) {
+      const other = new Map();
+      rest.forEach((x) => x.groups.forEach((a, k) => other.set(k, addTo(other.get(k) || newAcc(), a))));
+      parts.push({ ...base, label: `Other (${rest.length})`, split: null, groups: other });
+    }
   });
 
-  let labels = [...new Set(out.flatMap((o) => Object.keys(o.vals)))];
-  const series = out.map((o) => ({ ...o.s, vals: o.vals, rows: o.rows, sys: m.views[o.s.view].sys, source: m.views[o.s.view].label, unit: unitOf(m, o.s.view, o.s.measure, o.s.agg) }));
+  let labels = [...new Set(parts.flatMap((p) => [...p.groups.keys()]))];
+  if (sp.groupBy === 'month' && sp.window) {
+    // Rolling totals over the last N calendar months, recombining the raw totals (so averages stay correct).
+    const months = labels.filter((l) => shiftMonth(l, 0));
+    parts = parts.map((p) => {
+      const rolled = new Map();
+      for (const l of months) {
+        const a = newAcc();
+        for (let i = 0; i < sp.window; i++) {
+          const g = p.groups.get(shiftMonth(l, -i));
+          if (g) addTo(a, g);
+        }
+        rolled.set(l, a);
+      }
+      return { ...p, groups: rolled, label: `${p.label} (${sp.window}-mo rolling)` };
+    });
+  }
+
+  const series = parts.map(({ groups, ...p }) => {
+    const vals = {};
+    groups.forEach((a, k) => { vals[k] = finalize(a, p.agg); });
+    return { ...p, vals };
+  });
 
   const derivedVals = (sp.derived || []).map((d) => {
     const vals = {};
@@ -222,8 +339,36 @@ export function compute(sp, m) {
     return { ...d, vals, unit: derivedUnit(d, series) };
   });
 
-  // Rank by the headline number: the first derived metric if any, else the first series.
-  const key = derivedVals[0] ? derivedVals[0].vals : series[0].vals;
+  // The headline number: the first derived metric if any, else the first series.
+  const head = derivedVals[0] || series[0];
+  const extra = [];
+  if (sp.compare) {
+    const lag = COMPARE[sp.compare];
+    const word = sp.compare === 'prior_year' ? 'prior year' : 'prior month';
+    const prior = {};
+    const change = {};
+    for (const l of labels) {
+      const p = head.vals[shiftMonth(l, -lag)];
+      prior[l] = p ?? null;
+      const v = head.vals[l];
+      change[l] = p && v !== null && v !== undefined ? (v - p) / Math.abs(p) : null;
+    }
+    extra.push({ label: `${head.label}, ${word}`, unit: head.unit, vals: prior, kind: 'prior' });
+    extra.push({ label: `Change vs ${word}`, unit: 'pct', vals: change, kind: 'change' });
+  }
+
+  if (monthFilters.length) labels = labels.filter((l) => monthFilters.every((f) => pass(l, f)));
+
+  if (sp.share) {
+    // Share of the total across every group shown or not (before the top-N cut).
+    const base = derivedVals[0] && derivedVals[0].denominator === null ? derivedVals[0] : series[0];
+    const total = labels.reduce((acc, l) => acc + (base.vals[l] || 0), 0);
+    const vals = {};
+    for (const l of labels) vals[l] = total ? (base.vals[l] || 0) / total : null;
+    extra.push({ label: `Share of ${base.label.toLowerCase()}`, unit: 'pct', vals, kind: 'share' });
+  }
+
+  const key = head.vals;
   if (sp.groupBy === 'month' || sp.sort === 'label') labels.sort();
   else {
     labels.sort((a, b) => (key[b] ?? -Infinity) - (key[a] ?? -Infinity));
@@ -231,10 +376,12 @@ export function compute(sp, m) {
   }
   if (sp.groupBy !== 'month') labels = labels.slice(0, sp.limit);
 
+  const align = ({ vals, ...c }) => ({ ...c, data: labels.map((l) => vals[l] ?? null) });
   return {
     labels,
-    series: series.map(({ vals, ...s }) => ({ ...s, data: labels.map((l) => vals[l] ?? null) })),
-    derived: derivedVals.map(({ vals, ...d }) => ({ ...d, data: labels.map((l) => vals[l] ?? null) })),
+    series: series.map(align),
+    derived: derivedVals.map(align),
+    extra: extra.map(align),
   };
 }
 
@@ -257,31 +404,35 @@ export function fmt(v, unit, currency = '') {
 
 /** Every column of a result, raw series first then derived metrics. */
 export function columnsOf(res) {
-  return [...res.series, ...res.derived.map((d) => ({ ...d, derived: true }))];
+  return [...res.series, ...res.derived.map((d) => ({ ...d, derived: true })), ...(res.extra || []).map((e) => ({ ...e, derived: true }))];
 }
 
-/** Columns worth charting: derived metrics when present (units differ otherwise). */
+/** Columns worth charting: derived metrics when present (units differ otherwise), plus a prior period to compare. */
 export function chartColumns(res) {
-  return res.derived.length ? res.derived.map((d) => ({ ...d, derived: true })) : res.series;
+  const base = res.derived.length ? res.derived.map((d) => ({ ...d, derived: true })) : res.series;
+  const prior = (res.extra || []).filter((e) => e.kind === 'prior').map((e) => ({ ...e, derived: true }));
+  return [...base, ...prior];
 }
 
 /* ---------------- SQL preview ---------------- */
 
 export function toSQL(sp, m) {
   const opm = { eq: '=', neq: '<>', gte: '>=', lte: '<=' };
+  const keys = [sp.groupBy, sp.splitBy].filter(Boolean);
   const one = (s, i) => {
     const V = m.views[s.view];
+    const filters = [...s.filters, ...(sp.filters || []).filter((f) => V.dims.includes(f.dim))];
     const agg = s.agg === 'count' ? 'COUNT(*)' : `${s.agg.toUpperCase()}(${s.measure})`;
-    const w = s.filters.length
-      ? `\n  WHERE ${s.filters.map((f) => `${f.dim} ${opm[f.op]} '${f.value.replace(/'/g, "''")}'`).join('\n    AND ')}`
+    const w = filters.length
+      ? `\n  WHERE ${filters.map((f) => `${f.dim} ${opm[f.op]} '${f.value.replace(/'/g, "''")}'`).join('\n    AND ')}`
       : '';
-    const lookups = V.borrowed.filter((b) => sp.groupBy === b.key || s.filters.some((f) => f.dim === b.key));
+    const lookups = V.borrowed.filter((b) => keys.includes(b.key) || filters.some((f) => f.dim === b.key));
     const via = [...new Set(lookups.map((b) => b.via))];
     const joins = via.map((r) => {
       const t = Object.values(m.views).find((x) => x.id === r.to.source);
       return `\n  LEFT JOIN ${t ? t.key : 'lookup'} USING (${r.from.col})   -- lookup in ${t ? t.sys : 'source'}`;
     }).join('');
-    return `SELECT ${sp.groupBy ? `${sp.groupBy}, ` : ''}${agg} AS s${i + 1}\n  FROM ${s.view}   -- from ${V.sys}${joins}${w}${sp.groupBy ? `\n  GROUP BY ${sp.groupBy}` : ''}`;
+    return `SELECT ${keys.length ? `${keys.join(', ')}, ` : ''}${agg} AS s${i + 1}\n  FROM ${s.view}   -- from ${V.sys}${joins}${w}${keys.length ? `\n  GROUP BY ${keys.join(', ')}` : ''}`;
   };
   const derivedCols = (sp.derived || []).map((d, i) => {
     const num = d.numerator.map((n) => `COALESCE(s${n + 1}, 0)`).join(' + ');
@@ -295,7 +446,20 @@ export function toSQL(sp, m) {
       : `\nORDER BY ${sortCol} ${sp.sort === 'asc' ? 'ASC' : 'DESC'}\nLIMIT ${sp.limit}`
     : '';
 
-  if (sp.series.length === 1 && !derivedCols.length) return `${one(sp.series[0], 0)}${order};`;
+  // Period comparisons, rolling windows and shares are window functions over the joined totals.
+  const post = [];
+  const headCol = derivedCols.length ? 'd1' : 's1';
+  if (sp.window) post.push(`SUM(${headCol}) OVER (ORDER BY month ROWS BETWEEN ${sp.window - 1} PRECEDING AND CURRENT ROW) AS rolling_${sp.window}m   -- missing months count as 0`);
+  if (sp.compare) {
+    const lag = COMPARE[sp.compare];
+    post.push(`LAG(${headCol}, ${lag}) OVER (ORDER BY month) AS prior   -- same month ${lag === 12 ? 'last year' : 'previous month'}`);
+    post.push(`(${headCol} - prior) / ABS(NULLIF(prior, 0)) AS change_pct`);
+  }
+  if (sp.share) post.push(`s1 / NULLIF(SUM(s1) OVER (), 0) AS share_of_total`);
+  const wrap = (sql) => (post.length ? `SELECT t.*,\n  ${post.join(',\n  ')}\nFROM (\n${sql.replace(/;$/, '')}\n) t;` : sql);
+  const pivot = sp.splitBy ? `\n-- One column per ${sp.splitBy} (top ${MAX_SPLIT}, the rest as Other).` : '';
+
+  if (sp.series.length === 1 && !derivedCols.length) return wrap(`${one(sp.series[0], 0)}${order};`) + pivot;
 
   const ctes = sp.series.map((s, i) => `s${i + 1} AS (\n  ${one(s, i).replace(/\n/g, '\n  ')}\n)`).join(',\n');
   const cols = [...sp.series.map((_, i) => `s${i + 1}`), ...derivedCols];
@@ -303,7 +467,7 @@ export function toSQL(sp, m) {
     return `-- Each source is aggregated first, then combined.\nWITH ${ctes}\nSELECT ${cols.join(', ')}\nFROM ${sp.series.map((_, i) => `s${i + 1}`).join(' CROSS JOIN ')};`;
   }
   const joins = sp.series.slice(1).map((_, i) => `\nFULL JOIN s${i + 2} USING (${sp.groupBy})`).join('');
-  return `-- Each source is aggregated to ${sp.groupBy} first, then joined.\nWITH ${ctes}\nSELECT ${sp.groupBy}, ${cols.join(', ')}\nFROM s1${joins}${order};`;
+  return wrap(`-- Each source is aggregated to ${sp.groupBy} first, then joined.\nWITH ${ctes}\nSELECT ${sp.groupBy}, ${cols.join(', ')}\nFROM s1${joins}${order};`);
 }
 
 /* ---------------- rules planner (no AI needed) ---------------- */
@@ -336,12 +500,24 @@ export function heuristic(q, m) {
 
   // Break down by: "by X", "per X", or a trend.
   let groupBy = null;
+  let splitBy = null;
   const by = ql.match(/\b(?:by|per|for each|across)\s+([a-z0-9_ ]+)/);
   if (by) {
     const allDims = [...new Set(views.flatMap((v) => v.dims))];
-    groupBy = allDims.filter((d) => mentions(by[1], d)).sort((a, b) => mentionAt(by[1], a) - mentionAt(by[1], b))[0] || null;
+    // "by month and department", "by region split by product": the second one splits the series.
+    const named = allDims.filter((d) => mentions(by[1], d) || (d === 'month' && /\bmonth(ly)?\b/.test(by[1]))).sort((a, b) => mentionAt(by[1], a) - mentionAt(by[1], b));
+    [groupBy = null, splitBy = null] = named;
   }
-  if (!groupBy && /trend|monthly|over time|each month|per month/.test(ql)) groupBy = 'month';
+  const compare = /year over year|\byoy\b|(?:vs|versus|against|compared (?:to|with)) (?:last|prior|previous) year/.test(ql) ? 'prior_year'
+    : /month over month|\bmom\b|(?:vs|versus|against|compared (?:to|with)) (?:last|prior|previous) month/.test(ql) ? 'prior_period' : null;
+  const roll = ql.match(/(?:rolling|trailing|moving)\s+(\d+|twelve|six|three)/);
+  const window = roll ? ({ twelve: 12, six: 6, three: 3 }[roll[1]] || +roll[1]) : null;
+  const share = /share of|% of total|percent(?:age)? of total|proportion|contribution/.test(ql);
+  if ((compare || window) && groupBy && groupBy !== 'month') {
+    splitBy = null;
+    groupBy = 'month';
+  }
+  if (!groupBy && (compare || window || /trend|monthly|over time|each month|per month/.test(ql))) groupBy = 'month';
 
   // Score each view by how the question names it, its system or its measures.
   const scored = views.map((v) => {
@@ -361,8 +537,8 @@ export function heuristic(q, m) {
     const fallback = views.find((v) => !groupBy || v.dims.includes(groupBy)) || views[0];
     use = [{ v: fallback, ms: [] }];
   }
-  const compare = /\bvs\b|versus|compare|against|\band\b/.test(ql);
-  if (!compare) use = use.slice(0, 1);
+  const combine = !compare && /\bvs\b|versus|compare|against|\band\b/.test(ql.replace(by ? by[0] : '', ''));
+  if (!combine) use = use.slice(0, 1);
 
   const count = /how many|count|number of|headcount/.test(ql);
   const agg = /average|avg|typical|mean/.test(ql) ? 'avg' : /highest|max/.test(ql) && !groupBy ? 'max' : 'sum';
@@ -371,7 +547,7 @@ export function heuristic(q, m) {
     const filters = [];
     // Filter on any known value the question names (e.g. "overdue", "Sales").
     for (const d of v.dims) {
-      if (d === 'month' || d === groupBy) continue;
+      if (d === 'month' || d === groupBy || d === splitBy) continue;
       for (const val of distinctValues(m, v.key, d, 30)) {
         if (val.length > 2 && new RegExp(`\\b${val.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(ql)) {
           filters.push({ dim: d, op: 'eq', value: val });
@@ -388,7 +564,11 @@ export function heuristic(q, m) {
   return sanitize({
     title: q.replace(/\?$/, '').replace(/^./, (c) => c.toUpperCase()),
     groupBy,
-    chart: /bubble|scatter/.test(ql) ? 'scatter' : /pie|share/.test(ql) ? 'pie' : null,
+    splitBy: series.length === 1 ? splitBy : null,
+    compare,
+    window,
+    share,
+    chart: /bubble|scatter/.test(ql) ? 'scatter' : /heat ?map/.test(ql) ? 'heatmap' : /waterfall|bridge/.test(ql) ? 'waterfall' : /\bpie\b/.test(ql) || (share && !/\bbar\b/.test(ql)) ? 'pie' : null,
     series,
     limit: lim ? +lim[1] : 12,
   }, m);
@@ -470,6 +650,12 @@ export function fallbackInsight(sp, res, currency) {
   let t = `${top} is highest on ${c0.label.toLowerCase()} at ${fmt(idx[0][0], c0.unit, currency)}`;
   if (idx.length > 1) t += `, and ${low} is lowest at ${fmt(idx[idx.length - 1][0], c0.unit, currency)}`;
   t += '.';
+  const change = (res.extra || []).find((e) => e.kind === 'change');
+  const lastChange = change ? [...change.data].reverse().find((v) => v !== null) : null;
+  if (lastChange !== null && lastChange !== undefined) {
+    const i = change.data.lastIndexOf(lastChange);
+    t += ` ${res.labels[i]} is ${lastChange >= 0 ? 'up' : 'down'} ${fmt(Math.abs(lastChange), 'pct')} ${change.label.replace(/^Change /, '')}.`;
+  }
   if (res.labels.includes('(blank)')) t += ' Rows with no value for this breakdown are grouped as (blank); check the links between your sources if that group is large.';
   return t;
 }

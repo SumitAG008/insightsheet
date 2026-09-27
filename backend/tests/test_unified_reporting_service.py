@@ -49,3 +49,10 @@ def test_insight_prompt_uses_data_currency():
     prompt = build_insight_prompt("Revenue by region", ["region", "Revenue"], [["North", 10]], None, "$")
     assert "$1.2M" in prompt
     assert "GBP" not in prompt
+
+
+def test_plan_prompt_describes_analysis_options():
+    prompt = build_plan_prompt("Expenses vs last year", None, CATALOG)
+    for token in ('"splitBy"', '"compare"', '"prior_year"', '"window"', '"share"', '"heatmap"', '"waterfall"'):
+        assert token in prompt
+    assert '{"dim": "month", "op": "gte", "value": "2026-01"}' in prompt

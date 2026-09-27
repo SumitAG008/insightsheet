@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { chartColumns, fmt } from '@/lib/unifiedReporting/engine';
 
-export const PALETTE = ['#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#64748b'];
+export const PALETTE = ['#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#64748b', '#0891b2', '#65a30d', '#ea580c'];
 
 const axisTick = { fill: 'currentColor', fontSize: 12 };
 const tooltipStyle = {
@@ -51,8 +51,95 @@ function ScatterView({ res, height, currency }) {
 }
 ScatterView.propTypes = { res: PropTypes.object.isRequired, height: PropTypes.number.isRequired, currency: PropTypes.string };
 
+/** Grid of groupBy × split values, shaded by size. Works for any number of rows. */
+export function Heatmap({ spec, res, currency, compact }) {
+  const cols = res.series;
+  const all = cols.flatMap((c) => c.data).filter((v) => typeof v === 'number');
+  const max = Math.max(...all.map(Math.abs), 0) || 1;
+  const unit = cols[0]?.unit;
+  return (
+    <div className={`overflow-auto ${compact ? 'max-h-64' : 'max-h-[460px]'}`}>
+      <table className="w-full border-separate border-spacing-0.5 text-xs">
+        <thead className="sticky top-0 z-[1] bg-white dark:bg-slate-900">
+          <tr>
+            <th className="px-2 py-1.5 text-left font-medium capitalize text-slate-500">{spec.groupBy.replace(/_/g, ' ')} × {spec.splitBy.replace(/_/g, ' ')}</th>
+            {cols.map((c) => <th key={c.label} className="max-w-[110px] truncate px-2 py-1.5 text-right font-medium text-slate-500" title={c.label}>{c.label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {res.labels.map((l, i) => (
+            <tr key={l}>
+              <th scope="row" className="whitespace-nowrap px-2 py-1.5 text-left font-medium">{l}</th>
+              {cols.map((c) => {
+                const v = c.data[i];
+                const t = typeof v === 'number' ? Math.abs(v) / max : 0;
+                const strong = t > 0.55;
+                return (
+                  <td
+                    key={c.label}
+                    title={`${l} · ${c.label}: ${fmt(v, unit, currency)}`}
+                    className={`whitespace-nowrap rounded px-2 py-1.5 text-right tabular-nums ${strong ? 'text-white' : ''}`}
+                    style={{ backgroundColor: typeof v === 'number' ? `rgba(${v < 0 ? '219, 39, 119' : '37, 99, 235'}, ${0.08 + t * 0.82})` : 'transparent' }}
+                  >
+                    {fmt(v, unit, currency)}
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+Heatmap.propTypes = { spec: PropTypes.object.isRequired, res: PropTypes.object.isRequired, currency: PropTypes.string, compact: PropTypes.bool };
+
+/** Each group's contribution stacked on the running total, ending in a Total bar. */
+function Waterfall({ res, height, currency }) {
+  const s = res.series[0];
+  let run = 0;
+  const rows = res.labels.map((label, i) => {
+    const v = s.data[i] || 0;
+    const start = run;
+    run += v;
+    return { label, base: Math.min(start, run), size: Math.abs(v), value: v, kind: v < 0 ? 'down' : 'up' };
+  });
+  rows.push({ label: 'Total', base: Math.min(0, run), size: Math.abs(run), value: run, kind: 'total' });
+  const color = { up: PALETTE[0], down: PALETTE[3], total: PALETTE[5] };
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <BarChart data={rows} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200 dark:stroke-slate-700" />
+        <XAxis dataKey="label" tick={axisTick} tickFormatter={(v) => short(v, 12)} interval={0} />
+        <YAxis tick={axisTick} tickFormatter={(v) => fmt(v, s.unit, currency)} width={70} />
+        <Tooltip
+          {...tooltipStyle}
+          cursor={{ fillOpacity: 0.08 }}
+          content={({ active, payload }) => {
+            if (!active || !payload?.length) return null;
+            const p = payload[0].payload;
+            return (
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow dark:border-slate-700 dark:bg-slate-800">
+                <div className="font-semibold">{p.label}</div>
+                <div>{p.kind === 'total' ? 'Total' : s.label}: {fmt(p.value, s.unit, currency)}</div>
+              </div>
+            );
+          }}
+        />
+        <Bar dataKey="base" stackId="w" fill="transparent" isAnimationActive={false} />
+        <Bar dataKey="size" stackId="w" name={s.label} radius={[4, 4, 0, 0]} maxBarSize={48}>
+          {rows.map((r) => <Cell key={r.label} fill={color[r.kind]} />)}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+Waterfall.propTypes = { res: PropTypes.object.isRequired, height: PropTypes.number.isRequired, currency: PropTypes.string };
+
 export default function ReportChart({ spec, res, height = 300, currency = '' }) {
   if (spec.chart === 'scatter') return <ScatterView res={res} height={height} currency={currency} />;
+  if (spec.chart === 'heatmap' && spec.splitBy) return <Heatmap spec={spec} res={res} currency={currency} />;
+  if (spec.chart === 'waterfall') return <Waterfall res={res} height={height} currency={currency} />;
   const fmtU = (v, u) => fmt(v, u, currency);
 
   const cols = chartColumns(res);
@@ -97,7 +184,7 @@ export default function ReportChart({ spec, res, height = 300, currency = '' }) 
           <Tooltip {...tooltipStyle} formatter={tip} />
           {multi && <Legend wrapperStyle={{ fontSize: 12 }} />}
           {cols.map((c, k) => (
-            <Line key={c.label} yAxisId={axisOf(c)} type="monotone" dataKey={`c${k}`} name={c.label} stroke={PALETTE[k]} strokeWidth={2.5} dot={{ r: 2.5 }} />
+            <Line key={c.label} yAxisId={axisOf(c)} type="monotone" dataKey={`c${k}`} name={c.label} stroke={c.kind === 'prior' ? PALETTE[5] : PALETTE[k % PALETTE.length]} strokeDasharray={c.kind === 'prior' ? '5 4' : undefined} strokeWidth={c.kind === 'prior' ? 2 : 2.5} dot={{ r: 2.5 }} connectNulls />
           ))}
         </LineChart>
       </ResponsiveContainer>
@@ -106,6 +193,8 @@ export default function ReportChart({ spec, res, height = 300, currency = '' }) 
 
   // Bars: horizontal when many categories so labels stay readable.
   const horizontal = !multi && rows.length > 6;
+  // A second breakdown stacks, so the bar height is still the group's total.
+  const stacked = Boolean(spec.splitBy) && ['sum', 'count'].includes(res.series[0]?.agg);
   return (
     <ResponsiveContainer width="100%" height={horizontal ? Math.max(height, rows.length * 30) : height}>
       <BarChart data={rows} layout={horizontal ? 'vertical' : 'horizontal'} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
@@ -125,7 +214,17 @@ export default function ReportChart({ spec, res, height = 300, currency = '' }) 
         <Tooltip {...tooltipStyle} formatter={tip} cursor={{ fillOpacity: 0.08 }} />
         {multi && <Legend wrapperStyle={{ fontSize: 12 }} />}
         {cols.map((c, k) => (
-          <Bar key={c.label} yAxisId={horizontal ? undefined : axisOf(c)} dataKey={`c${k}`} name={c.label} fill={PALETTE[k]} radius={horizontal ? [0, 5, 5, 0] : [5, 5, 0, 0]} maxBarSize={38} />
+          <Bar
+            key={c.label}
+            yAxisId={horizontal ? undefined : axisOf(c)}
+            dataKey={`c${k}`}
+            name={c.label}
+            stackId={stacked ? 'split' : undefined}
+            fill={c.kind === 'prior' ? PALETTE[5] : PALETTE[k % PALETTE.length]}
+            fillOpacity={c.kind === 'prior' ? 0.55 : 1}
+            radius={stacked ? undefined : horizontal ? [0, 5, 5, 0] : [5, 5, 0, 0]}
+            maxBarSize={38}
+          />
         ))}
       </BarChart>
     </ResponsiveContainer>

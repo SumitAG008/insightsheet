@@ -137,6 +137,39 @@ export async function parseFile(file) {
   throw new Error(`${file.name}: upload a .csv, .tsv, .xlsx or .xls file.`);
 }
 
+/** A source from rows fetched by a connector (API or database). origin holds settings without secrets. */
+export function sourceFromTable(name, headers, rows, system, kind, origin) {
+  if (!rows.length || !headers.length) throw new Error('No rows were returned.');
+  const s = makeSource(name, headers, rows, kind);
+  s.system = system || name;
+  if (origin) s.origin = origin;
+  s.refreshedAt = s.addedAt;
+  return s;
+}
+
+/**
+ * Replace a source's rows with a fresh pull, keeping its id, key, system and
+ * the user's choices for columns that still exist (role, join name).
+ */
+export function refreshSource(old, fresh) {
+  const prev = Object.fromEntries(old.columns.map((c) => [c.name, c]));
+  const used = new Set();
+  const columns = fresh.columns.map((c) => {
+    const p = prev[c.name];
+    const col = p ? { ...c, key: p.key, role: p.role, unit: p.unit ?? c.unit } : { ...c };
+    while (used.has(col.key)) col.key = `${col.key}_2`;
+    used.add(col.key);
+    return col;
+  });
+  const rename = Object.fromEntries(fresh.columns.map((c, i) => [c.key, columns[i].key]));
+  const rows = fresh.rows.map((r) => {
+    const o = {};
+    for (const [k, v] of Object.entries(r)) o[rename[k] || k] = v;
+    return o;
+  });
+  return { ...old, columns, rows, truncated: fresh.truncated, origin: fresh.origin || old.origin, refreshedAt: new Date().toISOString() };
+}
+
 export function sourceFromRows(name, rows, system, kind = 'sample') {
   const s = makeSource(name, Object.keys(rows[0] || {}), rows, kind);
   s.system = system || name;

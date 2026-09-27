@@ -11,7 +11,11 @@ function open() {
     if (typeof indexedDB === 'undefined') return reject(new Error('no indexedDB'));
     const req = indexedDB.open(DB, 1);
     req.onupgradeneeded = () => req.result.createObjectStore(STORE);
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      // Let a logout's deleteDatabase through even while the page is open.
+      req.result.onversionchange = () => req.result.close();
+      resolve(req.result);
+    };
     req.onerror = () => reject(req.error);
   });
 }
@@ -23,7 +27,7 @@ export async function load(key, fallback) {
       const req = db.transaction(STORE).objectStore(STORE).get(key);
       req.onsuccess = () => resolve(req.result ?? fallback);
       req.onerror = () => resolve(fallback);
-    });
+    }).finally(() => db.close());
   } catch {
     return fallback;
   }
@@ -38,8 +42,23 @@ export async function save(key, value) {
       tx.oncomplete = resolve;
       tx.onerror = resolve;
       tx.onabort = resolve;
-    });
+    }).finally(() => db.close());
   } catch {
     /* storage unavailable: keep in memory only */
   }
+}
+
+/** Delete everything Unified Reporting kept in this browser (called on logout). */
+export function clearAll() {
+  return new Promise((resolve) => {
+    try {
+      if (typeof indexedDB === 'undefined') return resolve(false);
+      const req = indexedDB.deleteDatabase(DB);
+      req.onsuccess = () => resolve(true);
+      req.onerror = () => resolve(false);
+      req.onblocked = () => resolve(false);
+    } catch {
+      resolve(false);
+    }
+  });
 }

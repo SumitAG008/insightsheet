@@ -8,7 +8,8 @@ import SourcesView, { UploadZone } from '@/components/unifiedReporting/SourcesVi
 import {
   buildCatalog, columnsOf, compute, fallbackFollowups, fallbackInsight, heuristic, sanitize, suggestQuestions,
 } from '@/lib/unifiedReporting/engine';
-import { buildModel, parseFile, toKey } from '@/lib/unifiedReporting/model';
+import { buildModel, parseFile, refreshSource, toKey } from '@/lib/unifiedReporting/model';
+import { downloadBlob, downloadWorkbook, slug, toCSV } from '@/lib/unifiedReporting/export';
 import { buildSampleSources, sampleSuggestions } from '@/lib/unifiedReporting/sampleData';
 import * as store from '@/lib/unifiedReporting/storage';
 
@@ -20,6 +21,7 @@ export default function UnifiedReporting() {
   const [relationships, setRelationships] = useState([]);
   const [thread, setThread] = useState([]);
   const [board, setBoard] = useState([]);
+  const [boardFilters, setBoardFilters] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [view, setView] = useState('ask');
   const [draft, setDraft] = useState('');
@@ -44,6 +46,7 @@ export default function UnifiedReporting() {
       if (ui) {
         setThread((ui.thread || []).filter((x) => x && x.spec).map((x) => ({ ...x, status: 'done' })));
         setBoard(ui.board || []);
+        setBoardFilters(ui.boardFilters || []);
       }
       if (!data?.sources?.length) setView('data');
       setLoaded(true);
@@ -53,8 +56,8 @@ export default function UnifiedReporting() {
   useEffect(() => {
     if (!loaded) return;
     const t = thread.filter((x) => x.status === 'done').slice(-30).map(({ id, q, spec, insight, used }) => ({ id, q, spec, insight, used }));
-    store.save('ui', { thread: t, board });
-  }, [loaded, thread, board]);
+    store.save('ui', { thread: t, board, boardFilters });
+  }, [loaded, thread, board, boardFilters]);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   const toast = useCallback((msg) => {
@@ -94,6 +97,23 @@ export default function UnifiedReporting() {
       toast(`Added ${added.map((x) => x.name).join(', ')}. Check the suggested links on the right.`);
     }
     if (errors.length) toast(errors.join(' '));
+  };
+
+  const withUniqueKey = (list, x) => {
+    const taken = new Set(list.map((y) => y.key));
+    let key = x.key;
+    while (taken.has(key)) key = `${key}_2`;
+    return { ...x, key };
+  };
+
+  const addSource = (src, msg) => {
+    setSources((s) => [...s, withUniqueKey(s, src)]);
+    toast(`Added ${src.name}: ${msg}. Check the suggested links on the right.`);
+  };
+
+  const refreshOne = (id, fresh, msg) => {
+    setSources((s) => s.map((x) => (x.id === id ? refreshSource(x, fresh) : x)));
+    toast(`Refreshed: ${msg}.`);
   };
 
   const loadSample = () => {
@@ -140,6 +160,7 @@ export default function UnifiedReporting() {
     setRelationships([]);
     setThread([]);
     setBoard([]);
+    setBoardFilters([]);
     toast('All data removed from this browser.');
   };
 
@@ -159,7 +180,7 @@ export default function UnifiedReporting() {
       patchItem(id, { insight: fallback });
       return;
     }
-    const cols = columnsOf(res);
+    const cols = columnsOf(res).slice(0, 9); // the answer writer takes at most 10 columns
     const rows = res.labels.slice(0, 25).map((l, i) => [l, ...cols.map((c) => (c.data[i] === null ? null : Math.round(c.data[i] * 100) / 100))]);
     try {
       const out = await backendApi.unifiedReporting.insight({
@@ -230,6 +251,21 @@ export default function UnifiedReporting() {
     await writeInsight(id, it.q, sp);
   };
 
+  /** Change filters or analysis options on an answer, then re-write its summary. */
+  const refine = async (id, patch) => {
+    const it = thread.find((x) => x.id === id);
+    if (!it?.spec) return;
+    let sp;
+    try {
+      sp = sanitize({ ...it.spec, ...patch }, m);
+    } catch {
+      return;
+    }
+    sp.followups = it.spec.followups;
+    patchItem(id, { spec: sp, insight: '' });
+    await writeInsight(id, it.q, sp);
+  };
+
   const pin = (id) => {
     const it = thread.find((x) => x.id === id);
     if (!it || board.some((b) => b.id === id)) return;
@@ -239,22 +275,25 @@ export default function UnifiedReporting() {
 
   const download = (id) => {
     const it = thread.find((x) => x.id === id);
-    const res = compute(it.spec, m);
-    const cols = columnsOf(res);
-    const cell = (v) => {
-      const s = String(v ?? '');
-      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-    };
-    const csv = [
-      [it.spec.groupBy || 'total', ...cols.map((c) => c.label)].map(cell).join(','),
-      ...res.labels.map((l, i) => [l, ...cols.map((c) => (c.data[i] === null ? '' : Math.round(c.data[i] * 100) / 100))].map(cell).join(',')),
-    ].join('\n');
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${it.spec.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'report'}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(new Blob([toCSV(it.spec, compute(it.spec, m))], { type: 'text/csv' }), `${slug(it.spec.title)}.csv`);
+  };
+
+  const downloadExcel = async (id) => {
+    const it = thread.find((x) => x.id === id);
+    try {
+      await downloadWorkbook([{ spec: it.spec }], m, `${slug(it.spec.title)}.xlsx`);
+    } catch {
+      toast('The Excel file could not be created.');
+    }
+  };
+
+  const exportBoard = async () => {
+    try {
+      const n = await downloadWorkbook(board, m, `meldra-dashboard-${new Date().toISOString().slice(0, 10)}.xlsx`, boardFilters);
+      toast(`Exported ${n} tile${n === 1 ? '' : 's'} to Excel.`);
+    } catch {
+      toast('Nothing on the dashboard could be exported.');
+    }
   };
 
   const submit = (e) => {
@@ -316,6 +355,8 @@ export default function UnifiedReporting() {
             busy={busy}
             onFiles={addFiles}
             onLoadSample={loadSample}
+            onAddSource={addSource}
+            onRefreshSource={refreshOne}
             onUpdateSource={updateSource}
             onRemoveSource={removeSource}
             onRenameColumn={renameColumn}
@@ -329,6 +370,9 @@ export default function UnifiedReporting() {
           <DashboardView
             board={board}
             m={m}
+            filters={boardFilters}
+            onFilters={setBoardFilters}
+            onExport={exportBoard}
             onRemove={(id) => setBoard((b) => b.filter((x) => x.id !== id))}
             onChart={(id, chart) => setBoard((b) => b.map((x) => (x.id === id ? { ...x, spec: { ...x.spec, chart } } : x)))}
             onGoAsk={() => setView('ask')}
@@ -417,7 +461,9 @@ export default function UnifiedReporting() {
                     onPin={pin}
                     onChart={(id, chart) => patchItem(id, { spec: { ...thread.find((x) => x.id === id).spec, chart } })}
                     onDownload={download}
+                    onDownloadExcel={downloadExcel}
                     onRunSpec={runSpec}
+                    onRefine={refine}
                   />
                 ))}
               </div>

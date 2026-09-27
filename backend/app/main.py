@@ -92,6 +92,7 @@ from app.services.ai_service import (
     generate_transform, explain_sql, explain_ai_error
 )
 from app.services.unified_reporting_service import plan_report, write_insight
+from app.services.api_connector_service import ConnectorError, fetch_records, public_presets, safe_summary
 from app.services.migration_service import suggest_mapping
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
@@ -1874,6 +1875,28 @@ class UnifiedPlanRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=500)
     previous_question: Optional[str] = Field(None, max_length=500)
     catalog: Dict[str, Any]
+
+
+class ConnectorFetchRequest(BaseModel):
+    """One API call made on the user's behalf. Credentials are used once and never stored."""
+    url: str = Field(..., min_length=8, max_length=4000)
+    method: str = Field("GET", max_length=6)
+    headers: Optional[Dict[str, str]] = None
+    body: Optional[Any] = None
+    body_type: str = Field("json", max_length=10)
+    variables: Optional[Dict[str, Any]] = None
+    auth: Optional[Dict[str, Any]] = None
+    records_path: Optional[str] = Field(None, max_length=200)
+    paging: str = Field("auto", max_length=20)
+    next_path: Optional[str] = Field(None, max_length=100)
+    page_size: Optional[int] = Field(None, ge=1, le=10000)
+    offset_param: Optional[str] = Field(None, max_length=40)
+    limit_param: Optional[str] = Field(None, max_length=40)
+    page_param: Optional[str] = Field(None, max_length=40)
+    start_page: Optional[int] = Field(None, ge=0, le=1000)
+    cursor_param: Optional[str] = Field(None, max_length=40)
+    cursor_path: Optional[str] = Field(None, max_length=100)
+    max_rows: Optional[int] = Field(None, ge=1, le=200000)
 
 
 class MigrationMappingRequest(BaseModel):
@@ -5902,6 +5925,38 @@ async def unified_reporting_insight_endpoint(
         raise HTTPException(status_code=502, detail=f"The answer writer is unavailable: {explain_ai_error(e)}.")
 
 
+@app.get("/api/unified-reporting/connector/presets")
+async def unified_reporting_connector_presets(current_user: dict = Depends(get_current_user)):
+    """Ready-made settings for common business APIs (no secrets)."""
+    return {"presets": public_presets()}
+
+
+@app.post("/api/unified-reporting/connector/fetch")
+async def unified_reporting_connector_fetch(
+    request: ConnectorFetchRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Fetch records from a business API (HTTPS, public hosts only) so they can be used as a source.
+    ZERO STORAGE: credentials and records are not stored; only the host name is logged."""
+    config = request.model_dump()
+    host = safe_summary(config)
+    try:
+        result = await fetch_records(config)
+    except ConnectorError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Connector fetch error for host {host}: {type(e).__name__}")
+        raise HTTPException(status_code=502, detail="The API could not be read. Check the address and try again.")
+    try:
+        db.add(UserActivity(user_email=current_user["email"], activity_type="unified_connector_fetch"))
+        db.commit()
+    except Exception:
+        db.rollback()
+    logger.info(f"Connector fetch: host={host} rows={result['row_count']} pages={result['pages']}")
+    return result
+
+
 @app.post("/api/migration/suggest-mapping")
 async def migration_suggest_mapping_endpoint(
     request: MigrationMappingRequest,
@@ -7901,6 +7956,7 @@ class DBQueryRequest(BaseModel):
     connection_id: str
     db_type: str
     query: str
+    max_rows: Optional[int] = Field(None, ge=1, le=200000)
 
 class DBDisconnectRequest(BaseModel):
     connection_id: str
@@ -7968,7 +8024,8 @@ async def execute_db_query(
         result = DatabaseConnectionService.execute_query(
             request.connection_id,
             request.db_type,
-            request.query
+            request.query,
+            request.max_rows
         )
         if not result.get("success"):
             raise HTTPException(

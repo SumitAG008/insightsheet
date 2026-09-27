@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitize, compute, heuristic, toSQL, fmt, suggestQuestions, buildCatalog } from './engine';
+import { sanitize, compute, heuristic, toSQL, fmt, suggestQuestions, buildCatalog, chartOptions as chartOptionsOf } from './engine';
 import { buildModel, profileColumns, sourceFromRows, suggestRelationships, toMonth, parseNumber } from './model';
 import { buildSampleSources, sampleSuggestions } from './sampleData';
 
@@ -158,5 +158,115 @@ describe('real-world column names', () => {
     const m = buildModel([hr, ex], rels);
     const res = compute(heuristic('amount by dept', m), m);
     expect(Object.fromEntries(res.labels.map((l, i) => [l, res.series[0].data[i]]))).toEqual({ Sales: 15, HR: 7 });
+  });
+});
+
+describe('filters, splits and period analysis', () => {
+  const monthly = () => {
+    const rows = [];
+    ['2025-01', '2025-02', '2025-03', '2026-01', '2026-02', '2026-03'].forEach((mo, i) => {
+      rows.push({ Date: `${mo}-10`, Region: 'North', Product: 'A', Revenue: String(100 + i * 10) });
+      rows.push({ Date: `${mo}-15`, Region: 'South', Product: 'B', Revenue: String(50 + i) });
+    });
+    return buildModel([sourceFromRows('Sales', rows, 'Billing', 'file')], []);
+  };
+
+  it('applies answer-wide filters only to sources that have the column', () => {
+    const m = sample();
+    const sp = sanitize({ groupBy: 'department', filters: [{ dim: 'department', op: 'eq', value: 'Sales' }, { dim: 'nope', op: 'eq', value: 'x' }], series: [{ view: 'expenses', measure: 'amount' }, { view: 'employees', agg: 'count' }] }, m);
+    expect(sp.filters).toEqual([{ dim: 'department', op: 'eq', value: 'Sales' }]);
+    const res = compute(sp, m);
+    expect(res.labels).toEqual(['Sales']);
+    expect(toSQL(sp, m)).toMatch(/department = 'Sales'/);
+  });
+
+  it('splits one series by a second breakdown without changing the total', () => {
+    const m = monthly();
+    const sp = sanitize({ groupBy: 'month', splitBy: 'region', series: [{ view: 'sales', measure: 'revenue' }] }, m);
+    expect(sp.splitBy).toBe('region');
+    expect(chartOptionsOf(sp)).toContain('heatmap');
+    const res = compute(sp, m);
+    expect(res.series.map((s) => s.label)).toEqual(['North', 'South']);
+    const plain = compute(sanitize({ groupBy: 'month', series: [{ view: 'sales', measure: 'revenue' }] }, m), m);
+    res.labels.forEach((l, i) => expect(res.series[0].data[i] + res.series[1].data[i]).toBe(plain.series[0].data[i]));
+    // Not allowed with two series or a derived metric.
+    expect(sanitize({ groupBy: 'month', splitBy: 'region', series: [{ view: 'sales', measure: 'revenue' }, { view: 'sales', agg: 'count' }] }, m).splitBy).toBeNull();
+  });
+
+  it('keeps the biggest split values and folds the rest into Other', () => {
+    const rows = Array.from({ length: 12 }, (_, i) => ({ Team: `T${i}`, Region: 'N', Cost: String(i + 1) }));
+    const m = buildModel([sourceFromRows('Costs', rows, 'ERP', 'file')], []);
+    const res = compute(sanitize({ groupBy: 'region', splitBy: 'team', series: [{ view: 'costs', measure: 'cost' }] }, m), m);
+    expect(res.series).toHaveLength(9);
+    expect(res.series[8]).toMatchObject({ label: 'Other (4)', data: [1 + 2 + 3 + 4] });
+    expect(res.series.reduce((a, s) => a + s.data[0], 0)).toBe(78);
+  });
+
+  it('compares with the prior year even when the answer is filtered to this year', () => {
+    const m = monthly();
+    const sp = sanitize({ groupBy: 'month', compare: 'prior_year', filters: [{ dim: 'month', op: 'gte', value: '2026-01' }], series: [{ view: 'sales', measure: 'revenue' }] }, m);
+    const res = compute(sp, m);
+    expect(res.labels).toEqual(['2026-01', '2026-02', '2026-03']);
+    const prior = res.extra.find((e) => e.kind === 'prior');
+    const change = res.extra.find((e) => e.kind === 'change');
+    expect(prior.data).toEqual([150, 161, 172]); // 2025: (100+50), (110+51), (120+52)
+    expect(res.series[0].data[0]).toBe(130 + 53);
+    expect(change.data[0]).toBeCloseTo((183 - 150) / 150, 6);
+    expect(toSQL(sp, m)).toMatch(/LAG\(s1, 12\)/);
+    // Comparisons need a monthly breakdown.
+    expect(sanitize({ groupBy: 'region', compare: 'prior_year', series: [{ view: 'sales', measure: 'revenue' }] }, m).compare).toBeNull();
+  });
+
+  it('computes rolling windows over calendar months, including months before a date filter', () => {
+    const m = monthly();
+    const sp = sanitize({ groupBy: 'month', window: 3, filters: [{ dim: 'month', op: 'gte', value: '2026-01' }], series: [{ view: 'sales', measure: 'revenue', agg: 'avg' }] }, m);
+    const res = compute(sp, m);
+    // 2026-01 window = 2025-11..2026-01: only 2026-01 has data → average of its two rows.
+    expect(res.series[0].data[0]).toBe((130 + 53) / 2);
+    // 2026-03 window = 2026-01..03: average of six rows, not an average of monthly averages.
+    expect(res.series[0].data[2]).toBeCloseTo((130 + 53 + 140 + 54 + 150 + 55) / 6, 6);
+    expect(res.series[0].label).toMatch(/3-mo rolling/);
+  });
+
+  it('adds share of total computed before the top-N cut', () => {
+    const m = sample();
+    const sp = sanitize({ groupBy: 'customer', share: true, limit: 3, series: [{ view: 'invoices', measure: 'amount' }] }, m);
+    const res = compute(sp, m);
+    const all = compute(sanitize({ groupBy: 'customer', limit: 50, series: [{ view: 'invoices', measure: 'amount' }] }, m), m);
+    const total = all.series[0].data.reduce((a, v) => a + (v || 0), 0);
+    const share = res.extra.find((e) => e.kind === 'share');
+    expect(res.labels).toHaveLength(3);
+    expect(share.data[0]).toBeCloseTo(res.series[0].data[0] / total, 6);
+  });
+
+  it('offers waterfall only for additive single series', () => {
+    const m = sample();
+    expect(chartOptionsOf(sanitize({ groupBy: 'department', series: [{ view: 'expenses', measure: 'amount' }] }, m))).toContain('waterfall');
+    expect(chartOptionsOf(sanitize({ groupBy: 'department', series: [{ view: 'employees', measure: 'salary', agg: 'avg' }] }, m))).not.toContain('waterfall');
+    expect(sanitize({ groupBy: 'department', chart: 'waterfall', series: [{ view: 'employees', measure: 'salary', agg: 'avg' }] }, m).chart).toBe('bar');
+  });
+
+  it('reads comparisons, rolling windows, shares and second breakdowns from plain questions', () => {
+    const m = monthly();
+    expect(heuristic('Revenue this year vs last year', m)).toMatchObject({ groupBy: 'month', compare: 'prior_year' });
+    expect(heuristic('rolling 12 revenue', m)).toMatchObject({ groupBy: 'month', window: 12 });
+    expect(heuristic('revenue by month and region', m)).toMatchObject({ groupBy: 'month', splitBy: 'region' });
+    expect(heuristic('share of revenue by region', m)).toMatchObject({ groupBy: 'region', share: true, chart: 'pie' });
+    expect(heuristic('revenue by region by product heatmap', m)).toMatchObject({ splitBy: 'product', chart: 'heatmap' });
+  });
+});
+
+describe('connector sources', () => {
+  it('builds a source from fetched rows and refreshes it keeping column choices', async () => {
+    const { sourceFromTable, refreshSource } = await import('./model');
+    const s = sourceFromTable('Workers', ['userId', 'department', 'salary'], [{ userId: 'E1', department: 'Sales', salary: 10 }], 'SuccessFactors', 'api', { type: 'api', url: 'https://x' });
+    expect(s).toMatchObject({ kind: 'api', system: 'SuccessFactors', origin: { type: 'api' } });
+    const edited = { ...s, columns: s.columns.map((c) => (c.name === 'department' ? { ...c, key: 'dept', role: 'dimension' } : c)), rows: s.rows.map(({ department, ...r }) => ({ ...r, dept: department })) };
+    const fresh = sourceFromTable('Workers', ['userId', 'department', 'salary', 'grade'], [{ userId: 'E2', department: 'HR', salary: 20, grade: 'G1' }], 'SuccessFactors', 'api');
+    const r = refreshSource(edited, fresh);
+    expect(r.id).toBe(s.id);
+    expect(r.columns.map((c) => c.key)).toEqual(['userid', 'dept', 'salary', 'grade']);
+    expect(r.rows).toEqual([{ userid: 'E2', dept: 'HR', salary: 20, grade: 'G1' }]);
+    expect(() => sourceFromTable('Empty', [], [], 'X', 'api')).toThrow(/No rows/);
   });
 });

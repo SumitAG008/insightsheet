@@ -60,8 +60,13 @@ Known values:
 {notes}
 Return ONLY a JSON object:
 {{"title": short answer title,
- "chart": "bar"|"line"|"pie"|"scatter"|"table"|"number",
+ "chart": "bar"|"line"|"pie"|"scatter"|"table"|"number"|"heatmap"|"waterfall",
  "groupBy": one dimension that every series has, or null for totals,
+ "splitBy": optional second dimension to split a single series by (for example expenses by department split by category), or null,
+ "filters": [{{"dim": dimension, "op": "eq"|"neq"|"gte"|"lte", "value": string}}] applied to every series whose view has that dimension,
+ "compare": "prior_year"|"prior_period"|null (only with groupBy "month"),
+ "window": rolling months 2 to 24 or null (only with groupBy "month"),
+ "share": true to add each group's share of the total,
  "series": [{{"view": view name, "measure": measure name or null to count rows, "agg": "sum"|"count"|"avg"|"min"|"max", "filters": [{{"dim": dimension, "op": "eq"|"neq"|"gte"|"lte", "value": string}}], "label": short series name}}],
  "derived": [{{"label": short name, "numerator": [series indexes to add, 0-based], "denominator": series index or null}}],
  "sort": "desc"|"asc"|"label", "limit": 3 to 25,
@@ -70,6 +75,8 @@ Rules:
 - Use up to 4 series. Use 2 or more only to combine systems, and they must all share groupBy (for example orders vs invoices by customer, or headcount vs expenses by department).
 - Never average ratios row by row. For ratios such as cost per head, return the totals as series and a "derived" entry, e.g. salaries, expenses and spend over headcount.
 - Chart from the shape of the answer: one breakdown and one number gives bar; time (groupBy "month") gives line; two or three numbers per item compared against each other gives scatter (x, y, and bubble size); parts of a whole with 6 or fewer groups can be pie.
+- Use "splitBy" only with exactly one series and no derived metrics; a grid of two breakdowns can use chart "heatmap". "waterfall" suits one additive series (sum or count) showing how groups build up to a total.
+- For "vs last year", "year over year" or "month over month" use groupBy "month" with "compare"; for "rolling", "trailing" or "moving" totals use "window"; for "share", "% of total" or "contribution" use "share": true. Date ranges are filters on month, e.g. {{"dim": "month", "op": "gte", "value": "2026-01"}}.
 - If the question is ambiguous in a way that changes the numbers (for example "cost" could mean salaries only or fully loaded cost), return {{"clarify": one short question, "options": [2 to 4 short answers]}} instead.
 - If the question needs data these views don't have, or two things share no dimension, return {{"cannot": one friendly sentence naming what's missing and suggesting the closest question that can be answered}}.
 {prev}Question: {_clip(question, 500)}"""

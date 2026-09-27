@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
-import { Pin, Download, Code2, HelpCircle, BarChart3, LineChart, Table2, PieChart, ScatterChart, Hash, AlertCircle } from 'lucide-react';
-import ReportChart from './ReportChart';
+import { Pin, Download, Code2, HelpCircle, BarChart3, LineChart, Table2, PieChart, ScatterChart, Hash, AlertCircle, Grid3x3, ChartColumnStacked, FileSpreadsheet } from 'lucide-react';
+import ReportChart, { Heatmap } from './ReportChart';
+import { AnalyseBar, FilterBar } from './AnalysisControls';
 import { chartOptions, columnsOf, compute, fmt, toSQL } from '@/lib/unifiedReporting/engine';
 
 const OP_WORD = { eq: 'is', neq: 'is not', gte: '≥', lte: '≤' };
-const CHART_ICON = { bar: BarChart3, line: LineChart, table: Table2, pie: PieChart, scatter: ScatterChart, number: Hash };
-const CHART_NAME = { bar: 'Bar', line: 'Line', table: 'Table', pie: 'Pie', scatter: 'Bubble', number: 'Total' };
+const CHART_ICON = { bar: BarChart3, line: LineChart, table: Table2, pie: PieChart, scatter: ScatterChart, number: Hash, heatmap: Grid3x3, waterfall: ChartColumnStacked };
+const CHART_NAME = { bar: 'Bar', line: 'Line', table: 'Table', pie: 'Pie', scatter: 'Bubble', number: 'Total', heatmap: 'Heatmap', waterfall: 'Waterfall' };
 
 export function KpiRow({ res, currency }) {
   return (
@@ -57,6 +58,7 @@ export function ReportBody({ spec, res, height, currency, compact }) {
   if (!res.labels.length) return <p className="mt-4 text-sm text-slate-500">No rows matched.</p>;
   if (spec.chart === 'number') return <KpiRow res={res} currency={currency} />;
   if (spec.chart === 'table') return <ResultTable spec={spec} res={res} currency={currency} compact={compact} />;
+  if (spec.chart === 'heatmap' && spec.splitBy) return <div className="mt-4"><Heatmap spec={spec} res={res} currency={currency} compact={compact} /></div>;
   return (
     <div className="mt-4">
       <ReportChart spec={spec} res={res} height={height} currency={currency} />
@@ -91,11 +93,13 @@ export function ChartSwitcher({ spec, onChange }) {
 }
 ChartSwitcher.propTypes = { spec: PropTypes.object.isRequired, onChange: PropTypes.func.isRequired };
 
-function describe(res, m) {
-  const parts = res.series.map((s) => {
+function describe(res, m, sp) {
+  const seriesList = sp.splitBy ? [{ ...res.series[0], label: `${sp.series[0].label} (one per ${sp.splitBy.replace(/_/g, ' ')})` }] : res.series;
+  const parts = seriesList.map((s) => {
     const what = s.agg === 'count' ? 'number of rows' : `${s.agg} of ${s.measure}`;
-    const where = s.filters.length ? ` where ${s.filters.map((f) => `${f.dim} ${OP_WORD[f.op]} ${f.value}`).join(' and ')}` : '';
     const v = m.views[s.view];
+    const filters = [...s.filters, ...(sp.filters || []).filter((f) => v?.dims.includes(f.dim))];
+    const where = filters.length ? ` where ${filters.map((f) => `${f.dim} ${OP_WORD[f.op]} ${f.value}`).join(' and ')}` : '';
     const lookup = v?.borrowed.find((b) => b.key === res.groupBy);
     return `${s.label}: ${what} in ${s.source} (${s.sys})${where}${lookup ? `, with ${lookup.key} looked up from ${lookup.from} through ${lookup.via.from.col}` : ''}`;
   });
@@ -103,12 +107,18 @@ function describe(res, m) {
     const num = d.numerator.map((i) => res.series[i].label).join(' + ');
     parts.push(`${d.label}: ${d.denominator === null ? num : `(${num}) ÷ ${res.series[d.denominator].label}`}, calculated after each source is totalled`);
   });
+  const skipped = (sp.filters || []).filter((f) => sp.series.some((s) => !m.views[s.view]?.dims.includes(f.dim)));
+  if (skipped.length) parts.push(`Filter on ${[...new Set(skipped.map((f) => f.dim))].join(', ')} applies only to the sources that have that column.`);
+  if (sp.splitBy) parts.push(`Split by ${sp.splitBy}: the 8 largest values are shown and the rest are added up as Other, so totals are unchanged.`);
+  if (sp.window) parts.push(`Rolling ${sp.window} months: each month adds up the raw totals of that month and the ${sp.window - 1} before it (missing months count as zero); averages are recalculated on the combined rows.`);
+  if (sp.compare) parts.push(`Compared with the ${sp.compare === 'prior_year' ? 'same month a year earlier' : 'previous month'}, using data outside any date filter.`);
+  if (sp.share) parts.push('Share of total is each group divided by the total of all groups, including groups beyond the top list.');
   return parts;
 }
 
 const USED_LABEL = { ai: 'Planned by Meldra AI from your column names.', rules: 'Read with built-in rules (AI was not needed or not available).', edited: 'Run from your edited definition.', suggested: 'Suggested from your data.' };
 
-export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onDownload, onRunSpec }) {
+export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onDownload, onDownloadExcel, onRunSpec, onRefine }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(null);
   const [specErr, setSpecErr] = useState('');
@@ -167,7 +177,11 @@ export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onD
     return shell(<p className="m-0 text-sm text-slate-500">This answer used data that has since been removed.</p>);
   }
   const sp = item.spec;
-  const specText = draft ?? JSON.stringify({ title: sp.title, chart: sp.chart, groupBy: sp.groupBy, series: sp.series, derived: sp.derived, sort: sp.sort, limit: sp.limit }, null, 2);
+  const specText = draft ?? JSON.stringify({
+    title: sp.title, chart: sp.chart, groupBy: sp.groupBy, splitBy: sp.splitBy, series: sp.series, derived: sp.derived,
+    filters: sp.filters, compare: sp.compare, window: sp.window, share: sp.share, sort: sp.sort, limit: sp.limit,
+  }, null, 2);
+  const tableAlso = !['table', 'number', 'heatmap'].includes(sp.chart) && (res.derived.length > 0 || res.extra?.length > 0);
 
   const run = async () => {
     setSpecErr('');
@@ -185,8 +199,12 @@ export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onD
         <h2 className="m-0 text-lg font-semibold tracking-tight">{sp.title}</h2>
         <ChartSwitcher spec={sp} onChange={(c) => onChart(item.id, c)} />
       </div>
+      <div className="mt-3 space-y-2 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-slate-950">
+        <FilterBar m={m} viewKeys={[...new Set(sp.series.map((s) => s.view))]} filters={sp.filters || []} onChange={(filters) => onRefine(item.id, { filters })} />
+        <AnalyseBar m={m} spec={sp} onChange={(patch) => onRefine(item.id, patch)} />
+      </div>
       <ReportBody spec={sp} res={res} currency={m.currency} />
-      {sp.chart !== 'table' && sp.chart !== 'number' && res.derived.length > 0 && <ResultTable spec={sp} res={res} currency={m.currency} compact />}
+      {tableAlso && <ResultTable spec={sp} res={res} currency={m.currency} compact />}
       <p className="mt-4 leading-relaxed">{item.insight || 'Writing the answer…'}</p>
 
       <div className="mt-4 flex flex-wrap gap-1.5">
@@ -201,7 +219,8 @@ export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onD
 
       <div className="mt-4 flex flex-wrap gap-1 border-t border-slate-200 pt-2.5 dark:border-slate-800">
         <Button variant="ghost" size="sm" onClick={() => onPin(item.id)} disabled={pinned}><Pin className="mr-1.5 h-3.5 w-3.5" />{pinned ? 'On dashboard' : 'Add to dashboard'}</Button>
-        <Button variant="ghost" size="sm" onClick={() => onDownload(item.id)}><Download className="mr-1.5 h-3.5 w-3.5" />Download CSV</Button>
+        <Button variant="ghost" size="sm" onClick={() => onDownload(item.id)}><Download className="mr-1.5 h-3.5 w-3.5" />CSV</Button>
+        <Button variant="ghost" size="sm" onClick={() => onDownloadExcel(item.id)}><FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />Excel</Button>
         <Button variant="ghost" size="sm" onClick={() => setOpen(!open)} aria-expanded={open}><Code2 className="mr-1.5 h-3.5 w-3.5" />{open ? 'Hide calculation' : 'How it’s calculated'}</Button>
       </div>
 
@@ -217,7 +236,7 @@ export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onD
         <div className="mt-3 space-y-2 border-t border-dashed border-slate-200 pt-3 dark:border-slate-700">
           <h4 className="text-xs font-medium uppercase tracking-wider text-slate-400">Where the numbers come from</h4>
           <ul className="m-0 list-disc space-y-1 pl-5 text-sm text-slate-600 dark:text-slate-300">
-            {describe({ ...res, groupBy: sp.groupBy }, m).map((p) => <li key={p}>{p}</li>)}
+            {describe({ ...res, groupBy: sp.groupBy }, m, sp).map((p) => <li key={p}>{p}</li>)}
           </ul>
           <p className="m-0 text-xs text-slate-400">{USED_LABEL[item.used] || ''}</p>
           <h4 className="pt-2 text-xs font-medium uppercase tracking-wider text-slate-400">Equivalent SQL</h4>
@@ -245,5 +264,7 @@ AnswerCard.propTypes = {
   onPin: PropTypes.func.isRequired,
   onChart: PropTypes.func.isRequired,
   onDownload: PropTypes.func.isRequired,
+  onDownloadExcel: PropTypes.func.isRequired,
   onRunSpec: PropTypes.func.isRequired,
+  onRefine: PropTypes.func.isRequired,
 };

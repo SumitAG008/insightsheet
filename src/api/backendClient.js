@@ -675,10 +675,11 @@ export const backendApi = {
       return response.json();
     },
 
-    query: async (connectionId, dbType, query) => {
+    query: async (connectionId, dbType, query, maxRows) => {
       const response = await apiCall('/api/db/query', {
         method: 'POST',
-        body: { connection_id: connectionId, db_type: dbType, query },
+        body: { connection_id: connectionId, db_type: dbType, query, ...(maxRows ? { max_rows: maxRows } : {}) },
+        timeoutMs: maxRows ? 180000 : undefined,
       });
       if (!response.ok) {
         const error = await response.json();
@@ -724,6 +725,27 @@ export const backendApi = {
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.detail || 'Report planner failed');
+      }
+      return response.json();
+    },
+
+    // API connector: the backend fetches on the user's behalf (HTTPS, public hosts only); nothing is stored.
+    connectorPresets: async () => {
+      const response = await apiCall('/api/unified-reporting/connector/presets', { timeoutMs: 20000 });
+      if (!response.ok) throw new Error('Could not load connector presets');
+      return response.json();
+    },
+
+    connectorFetch: async (config) => {
+      const response = await apiCall('/api/unified-reporting/connector/fetch', {
+        method: 'POST',
+        body: config,
+        timeoutMs: 180000,
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        const detail = Array.isArray(error.detail) ? error.detail.map((d) => d.msg).join('; ') : error.detail;
+        throw new Error(detail || `The API could not be read (${response.status}).`);
       }
       return response.json();
     },

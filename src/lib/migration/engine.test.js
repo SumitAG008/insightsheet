@@ -196,3 +196,55 @@ describe('payroll, finance and history', () => {
     expect(pay).toMatchObject({ source: 250, target: 100, ok: false });
   });
 });
+
+describe('multi-tab cases: retirees, pension, dependents, unknown data', () => {
+  it('never merges dependents into the employee record', () => {
+    const { sheets, result } = run();
+    const worker = sheets.find((s) => s.name === 'Worker_Data');
+    const deps = sheets.find((s) => s.name === 'Dependents');
+    expect(result.data.sheetRoles[deps.id]).toBe('detail');
+    // Every employee's birth date comes from Worker_Data, not from a dependent.
+    const dobKey = worker.columns.find((c) => c.name === 'Date_of_Birth').key;
+    const idKey = worker.columns.find((c) => c.name === 'Employee_ID').key;
+    for (const row of worker.rows) {
+      const person = result.data.people.find((p) => p.id === String(row[idKey]));
+      expect(person.values.date_of_birth).toBe(toIsoDate(row[dobKey], 'MDY'));
+    }
+    expect(result.issues.some((i) => /Different values across tabs/.test(i.message))).toBe(false);
+    const dep = file(result, 'Custom_Dependents');
+    expect(dep.fileName).toMatch(/^custom\//);
+    expect(dep.rows).toHaveLength(deps.rows.length);
+    expect(dep.rows[0]).toHaveProperty('Relationship');
+  });
+
+  it('treats a tab as dependents when the AI says so, even with one row each', () => {
+    const sheets = [
+      sourceFromRows('Workers', [{ Employee_ID: 'E1', Legal_First_Name: 'Ann', Legal_Last_Name: 'Lee', Hire_Date: '2020-01-01' }], 'Workday', 'file'),
+      sourceFromRows('Family', [{ Employee_ID: 'E1', First_Name: 'Tom', Date_of_Birth: '2015-05-05' }], 'Workday', 'file'),
+    ];
+    const r = runMigration(SUCCESSFACTORS, sheets, mapSheets(sheets), settings, {}, { [sheets[1].id]: 'dependents' });
+    expect(r.data.people[0].values.first_name).toBe('Ann');
+    expect(r.data.people[0].values.date_of_birth).toBeUndefined();
+  });
+
+  it('turns retirees into terminations and pension payouts', () => {
+    const { result } = run();
+    const term = file(result, 'EmpEmploymentTermination').rows.find((r) => r['user-id'] === '21007');
+    expect(term['event-reason']).toBe('RETIRE');
+    expect(file(result, 'User').rows.find((r) => r.USERID === '21007').STATUS).toBe('inactive');
+    const payout = file(result, 'PensionPayout').rows.find((r) => r['employee-id'] === '21007');
+    expect(payout).toMatchObject({ frequency: 'MON' });
+    expect(Number(payout.amount)).toBeGreaterThan(0);
+    expect(file(result, 'PensionEnrollment').rows.length).toBeGreaterThan(30);
+    expect(result.reconciliation.filter((r) => /Pension/.test(r.label)).every((r) => r.ok)).toBe(true);
+  });
+
+  it('accounts for every source column', () => {
+    const { result } = run();
+    const c = result.coverage;
+    expect(c.mapped + c.carried + c.left).toBe(c.total);
+    expect(c.left).toBe(0);
+    const unmapped = file(result, 'Custom_Unmapped_Fields');
+    expect(unmapped.entity.fields.map((f) => f.id)).toContain('Worker_Data.Union_Member');
+  });
+});

@@ -45,6 +45,7 @@ export function readme(result, target, settings) {
     ...(result.files.some((f) => f.entity.mdf) ? ['', 'PaymentInformation is an MDF object: use Import and Export Data with the template', 'from your instance. It contains bank details; handle the file accordingly.'] : []),
     ...(result.files.some((f) => f.entity.payroll) ? ['', 'PayrollYTD is for payroll (Employee Central Payroll or your provider), not an', 'Employee Central import.'] : []),
     ...(result.reconciliation?.length ? ['', 'Reconciliation (source -> output):', ...result.reconciliation.map((r) => `  ${r.ok ? 'OK  ' : 'DIFF'} ${r.label}: ${r.source} -> ${r.target}`)] : []),
+    ...(result.files.some((f) => f.entity.custom) ? ['', 'custom/ holds data with no standard SuccessFactors file yet (for example dependents', 'or unmapped worker columns), carried as-is so nothing is lost. Load it into a custom', 'MDF object or hand it to payroll or benefits.'] : []),
     '',
     'Also included: mapping_report.csv (source column -> field), change_log.csv',
     '(every automatic correction) and issues.csv (what still needs attention).',
@@ -61,6 +62,37 @@ export function mappingReport(sheets, mapping) {
     }
   }
   return toCsv(rows);
+}
+
+/** One Excel workbook for reviewing everything: a tab per output file plus the reports. */
+export async function buildReviewWorkbook({ result, settings }) {
+  const XLSX = await import('xlsx');
+  const wb = XLSX.utils.book_new();
+  const used = new Set();
+  const add = (name, rows) => {
+    let n = name.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31);
+    for (let i = 2; used.has(n); i++) n = `${name.slice(0, 28)} ${i}`;
+    used.add(n);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), n);
+  };
+  add('Summary', [
+    ['Meldra Next-Gen Migration', ''],
+    ['Errors', result.counts.error],
+    ['Warnings', result.counts.warning],
+    ['Files', result.files.length],
+    ['Columns migrated', result.coverage?.mapped ?? ''],
+    ['Columns carried as-is', result.coverage?.carried ?? ''],
+    ['Columns left behind', result.coverage?.left ?? ''],
+    [],
+    ['Load order', 'File', 'Rows'],
+    ...result.files.map((f) => [f.order, f.fileName, f.rows.length]),
+  ]);
+  add('Issues', [['severity', 'file', 'record', 'field', 'message'], ...result.issues.map((i) => [i.severity, i.entity, i.key, i.field || '', i.message])]);
+  add('Reconciliation', [['control', 'source', 'output', 'difference', 'status'], ...(result.reconciliation || []).map((r) => [r.label, r.source, r.target, Math.round((r.target - r.source) * 100) / 100, r.ok ? 'match' : 'DIFFERS'])]);
+  add('Automatic fixes', [['change', 'count', 'examples'], ...result.data.changes.map((c) => [c.text, c.count, c.examples.map(([a, b]) => `${a} → ${b}`).join(' | ')])]);
+  for (const f of result.files) add(`${String(f.order).padStart(2, '0')} ${f.entity.id}`, fileRows(f, settings));
+  const out = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+  return new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }
 
 export async function buildZip({ result, target, settings, sheets, mapping }) {

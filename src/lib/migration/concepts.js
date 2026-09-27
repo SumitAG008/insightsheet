@@ -43,6 +43,7 @@ export const CONCEPTS = [
   { id: 'termination_date', label: 'Termination date', group: 'Termination', type: 'date', synonyms: ['termination date', 'term date', 'end date', 'separation date', 'leaving date'] },
   { id: 'termination_reason', label: 'Termination reason', group: 'Termination', type: 'reason', synonyms: ['termination reason', 'primary reason', 'term reason', 'reason for leaving', 'separation reason'] },
   { id: 'last_day_worked', label: 'Last day worked', group: 'Termination', type: 'date', synonyms: ['last day of work', 'last day worked', 'last working day', 'last date worked'] },
+  { id: 'retirement_date', label: 'Retirement date', group: 'Termination', type: 'date', synonyms: ['retirement date', 'date of retirement', 'retired on', 'retired date'] },
   { id: 'rehire_eligible', label: 'Eligible for rehire', group: 'Termination', type: 'yesno', synonyms: ['eligible for rehire', 'rehire eligible', 'ok to rehire', 'rehire'] },
 
   // Job
@@ -94,6 +95,14 @@ export const CONCEPTS = [
   { id: 'bic', label: 'BIC / SWIFT', group: 'Bank', type: 'bic', synonyms: ['bic', 'swift', 'swift code', 'bic code'] },
   { id: 'bank_name', label: 'Bank name', group: 'Bank', type: 'text', synonyms: ['bank name', 'bank', 'financial institution'] },
   { id: 'bank_country', label: 'Bank country', group: 'Bank', type: 'country', synonyms: ['bank country', 'country of bank'] },
+
+  // Pension
+  { id: 'pension_scheme', label: 'Pension scheme', group: 'Pension', type: 'paycomp', synonyms: ['pension scheme', 'pension plan', 'retirement plan', 'pension fund', 'scheme', 'scheme name'] },
+  { id: 'pension_member_id', label: 'Pension member number', group: 'Pension', type: 'id', synonyms: ['member number', 'member id', 'pension member id', 'scheme member number', 'membership number'] },
+  { id: 'pension_start_date', label: 'Pension enrolment date', group: 'Pension', type: 'date', synonyms: ['enrolment date', 'enrollment date', 'pension start date', 'scheme join date', 'join date', 'enrolled on'] },
+  { id: 'employee_contribution', label: 'Employee contribution %', group: 'Pension', type: 'number', synonyms: ['employee contribution pct', 'employee contribution', 'ee contribution', 'employee contribution percent', 'employee rate'] },
+  { id: 'employer_contribution', label: 'Employer contribution %', group: 'Pension', type: 'number', synonyms: ['employer contribution pct', 'employer contribution', 'er contribution', 'employer contribution percent', 'employer rate'] },
+  { id: 'pension_payout_amount', label: 'Pension payout amount', group: 'Pension', type: 'number', synonyms: ['monthly pension', 'pension amount', 'pension payout', 'annual pension', 'pension paid', 'pension payment'] },
 
   // Payroll year-to-date balances
   { id: 'tax_year', label: 'Tax year', group: 'Payroll balances', type: 'text', synonyms: ['tax year', 'payroll year', 'fiscal year', 'balance year'] },

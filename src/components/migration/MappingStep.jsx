@@ -18,7 +18,8 @@ const ROLE_TEXT = {
   'org:job': 'Job list',
   'org:business_unit': 'Business unit list',
   'org:division': 'Division list',
-  unused: 'Not used — no employee ID or org code mapped',
+  detail: 'Several rows per employee — carried as its own file, not merged into employees',
+  unused: 'No employee ID or org code — carried as its own file',
 };
 
 function Badge({ m }) {
@@ -40,7 +41,15 @@ function samples(sheet, key) {
   return seen;
 }
 
-function SheetCard({ sheet, m, role, onChange }) {
+const PURPOSE_TEXT = {
+  worker: 'Worker data', job_history: 'Job history', compensation_history: 'Pay history', one_time_payments: 'One-time payments',
+  bank_details: 'Bank details', payroll_balances: 'Payroll balances', addresses: 'Addresses', contacts: 'Contacts',
+  terminations: 'Terminations', retirees: 'Retirees', pension: 'Pension', dependents: 'Dependents', leave_balances: 'Leave balances',
+  work_permits: 'Work permits', benefits: 'Benefits', org_companies: 'Legal entities', org_departments: 'Departments',
+  org_locations: 'Locations', org_cost_centers: 'Cost centers', org_jobs: 'Jobs', other: 'Other',
+};
+
+function SheetCard({ sheet, m, role, info, onChange }) {
   const [open, setOpen] = useState(true);
   const mapped = sheet.columns.filter((c) => m[c.key]?.concept).length;
   return (
@@ -48,6 +57,7 @@ function SheetCard({ sheet, m, role, onChange }) {
       <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center gap-3 px-4 py-3 text-left" aria-expanded={open}>
         {open ? <ChevronDown className="h-4 w-4 text-slate-400" /> : <ChevronRight className="h-4 w-4 text-slate-400" />}
         <span className="font-semibold">{sheet.name}</span>
+        {info?.purpose && <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:bg-violet-950 dark:text-violet-300" title={info.note || ''}>AI: {PURPOSE_TEXT[info.purpose] || info.purpose}</span>}
         <span className="text-sm text-slate-500">{ROLE_TEXT[role] || role}</span>
         <span className="ml-auto text-sm text-slate-500">{mapped}/{sheet.columns.length} columns mapped · {sheet.rows.length.toLocaleString()} rows</span>
       </button>
@@ -92,9 +102,28 @@ function SheetCard({ sheet, m, role, onChange }) {
     </div>
   );
 }
-SheetCard.propTypes = { sheet: PropTypes.object.isRequired, m: PropTypes.object.isRequired, role: PropTypes.string, onChange: PropTypes.func.isRequired };
+SheetCard.propTypes = { sheet: PropTypes.object.isRequired, m: PropTypes.object.isRequired, role: PropTypes.string, info: PropTypes.object, onChange: PropTypes.func.isRequired };
 
-export default function MappingStep({ sheets, mapping, roles, onChange, onAi, aiBusy }) {
+function AiStatus({ status }) {
+  if (!status) return null;
+  if (status.state === 'running') return <p className="flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-sm text-violet-900 dark:bg-violet-950 dark:text-violet-200"><Loader2 className="h-4 w-4 animate-spin" />AI is reading your tab and column names…</p>;
+  if (status.state === 'ok') {
+    return (
+      <p className="flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-sm text-violet-900 dark:bg-violet-950 dark:text-violet-200">
+        <Sparkles className="h-4 w-4" />
+        AI identified {status.tabs} tab{status.tabs === 1 ? '' : 's'} and {status.applied ? `mapped ${status.applied} more column${status.applied === 1 ? '' : 's'}` : 'agreed with the rule-based mapping'}.
+      </p>
+    );
+  }
+  return (
+    <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+      AI mapping didn’t run: {status.reason || 'the AI service is unavailable'} The rule-based mapping below is complete on its own; AI only adds tab identification and hard-to-name columns.
+    </p>
+  );
+}
+AiStatus.propTypes = { status: PropTypes.object };
+
+export default function MappingStep({ sheets, mapping, roles, tabInfo = {}, aiStatus, onChange, onAi, aiBusy }) {
   const total = sheets.reduce((a, s) => a + s.columns.length, 0);
   const mapped = sheets.reduce((a, s) => a + s.columns.filter((c) => mapping[s.id]?.[c.key]?.concept).length, 0);
   const low = sheets.reduce((a, s) => a + s.columns.filter((c) => { const m = mapping[s.id]?.[c.key]; return m?.concept && m.method !== 'you' && m.confidence < 0.85; }).length, 0);
@@ -112,9 +141,10 @@ export default function MappingStep({ sheets, mapping, roles, onChange, onAi, ai
           Refine with AI
         </Button>
       </div>
-      <p className="text-xs text-slate-500">“Refine with AI” sends only tab and column names — never employee values.</p>
+      <AiStatus status={aiStatus} />
+      <p className="text-xs text-slate-500">The AI sees only tab and column names — never employee values.</p>
       {sheets.map((s) => (
-        <SheetCard key={s.id} sheet={s} m={mapping[s.id] || {}} role={roles[s.id]} onChange={(col, concept) => onChange(s.id, col, concept)} />
+        <SheetCard key={s.id} sheet={s} m={mapping[s.id] || {}} role={roles[s.id]} info={tabInfo[s.id]} onChange={(col, concept) => onChange(s.id, col, concept)} />
       ))}
     </div>
   );
@@ -124,6 +154,8 @@ MappingStep.propTypes = {
   sheets: PropTypes.array.isRequired,
   mapping: PropTypes.object.isRequired,
   roles: PropTypes.object.isRequired,
+  tabInfo: PropTypes.object,
+  aiStatus: PropTypes.object,
   onChange: PropTypes.func.isRequired,
   onAi: PropTypes.func.isRequired,
   aiBusy: PropTypes.bool,

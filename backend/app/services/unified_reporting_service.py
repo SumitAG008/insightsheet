@@ -13,7 +13,7 @@ ZERO DATA STORAGE: prompts and responses are not persisted.
 import json
 from typing import Any, Dict, List, Optional
 
-from app.services.ai_service import invoke_llm
+from app.services.ai_service import assistant_model, invoke_llm
 
 MAX_VIEWS = 20
 MAX_LIST = 40
@@ -88,7 +88,7 @@ Rows: {json.dumps(safe_rows, default=str)[:6000]}{note}"""
 
 async def plan_report(question: str, previous_question: Optional[str], catalog: Dict[str, Any]) -> Dict[str, Any]:
     prompt = build_plan_prompt(question, previous_question, catalog or {})
-    spec = await invoke_llm(prompt=prompt, response_schema={"type": "json_object"}, max_tokens=1200)
+    spec = await invoke_llm(prompt=prompt, response_schema={"type": "json_object"}, max_tokens=1200, model=assistant_model())
     if not isinstance(spec, dict):
         raise ValueError("Planner did not return a JSON object")
     return spec
@@ -97,5 +97,5 @@ async def plan_report(question: str, previous_question: Optional[str], catalog: 
 async def write_insight(
     question: str, columns: List[str], rows: List[List[Any]], notes: Optional[str] = None, currency: Optional[str] = None
 ) -> str:
-    text = await invoke_llm(prompt=build_insight_prompt(question, columns, rows, notes, currency), max_tokens=300)
+    text = await invoke_llm(prompt=build_insight_prompt(question, columns, rows, notes, currency), max_tokens=300, model=assistant_model())
     return str(text or "").strip()

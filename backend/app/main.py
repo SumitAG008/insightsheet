@@ -89,7 +89,7 @@ from app.utils.auth import (
 )
 from app.services.ai_service import (
     invoke_llm, generate_image, generate_formula, analyze_data, suggest_chart_type,
-    generate_transform, explain_sql
+    generate_transform, explain_sql, explain_ai_error
 )
 from app.services.unified_reporting_service import plan_report, write_insight
 from app.services.migration_service import suggest_mapping
@@ -5885,7 +5885,7 @@ async def unified_reporting_plan_endpoint(
         return {"spec": spec}
     except Exception as e:
         logger.error(f"Unified reporting plan error: {str(e)}")
-        raise HTTPException(status_code=502, detail="The report planner is unavailable right now.")
+        raise HTTPException(status_code=502, detail=f"The report planner is unavailable: {explain_ai_error(e)}.")
 
 
 @app.post("/api/unified-reporting/insight")
@@ -5899,7 +5899,7 @@ async def unified_reporting_insight_endpoint(
         return {"text": text}
     except Exception as e:
         logger.error(f"Unified reporting insight error: {str(e)}")
-        raise HTTPException(status_code=502, detail="The answer writer is unavailable right now.")
+        raise HTTPException(status_code=502, detail=f"The answer writer is unavailable: {explain_ai_error(e)}.")
 
 
 @app.post("/api/migration/suggest-mapping")
@@ -5910,13 +5910,13 @@ async def migration_suggest_mapping_endpoint(
 ):
     """Map extract column headers to canonical HR fields (headers only, never values)."""
     try:
-        mappings = await suggest_mapping(request.sheets, request.concepts, request.source_system)
+        out = await suggest_mapping(request.sheets, request.concepts, request.source_system)
         db.add(UserActivity(user_email=current_user["email"], activity_type="migration_mapping"))
         db.commit()
-        return {"mappings": mappings}
+        return out
     except Exception as e:
         logger.error(f"Migration mapping error: {str(e)}")
-        raise HTTPException(status_code=502, detail="The mapping assistant is unavailable right now.")
+        raise HTTPException(status_code=502, detail=f"The mapping assistant is unavailable: {explain_ai_error(e)}.")
 
 
 @app.post("/api/ai/explain-sql")

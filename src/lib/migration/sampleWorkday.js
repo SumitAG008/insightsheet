@@ -71,6 +71,10 @@ export function buildWorkdaySample() {
   const oneTime = [];
   const bank = [];
   const ytd = [];
+  const retirees = [];
+  const pension = [];
+  const dependents = [];
+  const REL = ['Spouse', 'Child', 'Child', 'Domestic Partner'];
   const addresses = [];
   const terms = [];
   const N = 40;
@@ -87,6 +91,9 @@ export function buildWorkdaySample() {
     const hd = 1 + Math.floor(r() * 28);
     const by = 1965 + Math.floor(r() * 35);
     const terminated = i % 9 === 4;
+    // Workers 7, 20 and 33 have retired: they appear on the Retirees tab, not Terminations.
+    const retired = !terminated && i % 13 === 7;
+    const leaver = terminated || retired;
     const gender = pick(['M', 'F', 'Male', 'female', 'F', 'M', 'Not Declared']);
     workers.push({
       // Some IDs come through as numbers, as Excel does.
@@ -100,8 +107,10 @@ export function buildWorkdaySample() {
       Nationality: pick(['United Kingdom', 'GB', 'Germany', 'India', 'United States', 'Spain']),
       Primary_Work_Email: i === 17 ? 'olivia.smith@meldra-demo' : `${first}.${last}${i}@MELDRA-DEMO.COM`.replace('ü', 'u'),
       Work_Phone: `+44 (0)20 7946 ${String(1000 + i).slice(-4)}`,
-      Worker_Status: terminated ? 'Terminated' : 'Active',
+      Worker_Status: terminated ? 'Terminated' : retired ? 'Retired' : 'Active',
       Hire_Date: us(hy, hm, hd),
+      // No SuccessFactors field for this one: it is carried in a custom file.
+      Union_Member: pick(['Y', 'N', 'N']),
     });
     const events = 1 + (i % 3 === 0 ? 1 : 0);
     // Worker 15 is charged to another entity's cost center (a finance warning).
@@ -145,7 +154,26 @@ export function buildWorkdaySample() {
     // A raise with each second job event: pay history per employee.
     if (events > 1) compRow(us(Math.min(2026, hy + 2), 4, 1), 'Base Salary', Math.round(salary * 1.08), 'Annual');
 
-    if (i % 3 !== 1 && !terminated) {
+    if (retired) {
+      retirees.push({ Employee_ID: `${id}`, Retirement_Date: us(2025, 6 + (i % 6), 30), Pension_Scheme: cur === 'GBP' ? 'Meldra UK Pension Plan' : cur === 'EUR' ? 'Meldra Betriebsrente' : 'Meldra US 401(k)', Monthly_Pension: Math.round(salary * 0.015), Currency: cur });
+    } else if (!terminated) {
+      pension.push({
+        Employee_ID: `${id}`,
+        Pension_Scheme: cur === 'GBP' ? 'Meldra UK Pension Plan' : cur === 'EUR' ? 'Meldra Betriebsrente' : 'Meldra US 401(k)',
+        Member_Number: `PN${String(id).slice(-4)}`,
+        Enrolment_Date: us(hy, hm, hd),
+        Employee_Contribution_Pct: cur === 'USD' ? 6 : 5,
+        Employer_Contribution_Pct: cur === 'USD' ? 4 : 8,
+      });
+    }
+    // Dependents: several rows per employee, with their own names and birth dates.
+    if (i % 3 === 2) {
+      for (let d = 0; d < 1 + (i % 2); d++) {
+        dependents.push({ Employee_ID: `${id}`, Dependent_First_Name: pick(FIRST), Dependent_Last_Name: last, Relationship: d === 0 ? REL[i % 4] : 'Child', Date_of_Birth: usShort(2008 + (i % 12), 1 + d, 10 + d) });
+      }
+    }
+
+    if (i % 3 !== 1 && !leaver) {
       oneTime.push({ Employee_ID: `${id}`, Payment_Date: us(2026, 3, 31), One_Time_Payment_Plan: 'Annual Bonus', Amount: Math.round(salary * 0.08), Currency: cur });
     }
     if (i % 10 === 2) oneTime.push({ Employee_ID: `${id}`, Payment_Date: us(2026, 6, 30), One_Time_Payment_Plan: 'Spot Award', Amount: 500, Currency: cur });
@@ -168,7 +196,7 @@ export function buildWorkdaySample() {
       bank.push({ Employee_ID: `${id}`, Payment_Method: 'Direct Deposit', Bank_Country: 'USA', Bank_Name: 'JPMorgan Chase', IBAN: '', Bank_Code: '021000021', Account_Number: acct, BIC: 'CHASUS33' });
     }
 
-    if (!terminated) {
+    if (!leaver) {
       const gross = Math.round((salary / 12) * 6 * 100) / 100;
       const taxYear = cur === 'GBP' ? '2026-27' : '2026';
       const bal = (name, amount) => ytd.push({ Employee_ID: `${id}`, Tax_Year: taxYear, Pay_Balance: name, YTD_Amount: amount.toFixed(2), Currency: cur });
@@ -203,6 +231,9 @@ export function buildWorkdaySample() {
     ['One_Time_Payments', oneTime],
     ['Bank_Accounts', bank],
     ['Payroll_YTD', ytd],
+    ['Retirees', retirees],
+    ['Pension_Enrolment', pension],
+    ['Dependents', dependents],
     ['Home_Address', addresses],
     ['Terminations', terms],
     ['Companies', companies],

@@ -675,10 +675,10 @@ export const backendApi = {
       return response.json();
     },
 
-    query: async (connectionId, dbType, query) => {
+    query: async (connectionId, dbType, query, maxRows) => {
       const response = await apiCall('/api/db/query', {
         method: 'POST',
-        body: { connection_id: connectionId, db_type: dbType, query },
+        body: { connection_id: connectionId, db_type: dbType, query, ...(maxRows ? { max_rows: maxRows } : {}) },
       });
       if (!response.ok) {
         const error = await response.json();

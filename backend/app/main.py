@@ -7901,6 +7901,7 @@ class DBQueryRequest(BaseModel):
     connection_id: str
     db_type: str
     query: str
+    max_rows: Optional[int] = Field(None, ge=1, le=200000)
 
 class DBDisconnectRequest(BaseModel):
     connection_id: str
@@ -7968,7 +7969,8 @@ async def execute_db_query(
         result = DatabaseConnectionService.execute_query(
             request.connection_id,
             request.db_type,
-            request.query
+            request.query,
+            request.max_rows or 200000,
         )
         if not result.get("success"):
             raise HTTPException(

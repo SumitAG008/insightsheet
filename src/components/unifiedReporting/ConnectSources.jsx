@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Database, Loader2, Plug, ShieldCheck } from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, Database, KeyRound, Loader2, Plug, ShieldCheck } from 'lucide-react';
 import { backendApi } from '@/api/backendClient';
 import { MAX_ROWS, sourceFromTable } from '@/lib/unifiedReporting/model';
+import TokenAuthFields from './TokenAuthFields';
+import { AUTH_LABEL, TOKEN_TYPES, publicAuth, withClientAuth } from '@/lib/unifiedReporting/authConfig';
 
 const input = 'w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900';
 const label = 'block text-xs font-medium text-slate-600 dark:text-slate-300';
@@ -11,10 +13,9 @@ const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:bo
 
 // Used when the presets endpoint can't be reached (the backend returns the full list).
 const FALLBACK_PRESETS = [{ id: 'rest', name: 'Any REST / JSON API', method: 'GET', url: '', auth: 'bearer', paging: 'auto', records_path: '' }];
-const AUTH_LABEL = { none: 'None', basic: 'User name and password', bearer: 'Bearer token', api_key: 'API key', oauth2_client_credentials: 'OAuth 2.0 client credentials' };
 const PAGING_LABEL = {
   auto: 'Detect automatically', odata: 'OData next link', next_url: 'Next URL in response', link_header: 'Link header',
-  offset: 'Offset + limit', page: 'Page number', cursor: 'Cursor', none: 'Single page',
+  offset: 'Offset + limit', page: 'Page number', cursor: 'Cursor', last_id: 'After last ID (Stripe)', none: 'Single page',
 };
 
 const hostOf = (url) => {
@@ -36,9 +37,12 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
   const [preset, setPreset] = useState(initial?.preset || 'rest');
   const [cfg, setCfg] = useState(() => ({
     system: '', name: '', url: '', method: 'GET', body_type: 'json', body: '', records_path: '', paging: 'auto',
-    next_path: '', page_size: '', max_rows: '', headers: '', ...(initial || {}),
+    next_path: '', page_size: '', max_rows: '', headers: '', cursor_param: '', ...(initial || {}),
   }));
-  const [auth, setAuth] = useState(() => ({ type: initial?.authType || 'bearer', token_url: initial?.token_url || '', scope: initial?.scope || '' }));
+  // Refresh starts from the saved non-secret settings (token URL, client ID, subject…); secrets are typed again.
+  const [auth, setAuth] = useState(() => ({ type: initial?.authType || 'bearer', ...(initial?.auth || {}) }));
+  const [egress, setEgress] = useState(null);
+  const [rotated, setRotated] = useState(null); // { token, src, msg } when the provider issued a new refresh token
   const [adv, setAdv] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -46,7 +50,11 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
 
   useEffect(() => {
     let live = true;
-    backendApi.unifiedReporting.connectorPresets().then((r) => { if (live && r?.presets?.length) setPresets(r.presets); }).catch(() => {});
+    backendApi.unifiedReporting.connectorPresets().then((r) => {
+      if (!live) return;
+      if (r?.presets?.length) setPresets(r.presets);
+      if (r?.egress) setEgress(r.egress);
+    }).catch(() => {});
     return () => { live = false; };
   }, []);
 
@@ -60,7 +68,8 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
       paging: p.paging || 'auto', next_path: p.next_path || '', headers: p.headers ? JSON.stringify(p.headers) : '',
       system: cfg.system || (id === 'rest' || id === 'graphql' || id === 'soap' ? '' : p.name.replace(/\s*\(.*\)$/, '')),
     });
-    setAuth({ type: p.auth || 'none', token_url: p.token_url || '', scope: p.scope || '' });
+    setAuth({ type: p.auth || 'none', ...(p.auth_defaults || {}) });
+    set({ cursor_param: p.cursor_param || '' });
     setHelp(p.help || '');
   };
 
@@ -82,7 +91,8 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
     }
     const request = {
       url: cfg.url.trim(), method: cfg.method, headers, body: cfg.method === 'POST' ? body : null, body_type: cfg.body_type,
-      auth, records_path: cfg.records_path.trim() || null, paging: cfg.paging, next_path: cfg.next_path || null,
+      auth: withClientAuth(auth),
+      records_path: cfg.records_path.trim() || null, paging: cfg.paging, next_path: cfg.next_path || null, cursor_param: cfg.cursor_param || null,
       page_size: cfg.page_size ? Number(cfg.page_size) : null, max_rows: cfg.max_rows ? Math.min(MAX_ROWS, Number(cfg.max_rows)) : null,
     };
     setBusy(true);
@@ -94,11 +104,15 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
       const origin = {
         type: 'api', preset, url: request.url, method: request.method, body_type: request.body_type, body: cfg.body, headers: cfg.headers,
         records_path: out.records_path || request.records_path || '', paging: out.paging || request.paging, next_path: cfg.next_path,
-        page_size: cfg.page_size, max_rows: cfg.max_rows, authType: auth.type, token_url: auth.token_url || '', scope: auth.scope || '', system, name,
+        page_size: cfg.page_size, max_rows: cfg.max_rows, cursor_param: cfg.cursor_param, authType: auth.type, auth: publicAuth(auth), system, name,
       };
       const src = sourceFromTable(name, out.columns, out.rows, system, 'api', origin);
       src.truncated = Boolean(out.truncated);
-      onAdd(src, `${out.row_count.toLocaleString()} rows from ${out.pages} page${out.pages === 1 ? '' : 's'}${out.truncated ? ' (row limit reached)' : ''}`);
+      const msg = `${out.row_count.toLocaleString()} rows from ${out.pages} page${out.pages === 1 ? '' : 's'}${out.truncated ? ' (row limit reached)' : ''}`;
+      // Drop secrets from memory as soon as they have been used.
+      setAuth((x) => publicAuth(x));
+      if (out.new_refresh_token) setRotated({ token: out.new_refresh_token, src, msg });
+      else onAdd(src, msg);
     } catch (e) {
       setErr(e.message || 'The API could not be read.');
     } finally {
@@ -111,6 +125,12 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
     <div className={card}>
       <h3 className="m-0 flex items-center gap-2 text-[15px] font-semibold"><Plug className="h-4 w-4 text-blue-600" />{initial ? `Refresh ${initial.name || 'API source'}` : 'Connect an API'}</h3>
       <p className="mt-1 flex items-start gap-1.5 text-xs text-slate-500"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-none text-emerald-600" />Meldra fetches over HTTPS from public addresses only. Credentials are used for this request and never stored; the records stay in this browser.</p>
+      <p className="mt-1 flex items-start gap-1.5 text-xs text-slate-500">
+        <KeyRound className="mt-0.5 h-3.5 w-3.5 flex-none text-emerald-600" />
+        {egress?.static_ip
+          ? `Prefer OAuth or SAML sign-in, so no IP allowlisting is needed. If your system still requires it, Meldra calls from: ${egress.ips.join(', ')}.`
+          : 'Use OAuth 2.0 or SAML 2.0 bearer sign-in (certificate or client secret): access is granted by token, so no IP allowlisting is needed.'}
+      </p>
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field name="System">
           <select className={input} value={preset} onChange={(e) => choose(e.target.value)} disabled={Boolean(initial)}>
@@ -163,14 +183,7 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
             <Field name="Key value" className="sm:col-span-2"><input className={input} type="password" autoComplete="off" value={auth.key_value || ''} onChange={(e) => a({ key_value: e.target.value })} /></Field>
           </>
         )}
-        {auth.type === 'oauth2_client_credentials' && (
-          <>
-            <Field name="Token URL" className="sm:col-span-2"><input className={`${input} font-mono text-xs`} value={auth.token_url || ''} onChange={(e) => a({ token_url: e.target.value })} /></Field>
-            <Field name="Client ID"><input className={input} autoComplete="off" value={auth.client_id || ''} onChange={(e) => a({ client_id: e.target.value })} /></Field>
-            <Field name="Client secret"><input className={input} type="password" autoComplete="off" value={auth.client_secret || ''} onChange={(e) => a({ client_secret: e.target.value })} /></Field>
-            <Field name="Scope" className="sm:col-span-2"><input className={input} value={auth.scope || ''} onChange={(e) => a({ scope: e.target.value })} /></Field>
-          </>
-        )}
+        {TOKEN_TYPES.includes(auth.type) && <TokenAuthFields auth={auth} a={a} />}
       </div>
 
       <button type="button" onClick={() => setAdv(!adv)} className="mt-3 flex items-center gap-1 text-sm font-medium text-blue-700 dark:text-blue-400" aria-expanded={adv}>
@@ -191,9 +204,19 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
           <Field name="Extra headers (JSON)" className="sm:col-span-2"><input className={`${input} font-mono text-xs`} value={cfg.headers} placeholder='{"Accept": "application/json"}' onChange={(e) => set({ headers: e.target.value })} /></Field>
         </div>
       )}
+      {rotated && (
+        <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm dark:border-amber-800 dark:bg-amber-950" role="alert">
+          <p className="m-0 font-medium">The system issued a new refresh token. Save it now: the old one no longer works and Meldra does not keep it.</p>
+          <div className="mt-2 flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 text-xs dark:bg-slate-900" data-testid="new-refresh-token">{rotated.token}</code>
+            <Button size="sm" variant="outline" onClick={() => navigator.clipboard?.writeText(rotated.token).catch(() => {})}><Copy className="mr-1 h-3.5 w-3.5" />Copy</Button>
+            <Button size="sm" onClick={() => { const r = rotated; setRotated(null); onAdd(r.src, r.msg); }}>I saved it, continue</Button>
+          </div>
+        </div>
+      )}
       {err && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300" role="alert">{err}</p>}
       <div className="mt-4 flex gap-2">
-        <Button onClick={fetchNow} disabled={busy || !cfg.url.trim()}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busy ? 'Fetching…' : initial ? 'Fetch again' : 'Fetch and add'}</Button>
+        <Button onClick={fetchNow} disabled={busy || Boolean(rotated) || !cfg.url.trim()}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busy ? 'Fetching…' : initial ? 'Fetch again' : 'Fetch and add'}</Button>
         <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancel</Button>
       </div>
     </div>

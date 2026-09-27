@@ -25,3 +25,6 @@ build/
 
 # Local planning (do not push; new features only for testing)
 AI_ML_EXPANSION_ROADMAP.md
+
+# e2e run output
+e2e/**/.out/

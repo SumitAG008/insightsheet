@@ -92,7 +92,7 @@ from app.services.ai_service import (
     generate_transform, explain_sql, explain_ai_error
 )
 from app.services.unified_reporting_service import plan_report, write_insight
-from app.services.api_connector_service import ConnectorError, fetch_records, public_presets, safe_summary
+from app.services.api_connector_service import ConnectorError, allow_call, egress_info, fetch_records, public_presets, safe_summary
 from app.services.migration_service import suggest_mapping
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
@@ -1885,7 +1885,8 @@ class ConnectorFetchRequest(BaseModel):
     body: Optional[Any] = None
     body_type: str = Field("json", max_length=10)
     variables: Optional[Dict[str, Any]] = None
-    auth: Optional[Dict[str, Any]] = None
+    # Any: a malformed value is rejected by the connector without echoing it back in a 422.
+    auth: Optional[Any] = None
     records_path: Optional[str] = Field(None, max_length=200)
     paging: str = Field("auto", max_length=20)
     next_path: Optional[str] = Field(None, max_length=100)
@@ -1896,6 +1897,7 @@ class ConnectorFetchRequest(BaseModel):
     start_page: Optional[int] = Field(None, ge=0, le=1000)
     cursor_param: Optional[str] = Field(None, max_length=40)
     cursor_path: Optional[str] = Field(None, max_length=100)
+    has_more_path: Optional[str] = Field(None, max_length=100)
     max_rows: Optional[int] = Field(None, ge=1, le=200000)
 
 
@@ -5927,8 +5929,8 @@ async def unified_reporting_insight_endpoint(
 
 @app.get("/api/unified-reporting/connector/presets")
 async def unified_reporting_connector_presets(current_user: dict = Depends(get_current_user)):
-    """Ready-made settings for common business APIs (no secrets)."""
-    return {"presets": public_presets()}
+    """Ready-made settings for common business APIs (no secrets), and whether outbound calls use a fixed IP."""
+    return {"presets": public_presets(), "egress": egress_info()}
 
 
 @app.post("/api/unified-reporting/connector/fetch")
@@ -5941,6 +5943,10 @@ async def unified_reporting_connector_fetch(
     ZERO STORAGE: credentials and records are not stored; only the host name is logged."""
     config = request.model_dump()
     host = safe_summary(config)
+    if not allow_call(str(current_user.get("email") or "?")):
+        raise HTTPException(status_code=429, detail="Too many API pulls in a short time. Wait a few minutes and try again.")
+    if config.get("auth") is not None and not isinstance(config.get("auth"), dict):
+        raise HTTPException(status_code=400, detail="Authentication settings are not valid.")
     try:
         result = await fetch_records(config)
     except ConnectorError as e:

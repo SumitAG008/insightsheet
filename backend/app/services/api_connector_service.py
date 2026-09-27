@@ -16,7 +16,10 @@ Safety rules:
 """
 import ipaddress
 import json
+import os
 import re
+import threading
+from collections import deque
 import socket
 import time
 import xml.etree.ElementTree as ET
@@ -24,6 +27,8 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 import httpx
+
+from app.services.connector_auth import SECRET_FIELDS, TOKEN_GRANTS, AuthConfigError, token_request
 
 MAX_ROWS = 200_000
 MAX_PAGES = 500
@@ -34,9 +39,40 @@ TOTAL_TIMEOUT = 150.0
 MAX_COLUMNS = 300
 FLATTEN_DEPTH = 3
 
-AUTH_TYPES = ("none", "basic", "bearer", "api_key", "oauth2_client_credentials")
-PAGING_TYPES = ("none", "auto", "odata", "next_url", "link_header", "offset", "page", "cursor")
+AUTH_TYPES = ("none", "basic", "bearer", "api_key", *TOKEN_GRANTS)
+PAGING_TYPES = ("none", "auto", "odata", "next_url", "link_header", "offset", "page", "cursor", "last_id")
+RATE_LIMIT = (30, 600)  # fetches per user per 10 minutes
+
+
+def egress_proxy() -> Optional[str]:
+    """Optional outbound proxy with a fixed IP, for the few systems that still require IP allowlisting."""
+    return os.environ.get("CONNECTOR_EGRESS_PROXY") or None
+
+
+def egress_info() -> Dict[str, Any]:
+    ips = [x.strip() for x in os.environ.get("CONNECTOR_EGRESS_IPS", "").split(",") if x.strip()]
+    return {"static_ip": bool(egress_proxy() and ips), "ips": ips if egress_proxy() else []}
+
+
+_calls: Dict[str, deque] = {}
+_calls_lock = threading.Lock()
+
+
+def allow_call(user: str, now: Optional[float] = None) -> bool:
+    """Sliding-window limit so the connector can't be used as a scraper or scanner."""
+    limit, window = RATE_LIMIT
+    now = time.monotonic() if now is None else now
+    with _calls_lock:
+        q = _calls.setdefault(user, deque())
+        while q and q[0] <= now - window:
+            q.popleft()
+        if len(q) >= limit:
+            return False
+        q.append(now)
+        return True
 BLOCKED_HEADERS = {"host", "content-length", "transfer-encoding", "connection", "cookie", "proxy-authorization"}
+
+NO_ALLOWLIST = " Token-based, so no IP allowlisting is needed."
 
 PRESETS: List[Dict[str, Any]] = [
     {
@@ -54,20 +90,23 @@ PRESETS: List[Dict[str, Any]] = [
         "name": "SAP SuccessFactors (OData v2)",
         "method": "GET",
         "url": "https://api{dc}.successfactors.com/odata/v2/EmpJob?$format=json&$select=userId,department,costCenter,company,startDate",
-        "auth": "basic",
+        "auth": "oauth2_saml_bearer",
+        "auth_defaults": {"token_url": "https://api{dc}.successfactors.com/oauth/token", "issuer": "www.successfactors.com",
+                          "audience": "www.successfactors.com", "api_key_attribute": True, "client_auth": "none"},
         "paging": "odata",
         "records_path": "d.results",
-        "help": "User name is user@companyId. Use an API user with read access to the entities you need.",
+        "help": "OAuth 2.0 SAML bearer: in Admin Center > Manage OAuth2 Client Applications, register Meldra with your X.509 certificate; the API key is the client ID, the subject is the API user ID." + NO_ALLOWLIST,
     },
     {
         "id": "s4hana",
-        "name": "SAP S/4HANA (OData)",
+        "name": "SAP S/4HANA / SAP BTP (OData)",
         "method": "GET",
         "url": "https://{host}/sap/opu/odata/sap/API_BUSINESS_PARTNER/A_BusinessPartner?$format=json",
-        "auth": "basic",
+        "auth": "oauth2_client_credentials",
+        "auth_defaults": {"token_url": "https://{subdomain}.authentication.{region}.hana.ondemand.com/oauth/token", "client_auth": "client_secret_basic"},
         "paging": "odata",
         "records_path": "d.results",
-        "help": "Use a communication user from a communication arrangement for the API.",
+        "help": "Use the OAuth client of a communication arrangement (client credentials, or SAML bearer for a named user). Basic auth also works for on-premise systems." + NO_ALLOWLIST,
     },
     {
         "id": "msgraph",
@@ -75,43 +114,68 @@ PRESETS: List[Dict[str, Any]] = [
         "method": "GET",
         "url": "https://graph.microsoft.com/v1.0/users?$select=id,displayName,department,jobTitle,officeLocation",
         "auth": "oauth2_client_credentials",
-        "token_url": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
-        "scope": "https://graph.microsoft.com/.default",
+        "auth_defaults": {"token_url": "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token",
+                          "scope": "https://graph.microsoft.com/.default", "client_auth": "private_key_jwt"},
         "paging": "odata",
         "records_path": "value",
-        "help": "Register an app in Entra ID with application permissions (e.g. User.Read.All) and admin consent.",
+        "help": "Register an app in Entra ID with application permissions (e.g. User.Read.All) and admin consent. Upload the certificate to the app and use its private key (recommended), or use a client secret." + NO_ALLOWLIST,
     },
     {
-        "id": "workday_raas",
+        "id": "workday",
         "name": "Workday report (RaaS)",
         "method": "GET",
         "url": "https://{host}/ccx/service/customreport2/{tenant}/{owner}/{report}?format=json",
-        "auth": "basic",
+        "auth": "oauth2_refresh_token",
+        "auth_defaults": {"token_url": "https://{host}/ccx/oauth2/{tenant}/token", "client_auth": "client_secret_basic"},
         "paging": "none",
         "records_path": "Report_Entry",
-        "help": "Share the custom report as a web service and run it as an integration system user.",
+        "help": "Register an API client for integrations in Workday (non-expiring refresh token) with access to the report's domain. Basic auth with an integration system user also works." + NO_ALLOWLIST,
     },
     {
         "id": "salesforce",
         "name": "Salesforce (SOQL query)",
         "method": "GET",
         "url": "https://{instance}.my.salesforce.com/services/data/v60.0/query?q=SELECT+Id,Name,Industry,AnnualRevenue+FROM+Account",
-        "auth": "bearer",
+        "auth": "oauth2_jwt_bearer",
+        "auth_defaults": {"token_url": "https://login.salesforce.com/services/oauth2/token", "audience": "https://login.salesforce.com", "client_auth": "none"},
         "paging": "next_url",
         "next_path": "nextRecordsUrl",
         "records_path": "records",
-        "help": "Use an access token from a connected app.",
+        "help": "OAuth 2.0 JWT bearer: create a connected app with your certificate, pre-authorize the integration user; client ID is the consumer key, subject is the user name. Use https://test.salesforce.com for sandboxes." + NO_ALLOWLIST,
     },
     {
         "id": "quickbooks",
         "name": "QuickBooks Online (query)",
         "method": "GET",
         "url": "https://quickbooks.api.intuit.com/v3/company/{realmId}/query?query=select%20*%20from%20Invoice&minorversion=70",
-        "auth": "bearer",
+        "auth": "oauth2_refresh_token",
+        "auth_defaults": {"token_url": "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer", "client_auth": "client_secret_basic"},
         "headers": {"Accept": "application/json"},
         "paging": "none",
         "records_path": "QueryResponse.Invoice",
-        "help": "Use an OAuth access token for the company (realm).",
+        "help": "Intuit issues a new refresh token on each use: Meldra shows it after the fetch so you can keep it." + NO_ALLOWLIST,
+    },
+    {
+        "id": "stripe",
+        "name": "Stripe (payments)",
+        "method": "GET",
+        "url": "https://api.stripe.com/v1/charges?limit=100",
+        "auth": "bearer",
+        "paging": "last_id",
+        "cursor_param": "starting_after",
+        "records_path": "data",
+        "help": "Use a restricted secret key (rk_...) with read access only." + NO_ALLOWLIST,
+    },
+    {
+        "id": "kyriba",
+        "name": "Kyriba (treasury)",
+        "method": "GET",
+        "url": "https://{environment}.kyriba.com/gateway/api/v1/cash-balances",
+        "auth": "oauth2_client_credentials",
+        "auth_defaults": {"token_url": "", "client_auth": "client_secret_basic"},
+        "paging": "auto",
+        "records_path": "",
+        "help": "Create an API client in Kyriba and copy its token URL, client ID and secret; check the endpoint path in your Kyriba API portal." + NO_ALLOWLIST,
     },
     {
         "id": "graphql",
@@ -461,25 +525,41 @@ def _decode(resp: httpx.Response, body_type: str) -> Any:
         raise ConnectorError("The response is neither JSON nor XML.")
 
 
-async def _oauth_token(fetcher: _Fetcher, auth: Dict[str, Any]) -> str:
-    token_url = str(auth.get("token_url") or "")
-    form = {"grant_type": "client_credentials", "client_id": str(auth.get("client_id") or ""),
-            "client_secret": str(auth.get("client_secret") or "")}
-    if auth.get("scope"):
-        form["scope"] = str(auth["scope"])
-    resp = await fetcher.send(
-        "POST", token_url, {"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
-        urlencode(form).encode(), same_host=False,
-    )
-    if resp.status_code >= 300:
-        raise ConnectorError(f"Getting an access token failed ({resp.status_code}). Check the client ID, secret and token URL.")
+def redact(text: str, auth: Dict[str, Any]) -> str:
+    """Remove any secret the user sent from text that will be shown or logged."""
+    out = str(text or "")
+    for k in SECRET_FIELDS:
+        v = str((auth or {}).get(k) or "")
+        if len(v) >= 4:
+            out = out.replace(v, "***")
+    return out
+
+
+async def _get_token(fetcher: _Fetcher, auth_type: str, auth: Dict[str, Any]) -> Tuple[str, Optional[str]]:
+    """Call the token endpoint; returns (access token, new refresh token if one was issued)."""
+    token_url = str(auth.get("token_url") or "").strip()
+    if not token_url:
+        raise ConnectorError("Enter the token URL for this authentication method.")
     try:
-        token = resp.json().get("access_token")
+        headers, body = token_request(auth_type, auth, token_url)
+    except AuthConfigError as e:
+        raise ConnectorError(str(e))
+    resp = await fetcher.send("POST", token_url, headers, body, same_host=False)
+    try:
+        data = resp.json()
     except ValueError:
-        token = None
-    if not token:
-        raise ConnectorError("The token endpoint did not return an access_token.")
-    return str(token)
+        data = {}
+    if resp.status_code >= 300 or not isinstance(data, dict) or not data.get("access_token"):
+        code = str(data.get("error") or "") if isinstance(data, dict) else ""
+        desc = str(data.get("error_description") or "") if isinstance(data, dict) else ""
+        detail = f": {code}{f' - {desc[:160]}' if desc else ''}" if code else ""
+        if resp.status_code < 300 and not detail:
+            raise ConnectorError("The token endpoint did not return an access_token.")
+        raise ConnectorError(redact(f"Getting an access token failed ({resp.status_code}){detail}. Check the client ID, key or secret, and token URL.", auth))
+    new_refresh = data.get("refresh_token")
+    if auth_type != "oauth2_refresh_token" or not new_refresh or new_refresh == auth.get("refresh_token"):
+        new_refresh = None
+    return str(data["access_token"]), new_refresh
 
 
 async def fetch_records(config: Dict[str, Any], resolver: Resolver = _default_resolver,
@@ -521,7 +601,12 @@ async def fetch_records(config: Dict[str, Any], resolver: Resolver = _default_re
             raise ConnectorError("The request body is too large.")
 
     deadline = time.monotonic() + TOTAL_TIMEOUT
-    async with httpx.AsyncClient(transport=transport, follow_redirects=False, verify=True) as client:
+    proxy = egress_proxy() if transport is None else None
+    client_args: Dict[str, Any] = {"transport": transport, "follow_redirects": False, "verify": True, "trust_env": False}
+    if proxy:
+        client_args["proxy"] = proxy
+    new_refresh_token: Optional[str] = None
+    async with httpx.AsyncClient(**client_args) as client:
         fetcher = _Fetcher(client, resolver, origin_host, deadline)
 
         if auth_type == "basic":
@@ -538,8 +623,9 @@ async def fetch_records(config: Dict[str, Any], resolver: Resolver = _default_re
                 headers[name] = str(auth.get("key_value") or "")
             else:
                 raise ConnectorError("The API key header name is not valid.")
-        elif auth_type == "oauth2_client_credentials":
-            headers["Authorization"] = f"Bearer {await _oauth_token(fetcher, auth)}"
+        elif auth_type in TOKEN_GRANTS:
+            access, new_refresh_token = await _get_token(fetcher, auth_type, auth)
+            headers["Authorization"] = f"Bearer {access}"
 
         records: List[Dict[str, Any]] = []
         records_path = str(config.get("records_path") or "").strip()
@@ -607,6 +693,13 @@ async def fetch_records(config: Dict[str, Any], resolver: Resolver = _default_re
                 if len(batch) >= page_size:
                     page_no += 1
                     next_url = _set_query(current, {config.get("page_param") or "page": page_no})
+            elif mode == "last_id":
+                # Stripe style: ask for records after the last one while has_more is true.
+                more = get_path(payload, str(config.get("has_more_path") or "has_more"))
+                last = batch[-1].get(str(config.get("cursor_path") or "id")) if batch else None
+                if more and last not in (None, "", cursor):
+                    cursor = str(last)
+                    next_url = _set_query(current, {config.get("cursor_param") or "starting_after": cursor})
             elif mode == "cursor":
                 val = get_path(payload, str(config.get("cursor_path") or "next_cursor"))
                 if val not in (None, "", cursor):
@@ -628,6 +721,8 @@ async def fetch_records(config: Dict[str, Any], resolver: Resolver = _default_re
         "truncated": truncated,
         "records_path": used_path,
         "paging": mode,
+        # Some providers (e.g. Intuit) rotate refresh tokens; hand the new one back, never store it.
+        "new_refresh_token": new_refresh_token,
     }
 
 

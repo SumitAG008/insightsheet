@@ -712,10 +712,10 @@ export const backendApi = {
       return response.json();
     },
 
-    insight: async ({ question, columns, rows, notes }) => {
+    insight: async ({ question, columns, rows, notes, currency }) => {
       const response = await apiCall('/api/unified-reporting/insight', {
         method: 'POST',
-        body: { question, columns, rows, notes: notes || null },
+        body: { question, columns, rows, notes: notes || null, currency: currency || null },
         timeoutMs: 45000,
       });
       if (!response.ok) {

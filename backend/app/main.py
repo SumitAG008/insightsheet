@@ -1880,6 +1880,7 @@ class UnifiedInsightRequest(BaseModel):
     columns: List[str] = Field(..., max_length=10)
     rows: List[List[Any]] = Field(..., max_length=25)
     notes: Optional[str] = Field(None, max_length=600)
+    currency: Optional[str] = Field(None, max_length=4)
 
 
 class ZipProcessingOptions(BaseModel):
@@ -5887,7 +5888,7 @@ async def unified_reporting_insight_endpoint(
 ):
     """Write a short plain-English answer for an already computed report."""
     try:
-        text = await write_insight(request.question, request.columns, request.rows, request.notes)
+        text = await write_insight(request.question, request.columns, request.rows, request.notes, request.currency)
         return {"text": text}
     except Exception as e:
         logger.error(f"Unified reporting insight error: {str(e)}")

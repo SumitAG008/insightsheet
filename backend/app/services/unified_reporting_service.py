@@ -43,17 +43,18 @@ def build_plan_prompt(question: str, previous_question: Optional[str], catalog: 
         )
     known = "\n".join(_clip_list(catalog.get("known_values")))
     notes = " ".join(_clip_list(catalog.get("notes"), 10))
-    customers = ", ".join(_clip_list(catalog.get("customers")))
+    shared = ", ".join(_clip_list(catalog.get("shared_dimensions"))) or "none"
+    currency = _clip(catalog.get("currency"), 4)
     prev = (
         f'The previous question was: "{_clip(previous_question, 300)}". Treat short follow-ups as refinements of it.\n'
         if previous_question
         else ""
     )
 
-    return f"""You are Meldra, an analytics assistant for business users. Turn the question into a query spec over Meldra's unified data model, which combines several business systems and matches shared entities (customers, departments, months) across them. Data covers {_clip(catalog.get('data_range'), 40)}. Today is {_clip(catalog.get('today'), 20)}. Money is {_clip(catalog.get('currency') or 'GBP', 8)}.
-Views:
+    return f"""You are Meldra, an analytics assistant for business users. Turn the question into a query spec over Meldra's unified data model, which combines tables exported from several business systems. Data covers {_clip(catalog.get('data_range'), 40)}. Today is {_clip(catalog.get('today'), 20)}.{f" Money is in {currency}." if currency else ""}
+Views (one per source table):
 {chr(10).join(view_lines)}
-Customers: {customers}.
+Shared dimensions (present in two or more views, so views can be combined on them): {shared}.
 Known values:
 {known}
 {notes}
@@ -74,10 +75,13 @@ Rules:
 {prev}Question: {_clip(question, 500)}"""
 
 
-def build_insight_prompt(question: str, columns: List[str], rows: List[List[Any]], notes: Optional[str]) -> str:
+def build_insight_prompt(
+    question: str, columns: List[str], rows: List[List[Any]], notes: Optional[str], currency: Optional[str] = None
+) -> str:
     safe_rows = rows[:25] if isinstance(rows, list) else []
     note = f"\nNote: {_clip(notes, 600)} Mention this in one short clause." if notes else ""
-    return f"""Write 2 or 3 short sentences for a business manager answering: "{_clip(question, 500)}". Lead with the direct answer, name the biggest and smallest values, and point out one thing worth acting on. If two series are compared, comment on the gap between them. Money is GBP; write amounts like £1.2M or £340K. No markdown, no preamble.
+    money = _clip(currency, 4)
+    return f"""Write 2 or 3 short sentences for a business manager answering: "{_clip(question, 500)}". Lead with the direct answer, name the biggest and smallest values, and point out one thing worth acting on. If two series are compared, comment on the gap between them. Write large numbers compactly, like {money}1.2M or {money}340K. No markdown, no preamble.
 Columns: {' | '.join(_clip_list(columns, 10))}
 Rows: {json.dumps(safe_rows, default=str)[:6000]}{note}"""
 
@@ -90,6 +94,8 @@ async def plan_report(question: str, previous_question: Optional[str], catalog: 
     return spec
 
 
-async def write_insight(question: str, columns: List[str], rows: List[List[Any]], notes: Optional[str] = None) -> str:
-    text = await invoke_llm(prompt=build_insight_prompt(question, columns, rows, notes), max_tokens=300)
+async def write_insight(
+    question: str, columns: List[str], rows: List[List[Any]], notes: Optional[str] = None, currency: Optional[str] = None
+) -> str:
+    text = await invoke_llm(prompt=build_insight_prompt(question, columns, rows, notes, currency), max_tokens=300)
     return str(text or "").strip()

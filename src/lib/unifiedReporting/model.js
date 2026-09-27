@@ -137,6 +137,63 @@ export async function parseFile(file) {
   throw new Error(`${file.name}: upload a .csv, .tsv, .xlsx or .xls file.`);
 }
 
+/** Quote a table name the way each database expects. */
+export function selectAll(dbType, table) {
+  if (dbType === 'mysql') return `SELECT * FROM \`${table.replace(/`/g, '``')}\``;
+  if (dbType === 'mssql') return `SELECT * FROM [${table.replace(/]/g, ']]')}]`;
+  return `SELECT * FROM "${table.replace(/"/g, '""')}"`;
+}
+
+/** A source from a database table or query result (column order kept even with no rows). */
+export function sourceFromTable(name, columns, rows, system, origin) {
+  const headers = columns?.length ? columns : Object.keys(rows[0] || {});
+  const s = makeSource(name, headers, rows, 'database');
+  s.system = system || name;
+  s.origin = origin;
+  s.refreshedAt = new Date().toISOString();
+  return s;
+}
+
+/**
+ * Re-load a source's rows (e.g. refresh from its database) while keeping the
+ * user's decisions: column roles and join names, matched by column name.
+ */
+export function refreshSource(source, columns, rows) {
+  const fresh = makeSource(source.name, columns?.length ? columns : Object.keys(rows[0] || {}), rows, source.kind);
+  const byName = Object.fromEntries(source.columns.map((c) => [c.name, c]));
+  const renamed = {};
+  fresh.columns = fresh.columns.map((c) => {
+    const old = byName[c.name];
+    if (!old) return c;
+    if (old.key !== c.key) renamed[c.key] = old.key;
+    return { ...c, key: old.key, role: old.role, unit: old.unit ?? c.unit };
+  });
+  const keyedRows = Object.keys(renamed).length
+    ? fresh.rows.map((r) => {
+      const o = { ...r };
+      for (const [from, to] of Object.entries(renamed)) { o[to] = o[from]; delete o[from]; }
+      return o;
+    })
+    : fresh.rows;
+  return { ...source, columns: fresh.columns, rows: keyedRows, truncated: fresh.truncated, refreshedAt: new Date().toISOString() };
+}
+
+/** Foreign keys from the database become links, so nothing needs guessing. */
+export function relationshipsFromForeignKeys(foreignKeys, sources) {
+  const byTable = Object.fromEntries(sources.filter((s) => s.origin?.table).map((s) => [s.origin.table.toLowerCase(), s]));
+  const colKey = (s, name) => s.columns.find((c) => c.name.toLowerCase() === String(name).toLowerCase())?.key;
+  const out = [];
+  for (const fk of foreignKeys || []) {
+    const a = byTable[String(fk.fromTable).toLowerCase()];
+    const b = byTable[String(fk.toTable).toLowerCase()];
+    if (!a || !b || a.id === b.id) continue;
+    const from = colKey(a, fk.fromColumn);
+    const to = colKey(b, fk.toColumn);
+    if (from && to) out.push({ id: `fk_${a.id}_${from}_${b.id}`, from: { source: a.id, col: from }, to: { source: b.id, col: to }, origin: 'foreign key' });
+  }
+  return out;
+}
+
 export function sourceFromRows(name, rows, system, kind = 'sample') {
   const s = makeSource(name, Object.keys(rows[0] || {}), rows, kind);
   s.system = system || name;
@@ -163,7 +220,9 @@ const looksLikeKey = (key) => /(^id$|_id$|_code$|^code$|_no$|_number$|_key$|emai
  * dimensions already and need no relationship.
  */
 export function suggestRelationships(sources, existing = []) {
-  const has = (f, t) => existing.some((r) => r.from.source === f.source && r.from.col === f.col && r.to.source === t.source);
+  // A link already joining the same two columns, in either direction, covers the pair.
+  const same = (x, y) => x.source === y.source && x.col === y.col;
+  const has = (f, t) => existing.some((r) => (same(r.from, f) && r.to.source === t.source) || (same(r.from, t) && same(r.to, f)));
   const out = [];
   for (const b of sources) {
     for (const bc of b.columns) {

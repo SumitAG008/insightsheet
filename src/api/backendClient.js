@@ -732,12 +732,33 @@ export const backendApi = {
 
     sources: async () => jsonOrThrow(await apiCall('/api/lakehouse/sources', { timeoutMs: 60000 }), 'Could not list your stored sources'),
 
-    upload: async (file, system) => {
+    /** Upload with progress: onProgress({ phase: 'upload' | 'processing', pct }) while the file travels, then while it is stored. */
+    upload: (file, system, onProgress) => new Promise((resolve, reject) => {
       const form = new FormData();
       form.append('file', file);
       if (system) form.append('system', system);
-      return jsonOrThrow(await apiCall('/api/lakehouse/upload', { method: 'POST', body: form, timeoutMs: 30 * 60000 }), `Could not store ${file.name}`);
-    },
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_URL}/api/lakehouse/upload`);
+      const token = getToken();
+      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      xhr.timeout = 30 * 60000;
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.({ phase: 'upload', pct: Math.round((e.loaded / e.total) * 100) }); };
+      xhr.upload.onload = () => onProgress?.({ phase: 'processing', pct: 100 });
+      xhr.onload = () => {
+        let body = {};
+        try { body = JSON.parse(xhr.responseText || '{}'); } catch { /* not JSON */ }
+        if (xhr.status === 401) {
+          clearAllAppSessionData();
+          setToken(null);
+          window.location.href = '/login';
+          reject(new Error('Unauthorized'));
+        } else if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+        else reject(new Error((typeof body.detail === 'string' && body.detail) || `Could not store ${file.name} (${xhr.status}).`));
+      };
+      xhr.onerror = () => reject(new Error(`Could not upload ${file.name}. Check your connection.`));
+      xhr.ontimeout = () => reject(new Error(`Uploading ${file.name} took too long.`));
+      xhr.send(form);
+    }),
 
     storeRows: async ({ name, system, kind, columns, rows, origin, replaceTable }) => jsonOrThrow(await apiCall('/api/lakehouse/rows', {
       method: 'POST',

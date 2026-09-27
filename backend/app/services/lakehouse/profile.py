@@ -25,6 +25,19 @@ DATE_FORMATS = ["%d/%m/%Y", "%m/%d/%Y", "%d/%m/%y", "%m/%d/%y", "%d.%m.%Y", "%d-
 SAMPLE_ROWS = 50_000
 
 
+CURRENCY_CODES = {"gbp": "£", "usd": "$", "eur": "€", "jpy": "¥", "inr": "₹"}
+
+
+def currency_from_name(name: Any) -> Optional[str]:
+    """A currency named in the header: "Budget (£)", "amount_gbp", "Cost USD" (as currencyFromName in the browser)."""
+    n = str(name or "")
+    sym = CURRENCY_RE.search(n)
+    if sym:
+        return sym.group(0)
+    code = re.search(r"(?:^|[^a-z])(gbp|usd|eur|jpy|inr)(?:$|[^a-z])", n.lower())
+    return CURRENCY_CODES[code.group(1)] if code else None
+
+
 def to_key(name: Any) -> str:
     """Same as toKey() in the browser: lower snake case, % → pct."""
     s = str(name if name is not None else "").strip().lower().replace("%", " pct")
@@ -95,6 +108,8 @@ def profile_sample(con, rel_name: str, schema: pa.Schema, names: List[str], keys
                 currency = m.group(0) if m else None
         else:
             kind = "text"
+        if kind == "number" and not currency:
+            currency = currency_from_name(name)
         role = "measure" if kind == "number" and not ID_RE.search(key) else "dimension"
         unit = None
         if role == "measure":

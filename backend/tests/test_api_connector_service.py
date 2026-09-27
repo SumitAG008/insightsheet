@@ -156,3 +156,16 @@ def test_finds_records_and_flattens():
     assert rows[0]["tags"] == "a, b"
     with pytest.raises(ConnectorError, match="Nothing was found"):
         find_records(payload, "missing.path")
+
+
+def test_compressed_responses_are_decoded_once():
+    """Most real APIs gzip their JSON; the body must be decompressed exactly once."""
+    import gzip
+
+    body = gzip.compress(json.dumps({"value": [{"id": 1, "name": "Ann"}, {"id": 2, "name": "Bo"}]}).encode())
+
+    def handler(request):
+        return httpx.Response(200, headers={"content-encoding": "gzip", "content-type": "application/json"}, content=body)
+
+    out = run(fetch_records({"url": "https://api.example.com/x"}, resolver=PUBLIC, transport=httpx.MockTransport(handler)))
+    assert out["rows"] == [{"id": 1, "name": "Ann"}, {"id": 2, "name": "Bo"}]

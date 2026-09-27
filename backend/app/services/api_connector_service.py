@@ -49,6 +49,11 @@ def egress_proxy() -> Optional[str]:
     return os.environ.get("CONNECTOR_EGRESS_PROXY") or None
 
 
+def ca_bundle() -> Any:
+    """Certificate check for outbound calls: system CAs, or a bundle for proxies that inspect TLS (CONNECTOR_CA_BUNDLE)."""
+    return os.environ.get("CONNECTOR_CA_BUNDLE") or True
+
+
 def egress_info() -> Dict[str, Any]:
     ips = [x.strip() for x in os.environ.get("CONNECTOR_EGRESS_IPS", "").split(",") if x.strip()]
     return {"static_ip": bool(egress_proxy() and ips), "ips": ips if egress_proxy() else []}
@@ -461,12 +466,15 @@ def _odata_next(payload: Any) -> Optional[str]:
 
 
 class _Fetcher:
-    def __init__(self, client: httpx.AsyncClient, resolver: Resolver, origin_host: str, deadline: float):
+    def __init__(self, client: httpx.AsyncClient, resolver: Resolver, origin_host: str, deadline: float, pin: bool = True):
         self.client = client
         self.resolver = resolver
         self.origin_host = origin_host
         self.deadline = deadline
         self.total_bytes = 0
+        # Direct egress: connect to the IP that passed the public-address check (no DNS rebinding).
+        # Through an egress proxy: connect by host name; the proxy resolves it and must refuse private networks.
+        self.pin = pin
 
     async def send(self, method: str, url: str, headers: Dict[str, str], body: Optional[bytes] = None,
                    same_host: bool = True) -> httpx.Response:
@@ -477,10 +485,11 @@ class _Fetcher:
         if remaining <= 0:
             raise ConnectorError("The API took too long to return all pages.")
         req_headers = {**headers, "Host": urlsplit(url).netloc.split("@")[-1]}
+        target, ext = (_pinned(url, ip), {"sni_hostname": host}) if self.pin else (url, {})
         try:
             async with self.client.stream(
-                method, _pinned(url, ip), headers=req_headers, content=body,
-                timeout=min(REQUEST_TIMEOUT, remaining), extensions={"sni_hostname": host},
+                method, target, headers=req_headers, content=body,
+                timeout=min(REQUEST_TIMEOUT, remaining), extensions=ext,
             ) as resp:
                 chunks = []
                 size = 0
@@ -492,7 +501,9 @@ class _Fetcher:
                 self.total_bytes += size
                 if self.total_bytes > MAX_TOTAL_BYTES:
                     raise ConnectorError("The API returned more than 200 MB in total. Narrow the request.")
-                return httpx.Response(resp.status_code, headers=resp.headers, content=b"".join(chunks), request=resp.request)
+                # The body above is already decompressed: drop the encoding headers so it isn't decoded twice.
+                plain = [(k, v) for k, v in resp.headers.multi_items() if k.lower() not in ("content-encoding", "content-length", "transfer-encoding")]
+                return httpx.Response(resp.status_code, headers=plain, content=b"".join(chunks), request=resp.request)
         except httpx.TimeoutException:
             raise ConnectorError("The API did not answer in time.")
         except httpx.HTTPError as e:
@@ -601,13 +612,13 @@ async def fetch_records(config: Dict[str, Any], resolver: Resolver = _default_re
             raise ConnectorError("The request body is too large.")
 
     deadline = time.monotonic() + TOTAL_TIMEOUT
-    proxy = egress_proxy() if transport is None else None
-    client_args: Dict[str, Any] = {"transport": transport, "follow_redirects": False, "verify": True, "trust_env": False}
-    if proxy:
+    proxy = egress_proxy()
+    client_args: Dict[str, Any] = {"transport": transport, "follow_redirects": False, "verify": ca_bundle(), "trust_env": False}
+    if proxy and transport is None:
         client_args["proxy"] = proxy
     new_refresh_token: Optional[str] = None
     async with httpx.AsyncClient(**client_args) as client:
-        fetcher = _Fetcher(client, resolver, origin_host, deadline)
+        fetcher = _Fetcher(client, resolver, origin_host, deadline, pin=not proxy)
 
         if auth_type == "basic":
             import base64

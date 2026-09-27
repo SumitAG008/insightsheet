@@ -306,3 +306,21 @@ def test_presets_use_token_auth_and_have_no_secrets():
     text = str(presets)
     for secret in ("client_secret", "password", "private_key", "refresh_token\":"):
         assert f"'{secret}':" not in text
+
+
+def test_through_an_egress_proxy_requests_go_by_host_name(monkeypatch):
+    """A proxy resolves the name itself (and must refuse private networks); the public-address check still runs first."""
+    seen = []
+
+    def handler(request):
+        seen.append(str(request.url))
+        return httpx.Response(200, json={"items": [{"id": 1}]})
+
+    monkeypatch.setenv("CONNECTOR_EGRESS_PROXY", "http://proxy.example.com:8080")
+    out = run(fetch_records({"url": API_URL}, resolver=PUBLIC, transport=httpx.MockTransport(handler)))
+    assert out["row_count"] == 1 and seen == [API_URL]
+    with pytest.raises(ConnectorError, match="private"):
+        run(fetch_records({"url": API_URL}, resolver=lambda h, p: ["10.0.0.1"], transport=httpx.MockTransport(handler)))
+    monkeypatch.delenv("CONNECTOR_EGRESS_PROXY")
+    run(fetch_records({"url": API_URL}, resolver=PUBLIC, transport=httpx.MockTransport(handler)))
+    assert "93.184.216.34" in seen[-1]  # direct: pinned to the checked IP

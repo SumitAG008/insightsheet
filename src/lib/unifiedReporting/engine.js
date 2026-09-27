@@ -616,16 +616,19 @@ export function heuristic(q, m) {
   const scored = views.map((v) => {
     let score = 0;
     let at = Infinity;
+    let named = false;
     for (const name of [v.label, v.key, v.sys]) {
-      if (mentions(q, name)) { score += 3; at = Math.min(at, mentionAt(q, name)); }
+      if (mentions(q, name)) { score += 3; named = true; at = Math.min(at, mentionAt(q, name)); }
     }
     const ms = v.measures.filter((k) => mentions(q, k));
     if (ms.length) { score += 2; at = Math.min(at, ...ms.map((k) => mentionAt(q, k))); }
     if (groupBy && v.dims.includes(groupBy)) score += 1;
-    return { v, score, at, ms };
+    return { v, score, at, ms, named };
   }).filter((x) => x.score > (groupBy ? 1 : 0)).sort((a, b) => a.at - b.at || b.score - a.score);
 
-  let use = scored;
+  // When the question names its sources ("expenses … vs budget …"), use only those; a source that
+  // merely has a column with the same name (another "amount") is not what was asked for.
+  let use = scored.some((x) => x.named) ? scored.filter((x) => x.named) : scored;
   if (!use.length) {
     const fallback = views.find((v) => !groupBy || v.dims.includes(groupBy)) || views[0];
     use = [{ v: fallback, ms: [] }];
@@ -650,7 +653,9 @@ export function heuristic(q, m) {
     }
     if (/this year/.test(ql) && v.dims.includes('month')) filters.push({ dim: 'month', op: 'gte', value: `${new Date().getFullYear()}-01` });
     const measure = count ? null : ms[0] || v.measures[0] || null;
-    return { view: v.key, measure, agg: measure ? agg : 'count', filters };
+    // Several sources: say which one each number comes from ("expenses: amount", not "amount" twice).
+    const label = use.length > 1 && combine ? `${v.label}: ${measure ? pretty(measure) : 'count'}` : undefined;
+    return { view: v.key, measure, agg: measure ? agg : 'count', filters, label };
   });
 
   const lim = ql.match(/top (\d+)/);
@@ -681,10 +686,19 @@ export function suggestQuestions(m) {
   const good = (v, d) => d !== 'month' && distinctValues(m, v.key, d, 60).length <= 50 && distinctValues(m, v.key, d, 60).length > 1;
 
   // Cross-source comparisons on shared dimensions first: that is the point of unified reporting.
-  for (const d of m.shared) {
+  // Pairs from different systems come before two tables of the same system, and each pair of
+  // systems is used once, so the suggestions span as many systems as possible.
+  const pairs = [];
+  m.shared.forEach((d, di) => {
     const vs = views.filter((v) => v.dims.includes(d));
-    if (vs.length < 2) continue;
-    const [a, b] = vs;
+    for (let i = 0; i < vs.length; i++) for (let j = i + 1; j < vs.length; j++) pairs.push({ d, a: vs[i], b: vs[j], order: di * 1000 + i * 30 + j });
+  });
+  pairs.sort((x, y) => (x.a.sys === x.b.sys) - (y.a.sys === y.b.sys) || x.order - y.order);
+  const usedSys = new Set();
+  for (const { d, a, b } of pairs) {
+    const sysPair = [a.sys, b.sys].sort().join('|');
+    if (usedSys.has(sysPair)) continue;
+    usedSys.add(sysPair);
     const qa = a.measures[0] ? pretty(a.measures[0]) : `${a.label.toLowerCase()} count`;
     const qb = b.measures[0] ? pretty(b.measures[0]) : `${b.label.toLowerCase()} count`;
     const spec = {

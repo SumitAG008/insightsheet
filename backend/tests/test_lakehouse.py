@@ -233,3 +233,8 @@ def test_preview_and_bad_files(lake, tmp_path):
         store.ingest_file("a@example.com", str(tmp_path / "empty.csv"), "empty.csv")
     with pytest.raises(store.LakehouseError, match="upload a"):
         store.ingest_file("a@example.com", str(tmp_path / "f.csv"), "f.exe")
+
+
+def test_currency_from_column_names():
+    from app.services.lakehouse.profile import currency_from_name
+    assert [currency_from_name(n) for n in ["Budget (£)", "licence_cost_gbp", "Cost USD", "amount_eur", "Amount", "gbpx"]] == ["£", "£", "$", "€", None, None]

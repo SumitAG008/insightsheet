@@ -64,20 +64,20 @@ export function Heatmap({ spec, res, currency, compact }) {
         <thead className="sticky top-0 z-[1] bg-white dark:bg-slate-900">
           <tr>
             <th className="px-2 py-1.5 text-left font-medium capitalize text-slate-500">{spec.groupBy.replace(/_/g, ' ')} × {spec.splitBy.replace(/_/g, ' ')}</th>
-            {cols.map((c) => <th key={c.label} className="max-w-[110px] truncate px-2 py-1.5 text-right font-medium text-slate-500" title={c.label}>{c.label}</th>)}
+            {cols.map((c, k) => <th key={`${k}-${c.label}`} className="max-w-[110px] truncate px-2 py-1.5 text-right font-medium text-slate-500" title={c.label}>{c.label}</th>)}
           </tr>
         </thead>
         <tbody>
           {res.labels.map((l, i) => (
             <tr key={l}>
               <th scope="row" className="whitespace-nowrap px-2 py-1.5 text-left font-medium">{l}</th>
-              {cols.map((c) => {
+              {cols.map((c, k) => {
                 const v = c.data[i];
                 const t = typeof v === 'number' ? Math.abs(v) / max : 0;
                 const strong = t > 0.55;
                 return (
                   <td
-                    key={c.label}
+                    key={`${k}-${c.label}`}
                     title={`${l} · ${c.label}: ${fmt(v, unit, currency)}`}
                     className={`whitespace-nowrap rounded px-2 py-1.5 text-right tabular-nums ${strong ? 'text-white' : ''}`}
                     style={{ backgroundColor: typeof v === 'number' ? `rgba(${v < 0 ? '219, 39, 119' : '37, 99, 235'}, ${0.08 + t * 0.82})` : 'transparent' }}
@@ -203,7 +203,7 @@ function RadarView({ res, height, currency }) {
         <Tooltip {...tooltipStyle} formatter={(v, n, item) => { const k = Number(String(item.dataKey).slice(1)); return [fmt(item.payload[`v${k}`], cols[k].unit, currency), n]; }} />
         {cols.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
         {cols.map((c, k) => (
-          <Radar key={c.label} dataKey={`c${k}`} name={c.label} stroke={PALETTE[k % PALETTE.length]} fill={PALETTE[k % PALETTE.length]} fillOpacity={0.18} isAnimationActive={false} />
+          <Radar key={`${k}-${c.label}`} dataKey={`c${k}`} name={c.label} stroke={PALETTE[k % PALETTE.length]} fill={PALETTE[k % PALETTE.length]} fillOpacity={0.18} isAnimationActive={false} />
         ))}
       </RadarChart>
     </ResponsiveContainer>
@@ -265,14 +265,15 @@ export default function ReportChart({ spec, res, height = 300, currency = '' }) 
       <ResponsiveContainer width="100%" height={height}>
         <ComposedChart data={data} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200 dark:stroke-slate-700" />
-          <XAxis dataKey="label" tick={axisTick} tickFormatter={(v) => short(v)} interval="preserveStartEnd" />
+          <XAxis dataKey="label" tick={axisTick} tickFormatter={(v) => short(v, 14)} interval={0} angle={data.length > 6 ? -35 : 0}
+            textAnchor={data.length > 6 ? 'end' : 'middle'} height={data.length > 6 ? 78 : 30} />
           <YAxis yAxisId="left" tick={axisTick} tickFormatter={(v) => fmtU(v, u0)} width={70} />
           {ru && <YAxis yAxisId="right" orientation="right" tick={axisTick} tickFormatter={(v) => fmtU(v, ru)} width={70} />}
           <Tooltip {...tooltipStyle} formatter={(v, n, item) => [fmtU(v, all[Number(String(item.dataKey).slice(1))]?.unit), n]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {all.map((c, k) => (k === 0
-            ? <Bar key={c.label} yAxisId="left" dataKey="c0" name={c.label} fill={PALETTE[0]} radius={[5, 5, 0, 0]} maxBarSize={38} />
-            : <Line key={c.label} yAxisId={ru && c.unit === ru ? 'right' : 'left'} type="monotone" dataKey={`c${k}`} name={c.label} stroke={PALETTE[k % PALETTE.length]} strokeWidth={2.5} dot={{ r: 2.5 }} connectNulls />))}
+            ? <Bar key={`${k}-${c.label}`} yAxisId="left" dataKey="c0" name={c.label} fill={PALETTE[0]} radius={[5, 5, 0, 0]} maxBarSize={38} />
+            : <Line key={`${k}-${c.label}`} yAxisId={ru && c.unit === ru ? 'right' : 'left'} type="monotone" dataKey={`c${k}`} name={c.label} stroke={PALETTE[k % PALETTE.length]} strokeWidth={2.5} dot={{ r: 2.5 }} connectNulls />))}
         </ComposedChart>
       </ResponsiveContainer>
     );
@@ -290,7 +291,7 @@ export default function ReportChart({ spec, res, height = 300, currency = '' }) 
           <Tooltip {...tooltipStyle} formatter={tip} />
           {multi && <Legend wrapperStyle={{ fontSize: 12 }} />}
           {cols.map((c, k) => (
-            <Area key={c.label} yAxisId={axisOf(c)} type="monotone" dataKey={`c${k}`} name={c.label} stackId={stackedArea ? 'a' : undefined}
+            <Area key={`${k}-${c.label}`} yAxisId={axisOf(c)} type="monotone" dataKey={`c${k}`} name={c.label} stackId={stackedArea ? 'a' : undefined}
               stroke={PALETTE[k % PALETTE.length]} fill={PALETTE[k % PALETTE.length]} fillOpacity={stackedArea ? 0.55 : 0.18} strokeWidth={2} connectNulls />
           ))}
         </AreaChart>
@@ -309,7 +310,7 @@ export default function ReportChart({ spec, res, height = 300, currency = '' }) 
           <Tooltip {...tooltipStyle} formatter={tip} />
           {multi && <Legend wrapperStyle={{ fontSize: 12 }} />}
           {cols.map((c, k) => (
-            <Line key={c.label} yAxisId={axisOf(c)} type="monotone" dataKey={`c${k}`} name={c.label} stroke={c.kind === 'prior' ? PALETTE[5] : PALETTE[k % PALETTE.length]} strokeDasharray={c.kind === 'prior' ? '5 4' : undefined} strokeWidth={c.kind === 'prior' ? 2 : 2.5} dot={{ r: 2.5 }} connectNulls />
+            <Line key={`${k}-${c.label}`} yAxisId={axisOf(c)} type="monotone" dataKey={`c${k}`} name={c.label} stroke={c.kind === 'prior' ? PALETTE[5] : PALETTE[k % PALETTE.length]} strokeDasharray={c.kind === 'prior' ? '5 4' : undefined} strokeWidth={c.kind === 'prior' ? 2 : 2.5} dot={{ r: 2.5 }} connectNulls />
           ))}
         </LineChart>
       </ResponsiveContainer>
@@ -318,6 +319,7 @@ export default function ReportChart({ spec, res, height = 300, currency = '' }) 
 
   // Bars: horizontal when many categories so labels stay readable.
   const horizontal = !multi && rows.length > 6;
+  const crowded = !horizontal && rows.length > 6;
   // A second breakdown stacks, so the bar height is still the group's total.
   const stacked = Boolean(spec.splitBy) && ['sum', 'count'].includes(res.series[0]?.agg);
   return (
@@ -331,7 +333,9 @@ export default function ReportChart({ spec, res, height = 300, currency = '' }) 
           </>
         ) : (
           <>
-            <XAxis dataKey="label" tick={axisTick} tickFormatter={(v) => short(v)} interval={0} />
+            {/* Many categories: angle the labels so they don't run into each other. */}
+            <XAxis dataKey="label" tick={axisTick} tickFormatter={(v) => short(v, crowded ? 14 : 16)} interval={0}
+              angle={crowded ? -35 : 0} textAnchor={crowded ? 'end' : 'middle'} height={crowded ? 78 : 30} />
             <YAxis yAxisId="left" tick={axisTick} tickFormatter={(v) => fmtU(v, unit)} width={70} />
             {rightAxis}
           </>
@@ -340,7 +344,7 @@ export default function ReportChart({ spec, res, height = 300, currency = '' }) 
         {multi && <Legend wrapperStyle={{ fontSize: 12 }} />}
         {cols.map((c, k) => (
           <Bar
-            key={c.label}
+            key={`${k}-${c.label}`}
             yAxisId={horizontal ? undefined : axisOf(c)}
             dataKey={`c${k}`}
             name={c.label}

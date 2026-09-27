@@ -31,6 +31,8 @@ export default function UnifiedReporting() {
   const [draft, setDraft] = useState('');
   const [mode, setMode] = useState('ask'); // 'ask' a question, or 'report': build a whole report from one prompt
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(null); // { text, pct } while files are read or uploaded
+  const [sourcesReady, setSourcesReady] = useState(false); // true once stored sources (if any) have been loaded
   const [toastMsg, setToastMsg] = useState('');
   const [dbDialog, setDbDialog] = useState(null); // null | { refreshOf?: source }
   const inputRef = useRef(null);
@@ -76,9 +78,36 @@ export default function UnifiedReporting() {
   const lakehouse = useLakehouse({ sources, setSources, toast });
   const { lake, active: toLake } = lakehouse;
   useEffect(() => {
-    if (!loaded || !lake.enabled) return;
-    lakehouse.reconcile().then((n) => { if (n) setView((v) => (v === 'data' ? 'ask' : v)); }).catch((e) => toast(e.message));
-  }, [loaded, lake.enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!loaded || !lake.checked) return;
+    if (!lake.enabled) {
+      setSourcesReady(true);
+      return;
+    }
+    lakehouse.reconcile()
+      .then((n) => { if (n) setView((v) => (v === 'data' ? 'ask' : v)); })
+      .catch((e) => toast(e.message))
+      .finally(() => setSourcesReady(true));
+  }, [loaded, lake.checked, lake.enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Answers and dashboard tiles whose data was removed are cleared, instead of piling up as
+  // "this answer used data that has since been removed".
+  useEffect(() => {
+    if (!sourcesReady) return;
+    const alive = (sp) => Boolean(sp) && sp.series.every((x) => m.views[x.view]);
+    setThread((t) => {
+      const next = t.flatMap((x) => {
+        if (x.status !== 'done') return [x];
+        if (x.kind === 'report') {
+          const specs = x.report.specs.filter(alive);
+          if (!specs.length) return [];
+          return specs.length === x.report.specs.length ? [x] : [{ ...x, report: { ...x.report, specs } }];
+        }
+        return alive(x.spec) ? [x] : [];
+      });
+      return next.length === t.length && next.every((x, i) => x === t[i]) ? t : next;
+    });
+    setBoard((b) => (b.every((x) => alive(x.spec)) ? b : b.filter((x) => alive(x.spec))));
+  }, [sourcesReady, m]);
   // Links whose source is gone (deleted here or on another device) are dropped.
   useEffect(() => {
     if (!loaded) return;
@@ -124,7 +153,13 @@ export default function UnifiedReporting() {
     if (!files.length) return;
     setBusy(true);
     if (toLake) {
-      const { added, errors } = await lakehouse.uploadFiles(files);
+      const { added, errors } = await lakehouse.uploadFiles(files, (p) => setProgress({
+        text: p.phase === 'upload'
+          ? `Uploading ${p.file}${p.count > 1 ? ` (${p.index} of ${p.count})` : ''}… ${p.pct}%`
+          : `Storing ${p.file} in the Meldra lakehouse: checking types and building the table…`,
+        pct: p.phase === 'upload' ? p.pct : null,
+      }));
+      setProgress(null);
       setBusy(false);
       if (added.length) {
         appendSources(added);
@@ -135,7 +170,8 @@ export default function UnifiedReporting() {
     }
     const added = [];
     const errors = [];
-    for (const f of files) {
+    for (const [i, f] of files.entries()) {
+      setProgress({ text: `Reading ${f.name}${files.length > 1 ? ` (${i + 1} of ${files.length})` : ''}…`, pct: Math.round((i / files.length) * 100) });
       if (f.size > MAX_FILE_BYTES) {
         errors.push(`${f.name} is larger than 50 MB.`);
         continue;
@@ -146,6 +182,7 @@ export default function UnifiedReporting() {
         errors.push(e.message || `${f.name} could not be read.`);
       }
     }
+    setProgress(null);
     setBusy(false);
     if (added.length) {
       appendSources(added);
@@ -568,6 +605,7 @@ export default function UnifiedReporting() {
             m={m}
             busy={busy}
             onFiles={addFiles}
+            progress={progress}
             onConnectDatabase={() => setDbDialog({})}
             onRefreshSource={(src) => setDbDialog({ refreshOf: src })}
             onLoadSample={loadSample}
@@ -606,7 +644,7 @@ export default function UnifiedReporting() {
             <p className="mx-auto mt-2 max-w-xl text-center text-slate-500">
               Upload exports from HR, finance, sales or procurement. Meldra finds the columns they share, links them, and answers questions with a chart and the sources behind every number.
             </p>
-            <div className="mt-8"><UploadZone onFiles={addFiles} busy={busy} lake={lake} storeInLake={lakehouse.storeInLake} onStoreInLake={lakehouse.setStoreInLake} /></div>
+            <div className="mt-8"><UploadZone onFiles={addFiles} busy={busy} progress={progress} lake={lake} storeInLake={lakehouse.storeInLake} onStoreInLake={lakehouse.setStoreInLake} /></div>
             <div className="mt-4 text-center">
               <Button variant="outline" onClick={() => setDbDialog({})}><Server className="mr-2 h-4 w-4" />Connect a database</Button>
               <Button variant="outline" className="ml-2" onClick={loadSample}><Sparkles className="mr-2 h-4 w-4" />Try it with a sample company</Button>
@@ -657,6 +695,15 @@ export default function UnifiedReporting() {
             </aside>
 
             <section className="flex min-h-[60vh] min-w-0 flex-col">
+              {sources.length === 1 && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm dark:border-amber-900 dark:bg-amber-950">
+                  <span>
+                    <strong>You have one source.</strong> Unified reporting combines systems: add another export (for example expenses, budgets or CRM
+                    opportunities) and Meldra links them so you can ask questions across both.
+                  </span>
+                  <Button size="sm" variant="outline" onClick={() => setView('data')}><Database className="mr-1.5 h-4 w-4" />Add another source</Button>
+                </div>
+              )}
               {!thread.length && (
                 <div className="pb-6">
                   <h2 className="m-0 text-xl font-semibold tracking-tight">What would you like to know?</h2>

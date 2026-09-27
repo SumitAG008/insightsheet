@@ -23,8 +23,8 @@ const CHART_NAME = {
 export function KpiRow({ res, currency }) {
   return (
     <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(160px,1fr))] gap-3">
-      {columnsOf(res).map((c) => (
-        <div key={c.label} className="rounded-xl bg-slate-100 p-4 dark:bg-slate-800">
+      {columnsOf(res).map((c, k) => (
+        <div key={`${k}-${c.label}`} className="rounded-xl bg-slate-100 p-4 dark:bg-slate-800">
           <div className="text-sm text-slate-500 dark:text-slate-400">{c.label}</div>
           <div className="mt-0.5 text-2xl font-semibold tracking-tight">{fmt(c.data[0], c.unit, currency)}</div>
         </div>
@@ -43,8 +43,8 @@ export function ResultTable({ spec, res, currency, compact }) {
         <thead className="sticky top-0 bg-white dark:bg-slate-900">
           <tr className="border-b border-slate-200 text-slate-500 dark:border-slate-700 dark:text-slate-400">
             <th className="px-3 py-2 text-left font-medium capitalize">{spec.groupBy.replace(/_/g, ' ')}</th>
-            {cols.map((c) => (
-              <th key={c.label} className={`px-3 py-2 text-right font-medium ${c.derived ? 'text-blue-600 dark:text-blue-400' : ''}`}>{c.label}</th>
+            {cols.map((c, k) => (
+              <th key={`${k}-${c.label}`} className={`px-3 py-2 text-right font-medium ${c.derived ? 'text-blue-600 dark:text-blue-400' : ''}`}>{c.label}</th>
             ))}
           </tr>
         </thead>
@@ -52,8 +52,8 @@ export function ResultTable({ spec, res, currency, compact }) {
           {res.labels.map((l, i) => (
             <tr key={l} className="border-b border-slate-100 dark:border-slate-800">
               <td className="whitespace-nowrap px-3 py-2">{l}</td>
-              {cols.map((c) => (
-                <td key={c.label} className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${c.derived ? 'font-semibold' : ''}`}>{fmt(c.data[i], c.unit, currency)}</td>
+              {cols.map((c, k) => (
+                <td key={`${k}-${c.label}`} className={`whitespace-nowrap px-3 py-2 text-right tabular-nums ${c.derived ? 'font-semibold' : ''}`}>{fmt(c.data[i], c.unit, currency)}</td>
               ))}
             </tr>
           ))}

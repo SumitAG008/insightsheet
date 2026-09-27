@@ -356,3 +356,38 @@ describe('rules planner regressions', () => {
     expect(new Set(specs.map((s) => JSON.stringify([s.groupBy, s.series]))).size).toBe(specs.length);
   });
 });
+
+describe('cross-system suggestions', () => {
+  it('pairs different systems before two tables of the same system', () => {
+    const usage = sourceFromRows('software_usage', [{ package_name: 'a', seats: '3' }, { package_name: 'b', seats: '4' }], 'IT Finance DB', 'file');
+    const inv = sourceFromRows('licence_invoices', [{ package_name: 'a', amount: '10' }, { package_name: 'b', amount: '5' }], 'IT Finance DB', 'file');
+    const api = sourceFromRows('npm packages', [{ package_name: 'a', downloads: '100' }, { package_name: 'b', downloads: '9' }], 'npm registry', 'file');
+    const m = buildModel([usage, inv, api], []);
+    const cross = suggestQuestions(m).filter((x) => x.src.includes('+'));
+    expect(cross[0].src).toMatch(/npm registry/);
+    expect(new Set(cross.map((x) => x.src)).size).toBe(cross.length);
+  });
+});
+
+describe('currency from column names', () => {
+  it('reads £, GBP, USD in headers when values carry no symbol', async () => {
+    const { currencyFromName } = await import('./model');
+    expect(['Budget (£)', 'licence_cost_gbp', 'Cost USD', 'amount_eur', 'Amount'].map(currencyFromName)).toEqual(['£', '£', '$', '€', null]);
+    const cols = profileColumns([{ 'Annual Budget (£)': '20000', amount_gbp: '5' }], ['Annual Budget (£)', 'amount_gbp']);
+    expect(cols.map((c) => c.currency)).toEqual(['£', '£']);
+  });
+});
+
+describe('named sources', () => {
+  it('uses only the sources a question names, and labels each series by its source', () => {
+    const mk = (name, rows) => sourceFromRows(name, rows, name, 'file');
+    const m = buildModel([
+      mk('expenses', [{ Date: '2026-01-05', Amount: '10' }]),
+      mk('budget', [{ Month: '2026-01-01', Amount: '100' }]),
+      mk('opportunities', [{ Close: '2026-01-09', Amount: '5000' }]),
+    ], []);
+    const sp = heuristic('expenses amount vs budget amount by month', m);
+    expect(sp.series.map((s) => s.view)).toEqual(['expenses', 'budget']);
+    expect(sp.series.map((s) => s.label)).toEqual(['expenses: amount', 'budget: amount']);
+  });
+});

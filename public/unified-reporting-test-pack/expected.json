@@ -1,0 +1,166 @@
+{
+ "files": [
+  "employees.csv",
+  "expenses.csv",
+  "budget.xlsx",
+  "opportunities.xlsx"
+ ],
+ "links": [
+  "expenses.employee_id \u2192 employees.employee_id",
+  "opportunities.owner_employee_id \u2192 employees.employee_id"
+ ],
+ "questions": [
+  {
+   "id": "Q1",
+   "ask": "expenses amount by department",
+   "systems": "Concur + SuccessFactors (link)",
+   "why": "Expenses only have an employee ID; the department comes from HR through the link.",
+   "columns": [
+    "amount"
+   ],
+   "expected": {
+    "Engineering": [
+     7702.42
+    ],
+    "Finance": [
+     6880.92
+    ],
+    "Operations": [
+     6077.94
+    ],
+    "People": [
+     11878.95
+    ],
+    "Sales": [
+     10530.39
+    ]
+   }
+  },
+  {
+   "id": "Q2",
+   "ask": "expenses amount vs budget amount by department",
+   "systems": "Concur + SuccessFactors + Finance",
+   "why": "Actual spend (via the HR link) against the budget file, joined on department.",
+   "columns": [
+    "expenses",
+    "budget"
+   ],
+   "expected": {
+    "Sales": [
+     10530.39,
+     17100.0
+    ],
+    "Engineering": [
+     7702.42,
+     20100.0
+    ],
+    "Finance": [
+     6880.92,
+     23100.0
+    ],
+    "People": [
+     11878.95,
+     26100.0
+    ],
+    "Operations": [
+     6077.94,
+     29100.0
+    ]
+   }
+  },
+  {
+   "id": "Q3",
+   "ask": "expenses amount vs budget amount by month",
+   "systems": "Concur + Finance",
+   "why": "Two systems on a shared calendar: claim dates (dd/mm/yyyy) and budget months line up as months.",
+   "columns": [
+    "expenses",
+    "budget"
+   ],
+   "expected": {
+    "2026-01": [
+     6169.93,
+     18000.0
+    ],
+    "2026-02": [
+     4623.97,
+     18500.0
+    ],
+    "2026-03": [
+     6327.94,
+     19000.0
+    ],
+    "2026-04": [
+     9815.95,
+     19500.0
+    ],
+    "2026-05": [
+     10641.4,
+     20000.0
+    ],
+    "2026-06": [
+     5491.43,
+     20500.0
+    ]
+   }
+  },
+  {
+   "id": "Q4",
+   "ask": "opportunities amount by department",
+   "systems": "Salesforce + SuccessFactors (link)",
+   "why": "Pipeline by the owner's department, looked up in HR.",
+   "columns": [
+    "amount"
+   ],
+   "expected": {
+    "Finance": [
+     871000.0
+    ],
+    "Operations": [
+     915000.0
+    ],
+    "Sales": [
+     731000.0
+    ]
+   }
+  },
+  {
+   "id": "Q5",
+   "ask": "active employees salary by department",
+   "systems": "SuccessFactors",
+   "why": "One system, with a filter (Status is Active) taken from the question.",
+   "columns": [
+    "salary"
+   ],
+   "expected": {
+    "Engineering": [
+     285000.0
+    ],
+    "Finance": [
+     194500.0
+    ],
+    "Operations": [
+     144000.0
+    ],
+    "People": [
+     260000.0
+    ],
+    "Sales": [
+     237500.0
+    ]
+   }
+  }
+ ],
+ "ai_prompt": {
+  "ask": "Expenses per active employee by department",
+  "expected": {
+   "Engineering": 1540.48,
+   "Finance": 1720.23,
+   "Operations": 2025.98,
+   "People": 2375.79,
+   "Sales": 2106.08
+  },
+  "note": "Needs the AI planner (a ratio of two sources): expenses from Concur divided by active headcount from HR."
+ },
+ "report_prompt": "Department cost and pipeline report"
+}

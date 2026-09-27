@@ -93,6 +93,7 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
       url: cfg.url.trim(), method: cfg.method, headers, body: cfg.method === 'POST' ? body : null, body_type: cfg.body_type,
       auth: withClientAuth(auth),
       records_path: cfg.records_path.trim() || null, paging: cfg.paging, next_path: cfg.next_path || null, cursor_param: cfg.cursor_param || null,
+      offset_param: cfg.offset_param || null, limit_param: cfg.limit_param || null, page_param: cfg.page_param || null, cursor_path: cfg.cursor_path || null,
       page_size: cfg.page_size ? Number(cfg.page_size) : null, max_rows: cfg.max_rows ? Math.min(MAX_ROWS, Number(cfg.max_rows)) : null,
     };
     setBusy(true);
@@ -104,7 +105,8 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
       const origin = {
         type: 'api', preset, url: request.url, method: request.method, body_type: request.body_type, body: cfg.body, headers: cfg.headers,
         records_path: out.records_path || request.records_path || '', paging: out.paging || request.paging, next_path: cfg.next_path,
-        page_size: cfg.page_size, max_rows: cfg.max_rows, cursor_param: cfg.cursor_param, authType: auth.type, auth: publicAuth(auth), system, name,
+        page_size: cfg.page_size, max_rows: cfg.max_rows, cursor_param: cfg.cursor_param, offset_param: cfg.offset_param, limit_param: cfg.limit_param,
+        page_param: cfg.page_param, cursor_path: cfg.cursor_path, authType: auth.type, auth: publicAuth(auth), system, name,
       };
       if (!out.row_count) throw new Error('The API answered but returned no records. Check the address and "Records at".');
       const src = sourceFromTable(name, out.columns, out.rows, system, origin, 'api');
@@ -200,6 +202,11 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
           </Field>
           {cfg.paging === 'next_url' && <Field name="Next URL field"><input className={`${input} font-mono text-xs`} value={cfg.next_path} onChange={(e) => set({ next_path: e.target.value })} /></Field>}
           {['offset', 'page'].includes(cfg.paging) && <Field name="Rows per page"><input className={input} type="number" min="1" max="10000" value={cfg.page_size} onChange={(e) => set({ page_size: e.target.value })} /></Field>}
+          {cfg.paging === 'offset' && <Field name="Offset parameter"><input className={`${input} font-mono text-xs`} value={cfg.offset_param || ''} placeholder="offset" onChange={(e) => set({ offset_param: e.target.value })} /></Field>}
+          {cfg.paging === 'page' && <Field name="Page parameter"><input className={`${input} font-mono text-xs`} value={cfg.page_param || ''} placeholder="page" onChange={(e) => set({ page_param: e.target.value })} /></Field>}
+          {['offset', 'page'].includes(cfg.paging) && <Field name="Page size parameter"><input className={`${input} font-mono text-xs`} value={cfg.limit_param || ''} placeholder={cfg.paging === 'page' ? 'per_page' : 'limit'} onChange={(e) => set({ limit_param: e.target.value })} /></Field>}
+          {['cursor', 'last_id'].includes(cfg.paging) && <Field name="Cursor parameter"><input className={`${input} font-mono text-xs`} value={cfg.cursor_param || ''} placeholder={cfg.paging === 'last_id' ? 'starting_after' : 'cursor'} onChange={(e) => set({ cursor_param: e.target.value })} /></Field>}
+          {cfg.paging === 'cursor' && <Field name="Next cursor in response"><input className={`${input} font-mono text-xs`} value={cfg.cursor_path || ''} placeholder="next_cursor" onChange={(e) => set({ cursor_path: e.target.value })} /></Field>}
           <Field name="Maximum rows"><input className={input} type="number" min="1" max={MAX_ROWS} placeholder={MAX_ROWS.toLocaleString()} value={cfg.max_rows} onChange={(e) => set({ max_rows: e.target.value })} /></Field>
           <Field name="Source name"><input className={input} value={cfg.name} placeholder="e.g. Employees" onChange={(e) => set({ name: e.target.value })} /></Field>
           <Field name="Extra headers (JSON)" className="sm:col-span-2"><input className={`${input} font-mono text-xs`} value={cfg.headers} placeholder='{"Accept": "application/json"}' onChange={(e) => set({ headers: e.target.value })} /></Field>

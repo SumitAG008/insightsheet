@@ -10,7 +10,7 @@ const TYPE_LABEL = { number: '123', date: 'date', text: 'abc' };
 const select = 'rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900';
 const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900';
 
-export function UploadZone({ onFiles, busy, compact, lake, storeInLake, onStoreInLake }) {
+export function UploadZone({ onFiles, busy, compact, lake, storeInLake, onStoreInLake, progress }) {
   const toLake = Boolean(lake?.enabled && storeInLake);
   const input = useRef(null);
   const [over, setOver] = useState(false);
@@ -23,13 +23,24 @@ export function UploadZone({ onFiles, busy, compact, lake, storeInLake, onStoreI
     >
       <input ref={input} type="file" multiple accept={toLake ? '.csv,.tsv,.xlsx,.xls,.parquet' : '.csv,.tsv,.xlsx,.xls'} className="hidden" onChange={(e) => { onFiles([...e.target.files]); e.target.value = ''; }} />
       {busy ? <Loader2 className="mx-auto h-7 w-7 animate-spin text-blue-600" /> : <Upload className="mx-auto h-7 w-7 text-blue-600" />}
-      <p className="mt-2 font-medium">{busy ? (toLake ? 'Storing in the Meldra lakehouse…' : 'Reading your files…') : 'Drop exports from any system here'}</p>
+      <p className="mt-2 font-medium" role="status" aria-live="polite">
+        {busy ? progress?.text || (toLake ? 'Storing in the Meldra lakehouse…' : 'Reading your files…') : 'Drop exports from several systems here'}
+      </p>
+      {busy && (
+        <div className="mx-auto mt-2 h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" aria-hidden="true">
+          <div className={`h-full rounded-full bg-blue-600 transition-all ${progress?.pct == null ? 'w-1/3 animate-pulse' : ''}`} style={progress?.pct == null ? undefined : { width: `${Math.max(3, progress.pct)}%` }} />
+        </div>
+      )}
       <p className="mt-1 text-sm text-slate-500">
         {toLake
           ? `CSV, Excel or Parquet, up to ${lake.max_upload_mb || 1024} MB each. Stored as Apache Iceberg tables in your Meldra lakehouse, available on every device.`
           : 'CSV or Excel. One file (or sheet) per system, e.g. an HR export, an expenses export, a sales export. Files stay in this browser.'}
       </p>
       <Button className="mt-4" variant={compact ? 'outline' : 'default'} disabled={busy} onClick={() => input.current?.click()}>Choose files</Button>
+      <p className="mt-2 text-xs text-slate-500">
+        Select several files at once (Ctrl or ⌘ + click), or add them one after another.{' '}
+        <a className="font-medium text-blue-700 underline dark:text-blue-400" href="/unified-reporting-test-pack/README.html" target="_blank" rel="noreferrer">Download a 4-file test pack</a>
+      </p>
       {lake?.enabled && (
         <label className="mx-auto mt-3 flex w-fit cursor-pointer items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
           <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={Boolean(storeInLake)} onChange={(e) => onStoreInLake(e.target.checked)} />
@@ -42,6 +53,7 @@ export function UploadZone({ onFiles, busy, compact, lake, storeInLake, onStoreI
 }
 UploadZone.propTypes = {
   onFiles: PropTypes.func.isRequired, busy: PropTypes.bool, compact: PropTypes.bool, lake: PropTypes.object, storeInLake: PropTypes.bool, onStoreInLake: PropTypes.func,
+  progress: PropTypes.object,
 };
 
 const KIND_ICON = { api: Plug, database: Server };
@@ -191,7 +203,7 @@ RelationshipForm.propTypes = { sources: PropTypes.array.isRequired, onAdd: PropT
 
 export default function SourcesView({
   m, busy, onFiles, onConnectDatabase, onRefreshSource, onAddSource, onRefreshApiSource, onLoadSample, onUpdateSource, onRemoveSource, onRenameColumn,
-  onAddRelationship, onRemoveRelationship, onClearAll, lake, storeInLake, onStoreInLake, onMoveToLake, lakeLinks,
+  onAddRelationship, onRemoveRelationship, onClearAll, lake, storeInLake, onStoreInLake, onMoveToLake, lakeLinks, progress,
 }) {
   const name = (id) => m.sources.find((s) => s.id === id)?.name || '?';
   // Which connector form is open: { kind: 'api' | 'database', refresh?: source }.
@@ -212,7 +224,12 @@ export default function SourcesView({
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
       <div className="space-y-4">
-        <UploadZone onFiles={onFiles} busy={busy} compact={!m.empty} lake={lake} storeInLake={storeInLake} onStoreInLake={onStoreInLake} />
+        <UploadZone onFiles={onFiles} busy={busy} compact={!m.empty} lake={lake} storeInLake={storeInLake} onStoreInLake={onStoreInLake} progress={progress} />
+        {m.sources.length === 1 && (
+          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm dark:border-amber-900 dark:bg-amber-950">
+            One source so far. Add exports from other systems that share something with it (an employee ID, a department, a customer, a date) and Meldra will link them for cross-system questions.
+          </p>
+        )}
         {lake?.enabled && inBrowser.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm dark:border-emerald-900 dark:bg-emerald-950">
             <span>{inBrowser.length} source{inBrowser.length === 1 ? ' is' : 's are'} only in this browser.</span>
@@ -315,4 +332,5 @@ SourcesView.propTypes = {
   onStoreInLake: PropTypes.func,
   onMoveToLake: PropTypes.func,
   lakeLinks: PropTypes.array,
+  progress: PropTypes.object,
 };

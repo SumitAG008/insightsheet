@@ -62,6 +62,15 @@ export function toMonth(v) {
 const MONEY_RE = /amount|revenue|sales|cost|salary|salaries|price|spend|value|total|fee|budget|profit|margin|income|expense|invoice|pay|gbp|usd|eur/;
 const ID_RE = /(^id$|_id$|^id_|_code$|^code$|_no$|_number$|^year$|zip|postcode|phone)/;
 
+/** A currency named in the column header: "Budget (£)", "amount_gbp", "Cost USD". */
+export function currencyFromName(name) {
+  const n = String(name || '');
+  const sym = n.match(/[£$€¥₹]/);
+  if (sym) return sym[0];
+  const code = n.toLowerCase().match(/(?:^|[^a-z])(gbp|usd|eur|jpy|inr)(?:$|[^a-z])/);
+  return code ? { gbp: '£', usd: '$', eur: '€', jpy: '¥', inr: '₹' }[code[1]] : null;
+}
+
 export function profileColumns(rows, headers) {
   const sample = rows.slice(0, PROFILE_SAMPLE);
   const used = new Set();
@@ -77,7 +86,7 @@ export function profileColumns(rows, headers) {
     if (dates / n >= 0.9 && vals.some((v) => typeof v !== 'number')) type = 'date';
     else if (nums / n >= 0.9) type = 'number';
     const role = type === 'number' && !ID_RE.test(key) ? 'measure' : 'dimension';
-    const currency = type === 'number' ? (vals.map(String).join('').match(/[£$€¥₹]/) || [null])[0] : null;
+    const currency = type === 'number' ? (vals.map(String).join('').match(/[£$€¥₹]/) || [null])[0] || currencyFromName(name) : null;
     const unit = role === 'measure' ? (currency || MONEY_RE.test(key) ? 'money' : /days?$|^days_/.test(key) ? 'days' : 'number') : null;
     return { name: String(name), key, type, role, unit, currency };
   });

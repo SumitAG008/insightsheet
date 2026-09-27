@@ -51,6 +51,7 @@ async def fake_build_report(request, catalog, tiles=6):
     return AI_REPORT
 
 
-main.build_report = fake_build_report
+if os.environ.get("E2E_STUB_AI", "1") == "1":
+    main.build_report = fake_build_report  # otherwise the real AI is called (and falls back to rules without a key)
 main.app.dependency_overrides[main.get_current_user] = lambda: {"email": "e2e@example.com"}
 uvicorn.run(main.app, host="127.0.0.1", port=8001, log_level="warning")

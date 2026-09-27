@@ -63,17 +63,17 @@ export default function useLakehouse({ sources, setSources, toast }) {
   }, [setSources]);
 
   /** Upload files straight into the lakehouse (large files never pass through the browser's memory). */
-  const uploadFiles = useCallback(async (files) => {
+  const uploadFiles = useCallback(async (files, onProgress) => {
     const added = [];
     const errors = [];
     const limit = (lake.max_upload_mb || 1024) * 1024 * 1024;
-    for (const f of files) {
+    for (const [i, f] of files.entries()) {
       if (f.size > limit) {
         errors.push(`${f.name} is larger than ${lake.max_upload_mb} MB.`);
         continue;
       }
       try {
-        const out = await backendApi.lakehouse.upload(f);
+        const out = await backendApi.lakehouse.upload(f, null, (p) => onProgress?.({ ...p, file: f.name, index: i + 1, count: files.length }));
         added.push(...out.sources.map((d) => lakeSource(d)));
       } catch (e) {
         errors.push(e.message);

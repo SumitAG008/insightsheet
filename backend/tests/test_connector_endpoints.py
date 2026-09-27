@@ -1,5 +1,6 @@
 """The connector endpoints through the real FastAPI app (skipped where the full backend can't be imported)."""
 import os
+import secrets
 import tempfile
 
 import pytest
@@ -9,6 +10,8 @@ main = pytest.importorskip("app.main", reason="full backend dependencies not ins
 from fastapi.testclient import TestClient  # noqa: E402
 
 from app.services import api_connector_service as svc  # noqa: E402
+
+SECRET = f"fake-{secrets.token_hex(8)}"  # generated per run
 
 
 @pytest.fixture()
@@ -40,10 +43,10 @@ def test_rejects_unsafe_targets_with_400(client):
 
 
 def test_validation_errors_never_echo_secrets(client):
-    r = client.post("/api/unified-reporting/connector/fetch", json={"url": "x", "auth": {"type": "basic", "password": "Hunter2-secret"}})
-    assert r.status_code == 422 and "Hunter2-secret" not in r.text
-    r = client.post("/api/unified-reporting/connector/fetch", json={"url": "https://api.example.com/x", "auth": "Hunter2-secret"})
-    assert r.status_code == 400 and "Hunter2-secret" not in r.text
+    r = client.post("/api/unified-reporting/connector/fetch", json={"url": "x", "auth": {"type": "basic", "password": SECRET}})
+    assert r.status_code == 422 and SECRET not in r.text
+    r = client.post("/api/unified-reporting/connector/fetch", json={"url": "https://api.example.com/x", "auth": SECRET})
+    assert r.status_code == 400 and SECRET not in r.text
 
 
 def test_rate_limited(client, monkeypatch):

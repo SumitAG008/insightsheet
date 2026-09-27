@@ -24,8 +24,22 @@ WORK = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else "/tmp/meldra-multis
 PG_BIN = os.environ.get("PG_BIN", "/usr/lib/postgresql/16/bin")
 PG_PORT = os.environ.get("PG_PORT", "5433")
 PG_DATA = os.path.join(WORK, "pgdata")
-READER_PASSWORD = "reader-Passw0rd"
 os.makedirs(WORK, exist_ok=True)
+
+
+def _password(name):
+    """Generated on first run and kept in the work directory (outside the repo); never written in code."""
+    import secrets
+    path = os.path.join(WORK, f"{name}.pw")
+    if not os.path.exists(path):
+        with open(path, "w") as f:
+            f.write(secrets.token_urlsafe(18))
+        os.chmod(path, 0o600)
+    return open(path).read().strip()
+
+
+ADMIN_PASSWORD = _password("admin")
+READER_PASSWORD = _password("reader")
 
 
 def sh(cmd, user="postgres", **kw):
@@ -36,7 +50,7 @@ def psql(sql=None, db="postgres", file=None):
     """Run SQL as the admin over TCP (no shell, so nothing in the SQL is expanded)."""
     args = [f"{PG_BIN}/psql", "-h", "127.0.0.1", "-p", PG_PORT, "-U", "postgres", "-d", db, "-v", "ON_ERROR_STOP=1", "-q"]
     args += ["-f", file] if file else ["-c", sql]
-    return subprocess.run(args, check=True, capture_output=True, text=True, env={**os.environ, "PGPASSWORD": "admin"}).stdout
+    return subprocess.run(args, check=True, capture_output=True, text=True, env={**os.environ, "PGPASSWORD": ADMIN_PASSWORD}).stdout
 
 
 # ---------- 1. package names from the live API ----------
@@ -53,9 +67,11 @@ print(f"API: {len(packages)} package names from registry.npmjs.org (e.g. {', '.j
 os.makedirs(WORK, exist_ok=True)
 subprocess.run(["chown", "-R", "postgres:postgres", WORK], check=True)
 if not os.path.exists(os.path.join(PG_DATA, "PG_VERSION")):
-    open(os.path.join(WORK, "pw"), "w").write("admin\n")
-    subprocess.run(["chown", "postgres:postgres", os.path.join(WORK, "pw")], check=True)
-    sh(f"{PG_BIN}/initdb -D {PG_DATA} -U postgres --auth-host=scram-sha-256 --auth-local=trust --pwfile={WORK}/pw")
+    pwfile = os.path.join(WORK, "initdb.pw")
+    open(pwfile, "w").write(ADMIN_PASSWORD + "\n")
+    subprocess.run(["chown", "postgres:postgres", pwfile], check=True)
+    sh(f"{PG_BIN}/initdb -D {PG_DATA} -U postgres --auth-host=scram-sha-256 --auth-local=trust --pwfile={pwfile}")
+    os.remove(pwfile)
 status = subprocess.run(["su", "postgres", "-c", f"{PG_BIN}/pg_ctl -D {PG_DATA} status"], capture_output=True, text=True)
 if status.returncode != 0:
     sh(f"{PG_BIN}/pg_ctl -D {PG_DATA} -o '-p {PG_PORT} -k /tmp' -l {WORK}/pg.log start -w")
@@ -63,6 +79,7 @@ if status.returncode != 0:
 psql("DROP DATABASE IF EXISTS it_finance")
 psql("CREATE DATABASE it_finance")
 psql(f"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'meldra_reader') THEN CREATE ROLE meldra_reader LOGIN PASSWORD '{READER_PASSWORD}'; END IF; END $$")
+psql(f"ALTER ROLE meldra_reader LOGIN PASSWORD '{READER_PASSWORD}'")
 
 rng = random.Random(7)
 teams = ["FIN-01", "FIN-02", "SAL-01", "SAL-02", "HR-01", "ENG-01", "ENG-02", "ENG-03", "OPS-01", "MKT-01"]

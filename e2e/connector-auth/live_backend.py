@@ -64,9 +64,9 @@ def handler(req: httpx.Request):
             assert req.headers.get("authorization") == "Bearer graph-token"
             return httpx.Response(200, json={"value": [{"id": "u1", "displayName": "Ann", "department": "Sales"}, {"id": "u2", "displayName": "Bo", "department": "HR"}]})
         if host == "oauth.platform.intuit.com":
-            assert form["refresh_token"] == "RT-OLD-123" and req.headers["authorization"].startswith("Basic ")
+            assert form["refresh_token"].startswith("rt-") and req.headers["authorization"].startswith("Basic ")
             log("Intuit token: refresh grant OK, rotating")
-            return httpx.Response(200, json={"access_token": "qb-token", "refresh_token": "RT-NEW-456"})
+            return httpx.Response(200, json={"access_token": "qb-token", "refresh_token": form["refresh_token"] + "-rotated"})
         if host == "quickbooks.api.intuit.com":
             assert req.headers.get("authorization") == "Bearer qb-token"
             return httpx.Response(200, json={"QueryResponse": {"Invoice": [{"Id": "1", "TotalAmt": 120.5, "CustomerRef": {"name": "Acme"}}]}})

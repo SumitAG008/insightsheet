@@ -1,5 +1,6 @@
 """Lakehouse endpoints through the real FastAPI app (skipped where the full backend can't be imported)."""
 import os
+import secrets
 import tempfile
 import uuid
 
@@ -11,6 +12,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.services.lakehouse import store  # noqa: E402
 
+SECRET = f"fake-{secrets.token_hex(8)}"  # test credentials are generated per run
 CSV = "Department,Month,Amount\nSales,2026-01-15,\"£1,000\"\nHR,2026-02-03,250\nSales,2026-02-20,500\n"
 
 
@@ -90,8 +92,8 @@ def test_rows_endpoint_strips_secrets_from_origin(lake):
     r = c.post("/api/lakehouse/rows", json={
         "name": "Workers", "system": "SuccessFactors", "kind": "api", "columns": ["userId", "fte"],
         "rows": [{"userId": "E1", "fte": 1}],
-        "origin": {"type": "api", "url": "https://api4.successfactors.com/x", "password": "pw",
-                   "auth": {"type": "oauth2_saml_bearer", "client_id": "K", "private_key": "-----BEGIN PRIVATE KEY-----", "client_secret": "s"}},
+        "origin": {"type": "api", "url": "https://api4.successfactors.com/x", "password": SECRET,
+                   "auth": {"type": "oauth2_saml_bearer", "client_id": "K", "private_key": "-----BEGIN PRIVATE KEY-----", "client_secret": SECRET}},
     })
     assert r.status_code == 200, r.text
     origin = r.json()["source"]["origin"]

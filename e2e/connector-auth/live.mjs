@@ -11,6 +11,10 @@ const K = `${OUT}/keys`;
 const API = 'http://localhost:8001';
 const errors = [];
 const results = [];
+// Credentials used in the test are generated per run (nothing secret-looking is written in the repo).
+const rnd = () => Math.random().toString(36).slice(2, 12);
+const QB_SECRET = `fake-${rnd()}`;
+const RT_OLD = `rt-${rnd()}`;
 const check = (name, ok, extra = '') => { results.push([ok ? 'PASS' : 'FAIL', name, extra]); console.log(ok ? '✓' : '✗', name, extra); };
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
@@ -87,11 +91,12 @@ await openConnector();
 await inputOf('System$').selectOption('quickbooks');
 await inputOf('Address').fill('https://quickbooks.api.intuit.com/v3/company/9130/query?query=select%20*%20from%20Invoice');
 await inputOf('Client ID').fill('qb-client');
-await inputOf('Client secret').fill('QB-SECRET-789');
-await inputOf('Refresh token').fill('RT-OLD-123');
+await inputOf('Client secret').fill(QB_SECRET);
+await inputOf('Refresh token').fill(RT_OLD);
 await fetchBtn().click();
 const rotated = await page.getByTestId('new-refresh-token').textContent({ timeout: 30000 });
-check('rotated refresh token handed back to the user', rotated === 'RT-NEW-456');
+check('rotated refresh token handed back to the user', rotated === `${RT_OLD}-rotated`);
+const RT_NEW = rotated;
 await page.getByRole('button', { name: 'I saved it, continue' }).click();
 await page.getByText(/API · quickbooks.api.intuit.com/).waitFor();
 
@@ -114,11 +119,11 @@ const stored = await page.evaluate(() => new Promise((res) => {
   r.onsuccess = () => { const q = r.result.transaction('kv').objectStore('kv').get('data'); q.onsuccess = () => { res(JSON.stringify(q.result)); r.result.close(); }; };
 }));
 const keyPem = fs.readFileSync(`${K}/key.pem`, 'utf8');
-const leaks = ['PRIVATE KEY', keyPem.split('\n')[1], 'QB-SECRET-789', 'RT-OLD-123', 'RT-NEW-456', 'NOTAREALKEY'].filter((s) => stored.includes(s));
+const leaks = ['PRIVATE KEY', keyPem.split('\n')[1], QB_SECRET, RT_OLD, RT_NEW, 'NOTAREALKEY'].filter((s) => stored.includes(s));
 check('no key, secret or token in browser storage', leaks.length === 0, leaks.join(','));
 check('non-secret settings kept for refresh', stored.includes('"company_id":"ACME01"') && stored.includes('"client_id":"SFAPIKEY"'));
 const ls = await page.evaluate(() => JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage }));
-check('nothing secret in local/session storage', !['PRIVATE KEY', 'QB-SECRET', 'RT-OLD', 'RT-NEW'].some((s) => ls.includes(s)));
+check('nothing secret in local/session storage', !['PRIVATE KEY', QB_SECRET, RT_OLD, RT_NEW].some((s) => ls.includes(s)));
 
 // ---------- 6. Refresh: settings prefilled, key must be supplied again ----------
 await page.getByRole('button', { name: /Refresh SAP SuccessFactors/ }).click();
@@ -135,7 +140,7 @@ const idp = fs.readFileSync(`${K}/idp.log`, 'utf8');
 check('mock IdP verified SAML signatures', (idp.match(/SAML signature VERIFIED/g) || []).length >= 2, idp.split('\n').filter(Boolean).join(' | '));
 check('mock IdP verified private_key_jwt', /private_key_jwt VERIFIED/.test(idp));
 const serverLog = fs.readFileSync(`${OUT}/backend.log`, 'utf8');
-check('backend log holds no key, secret or token', !['PRIVATE KEY', 'QB-SECRET-789', 'RT-OLD-123', 'RT-NEW-456', 'sf-token', 'graph-token'].some((s) => serverLog.includes(s)));
+check('backend log holds no key, secret or token', !['PRIVATE KEY', QB_SECRET, RT_OLD, RT_NEW, 'sf-token', 'graph-token'].some((s) => serverLog.includes(s)));
 check('no browser errors', errors.length === 0, errors.join(' | '));
 
 await browser.close();

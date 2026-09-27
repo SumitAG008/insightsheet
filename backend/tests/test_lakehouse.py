@@ -17,7 +17,7 @@ import pytest
 
 from app.services.lakehouse import config, query, store
 
-POLARIS = os.environ.get("POLARIS_TEST_URI")
+POLARIS = os.environ.get("POLARIS_TEST_URI") if os.environ.get("POLARIS_TEST_CREDENTIAL") else None  # both needed
 
 
 @pytest.fixture(params=["sql"] + (["polaris"] if POLARIS else []))
@@ -29,7 +29,7 @@ def lake(request, tmp_path, monkeypatch):
     else:
         monkeypatch.setenv("LAKEHOUSE_CATALOG", "rest")
         monkeypatch.setenv("POLARIS_URI", POLARIS)
-        monkeypatch.setenv("POLARIS_CREDENTIAL", os.environ.get("POLARIS_TEST_CREDENTIAL", "root:s3cr3t"))
+        monkeypatch.setenv("POLARIS_CREDENTIAL", os.environ["POLARIS_TEST_CREDENTIAL"])
         monkeypatch.setenv("POLARIS_WAREHOUSE", os.environ.get("POLARIS_TEST_WAREHOUSE", "meldra"))
         monkeypatch.setenv("POLARIS_ACCESS_DELEGATION", os.environ.get("POLARIS_TEST_DELEGATION", "none"))
     monkeypatch.setenv("LAKEHOUSE_NAMESPACE_PREFIX", f"test{uuid.uuid4().hex[:6]}")

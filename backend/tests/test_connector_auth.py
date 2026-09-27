@@ -3,6 +3,7 @@ Token-based connector authentication: every grant is exercised against a mock
 token endpoint that verifies signatures the way the real identity provider would.
 """
 import asyncio
+import secrets
 import base64
 import hashlib
 import logging
@@ -23,6 +24,9 @@ from app.services.api_connector_service import ConnectorError, allow_call, egres
 from app.services.connector_auth import AuthConfigError, public_auth_settings, saml_assertion, token_request
 
 PUBLIC = lambda host, port: ["93.184.216.34"]  # noqa: E731
+# Test credentials are generated per run: nothing that looks like a secret is written in the repo.
+SECRET = f"fake-{secrets.token_hex(8)}"
+PASSPHRASE = f"fake-{secrets.token_hex(8)}"
 TOKEN_URL = "https://login.example.com/oauth/token"
 API_URL = "https://api.example.com/v1/items"
 SAML = {"s": "urn:oasis:names:tc:SAML:2.0:assertion", "ds": "http://www.w3.org/2000/09/xmldsig#"}
@@ -73,23 +77,23 @@ def fetch(auth, transport):
 
 def test_client_credentials_with_secret_in_body():
     def on_token(form, req):
-        assert form == {"grant_type": "client_credentials", "client_id": "cid", "client_secret": "csecret", "scope": "api/.default"}
+        assert form == {"grant_type": "client_credentials", "client_id": "cid", "client_secret": SECRET, "scope": "api/.default"}
         assert "authorization" not in req.headers
         return httpx.Response(200, json={"access_token": "good-token", "token_type": "Bearer"})
 
     t, seen = api_and_token(on_token)
-    out = fetch({"type": "oauth2_client_credentials", "token_url": TOKEN_URL, "client_id": "cid", "client_secret": "csecret", "scope": "api/.default"}, t)
+    out = fetch({"type": "oauth2_client_credentials", "token_url": TOKEN_URL, "client_id": "cid", "client_secret": SECRET, "scope": "api/.default"}, t)
     assert out["row_count"] == 1 and seen["api_auth"] == ["Bearer good-token"]
 
 
 def test_client_credentials_with_basic_client_auth_and_audience():
     def on_token(form, req):
-        assert req.headers["authorization"] == "Basic " + base64.b64encode(b"cid:csecret").decode()
+        assert req.headers["authorization"] == "Basic " + base64.b64encode(f"cid:{SECRET}".encode()).decode()
         assert "client_secret" not in form and form["audience"] == "https://api.example.com"
         return httpx.Response(200, json={"access_token": "good-token"})
 
     t, _ = api_and_token(on_token)
-    fetch({"type": "oauth2_client_credentials", "token_url": TOKEN_URL, "client_id": "cid", "client_secret": "csecret",
+    fetch({"type": "oauth2_client_credentials", "token_url": TOKEN_URL, "client_id": "cid", "client_secret": SECRET,
            "client_auth": "client_secret_basic", "audience": "https://api.example.com"}, t)
 
 
@@ -115,13 +119,13 @@ def test_client_credentials_with_private_key_jwt(kind, alg):
 
 
 def test_encrypted_private_key_needs_passphrase():
-    _, enc_pem, _, _ = _keypair(passphrase="pw123")
+    _, enc_pem, _, _ = _keypair(passphrase=PASSPHRASE)
     auth = {"type": "oauth2_client_credentials", "token_url": TOKEN_URL, "client_id": "cid", "client_auth": "private_key_jwt", "private_key": enc_pem}
     t, seen = api_and_token(lambda f, r: httpx.Response(200, json={"access_token": "good-token"}))
     with pytest.raises(ConnectorError, match="passphrase"):
         fetch(auth, t)
     assert seen["token_calls"] == 0
-    fetch({**auth, "passphrase": "pw123"}, t)
+    fetch({**auth, "passphrase": PASSPHRASE}, t)
 
 
 # ---------------- refresh token ----------------
@@ -132,7 +136,7 @@ def test_refresh_token_returns_rotated_token_without_storing_it():
         return httpx.Response(200, json={"access_token": "good-token", "refresh_token": "rt-new"})
 
     t, _ = api_and_token(on_token)
-    out = fetch({"type": "oauth2_refresh_token", "token_url": TOKEN_URL, "client_id": "cid", "client_secret": "cs",
+    out = fetch({"type": "oauth2_refresh_token", "token_url": TOKEN_URL, "client_id": "cid", "client_secret": SECRET,
                  "client_auth": "client_secret_basic", "refresh_token": "rt-old"}, t)
     assert out["new_refresh_token"] == "rt-new"
 
@@ -222,14 +226,14 @@ def test_saml_requires_rsa_key_and_subject():
 
 def test_token_errors_show_oauth_code_but_never_secrets(caplog):
     def on_token(form, req):
-        return httpx.Response(401, json={"error": "invalid_client", "error_description": "bad secret csecret-XYZ for cid"})
+        return httpx.Response(401, json={"error": "invalid_client", "error_description": f"bad secret {SECRET} for cid"})
 
     t, seen = api_and_token(on_token)
     caplog.set_level(logging.DEBUG)
     with pytest.raises(ConnectorError) as e:
-        fetch({"type": "oauth2_client_credentials", "token_url": TOKEN_URL, "client_id": "cid", "client_secret": "csecret-XYZ"}, t)
-    assert "invalid_client" in str(e.value) and "csecret-XYZ" not in str(e.value)
-    assert "csecret-XYZ" not in caplog.text
+        fetch({"type": "oauth2_client_credentials", "token_url": TOKEN_URL, "client_id": "cid", "client_secret": SECRET}, t)
+    assert "invalid_client" in str(e.value) and SECRET not in str(e.value)
+    assert SECRET not in caplog.text
     assert seen["api_auth"] == []  # the API is never called without a token
 
 
@@ -244,9 +248,9 @@ def test_token_url_must_be_public_https():
     t, seen = api_and_token(lambda f, r: httpx.Response(200, json={"access_token": "good-token"}))
     for bad, msg in [("http://login.example.com/token", "https"), ("https://{tenant}.example.com/token", "placeholders")]:
         with pytest.raises(ConnectorError, match=msg):
-            fetch({"type": "oauth2_client_credentials", "token_url": bad, "client_id": "c", "client_secret": "s"}, t)
+            fetch({"type": "oauth2_client_credentials", "token_url": bad, "client_id": "c", "client_secret": SECRET}, t)
     with pytest.raises(ConnectorError, match="private"):
-        run(fetch_records({"url": API_URL, "auth": {"type": "oauth2_client_credentials", "token_url": "https://idp.internal/token", "client_id": "c", "client_secret": "s"}},
+        run(fetch_records({"url": API_URL, "auth": {"type": "oauth2_client_credentials", "token_url": "https://idp.internal/token", "client_id": "c", "client_secret": SECRET}},
                           resolver=lambda h, p: ["10.0.0.8"] if h == "idp.internal" else ["93.184.216.34"], transport=t))
     with pytest.raises(ConnectorError, match="token URL"):
         fetch({"type": "oauth2_refresh_token", "refresh_token": "x"}, t)
@@ -261,8 +265,8 @@ def test_missing_fields_are_named():
 
 
 def test_redact_and_public_settings():
-    auth = {"type": "oauth2_saml_bearer", "client_id": "cid", "private_key": RSA_PEM, "client_secret": "s3cr3t", "token_url": TOKEN_URL, "passphrase": "pp12"}
-    assert redact("x s3cr3t y pp12", auth) == "x *** y ***"
+    auth = {"type": "oauth2_saml_bearer", "client_id": "cid", "private_key": RSA_PEM, "client_secret": SECRET, "token_url": TOKEN_URL, "passphrase": PASSPHRASE}
+    assert redact(f"x {SECRET} y {PASSPHRASE}", auth) == "x *** y ***"
     kept = public_auth_settings(auth)
     assert set(kept) == {"type", "client_id", "token_url"}
 

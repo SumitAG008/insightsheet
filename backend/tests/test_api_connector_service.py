@@ -1,4 +1,5 @@
 import asyncio
+import secrets
 import json
 
 import httpx
@@ -13,6 +14,7 @@ from app.services.api_connector_service import (
     xml_to_obj,
 )
 
+SECRET = f"fake-{secrets.token_hex(8)}"  # test credentials are generated per run
 PUBLIC = lambda host, port: ["93.184.216.34"]  # noqa: E731
 
 
@@ -50,7 +52,7 @@ def test_follows_odata_v2_paging_and_converts_dates():
         return httpx.Response(200, json=pages["/odata/v2/EmpJob"])
 
     out = run(fetch_records(
-        {"url": "https://api.example.com/odata/v2/EmpJob", "auth": {"type": "basic", "username": "u@co", "password": "p"}, "paging": "auto"},
+        {"url": "https://api.example.com/odata/v2/EmpJob", "auth": {"type": "basic", "username": "u@co", "password": SECRET}, "paging": "auto"},
         resolver=PUBLIC, transport=httpx.MockTransport(handler),
     ))
     assert out["row_count"] == 2
@@ -109,7 +111,7 @@ def test_oauth_client_credentials_then_bearer():
 
     out = run(fetch_records({
         "url": "https://graph.example.com/v1.0/users",
-        "auth": {"type": "oauth2_client_credentials", "token_url": "https://login.example.com/t/oauth2/v2.0/token", "client_id": "c", "client_secret": "s", "scope": "x/.default"},
+        "auth": {"type": "oauth2_client_credentials", "token_url": "https://login.example.com/t/oauth2/v2.0/token", "client_id": "c", "client_secret": SECRET, "scope": "x/.default"},
     }, resolver=PUBLIC, transport=httpx.MockTransport(handler)))
     assert calls[0].endswith("/token") and out["rows"] == [{"id": "u1", "department": "Sales"}]
 

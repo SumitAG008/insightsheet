@@ -7,7 +7,7 @@ const TYPE_LABEL = {
   ...Object.fromEntries(Object.entries(PICKLISTS).map(([k, v]) => [k, v.label])),
   reason: 'Termination reason → event reason code',
   paycomp: 'Pay component → pay component code',
-  wagetype: 'Payroll balance → wage type',
+  wagetype: 'Payroll balance / wage type → target wage type code',
   paymethod: 'Payment method → payment method code',
 };
 const fmtAmount = (v, unit) => (unit === 'money' ? v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : v.toLocaleString());
@@ -15,7 +15,7 @@ const fmtAmount = (v, unit) => (unit === 'money' ? v.toLocaleString(undefined, {
 function Coverage({ coverage }) {
   if (!coverage) return null;
   const pct = coverage.total ? Math.round(((coverage.mapped + coverage.carried) / coverage.total) * 100) : 100;
-  const ROLE = { employee: 'Worker data', 'history:job': 'Job history', 'history:comp': 'Pay history', 'history:onetime': 'One-time pay', 'history:ytd': 'Payroll balances', detail: 'Carried as-is', unused: 'Carried as-is' };
+  const ROLE = { 'history:payroll': 'Payroll results', employee: 'Worker data', 'history:job': 'Job history', 'history:comp': 'Pay history', 'history:onetime': 'One-time pay', 'history:ytd': 'Payroll balances', detail: 'Carried as-is', unused: 'Carried as-is' };
   return (
     <section className={card}>
       <div className="flex flex-wrap items-center gap-2">

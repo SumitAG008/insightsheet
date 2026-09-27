@@ -9,6 +9,7 @@ import ExportStep from '@/components/migration/ExportStep';
 import { CONCEPTS } from '@/lib/migration/concepts';
 import { mapSheets, picklistValues, runMigration } from '@/lib/migration/engine';
 import { buildReviewWorkbook, buildZip } from '@/lib/migration/exporter';
+import { applyProfile, exportProfile } from '@/lib/migration/profile';
 import { buildWorkdaySample, downloadWorkdaySampleXlsx } from '@/lib/migration/sampleWorkday';
 import { DEFAULT_SETTINGS, SUCCESSFACTORS } from '@/lib/migration/targets/successfactors';
 import { parseFile } from '@/lib/unifiedReporting/model';
@@ -48,6 +49,13 @@ function SettingsPanel({ settings, onChange }) {
       {field('changeEventReason', 'Data change event reason', 'Any other later record.')}
       {field('paymentMethod', 'Default payment method code', 'Used when the extract has none.')}
       {field('retirementEventReason', 'Retirement event reason', 'Termination reason code used for retirees.')}
+      <label className="flex items-center gap-2 text-sm sm:col-span-2">
+        <input type="checkbox" checked={!!settings.sapPayrollTransfer} onChange={(e) => onChange({ sapPayrollTransfer: e.target.checked })} />
+        Generate SAP payroll legacy transfer files (T558B / T558C) for a mid-year go-live on SAP payroll
+      </label>
+      {settings.sapPayrollTransfer && field('sapCountryGrouping', 'SAP country grouping (MOLGA)', 'Required by T558C, e.g. your country’s 2-digit grouping.')}
+      {settings.sapPayrollTransfer && field('sapPeriodModifier', 'SAP period modifier', 'Payroll area period modifier, e.g. 01 = monthly.')}
+      {settings.sapPayrollTransfer && field('sapOffCyclePayType', 'Off-cycle payroll type', 'Used for runs marked off-cycle or bonus.')}
       {field('pensionPayoutFrequency', 'Pension payout frequency code', 'Used when the retirees tab has none.')}
       {field('defaultTimezone', 'Default time zone', 'Used when neither the job nor its location has one.')}
       {field('basePayComponent', 'Base pay component', 'Pay component code for base salary.')}
@@ -73,6 +81,9 @@ export default function Migration() {
   // What the AI says each tab is: { [sheetId]: { purpose, note } }.
   const [tabInfo, setTabInfo] = useState({});
   const [aiStatus, setAiStatus] = useState(null);
+  // A profile loaded before any extract is applied to the next upload.
+  const [pendingProfile, setPendingProfile] = useState(null);
+  const profileInput = useRef(null);
   const [step, setStep] = useState('upload');
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState('');
@@ -105,7 +116,16 @@ export default function Migration() {
   const addSheets = (added) => {
     const next = [...sheets, ...added];
     // Map only the new sheets; keep the user's choices on existing ones.
-    const nextMapping = { ...mapping, ...mapSheets(added) };
+    let nextMapping = { ...mapping, ...mapSheets(added) };
+    if (pendingProfile) {
+      const applied = applyProfile(pendingProfile, next, nextMapping, settings);
+      nextMapping = applied.mapping;
+      setSettings(applied.settings);
+      setPicklists(applied.picklists);
+      setTabInfo((cur) => ({ ...cur, ...applied.tabInfo }));
+      setMessage(`Profile applied: ${applied.stats.applied} column choices on ${applied.stats.matchedTabs} of ${applied.stats.tabs} tabs.`);
+      setPendingProfile(null);
+    }
     setSheets(next);
     setMapping(nextMapping);
     setStep('map');
@@ -181,7 +201,7 @@ export default function Migration() {
         const col = sheet?.columns.find((c) => c.name === x.column);
         if (!col) continue;
         const cur = next[sheet.id]?.[col.key];
-        if (cur?.method === 'you' || (cur?.concept && cur.confidence >= 0.85)) continue;
+        if (cur?.method === 'you' || cur?.method === 'profile' || (cur?.concept && cur.confidence >= 0.85)) continue;
         if (cur?.concept === x.concept) continue;
         const taken = Object.entries(next[sheet.id] || {}).some(([k, v]) => k !== col.key && v?.concept === x.concept);
         if (taken) continue;
@@ -202,6 +222,31 @@ export default function Migration() {
     setBusy('');
   };
   const refineWithAi = () => runAi(sheets, mapping);
+
+  const saveProfile = () => {
+    const profile = exportProfile({ sheets, mapping, settings, picklists, tabInfo });
+    saveBlob(new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' }), `migration_profile_${new Date().toISOString().slice(0, 10)}.json`);
+  };
+  const loadProfile = async (file) => {
+    if (!file) return;
+    try {
+      const profile = JSON.parse(await file.text());
+      if (!sheets.length) {
+        applyProfile(profile, [], {}, settings); // validates the file
+        setPendingProfile(profile);
+        setMessage('Profile loaded: it will be applied to the extract you upload next.');
+        return;
+      }
+      const applied = applyProfile(profile, sheets, mapping, settings);
+      setMapping(applied.mapping);
+      setSettings(applied.settings);
+      setPicklists(applied.picklists);
+      setTabInfo((cur) => ({ ...cur, ...applied.tabInfo }));
+      setMessage(`Profile applied: ${applied.stats.applied} column choices on ${applied.stats.matchedTabs} of ${applied.stats.tabs} tabs, plus its value translations and settings.`);
+    } catch (e) {
+      setMessage(`The profile could not be loaded: ${e.message}`);
+    }
+  };
 
   const saveBlob = (blob, name) => {
     const url = URL.createObjectURL(blob);
@@ -250,7 +295,10 @@ export default function Migration() {
             <strong className="text-slate-700 dark:text-slate-200">Workday</strong> <ArrowRight className="inline h-3.5 w-3.5" /> <strong className="text-slate-700 dark:text-slate-200">SAP SuccessFactors Employee Central</strong> · Core HR, pay history, payroll and cost centers · runs in your browser, employee data never leaves it
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <input ref={profileInput} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { loadProfile(e.target.files[0]); e.target.value = ''; }} />
+          <Button variant="outline" size="sm" onClick={() => profileInput.current?.click()} title="Re-use mappings, value translations and settings from an earlier run">Load profile</Button>
+          {sheets.length > 0 && <Button variant="outline" size="sm" onClick={saveProfile} title="Save mappings, value translations and settings for the next mock load or cutover">Save profile</Button>}
           {sheets.length > 0 && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings2 className="mr-1.5 h-4 w-4" />Settings</Button>}
           {sheets.length > 0 && <Button variant="ghost" size="sm" onClick={reset}><RotateCcw className="mr-1.5 h-4 w-4" />Start over</Button>}
         </div>

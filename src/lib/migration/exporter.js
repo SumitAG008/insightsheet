@@ -44,6 +44,7 @@ export function readme(result, target, settings) {
     '',
     ...(result.files.some((f) => f.entity.mdf) ? ['', 'PaymentInformation is an MDF object: use Import and Export Data with the template', 'from your instance. It contains bank details; handle the file accordingly.'] : []),
     ...(result.files.some((f) => f.entity.payroll) ? ['', 'PayrollYTD is for payroll (Employee Central Payroll or your provider), not an', 'Employee Central import.'] : []),
+    ...(result.files.some((f) => f.entity.sapTransfer) ? ['', 'SAP_T558B.txt / SAP_T558C.txt: legacy payroll results for a mid-year go-live on SAP payroll', '(ECP / S/4HANA HCM). Tab-delimited without header lines, as the SAP upload programs expect.', 'Load T558B first, then T558C, then run the payroll driver with the country transfer schema.', 'Before loading: payroll periods and infotypes 0000/0001/0002/0007/0008/0009 must exist from the first period.', 'After loading: set earliest retro and master-data-change dates (IT0003) to the go-live date.', 'Wage types must exist in table T512W; set the country grouping (MOLGA) in Settings.', 'Column layout follows the standard T558B/T558C tables: verify against the template in the', 'SAP note for your country before the first upload.'] : []),
     ...(result.reconciliation?.length ? ['', 'Reconciliation (source -> output):', ...result.reconciliation.map((r) => `  ${r.ok ? 'OK  ' : 'DIFF'} ${r.label}: ${r.source} -> ${r.target}`)] : []),
     ...(result.files.some((f) => f.entity.custom) ? ['', 'custom/ holds data with no standard SuccessFactors file yet (for example dependents', 'or unmapped worker columns), carried as-is so nothing is lost. Load it into a custom', 'MDF object or hand it to payroll or benefits.'] : []),
     '',
@@ -98,7 +99,11 @@ export async function buildReviewWorkbook({ result, settings }) {
 export async function buildZip({ result, target, settings, sheets, mapping }) {
   const JSZip = (await import('jszip')).default;
   const zip = new JSZip();
-  for (const f of result.files) zip.file(f.fileName, toCsv(fileRows(f, settings)));
+  for (const f of result.files) {
+    // SAP conversion-table uploads (T558B/T558C) are tab-delimited with no header lines.
+    if (f.entity.format === 'tsv') zip.file(f.fileName, fileRows(f, { ...settings, labelRow: false }).slice(1).map((r) => r.join('\t')).join('\r\n'));
+    else zip.file(f.fileName, toCsv(fileRows(f, settings)));
+  }
   zip.file('README.txt', readme(result, target, settings));
   zip.file('mapping_report.csv', mappingReport(sheets, mapping));
   zip.file('change_log.csv', toCsv([['change', 'count', 'examples'], ...result.data.changes.map((c) => [c.text, c.count, c.examples.map(([a, b]) => `${a} → ${b}`).join(' | ')])]));

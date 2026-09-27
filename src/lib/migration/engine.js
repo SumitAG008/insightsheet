@@ -122,6 +122,12 @@ function contextualise(m) {
   const has = (id) => Object.values(m).some((x) => x.concept === id);
   const swap = (from, to) => Object.values(m).forEach((x) => { if (x.concept === from && !has(to)) x.concept = to; });
   if (has('employee_id')) {
+    // Per-period payroll results: pay dates and amounts per wage type.
+    if (has('wage_type') && (has('pay_period_start') || has('pay_period_end'))) {
+      ['one_time_date'].forEach((c) => swap(c, 'pay_date'));
+      ['salary_amount', 'ytd_amount', 'one_time_amount'].forEach((c) => swap(c, 'payroll_amount'));
+      return;
+    }
     // "Amount" means a bonus on a one-time payment tab and a balance on a YTD tab.
     if (has('one_time_date') || has('one_time_component')) { swap('salary_amount', 'one_time_amount'); swap('comp_effective_date', 'one_time_date'); swap('job_effective_date', 'one_time_date'); swap('pay_component', 'one_time_component'); return; }
     if (has('tax_year') || has('wage_type')) { swap('salary_amount', 'ytd_amount'); return; }
@@ -367,6 +373,7 @@ export function assemble(sheets, mapping, settings, picklists = {}, tabPurposes 
   const compRows = [];
   const oneTimeRows = [];
   const ytdRows = [];
+  const resultRows = [];
   const org = Object.fromEntries(ORG_LISTS.map((l) => [l.id, new Map()]));
   const sheetRoles = {};
   // Data with no standard target yet: whole tabs, and unmapped columns of worker tabs.
@@ -433,11 +440,13 @@ export function assemble(sheets, mapping, settings, picklists = {}, tabPurposes 
     const hasJob = cols.some(([, x]) => JOB_GROUPS.has(groupOf(x.concept)) && x.concept !== 'manager_id') || conceptCol.manager_id;
     const hasComp = cols.some(([, x]) => groupOf(x.concept) === 'Compensation');
     const hasOneTime = conceptCol.one_time_amount || conceptCol.one_time_date || conceptCol.one_time_component;
-    const hasYtd = conceptCol.ytd_amount || conceptCol.wage_type || conceptCol.tax_year;
+    const hasResults = conceptCol.payroll_amount || conceptCol.pay_period_start || conceptCol.pay_period_end;
+    const hasYtd = !hasResults && (conceptCol.ytd_amount || conceptCol.wage_type || conceptCol.tax_year);
     // Bonus and balance tabs are always event lists; job and pay tabs are history when employees repeat.
-    const isHistory = hasOneTime || hasYtd || (repeats && (conceptCol.job_effective_date || conceptCol.comp_effective_date));
+    const isHistory = hasResults || hasOneTime || hasYtd || (repeats && (conceptCol.job_effective_date || conceptCol.comp_effective_date));
     sheetRoles[sheet.id] = !isHistory ? 'employee'
-      : hasOneTime ? 'history:onetime'
+      : hasResults ? 'history:payroll'
+        : hasOneTime ? 'history:onetime'
         : hasYtd ? 'history:ytd'
           : hasComp && !hasJob ? 'history:comp' : 'history:job';
 
@@ -480,7 +489,7 @@ export function assemble(sheets, mapping, settings, picklists = {}, tabPurposes 
       p.sources.add(sheet.name);
       (o.__errors || []).forEach((e) => p.errors.push({ ...e, sheet: sheet.name }));
       if (isHistory) {
-        const target = { 'history:comp': compRows, 'history:onetime': oneTimeRows, 'history:ytd': ytdRows }[sheetRoles[sheet.id]] || jobRows;
+        const target = { 'history:comp': compRows, 'history:onetime': oneTimeRows, 'history:ytd': ytdRows, 'history:payroll': resultRows }[sheetRoles[sheet.id]] || jobRows;
         target.push({ id, values: o, sheet: sheet.name });
         continue;
       }
@@ -525,6 +534,8 @@ export function assemble(sheets, mapping, settings, picklists = {}, tabPurposes 
   const compsFor = group(compRows);
   const oneTimeFor = group(oneTimeRows);
   const ytdFor = group(ytdRows);
+  resultRows.sort((a, b) => String(a.values.pay_period_end || a.values.pay_date || '').localeCompare(String(b.values.pay_period_end || b.values.pay_date || '')));
+  const resultsFor = group(resultRows);
   for (const p of people.values()) {
     if (!jobsFor.has(p.id) && Object.keys(p.values).some((k) => JOB_GROUPS.has(groupOf(k)))) {
       jobsFor.set(p.id, [{ id: p.id, values: {}, sheet: 'worker data', derived: true }]);
@@ -589,6 +600,7 @@ export function assemble(sheets, mapping, settings, picklists = {}, tabPurposes 
     compsFor,
     oneTimeFor,
     ytdFor,
+    resultsFor,
     org,
     changes: Object.values(changes).sort((a, b) => b.count - a.count),
     issues,
@@ -603,6 +615,42 @@ export function assemble(sheets, mapping, settings, picklists = {}, tabPurposes 
 /* ======================= 3. outputs & validation ======================= */
 
 const COUNTRY_A2 = { GBR: 'GB', DEU: 'DE', USA: 'US', FRA: 'FR', ESP: 'ES', ITA: 'IT', NLD: 'NL', IRL: 'IE', BEL: 'BE', CHE: 'CH', AUT: 'AT', IND: 'IN', SWE: 'SE', NOR: 'NO', DNK: 'DK', POL: 'PL', PRT: 'PT', CAN: 'CA', AUS: 'AU' };
+
+/**
+ * Group an employee's payroll result lines into payroll runs (one per period
+ * and run type), numbered chronologically as SAP's T558B sequence number.
+ */
+export function payrollRuns(rows, settings) {
+  const runs = new Map();
+  for (const r of rows) {
+    const v = r.values;
+    const offCycle = /off|bonus|special|adhoc|ad hoc|correction/i.test(v.run_type || '');
+    const key = [v.pay_period_start || '', v.pay_period_end || '', v.pay_date || '', offCycle ? 'O' : 'R'].join('|');
+    const run = runs.get(key) || { key, first: v, offCycle, lines: [] };
+    run.lines.push(v);
+    runs.set(key, run);
+  }
+  const sorted = [...runs.values()].sort((a, b) => a.key.localeCompare(b.key));
+  return sorted.map((run, i) => {
+    const byType = new Map();
+    for (const l of run.lines) {
+      const code = l.wage_type || '';
+      const cur = byType.get(code) || { code, amount: 0, currency: l.currency || '' };
+      cur.amount = Math.round((cur.amount + (parseFloat(l.payroll_amount) || 0)) * 100) / 100;
+      byType.set(code, cur);
+    }
+    const end = run.first.pay_period_end || run.first.pay_date || '';
+    return {
+      seq: i + 1,
+      first: run.first,
+      offCycle: run.offCycle,
+      payType: run.offCycle ? settings.sapOffCyclePayType : '',
+      year: end.slice(0, 4),
+      period: end.slice(5, 7),
+      wageTypes: [...byType.values()],
+    };
+  });
+}
 
 const EVENT_SETTING = { hire: 'hireEventReason', jobChange: 'jobChangeEventReason', transfer: 'transferEventReason', data: 'changeEventReason' };
 export const EVENT_TEXT = { hire: 'Hire', jobChange: 'Job change', transfer: 'Transfer', data: 'Data change' };
@@ -666,7 +714,7 @@ export function reconcile(sheets, mapping, files) {
   };
   const money = (label, concept, fileId, amountField, currencyField) => {
     const src = sumSource(concept, () => true);
-    if (!src.n) return;
+    if (!src.n || !fileOf(fileId)) return;
     const tgt = sumTarget(fileId, amountField, currencyField);
     for (const c of new Set([...Object.keys(src.totals), ...Object.keys(tgt)])) {
       rows.push({ label: `${label} (${c})`, source: Math.round((src.totals[c] || 0) * 100) / 100, target: Math.round((tgt[c] || 0) * 100) / 100, unit: 'money' });
@@ -676,6 +724,7 @@ export function reconcile(sheets, mapping, files) {
   money('One-time payments', 'one_time_amount', 'EmpPayCompNonRecurring', 'value', 'currency-code');
   money('Payroll YTD balances', 'ytd_amount', 'PayrollYTD', 'amount', 'currency');
   money('Pension payouts', 'pension_payout_amount', 'PensionPayout', 'amount', 'currency');
+  money('Payroll results → SAP T558C', 'payroll_amount', 'SAP_T558C', 'BETRG', '__currency');
   return rows.map((r) => ({ ...r, ok: Math.abs(r.source - r.target) < 0.005 }));
 }
 
@@ -778,6 +827,16 @@ export function buildOutputs(target, data, settings) {
         case 'ytd':
           (data.ytdFor.get(p.id) || []).forEach((c) => out.push({ key: `${p.id} ${c.values.tax_year || ''} ${c.values.wage_type || ''}`.trim(), person: p.id, ctx: withRow(p, c.values) }));
           break;
+        case 'payrollPeriod':
+          if (!settings.sapPayrollTransfer) break;
+          payrollRuns(data.resultsFor.get(p.id) || [], settings).forEach((run) => out.push({ key: `${p.id} #${run.seq}`, person: p.id, ctx: withRow(p, run.first, { run }) }));
+          break;
+        case 'payrollWageType':
+          if (!settings.sapPayrollTransfer) break;
+          payrollRuns(data.resultsFor.get(p.id) || [], settings).forEach((run) => {
+            for (const wt of run.wageTypes) out.push({ key: `${p.id} #${run.seq} ${wt.code}`, person: p.id, ctx: withRow(p, run.first, { run, wt }), meta: { __currency: wt.currency } });
+          });
+          break;
         case 'pension':
           if (p.values.pension_scheme || p.values.pension_member_id) out.push({ key: p.id, ctx: makeCtx(p) });
           break;
@@ -816,12 +875,13 @@ export function buildOutputs(target, data, settings) {
   for (const entity of target.entities) {
     const records = recordsFor(entity);
     if (!records.length) continue;
-    const rows = records.map(({ key, ctx }) => {
-      const row = {};
+    const rows = records.map(({ key, ctx, meta }) => {
+      const row = { ...(meta || {}) };
       for (const f of entity.fields) {
         let v = f.derive ? f.derive(ctx) : ctx.get(f.from);
         v = v === null || v === undefined ? '' : String(v);
         if (f.date && v) v = fmtDate(v);
+        if (f.sapDate && v) v = formatDate(v, settings.sapDateFormat);
         row[f.id] = v;
         const missingTermination = entity.grain === 'termination' && !ctx.get('termination_date');
         if (f.required && !v && !missingTermination) {
@@ -871,13 +931,23 @@ export function buildOutputs(target, data, settings) {
     }
   }
 
+  // SAP payroll legacy transfer (T558B / T558C) checks.
+  const t558c = files.find((f) => f.entity.id === 'SAP_T558C');
+  if (t558c) {
+    if (!settings.sapCountryGrouping) issues.push({ severity: 'warning', entity: 'SAP payroll transfer', key: '', field: 'MOLGA', message: 'Set the SAP country grouping (MOLGA) in Settings before uploading T558C.' });
+    const bad = new Set(t558c.rows.map((r) => r.LGART).filter((w) => w && !/^[A-Z0-9/]{1,4}$/i.test(w)));
+    bad.forEach((w) => issues.push({ severity: 'error', entity: 'SAP payroll transfer', key: w, field: 'LGART', message: `“${w}” is not an SAP wage type (up to 4 characters, e.g. /101 or M020). Map it on the Cleanse step; SAP checks it against table T512W.` }));
+    const pernrs = new Set(t558c.rows.map((r) => r.PERNR).filter((n) => !/^\d{1,8}$/.test(n)));
+    pernrs.forEach((n) => issues.push({ severity: 'warning', entity: 'SAP payroll transfer', key: n, field: 'PERNR', message: 'SAP personnel numbers are numeric (up to 8 digits); map this employee ID to its SAP personnel number.' }));
+  }
+
   const emails = new Map();
   for (const p of data.people) if (p.values.email_work) emails.set(p.values.email_work, [...(emails.get(p.values.email_work) || []), p.id]);
   for (const [e, ids] of emails) if (ids.length > 1) issues.push({ severity: 'warning', entity: 'Email Information', key: ids.join(', '), field: 'email-address', message: `${e} is shared by ${ids.length} employees` });
 
   const ordered = loadOrder(files.map((f) => f.entity)).map((e, i) => {
     const f = files.find((x) => x.entity.id === e.id);
-    return { ...f, order: i + 1, fileName: `${String(i + 1).padStart(2, '0')}_${e.id}.csv` };
+    return { ...f, order: i + 1, fileName: `${String(i + 1).padStart(2, '0')}_${e.id}.${e.format === 'tsv' ? 'txt' : 'csv'}` };
   });
 
   const counts = { error: 0, warning: 0, info: 0 };
@@ -891,7 +961,26 @@ export function runMigration(target, sheets, mapping, settings, picklists, tabPu
   const out = buildOutputs(target, data, settings);
   const custom = carryOverFiles(data, out.files.length);
   const files = [...out.files, ...custom];
-  return { data, ...out, files, reconciliation: reconcile(sheets, mapping, files), coverage: coverage(sheets, mapping, data, tabPurposes) };
+  const reconciliation = [...reconcile(sheets, mapping, files), ...resultsVsYtd(data)];
+  return { data, ...out, files, reconciliation, coverage: coverage(sheets, mapping, data, tabPurposes) };
+}
+
+/** Period results must add up to the year-to-date balances they claim to explain. */
+export function resultsVsYtd(data) {
+  const sum = (map, amountKey) => {
+    const out = {};
+    for (const rows of map.values()) {
+      for (const r of rows) {
+        const k = `${r.values.wage_type || '?'} (${r.values.currency || '—'})`;
+        out[k] = Math.round(((out[k] || 0) + (parseFloat(r.values[amountKey]) || 0)) * 100) / 100;
+      }
+    }
+    return out;
+  };
+  if (!data.resultsFor.size || !data.ytdFor.size) return [];
+  const results = sum(data.resultsFor, 'payroll_amount');
+  const ytd = sum(data.ytdFor, 'ytd_amount');
+  return Object.keys(ytd).map((k) => ({ label: `Results vs YTD: ${k}`, source: ytd[k], target: results[k] || 0, unit: 'money', ok: Math.abs(ytd[k] - (results[k] || 0)) < 0.005 }));
 }
 
 const safeName = (s) => String(s).replace(/[^A-Za-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'tab';

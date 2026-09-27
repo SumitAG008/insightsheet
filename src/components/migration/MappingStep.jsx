@@ -11,6 +11,7 @@ const ROLE_TEXT = {
   'history:comp': 'Pay history (several rows per employee)',
   'history:onetime': 'One-time payments (bonuses, awards)',
   'history:ytd': 'Payroll year-to-date balances',
+  'history:payroll': 'Payroll results per period (legacy payroll history)',
   'org:cost_center': 'Cost center list',
   'org:company': 'Legal entity list',
   'org:department': 'Department list',
@@ -25,6 +26,7 @@ const ROLE_TEXT = {
 function Badge({ m }) {
   if (!m?.concept) return <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800">Not used</span>;
   if (m.method === 'you') return <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs text-violet-700 dark:bg-violet-950 dark:text-violet-300">Set by you</span>;
+  if (m.method === 'profile') return <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-950 dark:text-blue-300">From profile</span>;
   const pct = Math.round((m.confidence ?? 0) * 100);
   const tone = pct >= 85 ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300';
   return <span className={`rounded-full px-2 py-0.5 text-xs ${tone}`}>{m.method === 'ai' ? 'AI' : 'Auto'} · {pct}%</span>;

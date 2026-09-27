@@ -1,8 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Database, FileSpreadsheet, Link2, Loader2, Plug, RefreshCw, Server, Trash2, Upload, X } from 'lucide-react';
-import { suggestRelationships } from '@/lib/unifiedReporting/model';
+import { ChevronDown, ChevronRight, Database, FileSpreadsheet, Link2, Loader2, Plug, RefreshCw, Server, Trash2, Upload, Warehouse, X } from 'lucide-react';
+import { isLake, rowCountOf, suggestRelationships } from '@/lib/unifiedReporting/model';
 import { ApiConnector } from './ConnectSources';
 
 const ROLE_LABEL = { dimension: 'Break down by', measure: 'Number to add up', ignore: 'Ignore' };
@@ -10,7 +10,8 @@ const TYPE_LABEL = { number: '123', date: 'date', text: 'abc' };
 const select = 'rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900';
 const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900';
 
-export function UploadZone({ onFiles, busy, compact }) {
+export function UploadZone({ onFiles, busy, compact, lake, storeInLake, onStoreInLake }) {
+  const toLake = Boolean(lake?.enabled && storeInLake);
   const input = useRef(null);
   const [over, setOver] = useState(false);
   return (
@@ -20,24 +21,39 @@ export function UploadZone({ onFiles, busy, compact }) {
       onDrop={(e) => { e.preventDefault(); setOver(false); onFiles([...e.dataTransfer.files]); }}
       className={`rounded-2xl border-2 border-dashed text-center transition-colors ${over ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900'} ${compact ? 'px-4 py-5' : 'px-6 py-10'}`}
     >
-      <input ref={input} type="file" multiple accept=".csv,.tsv,.xlsx,.xls" className="hidden" onChange={(e) => { onFiles([...e.target.files]); e.target.value = ''; }} />
+      <input ref={input} type="file" multiple accept={toLake ? '.csv,.tsv,.xlsx,.xls,.parquet' : '.csv,.tsv,.xlsx,.xls'} className="hidden" onChange={(e) => { onFiles([...e.target.files]); e.target.value = ''; }} />
       {busy ? <Loader2 className="mx-auto h-7 w-7 animate-spin text-blue-600" /> : <Upload className="mx-auto h-7 w-7 text-blue-600" />}
-      <p className="mt-2 font-medium">{busy ? 'Reading your files…' : 'Drop exports from any system here'}</p>
-      <p className="mt-1 text-sm text-slate-500">CSV or Excel. One file (or sheet) per system, e.g. an HR export, an expenses export, a sales export. Files stay in this browser.</p>
+      <p className="mt-2 font-medium">{busy ? (toLake ? 'Storing in the Meldra lakehouse…' : 'Reading your files…') : 'Drop exports from any system here'}</p>
+      <p className="mt-1 text-sm text-slate-500">
+        {toLake
+          ? `CSV, Excel or Parquet, up to ${lake.max_upload_mb || 1024} MB each. Stored as Apache Iceberg tables in your Meldra lakehouse, available on every device.`
+          : 'CSV or Excel. One file (or sheet) per system, e.g. an HR export, an expenses export, a sales export. Files stay in this browser.'}
+      </p>
       <Button className="mt-4" variant={compact ? 'outline' : 'default'} disabled={busy} onClick={() => input.current?.click()}>Choose files</Button>
+      {lake?.enabled && (
+        <label className="mx-auto mt-3 flex w-fit cursor-pointer items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+          <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={Boolean(storeInLake)} onChange={(e) => onStoreInLake(e.target.checked)} />
+          <Warehouse className="h-4 w-4 text-emerald-600" />
+          Store in the Meldra lakehouse (for large data and access from any device)
+        </label>
+      )}
     </div>
   );
 }
-UploadZone.propTypes = { onFiles: PropTypes.func.isRequired, busy: PropTypes.bool, compact: PropTypes.bool };
+UploadZone.propTypes = {
+  onFiles: PropTypes.func.isRequired, busy: PropTypes.bool, compact: PropTypes.bool, lake: PropTypes.object, storeInLake: PropTypes.bool, onStoreInLake: PropTypes.func,
+};
 
 const KIND_ICON = { api: Plug, database: Server };
 const hostOf = (url) => {
   try { return new URL(url).hostname; } catch { return ''; }
 };
 
-function SourceCard({ s, onUpdate, onRemove, onRenameColumn, onRefresh }) {
+function SourceCard({ s, onUpdate, onRemove, onRenameColumn, onRefresh, onMoveToLake }) {
   const [open, setOpen] = useState(false);
-  const Icon = KIND_ICON[s.kind] || FileSpreadsheet;
+  const stored = isLake(s);
+  const from = stored ? s.storedKind : s.kind; // where the data came from: file, api, database, sample
+  const Icon = stored ? Warehouse : KIND_ICON[from] || FileSpreadsheet;
   const measures = s.columns.filter((c) => c.role === 'measure').length;
   const dims = s.columns.filter((c) => c.role === 'dimension').length;
   return (
@@ -47,13 +63,16 @@ function SourceCard({ s, onUpdate, onRemove, onRenameColumn, onRefresh }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="m-0 truncate text-[15px] font-semibold">{s.name}</h3>
-            {s.kind === 'sample' && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">Sample</span>}
-            {s.kind === 'api' && (
+            {stored && (
+              <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white" title="Stored as an Apache Iceberg table in your Meldra lakehouse">Meldra lakehouse</span>
+            )}
+            {from === 'sample' && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">Sample</span>}
+            {from === 'api' && (
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                 API · {hostOf(s.origin?.url)}
               </span>
             )}
-            {s.kind === 'database' && (
+            {from === 'database' && (
               <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" title={s.origin?.query}>
                 {s.origin?.database ? `Database · ${s.origin.database}` : 'Database'}
               </span>
@@ -69,12 +88,15 @@ function SourceCard({ s, onUpdate, onRemove, onRenameColumn, onRefresh }) {
             />
           </label>
           <p className="mt-1.5 text-xs text-slate-500">
-            {s.rows.length.toLocaleString()} rows{s.truncated ? ` (row limit reached${s.origin ? '' : ': first 200,000 kept'})` : ''} · {dims} breakdowns · {measures} numbers
+            {rowCountOf(s).toLocaleString()} rows{s.truncated ? ` (row limit reached${s.origin ? '' : ': first 200,000 kept'})` : ''} · {dims} breakdowns · {measures} numbers
             {s.refreshedAt && ` · refreshed ${new Date(s.refreshedAt).toLocaleString()}`}
           </p>
         </div>
-        {((s.kind === 'database' && s.origin?.query) || (s.kind === 'api' && s.origin?.url)) && (
-          <Button variant="ghost" size="icon" aria-label={`Refresh ${s.name}`} title={s.kind === 'api' ? 'Fetch again from the API' : 'Refresh from database'} onClick={onRefresh}><RefreshCw className="h-4 w-4" /></Button>
+        {((from === 'database' && s.origin?.query) || (from === 'api' && s.origin?.url)) && (
+          <Button variant="ghost" size="icon" aria-label={`Refresh ${s.name}`} title={from === 'api' ? 'Fetch again from the API' : 'Refresh from database'} onClick={onRefresh}><RefreshCw className="h-4 w-4" /></Button>
+        )}
+        {onMoveToLake && !stored && (
+          <Button variant="ghost" size="icon" aria-label={`Store ${s.name} in the Meldra lakehouse`} title="Store in the Meldra lakehouse" onClick={onMoveToLake}><Warehouse className="h-4 w-4" /></Button>
         )}
         <Button variant="ghost" size="icon" aria-label={`Remove ${s.name}`} onClick={onRemove}><Trash2 className="h-4 w-4" /></Button>
       </div>
@@ -132,7 +154,10 @@ function SourceCard({ s, onUpdate, onRemove, onRenameColumn, onRefresh }) {
     </div>
   );
 }
-SourceCard.propTypes = { s: PropTypes.object.isRequired, onUpdate: PropTypes.func.isRequired, onRemove: PropTypes.func.isRequired, onRenameColumn: PropTypes.func.isRequired, onRefresh: PropTypes.func.isRequired };
+SourceCard.propTypes = {
+  s: PropTypes.object.isRequired, onUpdate: PropTypes.func.isRequired, onRemove: PropTypes.func.isRequired, onRenameColumn: PropTypes.func.isRequired,
+  onRefresh: PropTypes.func.isRequired, onMoveToLake: PropTypes.func,
+};
 
 function RelationshipForm({ sources, onAdd }) {
   const [from, setFrom] = useState({ source: '', col: '' });
@@ -164,7 +189,10 @@ function RelationshipForm({ sources, onAdd }) {
 }
 RelationshipForm.propTypes = { sources: PropTypes.array.isRequired, onAdd: PropTypes.func.isRequired };
 
-export default function SourcesView({ m, busy, onFiles, onConnectDatabase, onRefreshSource, onAddSource, onRefreshApiSource, onLoadSample, onUpdateSource, onRemoveSource, onRenameColumn, onAddRelationship, onRemoveRelationship, onClearAll }) {
+export default function SourcesView({
+  m, busy, onFiles, onConnectDatabase, onRefreshSource, onAddSource, onRefreshApiSource, onLoadSample, onUpdateSource, onRemoveSource, onRenameColumn,
+  onAddRelationship, onRemoveRelationship, onClearAll, lake, storeInLake, onStoreInLake, onMoveToLake, lakeLinks,
+}) {
   const name = (id) => m.sources.find((s) => s.id === id)?.name || '?';
   // Which connector form is open: { kind: 'api' | 'database', refresh?: source }.
   const [connect, setConnect] = useState(null);
@@ -173,13 +201,24 @@ export default function SourcesView({ m, busy, onFiles, onConnectDatabase, onRef
     else onAddSource(src, msg);
     setConnect(null);
   };
-  const suggestions = useMemo(() => suggestRelationships(m.sources, m.relationships), [m.sources, m.relationships]);
-  const hasSample = m.sources.some((s) => s.kind === 'sample');
+  const suggestions = useMemo(() => {
+    const linked = (r) => m.relationships.some((x) => (x.from.source === r.from.source && x.from.col === r.from.col && x.to.source === r.to.source)
+      || (x.from.source === r.to.source && x.from.col === r.to.col && x.to.source === r.from.source));
+    return [...suggestRelationships(m.sources, m.relationships), ...(lakeLinks || []).filter((r) => !linked(r))].sort((a, b) => b.overlap - a.overlap);
+  }, [m.sources, m.relationships, lakeLinks]);
+  const hasSample = m.sources.some((s) => s.kind === 'sample' || s.storedKind === 'sample');
+  const inBrowser = m.sources.filter((s) => !isLake(s));
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_380px]">
       <div className="space-y-4">
-        <UploadZone onFiles={onFiles} busy={busy} compact={!m.empty} />
+        <UploadZone onFiles={onFiles} busy={busy} compact={!m.empty} lake={lake} storeInLake={storeInLake} onStoreInLake={onStoreInLake} />
+        {lake?.enabled && inBrowser.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm dark:border-emerald-900 dark:bg-emerald-950">
+            <span>{inBrowser.length} source{inBrowser.length === 1 ? ' is' : 's are'} only in this browser.</span>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => onMoveToLake(inBrowser.map((s) => s.id))}><Warehouse className="mr-1.5 h-4 w-4" />Store all in the Meldra lakehouse</Button>
+          </div>
+        )}
         {!connect && (
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button variant="outline" onClick={onConnectDatabase}><Server className="mr-2 h-4 w-4" />Connect a database</Button>
@@ -201,6 +240,7 @@ export default function SourcesView({ m, busy, onFiles, onConnectDatabase, onRef
             onUpdate={(patch) => onUpdateSource(s.id, patch)}
             onRemove={() => onRemoveSource(s.id)}
             onRenameColumn={(oldKey, newKey) => onRenameColumn(s.id, oldKey, newKey)}
+            onMoveToLake={lake?.enabled && onMoveToLake ? () => onMoveToLake([s.id]) : undefined}
             onRefresh={() => {
               if (s.kind !== 'api') return onRefreshSource(s);
               setConnect({ kind: 'api', refresh: s });
@@ -270,4 +310,9 @@ SourcesView.propTypes = {
   onAddRelationship: PropTypes.func.isRequired,
   onRemoveRelationship: PropTypes.func.isRequired,
   onClearAll: PropTypes.func.isRequired,
+  lake: PropTypes.object,
+  storeInLake: PropTypes.bool,
+  onStoreInLake: PropTypes.func,
+  onMoveToLake: PropTypes.func,
+  lakeLinks: PropTypes.array,
 };

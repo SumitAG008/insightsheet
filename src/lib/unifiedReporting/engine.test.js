@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitize, compute, heuristic, toSQL, fmt, suggestQuestions, buildCatalog, chartOptions as chartOptionsOf } from './engine';
+import { sanitize, compute, heuristic, toSQL, fmt, suggestQuestions, buildCatalog, chartOptions as chartOptionsOf, distinctValues as distinctValuesOf } from './engine';
 import { buildModel, profileColumns, sourceFromRows, suggestRelationships, toMonth, parseNumber } from './model';
 import { buildSampleSources, sampleSuggestions } from './sampleData';
 
@@ -267,5 +267,92 @@ describe('connector sources', () => {
     expect(r.kind).toBe('api');
     expect(r.columns.map((c) => c.key)).toEqual(['userid', 'dept', 'salary', 'grade']);
     expect(r.rows).toEqual([{ userid: 'E2', dept: 'HR', salary: 20, grade: 'G1' }]);
+  });
+});
+
+describe('lakehouse sources', () => {
+  const lake = async () => {
+    const { lakeSource, buildModel: bm } = await import('./model');
+    const emp = lakeSource({ table: 'emp_1', version: '7', name: 'Employees', system: 'SuccessFactors', kind: 'file', row_count: 3,
+      columns: [{ name: 'Emp ID', key: 'emp_id', type: 'text', role: 'dimension' }, { name: 'Department', key: 'department', type: 'text', role: 'dimension' }],
+      values: { department: { top: ['Sales', 'HR'], distinct: 2 } } });
+    const exp = lakeSource({ table: 'exp_1', version: '3', name: 'Expenses', system: 'Concur', row_count: 5, month_range: ['2026-01', '2026-03'],
+      columns: [{ name: 'Employee ID', key: 'employee_id', type: 'text', role: 'dimension' }, { name: 'Amount', key: 'amount', type: 'number', role: 'measure', unit: 'money' },
+        { name: 'Date', key: 'date', type: 'date', role: 'dimension' }] });
+    const rel = { id: 'r1', from: { source: exp.id, col: 'employee_id' }, to: { source: emp.id, col: 'emp_id' } };
+    return bm([emp, exp], [rel]);
+  };
+
+  it('asks the server for exactly what the spec needs, including lookups and deferred month filters', async () => {
+    const { lakeRequests: reqs } = await import('./engine');
+    const m = await lake();
+    expect(m.views.expenses.dims).toEqual(expect.arrayContaining(['month', 'department']));
+    expect(distinctValuesOf(m, 'expenses', 'department')).toEqual(['Sales', 'HR']);
+    const sp = sanitize({ groupBy: 'month', window: 3, filters: [{ dim: 'month', op: 'gte', value: '2026-02' }, { dim: 'department', op: 'eq', value: 'Sales' }],
+      series: [{ view: 'expenses', measure: 'amount' }] }, m);
+    expect(reqs(sp, m)).toEqual([{
+      table: 'exp_1', version: '3', measure: 'amount', group_by: 'month', split_by: null,
+      filters: [{ dim: 'department', op: 'eq', value: 'Sales' }], // month filter applied to labels, not rows
+      lookups: [{ from_col: 'employee_id', table: 'emp_1', version: '7', to_col: 'emp_id', dims: ['department'] }],
+    }]);
+    expect(buildCatalog(m).data_range).toBe('2026-01 to 2026-03');
+  });
+
+  it('computes from server accumulators exactly like from rows', async () => {
+    const { lakeRequests: reqs, remoteCache, requestKey, PendingError } = await import('./engine');
+    const m = await lake();
+    const sp = sanitize({ groupBy: 'department', splitBy: 'month', series: [{ view: 'expenses', measure: 'amount', agg: 'avg' }] }, m);
+    expect(() => compute(sp, m)).toThrow(PendingError);
+    const [req] = reqs(sp, m);
+    remoteCache.set(requestKey(req), { rows: 5, groups: [
+      { g: 'Sales', s: '2026-01', n: 2, cnt: 2, sum: 30, min: 10, max: 20 },
+      { g: 'HR', s: '2026-01', n: 1, cnt: 1, sum: 7, min: 7, max: 7 },
+      { g: 'Sales', s: '2026-02', n: 1, cnt: 0, sum: 0, min: null, max: null },
+      { g: '(blank)', s: null, n: 1, cnt: 1, sum: 100, min: 100, max: 100 },
+    ] });
+    const res = compute(sp, m);
+    const col = (label) => res.series.find((x) => x.label === label);
+    expect(res.series[0].rows).toBe(5);
+    expect(col('2026-01').data[res.labels.indexOf('Sales')]).toBe(15); // avg recombined from sum / count
+    expect(col('2026-02').data[res.labels.indexOf('Sales')]).toBeNull(); // no numbers → no value
+    expect(col('(blank)').data[res.labels.indexOf('(blank)')]).toBe(100);
+  });
+});
+
+describe('chart types', () => {
+  it('offers and validates area, combo, treemap, funnel and radar by the shape of the answer', () => {
+    const m = sample();
+    const one = sanitize({ groupBy: 'department', series: [{ view: 'expenses', measure: 'amount' }] }, m);
+    expect(chartOptionsOf(one)).toEqual(expect.arrayContaining(['area', 'treemap', 'funnel', 'radar', 'pie']));
+    expect(chartOptionsOf(one)).not.toContain('combo');
+    const two = sanitize({ groupBy: 'department', chart: 'combo', series: [{ view: 'expenses', measure: 'amount' }, { view: 'employees', agg: 'count' }] }, m);
+    expect(two.chart).toBe('combo');
+    expect(sanitize({ groupBy: 'month', chart: 'treemap', series: [{ view: 'expenses', measure: 'amount' }] }, m).chart).toBe('line');
+    expect(sanitize({ groupBy: 'department', chart: 'combo', series: [{ view: 'expenses', measure: 'amount' }] }, m).chart).toBe('bar');
+    expect(heuristic('expenses amount by category treemap', m).chart).toBe('treemap');
+    expect(heuristic('opportunities by stage funnel', m).chart).toBe('funnel');
+  });
+});
+
+describe('rules planner regressions', () => {
+  it('does not read "country" or "account" as a request to count rows', () => {
+    const src = sourceFromRows('Sales', [
+      { Country: 'UK', Account: 'A1', Amount: '10' }, { Country: 'UK', Account: 'A2', Amount: '5' }, { Country: 'DE', Account: 'A3', Amount: '7' },
+    ], 'Sales', 'file');
+    const m = buildModel([src], []);
+    expect(heuristic('amount by country', m).series[0]).toMatchObject({ measure: 'amount', agg: 'sum' });
+    expect(heuristic('amount by account', m).series[0]).toMatchObject({ measure: 'amount', agg: 'sum' });
+    expect(heuristic('count of sales by country', m).series[0]).toMatchObject({ measure: null, agg: 'count' });
+    expect(heuristic('how many sales by country', m).series[0].agg).toBe('count');
+  });
+
+  it('builds a default report from a prompt without AI', async () => {
+    const { defaultReport } = await import('./engine');
+    const m = sample();
+    const specs = defaultReport('expenses amount by department', m);
+    expect(specs.length).toBeGreaterThanOrEqual(4);
+    expect(specs[0]).toMatchObject({ groupBy: 'department', series: [expect.objectContaining({ view: 'expenses', measure: 'amount' })] });
+    expect(specs.some((s) => s.chart === 'number')).toBe(true);
+    expect(new Set(specs.map((s) => JSON.stringify([s.groupBy, s.series]))).size).toBe(specs.length);
   });
 });

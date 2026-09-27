@@ -13,7 +13,7 @@
 
 export const AGG = ['sum', 'count', 'avg', 'min', 'max'];
 export const OPS = ['eq', 'neq', 'gte', 'lte'];
-export const CHARTS = ['bar', 'line', 'pie', 'scatter', 'table', 'number', 'heatmap', 'waterfall'];
+export const CHARTS = ['bar', 'line', 'area', 'combo', 'pie', 'treemap', 'funnel', 'radar', 'scatter', 'table', 'number', 'heatmap', 'waterfall'];
 export const COMPARE = { prior_year: 12, prior_period: 1 };
 const MAX_SERIES = 4;
 const MAX_DERIVED = 2;
@@ -23,6 +23,8 @@ const MAX_FILTERS = 8;
 /* ---------------- catalog for the AI planner ---------------- */
 
 export function distinctValues(m, view, dim, limit = 12) {
+  const known = m.valuesOf?.(view, dim);
+  if (known) return known.slice(0, limit);
   const seen = new Set();
   for (const r of m.rowsOf(view)) {
     const v = r[dim];
@@ -37,6 +39,12 @@ function monthRange(m) {
   let hi = null;
   for (const v of Object.values(m.views)) {
     if (!v.dims.includes('month')) continue;
+    const range = v.remote ? m.byId?.[v.id]?.monthRange : null;
+    if (range) {
+      if (!lo || range[0] < lo) lo = range[0];
+      if (!hi || range[1] > hi) hi = range[1];
+      continue;
+    }
     for (const r of m.rowsOf(v.key)) {
       if (!r.month) continue;
       if (!lo || r.month < lo) lo = r.month;
@@ -158,6 +166,10 @@ export function sanitize(sp, m) {
   if (chart === 'waterfall' && !(series.length === 1 && !derived.length && !splitBy && ADDITIVE.includes(series[0].agg) && !window)) chart = null;
   if (groupBy && (!chart || chart === 'number')) chart = monthly ? 'line' : 'bar';
   if (chart === 'pie' && (series.length > 1 || derived.length || splitBy)) chart = 'bar';
+  const single = series.length === 1 && !derived.length && !splitBy;
+  if (chart === 'combo' && (splitBy || series.length + derived.length < 2)) chart = monthly ? 'line' : 'bar';
+  if ((chart === 'treemap' || chart === 'funnel') && (!single || monthly)) chart = monthly ? 'line' : 'bar';
+  if (chart === 'radar' && (monthly || splitBy)) chart = 'line';
 
   return {
     title: String(sp.title || 'Answer').slice(0, 90),
@@ -179,11 +191,16 @@ export function sanitize(sp, m) {
 /** Chart types that make sense for a spec, for the chart switcher. */
 export function chartOptions(sp) {
   if (!sp.groupBy) return ['number'];
-  const opts = ['bar', 'line', 'table'];
+  const monthly = sp.groupBy === 'month';
+  const opts = ['bar', 'line', 'area', 'table'];
   if (sp.splitBy) return [...opts, 'heatmap'];
-  if (sp.series.length === 1 && !sp.derived.length) opts.push('pie');
-  if (sp.series.length >= 2 && sp.groupBy !== 'month') opts.push('scatter');
-  if (sp.series.length === 1 && !sp.derived.length && ADDITIVE.includes(sp.series[0].agg) && !sp.window) opts.push('waterfall');
+  const single = sp.series.length === 1 && !sp.derived.length;
+  if (sp.series.length + sp.derived.length >= 2) opts.push('combo');
+  if (single) opts.push('pie');
+  if (single && !monthly) opts.push('treemap', 'funnel');
+  if (!monthly) opts.push('radar');
+  if (sp.series.length >= 2 && !monthly) opts.push('scatter');
+  if (single && ADDITIVE.includes(sp.series[0].agg) && !sp.window) opts.push('waterfall');
   return opts;
 }
 
@@ -237,28 +254,111 @@ const labelOf = (raw) => (raw === null || raw === undefined || raw === '' ? '(bl
  * Returns { labels, series[], derived[], extra[] } with values aligned to labels.
  * extra holds period comparisons and share of total, computed on the totals.
  */
-export function compute(sp, m) {
+/* ---------------- lakehouse series ---------------- */
+
+/** Answers for lakehouse sources, keyed by request; filled by remote.js before compute() runs. */
+export const remoteCache = new Map();
+
+/** Thrown by compute() when a lakehouse series hasn't been fetched yet. */
+export class PendingError extends Error {
+  constructor(requests) {
+    super('Waiting for the lakehouse');
+    this.name = 'PendingError';
+    this.requests = requests;
+  }
+}
+
+export const requestKey = (req) => JSON.stringify(req);
+
+/**
+ * Row filters per series. Rolling windows and prior-period comparisons need
+ * months outside a date filter, so month filters then apply to the result's
+ * labels instead of the rows.
+ */
+function seriesFilters(sp, m) {
   const global = sp.filters || [];
-  // Rolling windows and prior-period comparisons need months outside a date
-  // filter, so month filters are applied to the result's labels instead.
   const deferMonths = Boolean(sp.compare || sp.window);
   const monthFilters = [];
-
-  let parts = [];
-  sp.series.forEach((s) => {
+  const perSeries = sp.series.map((s) => {
     const V = m.views[s.view];
     const all = [...s.filters, ...global.filter((f) => V.dims.includes(f.dim))];
-    const rowFilters = deferMonths ? all.filter((f) => f.dim !== 'month') : all;
     if (deferMonths && !monthFilters.length) monthFilters.push(...all.filter((f) => f.dim === 'month'));
-    const rows = m.rowsOf(s.view).filter((x) => rowFilters.every((f) => pass(x[f.dim], f)));
-    const unit = unitOf(m, s.view, s.measure, s.agg);
-    const base = { ...s, rows: rows.length, sys: V.sys, source: V.label, unit };
+    return deferMonths ? all.filter((f) => f.dim !== 'month') : all;
+  });
+  return { perSeries, monthFilters };
+}
 
-    const accumulate = (list) => {
-      const groups = new Map();
-      for (const x of list) {
-        const k = sp.groupBy ? labelOf(x[sp.groupBy]) : 'All';
-        const a = groups.get(k) || newAcc();
+/** What the lakehouse needs for one series: its table, filters, breakdowns and the lookups they use. */
+function seriesRequest(sp, m, s, rowFilters) {
+  const V = m.views[s.view];
+  const needed = new Set([sp.groupBy, sp.splitBy, ...rowFilters.map((f) => f.dim)].filter(Boolean));
+  const byRel = new Map();
+  for (const b of V.borrowed) {
+    if (!needed.has(b.key)) continue;
+    const target = m.byId[b.via.to.source];
+    if (!byRel.has(b.via)) byRel.set(b.via, { from_col: b.via.from.col, table: target.lake.table, version: target.lake.version, to_col: b.via.to.col, dims: [] });
+    byRel.get(b.via).dims.push(b.key);
+  }
+  return {
+    table: V.table,
+    version: V.version,
+    measure: s.measure,
+    filters: rowFilters,
+    group_by: sp.groupBy,
+    split_by: sp.splitBy,
+    lookups: [...byRel.values()],
+  };
+}
+
+/** Lakehouse requests a spec needs (empty when every source is in the browser). */
+export function lakeRequests(sp, m) {
+  const { perSeries } = seriesFilters(sp, m);
+  return sp.series.map((s, i) => (m.views[s.view]?.remote ? seriesRequest(sp, m, s, perSeries[i]) : null)).filter(Boolean);
+}
+
+/**
+ * Aggregate each series within its own source, then join on groupBy.
+ * Returns { labels, series[], derived[], extra[] } with values aligned to labels.
+ * extra holds period comparisons and share of total, computed on the totals.
+ * Browser sources are aggregated from rows here; lakehouse sources arrive as the
+ * same accumulators from the server, so everything after that is shared.
+ */
+export function compute(sp, m) {
+  const { perSeries, monthFilters } = seriesFilters(sp, m);
+  const missing = [];
+
+  let parts = [];
+  sp.series.forEach((s, si) => {
+    const V = m.views[s.view];
+    const rowFilters = perSeries[si];
+    const unit = unitOf(m, s.view, s.measure, s.agg);
+    let rowCount = 0;
+    // split value ('' when not splitting) → group label → accumulator
+    const bySplit = new Map();
+    const accOf = (sk, g) => {
+      if (!bySplit.has(sk)) bySplit.set(sk, new Map());
+      const groups = bySplit.get(sk);
+      if (!groups.has(g)) groups.set(g, newAcc());
+      return groups.get(g);
+    };
+
+    if (V.remote) {
+      const req = seriesRequest(sp, m, s, rowFilters);
+      const hit = remoteCache.get(requestKey(req));
+      if (!hit) {
+        missing.push(req);
+        return;
+      }
+      rowCount = hit.rows;
+      for (const r of hit.groups) {
+        const a = accOf(sp.splitBy ? r.s ?? '(blank)' : '', sp.groupBy ? r.g : 'All');
+        addTo(a, { n: r.n, cnt: r.cnt, sum: r.sum || 0, min: r.min ?? Infinity, max: r.max ?? -Infinity });
+      }
+    } else {
+      const rows = m.rowsOf(s.view).filter((x) => rowFilters.every((f) => pass(x[f.dim], f)));
+      rowCount = rows.length;
+      for (const x of rows) {
+        const a = accOf(sp.splitBy ? labelOf(x[sp.splitBy]) : '', sp.groupBy ? labelOf(x[sp.groupBy]) : 'All');
         a.n++;
         if (s.measure) {
           const v = x[s.measure];
@@ -269,28 +369,20 @@ export function compute(sp, m) {
             a.max = Math.max(a.max, v);
           }
         }
-        groups.set(k, a);
       }
-      return groups;
-    };
+    }
+    const base = { ...s, rows: rowCount, sys: V.sys, source: V.label, unit };
 
     if (!sp.splitBy) {
-      parts.push({ ...base, groups: accumulate(rows) });
+      parts.push({ ...base, groups: bySplit.get('') || new Map() });
       return;
     }
     // Split one series into one per value of splitBy: the biggest values, the rest as "Other".
-    const bySplit = new Map();
-    for (const x of rows) {
-      const k = labelOf(x[sp.splitBy]);
-      if (!bySplit.has(k)) bySplit.set(k, []);
-      bySplit.get(k).push(x);
-    }
-    const ranked = [...bySplit.entries()].map(([k, list]) => {
-      const groups = accumulate(list);
+    const ranked = [...bySplit.entries()].map(([k, groups]) => {
       const tot = [...groups.values()].reduce((acc, a) => addTo(acc, { ...a }), newAcc());
       // Rank split values by their total (or row count when the measure isn't additive).
       return { k, groups, rank: Math.abs(finalize(tot, ADDITIVE.includes(s.agg) ? s.agg : 'count') || 0) };
-    }).sort((a, b) => b.rank - a.rank);
+    }).sort((a, b) => b.rank - a.rank || a.k.localeCompare(b.k));
     const keep = ranked.slice(0, MAX_SPLIT);
     const rest = ranked.slice(MAX_SPLIT);
     keep.sort((a, b) => (a.k === '(blank)') - (b.k === '(blank)') || (sp.splitBy === 'month' ? a.k.localeCompare(b.k) : 0));
@@ -301,6 +393,7 @@ export function compute(sp, m) {
       parts.push({ ...base, label: `Other (${rest.length})`, split: null, groups: other });
     }
   });
+  if (missing.length) throw new PendingError(missing);
 
   let labels = [...new Set(parts.flatMap((p) => [...p.groups.keys()]))];
   if (sp.groupBy === 'month' && sp.window) {
@@ -540,7 +633,7 @@ export function heuristic(q, m) {
   const combine = !compare && /\bvs\b|versus|compare|against|\band\b/.test(ql.replace(by ? by[0] : '', ''));
   if (!combine) use = use.slice(0, 1);
 
-  const count = /how many|count|number of|headcount/.test(ql);
+  const count = /\bhow many\b|\bcount\b|\bnumber of\b|\bheadcount\b/.test(ql); // whole words: not "country" or "account"
   const agg = /average|avg|typical|mean/.test(ql) ? 'avg' : /highest|max/.test(ql) && !groupBy ? 'max' : 'sum';
 
   const series = use.slice(0, 3).map(({ v, ms }) => {
@@ -568,7 +661,10 @@ export function heuristic(q, m) {
     compare,
     window,
     share,
-    chart: /bubble|scatter/.test(ql) ? 'scatter' : /heat ?map/.test(ql) ? 'heatmap' : /waterfall|bridge/.test(ql) ? 'waterfall' : /\bpie\b/.test(ql) || (share && !/\bbar\b/.test(ql)) ? 'pie' : null,
+    chart: /bubble|scatter/.test(ql) ? 'scatter' : /heat ?map/.test(ql) ? 'heatmap' : /waterfall|bridge/.test(ql) ? 'waterfall'
+      : /tree ?map/.test(ql) ? 'treemap' : /funnel/.test(ql) ? 'funnel' : /radar|spider/.test(ql) ? 'radar'
+        : /combo|bar and line|bars? with (?:a )?line/.test(ql) ? 'combo' : /\barea\b/.test(ql) ? 'area'
+          : /\bpie\b/.test(ql) || (share && !/\bbar\b/.test(ql)) ? 'pie' : null,
     series,
     limit: lim ? +lim[1] : 12,
   }, m);
@@ -658,4 +754,29 @@ export function fallbackInsight(sp, res, currency) {
   }
   if (res.labels.includes('(blank)')) t += ' Rows with no value for this breakdown are grouped as (blank); check the links between your sources if that group is large.';
   return t;
+}
+
+/**
+ * A report without the AI: the chart the request itself describes, then the
+ * most useful cross-source and single-source questions for this data.
+ */
+export function defaultReport(request, m, max = 6) {
+  const specs = [];
+  const seen = new Set();
+  const add = (sp) => {
+    if (!sp || sp.cannot || sp.clarify) return;
+    const k = JSON.stringify([sp.groupBy, sp.splitBy, sp.series.map((s) => [s.view, s.measure, s.agg, s.filters])]);
+    if (seen.has(k) || specs.length >= max) return;
+    seen.add(k);
+    specs.push(sp);
+  };
+  try { add(heuristic(request, m)); } catch { /* the request names nothing in the data */ }
+  // Headline totals from the first sources with numbers.
+  const kpis = Object.values(m.views).filter((v) => v.measures.length).slice(0, 3)
+    .map((v) => ({ view: v.key, measure: v.measures[0], agg: 'sum', label: `${v.label}: ${pretty(v.measures[0])}` }));
+  if (kpis.length) {
+    try { add(sanitize({ title: 'Headline totals', groupBy: null, series: kpis }, m)); } catch { /* no numbers */ }
+  }
+  suggestQuestions(m).forEach((s) => add(s.spec));
+  return specs;
 }

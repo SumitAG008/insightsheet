@@ -53,7 +53,7 @@ export function describeSpec(spec) {
  * Build a workbook: a Contents sheet listing every report with its sources,
  * then one sheet per report. items = [{ spec, title? }].
  */
-export async function buildWorkbook(items, m, extraFilters = []) {
+export async function buildWorkbook(items, m, extraFilters = [], computeFn = compute) {
   const XLSX = await import('xlsx');
   const wb = XLSX.utils.book_new();
   const taken = new Set(['contents']);
@@ -64,7 +64,7 @@ export async function buildWorkbook(items, m, extraFilters = []) {
     let res;
     try {
       spec = extraFilters.length ? sanitize({ ...it.spec, filters: [...(it.spec.filters || []), ...extraFilters] }, m) : it.spec;
-      res = compute(spec, m);
+      res = await computeFn(spec, m);
     } catch {
       continue;
     }
@@ -97,8 +97,8 @@ export function downloadBlob(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export async function downloadWorkbook(items, m, filename, extraFilters = []) {
-  const { XLSX, wb, count } = await buildWorkbook(items, m, extraFilters);
+export async function downloadWorkbook(items, m, filename, extraFilters = [], computeFn = compute) {
+  const { XLSX, wb, count } = await buildWorkbook(items, m, extraFilters, computeFn);
   if (!count) throw new Error('Nothing to export');
   const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   downloadBlob(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), filename);

@@ -219,7 +219,8 @@ const looksLikeKey = (key) => /(^id$|_id$|_code$|^code$|_no$|_number$|_key$|emai
  * of A's values are found in B. Same-named non-key columns are shared
  * dimensions already and need no relationship.
  */
-export function suggestRelationships(sources, existing = []) {
+export function suggestRelationships(allSources, existing = []) {
+  const sources = allSources.filter((s) => !isLake(s)); // lakehouse links are suggested by the server
   // A link already joining the same two columns, in either direction, covers the pair.
   const same = (x, y) => x.source === y.source && x.col === y.col;
   const has = (f, t) => existing.some((r) => (same(r.from, f) && r.to.source === t.source) || (same(r.from, t) && same(r.to, f)));
@@ -265,6 +266,8 @@ export function buildModel(sources = [], relationships = []) {
   const byId = Object.fromEntries(sources.map((s) => [s.id, s]));
   const views = {};
   const rowCache = new Map();
+  // Browser rows can only join browser rows; lakehouse tables join lakehouse tables (server-side).
+  const joinable = (a, b) => isLake(a) === isLake(b);
 
   for (const s of sources) {
     const dims = [];
@@ -277,7 +280,7 @@ export function buildModel(sources = [], relationships = []) {
     cols.filter((c) => c.role === 'measure').forEach((c) => { units[c.key] = c.unit || 'number'; });
     const borrowed = [];
     for (const r of relationships) {
-      if (r.from.source !== s.id || !byId[r.to.source]) continue;
+      if (r.from.source !== s.id || !byId[r.to.source] || !joinable(s, byId[r.to.source])) continue;
       const t = byId[r.to.source];
       t.columns
         .filter((c) => c.role === 'dimension' && c.type !== 'date' && c.key !== r.to.col && !dims.includes(c.key))
@@ -293,8 +296,11 @@ export function buildModel(sources = [], relationships = []) {
       units,
       dateCol: dateCol?.key || null,
       borrowed,
-      rowCount: s.rows.length,
-      desc: `${s.rows.length.toLocaleString()} rows from ${s.system}.${dateCol ? ` month comes from ${dateCol.key}.` : ''}${borrowed.length ? ` ${[...new Set(borrowed.map((b) => b.key))].join(', ')} looked up from ${[...new Set(borrowed.map((b) => b.from))].join(', ')}.` : ''}`,
+      remote: isLake(s),
+      table: s.lake?.table || null,
+      version: s.lake?.version || null,
+      rowCount: rowCountOf(s),
+      desc: `${rowCountOf(s).toLocaleString()} rows from ${s.system}.${dateCol ? ` month comes from ${dateCol.key}.` : ''}${borrowed.length ? ` ${[...new Set(borrowed.map((b) => b.key))].join(', ')} looked up from ${[...new Set(borrowed.map((b) => b.from))].join(', ')}.` : ''}`,
     };
   }
 
@@ -303,6 +309,7 @@ export function buildModel(sources = [], relationships = []) {
     const v = views[viewKey];
     if (!v) return [];
     const s = byId[v.id];
+    if (v.remote) return []; // rows stay in the lakehouse; answers come from /api/lakehouse/aggregate
     const measureKeys = v.measures;
     let rows = s.rows.map((r) => {
       const o = { ...r };
@@ -311,7 +318,7 @@ export function buildModel(sources = [], relationships = []) {
       return o;
     });
     for (const rel of relationships) {
-      if (rel.from.source !== s.id || !byId[rel.to.source]) continue;
+      if (rel.from.source !== s.id || !byId[rel.to.source] || !joinable(s, byId[rel.to.source])) continue;
       const t = byId[rel.to.source];
       const idx = new Map();
       for (const tr of t.rows) {
@@ -346,5 +353,47 @@ export function buildModel(sources = [], relationships = []) {
 
   const currency = (sources.flatMap((s) => s.columns).find((c) => c.currency) || {}).currency || (sources.some((s) => s.kind === 'sample') ? '£' : '');
 
-  return { sources, relationships, views, rowsOf, shared, currency, empty: !sources.length };
+  /** Known values of a dimension: from rows in the browser, or from the lakehouse profile. */
+  function valuesOf(viewKey, dim) {
+    const v = views[viewKey];
+    if (!v?.remote) return null;
+    const own = byId[v.id].values?.[dim];
+    if (own) return own.top || [];
+    const b = v.borrowed.find((x) => x.key === dim);
+    return (b && byId[b.via.to.source]?.values?.[dim]?.top) || [];
+  }
+
+  return { sources, relationships, views, rowsOf, valuesOf, byId, shared, currency, empty: !sources.length };
+}
+
+/* ---------------- lakehouse sources ---------------- */
+
+export const isLake = (s) => s?.kind === 'lake';
+export const rowCountOf = (s) => (isLake(s) ? s.rowCount || 0 : s.rows?.length || 0);
+
+/**
+ * A source stored in the Meldra lakehouse (an Iceberg table). It carries the
+ * table's profile (columns, known values, month range) but no rows.
+ * keepId lets a browser source keep its id when it moves to the lakehouse, so
+ * links and dashboard tiles that point at it keep working.
+ */
+export function lakeSource(d, keepId) {
+  return {
+    id: keepId || `lake_${d.table}`,
+    name: d.name,
+    key: toKey(d.name),
+    system: d.system || d.name,
+    kind: 'lake',
+    storedKind: d.kind || 'file',
+    lake: { table: d.table, version: d.version },
+    columns: (d.columns || []).map(({ name, key, type, role, unit, currency }) => ({ name, key, type, role, unit, currency })),
+    rows: [],
+    rowCount: d.row_count || 0,
+    values: d.values || {},
+    monthRange: d.month_range || null,
+    origin: d.origin || undefined,
+    truncated: false,
+    addedAt: d.created_at,
+    refreshedAt: d.refreshed_at,
+  };
 }

@@ -91,7 +91,7 @@ from app.services.ai_service import (
     invoke_llm, generate_image, generate_formula, analyze_data, suggest_chart_type,
     generate_transform, explain_sql, explain_ai_error
 )
-from app.services.unified_reporting_service import plan_report, write_insight
+from app.services.unified_reporting_service import build_report, plan_report, write_insight
 from app.services.api_connector_service import ConnectorError, allow_call, egress_info, fetch_records, public_presets, safe_summary
 from app.services.migration_service import suggest_mapping
 from app.services.zip_processor import ZipProcessorService
@@ -806,6 +806,10 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
+
+# Meldra lakehouse (Apache Iceberg tables via Apache Polaris, Arrow + DuckDB queries)
+from app.routes.lakehouse import router as lakehouse_router  # noqa: E402
+app.include_router(lakehouse_router)
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -1899,6 +1903,12 @@ class ConnectorFetchRequest(BaseModel):
     cursor_path: Optional[str] = Field(None, max_length=100)
     has_more_path: Optional[str] = Field(None, max_length=100)
     max_rows: Optional[int] = Field(None, ge=1, le=200000)
+
+
+class UnifiedBuildReportRequest(BaseModel):
+    request: str = Field(..., min_length=1, max_length=600)
+    catalog: Dict[str, Any]
+    tiles: int = Field(6, ge=2, le=8)
 
 
 class MigrationMappingRequest(BaseModel):
@@ -5911,6 +5921,19 @@ async def unified_reporting_plan_endpoint(
     except Exception as e:
         logger.error(f"Unified reporting plan error: {str(e)}")
         raise HTTPException(status_code=502, detail=f"The report planner is unavailable: {explain_ai_error(e)}.")
+
+
+@app.post("/api/unified-reporting/build-report")
+async def unified_reporting_build_report_endpoint(
+    request: UnifiedBuildReportRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Design a multi-chart report from a prompt (catalog metadata only, never rows)."""
+    try:
+        return {"report": await build_report(request.request, request.catalog, request.tiles)}
+    except Exception as e:
+        logger.error(f"Unified reporting build-report error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"The report builder is unavailable: {explain_ai_error(e)}.")
 
 
 @app.post("/api/unified-reporting/insight")

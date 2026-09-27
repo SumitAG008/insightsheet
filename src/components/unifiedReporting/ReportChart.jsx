@@ -1,9 +1,10 @@
 import PropTypes from 'prop-types';
 import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart,
-  ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Funnel, FunnelChart, LabelList, Legend, Line, LineChart,
+  Pie, PieChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Scatter, ScatterChart,
+  Tooltip, Treemap, XAxis, YAxis, ZAxis,
 } from 'recharts';
-import { chartColumns, fmt } from '@/lib/unifiedReporting/engine';
+import { chartColumns, columnsOf, fmt } from '@/lib/unifiedReporting/engine';
 
 export const PALETTE = ['#2563eb', '#0d9488', '#d97706', '#db2777', '#7c3aed', '#64748b', '#0891b2', '#65a30d', '#ea580c'];
 
@@ -136,8 +137,85 @@ function Waterfall({ res, height, currency }) {
 }
 Waterfall.propTypes = { res: PropTypes.object.isRequired, height: PropTypes.number.isRequired, currency: PropTypes.string };
 
+/** One treemap tile: name and value when there is room. */
+function TreemapTile({ x, y, width, height, index, name, value, unit, currency }) {
+  const room = width > 70 && height > 34;
+  return (
+    <g>
+      <rect x={x} y={y} width={width} height={height} rx={4} fill={PALETTE[index % PALETTE.length]} stroke="#fff" strokeWidth={2} />
+      {room && <text x={x + 8} y={y + 18} fill="#fff" fontSize={12} fontWeight={600}>{short(name, Math.floor(width / 8))}</text>}
+      {room && height > 50 && <text x={x + 8} y={y + 34} fill="#fff" fontSize={11} opacity={0.9}>{fmt(value, unit, currency)}</text>}
+    </g>
+  );
+}
+TreemapTile.propTypes = {
+  x: PropTypes.number, y: PropTypes.number, width: PropTypes.number, height: PropTypes.number, index: PropTypes.number,
+  name: PropTypes.string, value: PropTypes.number, unit: PropTypes.string, currency: PropTypes.string,
+};
+
+/** Tiles sized by value: parts of a whole with many groups. */
+function TreemapView({ res, height, currency }) {
+  const s = res.series[0];
+  const data = res.labels.map((label, i) => ({ name: label, size: Math.max(0, s.data[i] || 0), value: s.data[i] })).filter((d) => d.size > 0);
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <Treemap data={data} dataKey="size" nameKey="name" isAnimationActive={false} content={<TreemapTile unit={s.unit} currency={currency} />}>
+        <Tooltip {...tooltipStyle} formatter={(v, n, item) => [fmt(item.payload.value, s.unit, currency), item.payload.name]} />
+      </Treemap>
+    </ResponsiveContainer>
+  );
+}
+TreemapView.propTypes = { res: PropTypes.object.isRequired, height: PropTypes.number.isRequired, currency: PropTypes.string };
+
+/** Stages in their order (the breakdown's order, e.g. pipeline stages), narrowing by value. */
+function FunnelView({ res, height, currency }) {
+  const s = res.series[0];
+  const data = res.labels.map((label, i) => ({ name: label, value: s.data[i] || 0, fill: PALETTE[i % PALETTE.length] }));
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <FunnelChart>
+        <Tooltip {...tooltipStyle} formatter={(v, n) => [fmt(v, s.unit, currency), n]} />
+        <Funnel dataKey="value" nameKey="name" data={data} isAnimationActive={false}>
+          <LabelList position="right" dataKey="name" fill="currentColor" stroke="none" fontSize={12} />
+          <LabelList position="center" dataKey="value" fill="#fff" stroke="none" fontSize={12} formatter={(v) => fmt(v, s.unit, currency)} />
+        </Funnel>
+      </FunnelChart>
+    </ResponsiveContainer>
+  );
+}
+FunnelView.propTypes = { res: PropTypes.object.isRequired, height: PropTypes.number.isRequired, currency: PropTypes.string };
+
+/** Several numbers across a few items. Each column is scaled to its own maximum so different units compare. */
+function RadarView({ res, height, currency }) {
+  const cols = chartColumns(res);
+  const max = cols.map((c) => Math.max(...c.data.map((v) => Math.abs(v || 0)), 0) || 1);
+  const rows = res.labels.slice(0, 12).map((label, i) => {
+    const row = { label };
+    cols.forEach((c, k) => { row[`c${k}`] = c.data[i] === null ? 0 : Math.round((Math.abs(c.data[i]) / max[k]) * 1000) / 10; row[`v${k}`] = c.data[i]; });
+    return row;
+  });
+  return (
+    <ResponsiveContainer width="100%" height={height}>
+      <RadarChart data={rows} outerRadius="72%">
+        <PolarGrid className="stroke-slate-200 dark:stroke-slate-700" />
+        <PolarAngleAxis dataKey="label" tick={{ ...axisTick, fontSize: 11 }} tickFormatter={(v) => short(v, 14)} />
+        <PolarRadiusAxis tick={false} axisLine={false} domain={[0, 100]} />
+        <Tooltip {...tooltipStyle} formatter={(v, n, item) => { const k = Number(String(item.dataKey).slice(1)); return [fmt(item.payload[`v${k}`], cols[k].unit, currency), n]; }} />
+        {cols.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
+        {cols.map((c, k) => (
+          <Radar key={c.label} dataKey={`c${k}`} name={c.label} stroke={PALETTE[k % PALETTE.length]} fill={PALETTE[k % PALETTE.length]} fillOpacity={0.18} isAnimationActive={false} />
+        ))}
+      </RadarChart>
+    </ResponsiveContainer>
+  );
+}
+RadarView.propTypes = { res: PropTypes.object.isRequired, height: PropTypes.number.isRequired, currency: PropTypes.string };
+
 export default function ReportChart({ spec, res, height = 300, currency = '' }) {
   if (spec.chart === 'scatter') return <ScatterView res={res} height={height} currency={currency} />;
+  if (spec.chart === 'treemap') return <TreemapView res={res} height={height} currency={currency} />;
+  if (spec.chart === 'funnel') return <FunnelView res={res} height={height} currency={currency} />;
+  if (spec.chart === 'radar') return <RadarView res={res} height={height} currency={currency} />;
   if (spec.chart === 'heatmap' && spec.splitBy) return <Heatmap spec={spec} res={res} currency={currency} />;
   if (spec.chart === 'waterfall') return <Waterfall res={res} height={height} currency={currency} />;
   const fmtU = (v, u) => fmt(v, u, currency);
@@ -169,6 +247,53 @@ export default function ReportChart({ spec, res, height = 300, currency = '' }) 
           <Tooltip {...tooltipStyle} formatter={(v, name) => [fmtU(v, unit), name]} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
         </PieChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  if (spec.chart === 'combo') {
+    // First number as bars, the others as lines; a different unit gets the right-hand axis.
+    const all = columnsOf(res).filter((c) => c.kind !== 'change' && c.kind !== 'share');
+    const u0 = all[0].unit;
+    const ru = all.find((c) => c.unit !== u0)?.unit;
+    const data = res.labels.map((label, i) => {
+      const row = { label };
+      all.forEach((c, k) => { row[`c${k}`] = c.data[i] === null ? null : Math.round(c.data[i] * 100) / 100; });
+      return row;
+    });
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <ComposedChart data={data} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200 dark:stroke-slate-700" />
+          <XAxis dataKey="label" tick={axisTick} tickFormatter={(v) => short(v)} interval="preserveStartEnd" />
+          <YAxis yAxisId="left" tick={axisTick} tickFormatter={(v) => fmtU(v, u0)} width={70} />
+          {ru && <YAxis yAxisId="right" orientation="right" tick={axisTick} tickFormatter={(v) => fmtU(v, ru)} width={70} />}
+          <Tooltip {...tooltipStyle} formatter={(v, n, item) => [fmtU(v, all[Number(String(item.dataKey).slice(1))]?.unit), n]} />
+          <Legend wrapperStyle={{ fontSize: 12 }} />
+          {all.map((c, k) => (k === 0
+            ? <Bar key={c.label} yAxisId="left" dataKey="c0" name={c.label} fill={PALETTE[0]} radius={[5, 5, 0, 0]} maxBarSize={38} />
+            : <Line key={c.label} yAxisId={ru && c.unit === ru ? 'right' : 'left'} type="monotone" dataKey={`c${k}`} name={c.label} stroke={PALETTE[k % PALETTE.length]} strokeWidth={2.5} dot={{ r: 2.5 }} connectNulls />))}
+        </ComposedChart>
+      </ResponsiveContainer>
+    );
+  }
+
+  if (spec.chart === 'area') {
+    const stackedArea = Boolean(spec.splitBy) && ['sum', 'count'].includes(res.series[0]?.agg);
+    return (
+      <ResponsiveContainer width="100%" height={height}>
+        <AreaChart data={rows} margin={{ top: 10, right: 16, bottom: 0, left: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-slate-200 dark:stroke-slate-700" />
+          <XAxis dataKey="label" tick={axisTick} tickFormatter={(v) => short(v)} />
+          <YAxis yAxisId="left" tick={axisTick} tickFormatter={(v) => fmtU(v, unit)} width={70} />
+          {rightAxis}
+          <Tooltip {...tooltipStyle} formatter={tip} />
+          {multi && <Legend wrapperStyle={{ fontSize: 12 }} />}
+          {cols.map((c, k) => (
+            <Area key={c.label} yAxisId={axisOf(c)} type="monotone" dataKey={`c${k}`} name={c.label} stackId={stackedArea ? 'a' : undefined}
+              stroke={PALETTE[k % PALETTE.length]} fill={PALETTE[k % PALETTE.length]} fillOpacity={stackedArea ? 0.55 : 0.18} strokeWidth={2} connectNulls />
+          ))}
+        </AreaChart>
       </ResponsiveContainer>
     );
   }

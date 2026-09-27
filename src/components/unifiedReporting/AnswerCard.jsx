@@ -1,14 +1,24 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
-import { Pin, Download, Code2, HelpCircle, BarChart3, LineChart, Table2, PieChart, ScatterChart, Hash, AlertCircle, Grid3x3, ChartColumnStacked, FileSpreadsheet } from 'lucide-react';
+import {
+  Pin, Download, Code2, HelpCircle, BarChart3, LineChart, Table2, PieChart, ScatterChart, Hash, AlertCircle, Grid3x3, ChartColumnStacked,
+  FileSpreadsheet, ChartArea, ChartNoAxesCombined, LayoutGrid, Filter, Radar,
+} from 'lucide-react';
 import ReportChart, { Heatmap } from './ReportChart';
 import { AnalyseBar, FilterBar } from './AnalysisControls';
-import { chartOptions, columnsOf, compute, fmt, toSQL } from '@/lib/unifiedReporting/engine';
+import { chartOptions, columnsOf, fmt, toSQL } from '@/lib/unifiedReporting/engine';
+import { useResult } from '@/lib/unifiedReporting/remote';
 
 const OP_WORD = { eq: 'is', neq: 'is not', gte: '≥', lte: '≤' };
-const CHART_ICON = { bar: BarChart3, line: LineChart, table: Table2, pie: PieChart, scatter: ScatterChart, number: Hash, heatmap: Grid3x3, waterfall: ChartColumnStacked };
-const CHART_NAME = { bar: 'Bar', line: 'Line', table: 'Table', pie: 'Pie', scatter: 'Bubble', number: 'Total', heatmap: 'Heatmap', waterfall: 'Waterfall' };
+const CHART_ICON = {
+  bar: BarChart3, line: LineChart, area: ChartArea, combo: ChartNoAxesCombined, table: Table2, pie: PieChart, treemap: LayoutGrid,
+  funnel: Filter, radar: Radar, scatter: ScatterChart, number: Hash, heatmap: Grid3x3, waterfall: ChartColumnStacked,
+};
+const CHART_NAME = {
+  bar: 'Bar', line: 'Line', area: 'Area', combo: 'Bar + line', table: 'Table', pie: 'Pie', treemap: 'Treemap', funnel: 'Funnel',
+  radar: 'Radar', scatter: 'Bubble', number: 'Total', heatmap: 'Heatmap', waterfall: 'Waterfall',
+};
 
 export function KpiRow({ res, currency }) {
   return (
@@ -67,6 +77,16 @@ export function ReportBody({ spec, res, height, currency, compact }) {
 }
 ReportBody.propTypes = { spec: PropTypes.object.isRequired, res: PropTypes.object.isRequired, height: PropTypes.number, currency: PropTypes.string, compact: PropTypes.bool };
 
+/** Shown while the lakehouse calculates an answer. */
+export function LakeLoading() {
+  return (
+    <div className="flex items-center gap-2.5 py-6 text-sm text-slate-500">
+      <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-600" aria-hidden="true" />
+      Calculating in the Meldra lakehouse…
+    </div>
+  );
+}
+
 export function ChartSwitcher({ spec, onChange }) {
   const opts = chartOptions(spec);
   if (opts.length < 2) return null;
@@ -120,6 +140,7 @@ const USED_LABEL = { ai: 'Planned by Meldra AI from your column names.', rules: 
 
 export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onDownload, onDownloadExcel, onRunSpec, onRefine }) {
   const [open, setOpen] = useState(false);
+  const { res, loading, error: resError } = useResult(item.status === 'done' ? item.spec : null, m);
   const [draft, setDraft] = useState(null);
   const [specErr, setSpecErr] = useState('');
 
@@ -170,11 +191,9 @@ export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onD
     );
   }
 
-  let res;
-  try {
-    res = compute(item.spec, m);
-  } catch {
-    return shell(<p className="m-0 text-sm text-slate-500">This answer used data that has since been removed.</p>);
+  if (loading) return shell(<LakeLoading />);
+  if (!res) {
+    return shell(<p className="m-0 text-sm text-slate-500">{resError && resError !== 'broken' ? resError : 'This answer used data that has since been removed.'}</p>);
   }
   const sp = item.spec;
   const specText = draft ?? JSON.stringify({

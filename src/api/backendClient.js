@@ -81,6 +81,14 @@ const apiCall = async (endpoint, options = {}) => {
   return response;
 };
 
+/** Parse a JSON response or throw an Error carrying the server's explanation. */
+const jsonOrThrow = async (response, fallback) => {
+  if (response.ok) return response.json();
+  const error = await response.json().catch(() => ({}));
+  const detail = Array.isArray(error.detail) ? error.detail.map((d) => d.msg).join('; ') : error.detail;
+  throw new Error(detail || `${fallback} (${response.status}).`);
+};
+
 // API Client
 export const backendApi = {
   // Authentication
@@ -714,8 +722,50 @@ export const backendApi = {
     },
   },
 
+  // Meldra lakehouse: sources stored as Apache Iceberg tables (Polaris catalog), aggregated server-side.
+  lakehouse: {
+    status: async () => {
+      const response = await apiCall('/api/lakehouse/status', { timeoutMs: 15000 });
+      if (!response.ok) return { enabled: false };
+      return response.json();
+    },
+
+    sources: async () => jsonOrThrow(await apiCall('/api/lakehouse/sources', { timeoutMs: 60000 }), 'Could not list your stored sources'),
+
+    upload: async (file, system) => {
+      const form = new FormData();
+      form.append('file', file);
+      if (system) form.append('system', system);
+      return jsonOrThrow(await apiCall('/api/lakehouse/upload', { method: 'POST', body: form, timeoutMs: 30 * 60000 }), `Could not store ${file.name}`);
+    },
+
+    storeRows: async ({ name, system, kind, columns, rows, origin, replaceTable }) => jsonOrThrow(await apiCall('/api/lakehouse/rows', {
+      method: 'POST',
+      body: { name, system, kind, columns, rows, origin: origin || null, replace_table: replaceTable || null },
+      timeoutMs: 10 * 60000,
+    }), `Could not store ${name}`),
+
+    update: async (table, patch) => jsonOrThrow(await apiCall(`/api/lakehouse/sources/${encodeURIComponent(table)}`, { method: 'PATCH', body: patch }), 'Could not save the change'),
+
+    remove: async (table) => jsonOrThrow(await apiCall(`/api/lakehouse/sources/${encodeURIComponent(table)}`, { method: 'DELETE' }), 'Could not delete the source'),
+
+    removeAll: async () => jsonOrThrow(await apiCall('/api/lakehouse/sources', { method: 'DELETE', timeoutMs: 5 * 60000 }), 'Could not delete your stored data'),
+
+    preview: async (table) => jsonOrThrow(await apiCall(`/api/lakehouse/sources/${encodeURIComponent(table)}/preview`), 'Could not load rows'),
+
+    aggregate: async (series) => jsonOrThrow(await apiCall('/api/lakehouse/aggregate', { method: 'POST', body: { series }, timeoutMs: 5 * 60000 }), 'Could not calculate the answer'),
+
+    suggestLinks: async (tables) => jsonOrThrow(await apiCall('/api/lakehouse/suggest-links', { method: 'POST', body: { tables }, timeoutMs: 5 * 60000 }), 'Could not suggest links'),
+  },
+
   // Unified Reporting (planner sees catalog metadata only, never rows)
   unifiedReporting: {
+    buildReport: async ({ request, catalog, tiles }) => jsonOrThrow(await apiCall('/api/unified-reporting/build-report', {
+      method: 'POST',
+      body: { request, catalog, tiles: tiles || 6 },
+      timeoutMs: 90000,
+    }), 'Report builder failed'),
+
     plan: async ({ question, previousQuestion, catalog }) => {
       const response = await apiCall('/api/unified-reporting/plan', {
         method: 'POST',

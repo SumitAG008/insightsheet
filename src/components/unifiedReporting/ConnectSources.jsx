@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Copy, Database, KeyRound, Loader2, Plug, ShieldCheck } from 'lucide-react';
+import { ChevronDown, ChevronRight, Copy, KeyRound, Loader2, Plug, ShieldCheck } from 'lucide-react';
 import { backendApi } from '@/api/backendClient';
 import { MAX_ROWS, sourceFromTable } from '@/lib/unifiedReporting/model';
 import TokenAuthFields from './TokenAuthFields';
@@ -106,7 +106,8 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
         records_path: out.records_path || request.records_path || '', paging: out.paging || request.paging, next_path: cfg.next_path,
         page_size: cfg.page_size, max_rows: cfg.max_rows, cursor_param: cfg.cursor_param, authType: auth.type, auth: publicAuth(auth), system, name,
       };
-      const src = sourceFromTable(name, out.columns, out.rows, system, 'api', origin);
+      if (!out.row_count) throw new Error('The API answered but returned no records. Check the address and "Records at".');
+      const src = sourceFromTable(name, out.columns, out.rows, system, origin, 'api');
       src.truncated = Boolean(out.truncated);
       const msg = `${out.row_count.toLocaleString()} rows from ${out.pages} page${out.pages === 1 ? '' : 's'}${out.truncated ? ' (row limit reached)' : ''}`;
       // Drop secrets from memory as soon as they have been used.
@@ -223,86 +224,3 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
   );
 }
 ApiConnector.propTypes = { initial: PropTypes.object, onAdd: PropTypes.func.isRequired, onCancel: PropTypes.func.isRequired };
-
-const DB_TYPES = {
-  postgresql: { name: 'PostgreSQL', port: 5432, host: 'host' },
-  mysql: { name: 'MySQL / MariaDB', port: 3306, host: 'host' },
-  mssql: { name: 'SQL Server / Azure SQL', port: 1433, host: 'server' },
-};
-
-/** Run one read-only query against a database and add the result as a source. */
-export function DatabaseSource({ initial, onAdd, onCancel }) {
-  const [type, setType] = useState(initial?.dbType || 'postgresql');
-  const [conn, setConn] = useState(() => ({ host: '', port: '', database: '', username: '', password: '', ...(initial?.conn || {}) }));
-  const [sql, setSql] = useState(initial?.query || 'SELECT * FROM ');
-  const [system, setSystem] = useState(initial?.system || '');
-  const [name, setName] = useState(initial?.name || '');
-  const [limit, setLimit] = useState(initial?.limit || '50000');
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const c = (patch) => setConn((x) => ({ ...x, ...patch }));
-
-  const run = async () => {
-    setErr('');
-    if (!/^\s*select\b/i.test(sql)) {
-      setErr('Only SELECT queries can be used.');
-      return;
-    }
-    const d = DB_TYPES[type];
-    const data = { [d.host]: conn.host.trim(), port: conn.port || d.port, database: conn.database.trim(), username: conn.username, password: conn.password };
-    if (type === 'postgresql') data.sslMode = 'require';
-    if (type === 'mssql') data.encrypt = 'true';
-    setBusy(true);
-    let id = null;
-    try {
-      const t = await backendApi.db.testConnection(type, data);
-      if (!t?.success) throw new Error(t?.error || 'Could not connect to the database.');
-      id = t.connectionId;
-      const maxRows = Math.max(1, Math.min(MAX_ROWS, Number(limit) || MAX_ROWS));
-      const out = await backendApi.db.query(id, type, sql.trim().replace(/;\s*$/, ''), maxRows);
-      const sys = system.trim() || `${d.name.split(' ')[0]} ${conn.database}`.trim();
-      const src = sourceFromTable(name.trim() || conn.database || 'Query', out.columns, out.data, sys, 'database', {
-        type: 'database', dbType: type, conn: { host: conn.host, port: conn.port, database: conn.database, username: conn.username },
-        query: sql, system: sys, name: name.trim(), limit,
-      });
-      src.truncated = Boolean(out.truncated);
-      onAdd(src, `${out.rowCount.toLocaleString()} rows${out.truncated ? ' (row limit reached)' : ''}`);
-    } catch (e) {
-      setErr(e.message || 'The query failed.');
-    } finally {
-      if (id) backendApi.db.disconnect(id, type).catch(() => {});
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className={card}>
-      <h3 className="m-0 flex items-center gap-2 text-[15px] font-semibold"><Database className="h-4 w-4 text-blue-600" />{initial ? `Refresh ${initial.name || 'query'}` : 'Query a database'}</h3>
-      <p className="mt-1 text-xs text-slate-500">Runs one read-only SELECT. Use a read-only database user; the password is not stored.</p>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Field name="Database">
-          <select className={input} value={type} onChange={(e) => setType(e.target.value)} disabled={Boolean(initial)}>
-            {Object.entries(DB_TYPES).map(([k, v]) => <option key={k} value={k}>{v.name}</option>)}
-          </select>
-        </Field>
-        <Field name="System name (shown on answers)"><input className={input} value={system} onChange={(e) => setSystem(e.target.value)} placeholder="e.g. Data warehouse" /></Field>
-        <Field name="Host"><input className={input} value={conn.host} onChange={(e) => c({ host: e.target.value })} /></Field>
-        <Field name="Port"><input className={input} type="number" value={conn.port} placeholder={String(DB_TYPES[type].port)} onChange={(e) => c({ port: e.target.value })} /></Field>
-        <Field name="Database name"><input className={input} value={conn.database} onChange={(e) => c({ database: e.target.value })} /></Field>
-        <Field name="Source name"><input className={input} value={name} placeholder="e.g. Invoices" onChange={(e) => setName(e.target.value)} /></Field>
-        <Field name="User name"><input className={input} autoComplete="off" value={conn.username} onChange={(e) => c({ username: e.target.value })} /></Field>
-        <Field name="Password"><input className={input} type="password" autoComplete="new-password" value={conn.password} onChange={(e) => c({ password: e.target.value })} /></Field>
-        <Field name="Query (SELECT only)" className="sm:col-span-2">
-          <textarea className={`${input} min-h-[90px] font-mono text-xs`} value={sql} onChange={(e) => setSql(e.target.value)} spellCheck={false} />
-        </Field>
-        <Field name="Maximum rows"><input className={input} type="number" min="1" max={MAX_ROWS} value={limit} onChange={(e) => setLimit(e.target.value)} /></Field>
-      </div>
-      {err && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300" role="alert">{err}</p>}
-      <div className="mt-4 flex gap-2">
-        <Button onClick={run} disabled={busy || !conn.host.trim() || !conn.database.trim()}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busy ? 'Running…' : initial ? 'Run again' : 'Run and add'}</Button>
-        <Button variant="ghost" onClick={onCancel} disabled={busy}>Cancel</Button>
-      </div>
-    </div>
-  );
-}
-DatabaseSource.propTypes = { initial: PropTypes.object, onAdd: PropTypes.func.isRequired, onCancel: PropTypes.func.isRequired };

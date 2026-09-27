@@ -8031,7 +8031,7 @@ async def execute_db_query(
             request.connection_id,
             request.db_type,
             request.query,
-            request.max_rows
+            request.max_rows or 200000,
         )
         if not result.get("success"):
             raise HTTPException(

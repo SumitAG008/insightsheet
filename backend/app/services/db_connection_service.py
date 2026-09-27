@@ -3,6 +3,7 @@ Database Connection Service
 Handles connections to various database types with zero storage policy
 """
 import logging
+import re
 from typing import Dict, Any, Optional, List
 import uuid
 from datetime import datetime, timedelta
@@ -11,6 +12,40 @@ logger = logging.getLogger(__name__)
 
 # In-memory connection pool (cleared on server restart - zero persistence)
 _connection_pool: Dict[str, Dict[str, Any]] = {}
+
+
+MAX_QUERY_ROWS = 200000
+
+_WRITE_WORDS = re.compile(
+    r"\b(insert|update|delete|merge|upsert|drop|alter|create|truncate|grant|revoke|"
+    r"exec|execute|call|copy|into|vacuum|attach|detach|pragma)\b",
+    re.IGNORECASE,
+)
+
+
+def validate_read_only_query(query: str) -> str:
+    """
+    Accept exactly one read-only statement (SELECT … or WITH … SELECT).
+    Comments and string literals are ignored when looking for write keywords,
+    and a second statement after a semicolon is rejected.
+    Returns the query without a trailing semicolon.
+    """
+    q = (query or "").strip()
+    # Drop comments, then blank out quoted text so keywords inside strings don't count.
+    no_comments = re.sub(r"--[^\n]*|/\*.*?\*/", " ", q, flags=re.S)
+    bare = re.sub(r"'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"|`[^`]*`|\[[^\]]*\]", "''", no_comments).strip()
+    bare = bare.rstrip(";").strip()
+    if not bare:
+        raise ValueError("The query is empty")
+    if ";" in bare:
+        raise ValueError("Only one statement is allowed")
+    first = bare.split(None, 1)[0].upper()
+    if first not in ("SELECT", "WITH"):
+        raise ValueError("Only SELECT queries are allowed for security")
+    hit = _WRITE_WORDS.search(bare)
+    if hit:
+        raise ValueError(f"Read-only queries only: '{hit.group(0).upper()}' is not allowed")
+    return q.rstrip().rstrip(";")
 
 
 class DatabaseConnectionService:
@@ -370,8 +405,8 @@ class DatabaseConnectionService:
             }
     
     @staticmethod
-    def execute_query(connection_id: str, db_type: str, query: str, max_rows: Optional[int] = None) -> Dict[str, Any]:
-        """Execute SQL query and return results (at most max_rows rows when given)"""
+    def execute_query(connection_id: str, db_type: str, query: str, max_rows: int = MAX_QUERY_ROWS) -> Dict[str, Any]:
+        """Execute SQL query and return results"""
         try:
             if connection_id not in _connection_pool:
                 raise ValueError("Connection not found")
@@ -380,10 +415,9 @@ class DatabaseConnectionService:
             conn = conn_info["connection"]
             conn_info["last_used"] = datetime.utcnow()
             
-            # Security: Only allow SELECT queries (read-only)
-            query_upper = query.strip().upper()
-            if not query_upper.startswith("SELECT"):
-                raise ValueError("Only SELECT queries are allowed for security")
+            # Security: one read-only statement only, run in a read-only transaction where supported.
+            query = validate_read_only_query(query)
+            max_rows = max(1, min(int(max_rows or MAX_QUERY_ROWS), MAX_QUERY_ROWS))
             
             if db_type in ["postgresql", "mysql", "mssql", "sqlite"]:
                 if db_type == "postgresql":
@@ -398,37 +432,47 @@ class DatabaseConnectionService:
                     cursor = conn.cursor()
                     conn.row_factory = sqlite3.Row
                 
-                cursor.execute(query)
-                fetch = (lambda: cursor.fetchmany(max_rows + 1)) if max_rows else cursor.fetchall
-                
+                try:
+                    if db_type == "postgresql":
+                        cursor.execute("SET TRANSACTION READ ONLY")
+                    elif db_type == "mysql":
+                        cursor.execute("START TRANSACTION READ ONLY")
+                    cursor.execute(query)
+                except Exception:
+                    # Leave the connection usable after a failed query.
+                    if db_type in ("postgresql", "mysql"):
+                        conn.rollback()
+                    raise
+
                 if db_type == "postgresql":
-                    rows = fetch()
+                    rows = cursor.fetchmany(max_rows + 1)
                     data = [dict(row) for row in rows]
                     columns = list(data[0].keys()) if data else []
                 elif db_type == "mysql":
                     columns = [desc[0] for desc in cursor.description] if cursor.description else []
-                    rows = fetch()
+                    rows = cursor.fetchmany(max_rows + 1)
                     data = [dict(zip(columns, row)) for row in rows]
                 elif db_type == "mssql":
                     columns = [desc[0] for desc in cursor.description] if cursor.description else []
-                    rows = fetch()
+                    rows = cursor.fetchmany(max_rows + 1)
                     data = [dict(zip(columns, row)) for row in rows]
                 elif db_type == "sqlite":
-                    rows = fetch()
+                    rows = cursor.fetchmany(max_rows + 1)
                     data = [dict(row) for row in rows]
                     columns = list(data[0].keys()) if data else []
                 
                 cursor.close()
-                truncated = bool(max_rows) and len(data) > max_rows
-                if truncated:
-                    data = data[:max_rows]
-                
+                if db_type in ("postgresql", "mysql"):
+                    conn.rollback()  # end the read-only transaction
+
+                truncated = len(data) > max_rows
+                data = data[:max_rows]
                 return {
                     "success": True,
                     "columns": columns,
                     "data": data,
                     "rowCount": len(data),
-                    "truncated": truncated
+                    "truncated": truncated,
                 }
             else:
                 raise ValueError(f"Query execution not yet supported for {db_type}")

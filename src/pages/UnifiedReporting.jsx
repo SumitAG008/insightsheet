@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUp, Database, LayoutDashboard, MessageSquareText, Sparkles } from 'lucide-react';
+import { ArrowUp, Database, LayoutDashboard, MessageSquareText, Server, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { backendApi } from '@/api/backendClient';
 import AnswerCard from '@/components/unifiedReporting/AnswerCard';
 import DashboardView from '@/components/unifiedReporting/DashboardView';
 import SourcesView, { UploadZone } from '@/components/unifiedReporting/SourcesView';
+import DatabaseSourceDialog from '@/components/unifiedReporting/DatabaseSourceDialog';
 import {
   buildCatalog, columnsOf, compute, fallbackFollowups, fallbackInsight, heuristic, sanitize, suggestQuestions,
 } from '@/lib/unifiedReporting/engine';
@@ -27,6 +28,7 @@ export default function UnifiedReporting() {
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
+  const [dbDialog, setDbDialog] = useState(null); // null | { refreshOf?: source }
   const inputRef = useRef(null);
   const toastTimer = useRef(null);
 
@@ -85,34 +87,46 @@ export default function UnifiedReporting() {
     }
     setBusy(false);
     if (added.length) {
-      setSources((s) => {
-        const taken = new Set(s.map((x) => x.key));
-        return [...s, ...added.map((x) => {
-          let key = x.key;
-          while (taken.has(key)) key = `${key}_2`;
-          taken.add(key);
-          return { ...x, key };
-        })];
-      });
+      appendSources(added);
       toast(`Added ${added.map((x) => x.name).join(', ')}. Check the suggested links on the right.`);
     }
     if (errors.length) toast(errors.join(' '));
   };
 
-  const withUniqueKey = (list, x) => {
-    const taken = new Set(list.map((y) => y.key));
-    let key = x.key;
-    while (taken.has(key)) key = `${key}_2`;
-    return { ...x, key };
+  const appendSources = (added) => setSources((s) => {
+    const taken = new Set(s.map((x) => x.key));
+    return [...s, ...added.map((x) => {
+      let key = x.key;
+      while (taken.has(key)) key = `${key}_2`;
+      taken.add(key);
+      return { ...x, key };
+    })];
+  });
+
+  const addDatabaseSources = (added, links) => {
+    appendSources(added);
+    if (links.length) setRelationships((rs) => [...rs, ...links]);
+    const n = links.length ? ` Linked ${links.length} foreign key${links.length === 1 ? '' : 's'}.` : '';
+    toast(`Added ${added.map((x) => x.name).join(', ')} from the database.${n}`);
+    setView('data');
+  };
+
+  const refreshFromDatabase = (id, columns, rows, truncated) => {
+    const name = sources.find((x) => x.id === id)?.name || 'the source';
+    setSources((ss) => ss.map((x) => (x.id === id ? { ...refreshSource(x, columns, rows), truncated } : x)));
+    toast(`Refreshed ${name}: ${rows.length.toLocaleString()} rows.`);
   };
 
   const addSource = (src, msg) => {
-    setSources((s) => [...s, withUniqueKey(s, src)]);
+    appendSources([src]);
     toast(`Added ${src.name}: ${msg}. Check the suggested links on the right.`);
   };
 
-  const refreshOne = (id, fresh, msg) => {
-    setSources((s) => s.map((x) => (x.id === id ? refreshSource(x, fresh) : x)));
+  // An API pull comes back as a new source; refresh it in place, keeping the user's column choices.
+  const refreshApiSource = (id, fresh, msg) => {
+    const byKey = Object.fromEntries(fresh.columns.map((c) => [c.key, c.name]));
+    const rows = fresh.rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [byKey[k] || k, v])));
+    setSources((ss) => ss.map((x) => (x.id === id ? { ...refreshSource(x, fresh.columns.map((c) => c.name), rows), truncated: fresh.truncated, origin: fresh.origin } : x)));
     toast(`Refreshed: ${msg}.`);
   };
 
@@ -354,9 +368,11 @@ export default function UnifiedReporting() {
             m={m}
             busy={busy}
             onFiles={addFiles}
+            onConnectDatabase={() => setDbDialog({})}
+            onRefreshSource={(src) => setDbDialog({ refreshOf: src })}
             onLoadSample={loadSample}
             onAddSource={addSource}
-            onRefreshSource={refreshOne}
+            onRefreshApiSource={refreshApiSource}
             onUpdateSource={updateSource}
             onRemoveSource={removeSource}
             onRenameColumn={renameColumn}
@@ -387,7 +403,8 @@ export default function UnifiedReporting() {
             </p>
             <div className="mt-8"><UploadZone onFiles={addFiles} busy={busy} /></div>
             <div className="mt-4 text-center">
-              <Button variant="outline" onClick={loadSample}><Sparkles className="mr-2 h-4 w-4" />Try it with a sample company</Button>
+              <Button variant="outline" onClick={() => setDbDialog({})}><Server className="mr-2 h-4 w-4" />Connect a database</Button>
+              <Button variant="outline" className="ml-2" onClick={loadSample}><Sparkles className="mr-2 h-4 w-4" />Try it with a sample company</Button>
             </div>
           </div>
         )}
@@ -498,6 +515,13 @@ export default function UnifiedReporting() {
       >
         {toastMsg}
       </div>
+      <DatabaseSourceDialog
+        open={!!dbDialog}
+        onOpenChange={(v) => { if (!v) setDbDialog(null); }}
+        refreshOf={dbDialog?.refreshOf}
+        onAdd={addDatabaseSources}
+        onRefresh={refreshFromDatabase}
+      />
     </div>
   );
 }

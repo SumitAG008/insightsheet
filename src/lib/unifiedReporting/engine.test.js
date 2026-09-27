@@ -257,16 +257,15 @@ describe('filters, splits and period analysis', () => {
 });
 
 describe('connector sources', () => {
-  it('builds a source from fetched rows and refreshes it keeping column choices', async () => {
+  it('builds an API source and refreshes it keeping column choices', async () => {
     const { sourceFromTable, refreshSource } = await import('./model');
-    const s = sourceFromTable('Workers', ['userId', 'department', 'salary'], [{ userId: 'E1', department: 'Sales', salary: 10 }], 'SuccessFactors', 'api', { type: 'api', url: 'https://x' });
+    const s = sourceFromTable('Workers', ['userId', 'department', 'salary'], [{ userId: 'E1', department: 'Sales', salary: 10 }], 'SuccessFactors', { type: 'api', url: 'https://x' }, 'api');
     expect(s).toMatchObject({ kind: 'api', system: 'SuccessFactors', origin: { type: 'api' } });
-    const edited = { ...s, columns: s.columns.map((c) => (c.name === 'department' ? { ...c, key: 'dept', role: 'dimension' } : c)), rows: s.rows.map(({ department, ...r }) => ({ ...r, dept: department })) };
-    const fresh = sourceFromTable('Workers', ['userId', 'department', 'salary', 'grade'], [{ userId: 'E2', department: 'HR', salary: 20, grade: 'G1' }], 'SuccessFactors', 'api');
-    const r = refreshSource(edited, fresh);
+    const edited = { ...s, columns: s.columns.map((c) => (c.name === 'department' ? { ...c, key: 'dept' } : c)), rows: s.rows.map(({ department, ...r }) => ({ ...r, dept: department })) };
+    const r = refreshSource(edited, ['userId', 'department', 'salary', 'grade'], [{ userId: 'E2', department: 'HR', salary: 20, grade: 'G1' }]);
     expect(r.id).toBe(s.id);
+    expect(r.kind).toBe('api');
     expect(r.columns.map((c) => c.key)).toEqual(['userid', 'dept', 'salary', 'grade']);
     expect(r.rows).toEqual([{ userid: 'E2', dept: 'HR', salary: 20, grade: 'G1' }]);
-    expect(() => sourceFromTable('Empty', [], [], 'X', 'api')).toThrow(/No rows/);
   });
 });

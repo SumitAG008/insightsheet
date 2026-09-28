@@ -83,6 +83,7 @@ from app.database import (
     FeatureKey,
     InvoiceExtractionJob,
 )
+from app.utils.offload import run_coro, in_thread
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -747,12 +748,33 @@ def _estimate_tokens_from_text(text: str) -> int:
 logger.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int((os.getenv(name) or "").strip() or default)
+    except ValueError:
+        return default
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="InsightSheet-lite Backend",
     description="Privacy-first data analysis platform with AI-powered insights",
     version="1.0.0"
 )
+
+_MAX_REQUEST_BODY_BYTES = max(1, _env_int("MAX_REQUEST_BODY_MB", 520)) * 1024 * 1024
+
+
+@app.middleware("http")
+async def _limit_request_body_size(request: Request, call_next):
+    """Turn away uploads above the largest plan limit before the server spends time and disk on them."""
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > _MAX_REQUEST_BODY_BYTES:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": f"Upload too large (limit {_MAX_REQUEST_BODY_BYTES // (1024 * 1024)}MB)"},
+        )
+    return await call_next(request)
 
 # CORS Configuration - SECURITY: Only HTTPS in production
 # Detect if we're in production (Railway/Vercel) or local development
@@ -864,10 +886,37 @@ async def startup_event():
 
     threading.Thread(target=_sweeper_loop, daemon=True).start()
 
-    # Background TTL cleanup for session-scoped history
-    asyncio.create_task(_background_cleanup_file_processing_history())
+    # The server runs several worker processes. Scheduled jobs (history cleanup,
+    # trial reminder/expiry emails) must run in only one of them, or customers get
+    # duplicate emails. Each loop gets its own thread and event loop so its database
+    # and email work never stalls request handling.
+    if _acquire_background_jobs_lock():
+        logger.info("This worker runs the scheduled background jobs")
+        for job in (_background_cleanup_file_processing_history, _background_free_trial_lifecycle):
+            threading.Thread(target=asyncio.run, args=(job(),), daemon=True, name=job.__name__).start()
 
-    asyncio.create_task(_background_free_trial_lifecycle())
+
+_background_jobs_lock_file = None
+
+
+def _acquire_background_jobs_lock() -> bool:
+    """True in exactly one worker process per container (set RUN_BACKGROUND_JOBS=false to disable here)."""
+    global _background_jobs_lock_file
+    if os.getenv("RUN_BACKGROUND_JOBS", "true").strip().lower() in ("0", "false", "no", "off"):
+        return False
+    try:
+        import fcntl
+    except ImportError:  # Windows development machine: single process
+        return True
+    path = os.path.join(tempfile.gettempdir(), "meldra_background_jobs.lock")
+    f = open(path, "w")
+    try:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.close()
+        return False
+    _background_jobs_lock_file = f  # held for the life of this process
+    return True
 
 
 def _playwright_temp_ttl_seconds() -> int:
@@ -1491,7 +1540,7 @@ async def run_playwright_custom_url_connector(
 
 
 @app.get("/api/connectors/playwright/jobs/{job_id}", response_model=PlaywrightJobStatusResponse)
-async def get_playwright_job_status(
+def get_playwright_job_status(
     job_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -1520,7 +1569,7 @@ async def get_playwright_job_status(
 
 
 @app.get("/api/connectors/playwright/jobs/{job_id}/download")
-async def download_playwright_job_artifact(
+def download_playwright_job_artifact(
     job_id: str,
     type: str = Query("csv"),
     current_user: dict = Depends(get_current_user),
@@ -1594,7 +1643,7 @@ async def run_invoice_extraction(
 
 
 @app.get("/api/unstructured/invoice/jobs/{job_id}", response_model=InvoiceJobStatusResponse)
-async def get_invoice_extraction_status(
+def get_invoice_extraction_status(
     job_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -1623,7 +1672,7 @@ async def get_invoice_extraction_status(
 
 
 @app.get("/api/unstructured/invoice/jobs/{job_id}/download")
-async def download_invoice_extraction_artifact(
+def download_invoice_extraction_artifact(
     job_id: str,
     type: str = Query("header_csv"),
     current_user: dict = Depends(get_current_user),
@@ -1670,7 +1719,7 @@ async def download_invoice_extraction_artifact(
 
 
 @app.get("/api/features/me")
-async def get_my_features(
+def get_my_features(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1689,7 +1738,7 @@ async def get_my_features(
 
 
 @app.post("/api/features/redeem")
-async def redeem_feature_key(
+def redeem_feature_key(
     payload: FeatureRedeemRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -1730,7 +1779,7 @@ async def redeem_feature_key(
 
 
 @app.post("/api/admin/features/grant")
-async def admin_grant_feature(
+def admin_grant_feature(
     payload: FeatureGrantRequest,
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
@@ -1758,7 +1807,7 @@ async def admin_grant_feature(
 
 
 @app.post("/api/admin/features/key")
-async def admin_create_feature_key(
+def admin_create_feature_key(
     payload: FeatureKeyCreateRequest,
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
@@ -2096,7 +2145,7 @@ def _esg_v2_require_period_access(db: Session, email: str, project_id: int, peri
 
 
 @app.get("/api/esg/projects")
-async def esg_list_projects(
+def esg_list_projects(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -2120,7 +2169,7 @@ async def esg_list_projects(
 
 
 @app.post("/api/esg/projects")
-async def esg_create_project(
+def esg_create_project(
     payload: EsgProjectCreateRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2152,7 +2201,7 @@ async def esg_create_project(
 
 
 @app.patch("/api/esg/projects/{project_id}")
-async def esg_update_project(
+def esg_update_project(
     project_id: int,
     payload: EsgProjectUpdateRequest,
     current_user: dict = Depends(get_current_user),
@@ -2183,7 +2232,7 @@ async def esg_update_project(
 
 
 @app.delete("/api/esg/projects/{project_id}")
-async def esg_delete_project(
+def esg_delete_project(
     project_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2203,7 +2252,7 @@ async def esg_delete_project(
 
 
 @app.get("/api/esg/v2/frameworks")
-async def esg_v2_list_frameworks(
+def esg_v2_list_frameworks(
     project_id: int = Query(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2231,7 +2280,7 @@ async def esg_v2_list_frameworks(
 
 
 @app.post("/api/esg/v2/frameworks")
-async def esg_v2_upsert_framework(
+def esg_v2_upsert_framework(
     payload: EsgV2FrameworkUpsertRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2269,7 +2318,7 @@ async def esg_v2_upsert_framework(
 
 
 @app.get("/api/esg/v2/requirements")
-async def esg_v2_list_requirements(
+def esg_v2_list_requirements(
     project_id: int = Query(...),
     framework_key: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user),
@@ -2303,7 +2352,7 @@ async def esg_v2_list_requirements(
 
 
 @app.post("/api/esg/v2/requirements")
-async def esg_v2_upsert_requirement(
+def esg_v2_upsert_requirement(
     payload: EsgV2RequirementUpsertRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2365,7 +2414,7 @@ async def esg_v2_upsert_requirement(
 
 
 @app.get("/api/esg/v2/metric-definitions")
-async def esg_v2_list_metric_definitions(
+def esg_v2_list_metric_definitions(
     project_id: int = Query(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2396,7 +2445,7 @@ async def esg_v2_list_metric_definitions(
 
 
 @app.post("/api/esg/v2/metric-definitions")
-async def esg_v2_upsert_metric_definition(
+def esg_v2_upsert_metric_definition(
     payload: EsgV2MetricDefinitionUpsertRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2453,7 +2502,7 @@ async def esg_v2_upsert_metric_definition(
 
 
 @app.get("/api/esg/v2/metric-values")
-async def esg_v2_list_metric_values(
+def esg_v2_list_metric_values(
     project_id: int = Query(...),
     period_id: int = Query(...),
     site_id: Optional[int] = Query(None),
@@ -2498,7 +2547,7 @@ async def esg_v2_list_metric_values(
 
 
 @app.post("/api/esg/v2/metric-values")
-async def esg_v2_upsert_metric_value(
+def esg_v2_upsert_metric_value(
     payload: EsgV2MetricValueUpsertRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2601,7 +2650,7 @@ async def esg_v2_upsert_metric_value(
 
 
 @app.post("/api/esg/v2/evidence-links")
-async def esg_v2_create_evidence_link(
+def esg_v2_create_evidence_link(
     payload: EsgV2EvidenceLinkCreateRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2659,7 +2708,7 @@ async def esg_v2_create_evidence_link(
 
 
 @app.post("/api/esg/v2/metric-values/approve")
-async def esg_v2_approve_metric_value(
+def esg_v2_approve_metric_value(
     payload: EsgV2ApproveMetricRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -2732,7 +2781,7 @@ async def esg_v2_approve_metric_value(
 
 
 @app.get("/api/esg/evidence")
-async def esg_list_evidence(
+def esg_list_evidence(
     project_id: int = Query(...),
     period_id: int = Query(...),
     limit: int = Query(100),
@@ -2787,7 +2836,7 @@ async def esg_list_evidence(
 
 
 @app.post("/api/esg/evidence/upload")
-async def esg_upload_evidence(
+def esg_upload_evidence(
     project_id: int = Form(...),
     period_id: int = Form(...),
     site_id: Optional[int] = Form(None),
@@ -2818,7 +2867,7 @@ async def esg_upload_evidence(
     subscription = _get_or_create_subscription(db, email)
     max_size_mb = _plan_file_size_mb(subscription)
     max_bytes = max_size_mb * 1024 * 1024
-    content = await file.read()
+    content = file.file.read()
     if len(content) > max_bytes:
         raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
     _enforce_upload_quota(subscription, len(content))
@@ -2875,7 +2924,7 @@ async def esg_upload_evidence(
 
 
 @app.get("/api/esg/evidence/{evidence_id}/download")
-async def esg_download_evidence(
+def esg_download_evidence(
     evidence_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3053,7 +3102,7 @@ async def esg_extract_evidence(
 
 
 @app.get("/api/esg/suggestions")
-async def esg_list_metric_suggestions(
+def esg_list_metric_suggestions(
     project_id: int = Query(...),
     period_id: int = Query(...),
     evidence_document_id: Optional[int] = Query(None),
@@ -3228,7 +3277,7 @@ async def esg_dashboard_ai_insights(
 
 
 @app.get("/api/esg/dashboard/summary")
-async def esg_dashboard_summary(
+def esg_dashboard_summary(
     project_id: int = Query(...),
     period_id: int = Query(...),
     current_user: dict = Depends(get_current_user),
@@ -3288,7 +3337,7 @@ async def esg_dashboard_summary(
 
 
 @app.get("/api/esg/activities")
-async def esg_list_activities(
+def esg_list_activities(
     project_id: int = Query(...),
     period_id: int = Query(...),
     limit: int = Query(50),
@@ -3342,7 +3391,7 @@ async def esg_list_activities(
 
 
 @app.get("/api/esg/dashboard/anomalies")
-async def esg_dashboard_anomalies(
+def esg_dashboard_anomalies(
     project_id: int = Query(...),
     period_id: int = Query(...),
     current_user: dict = Depends(get_current_user),
@@ -3406,7 +3455,7 @@ async def esg_dashboard_anomalies(
 
 
 @app.get("/api/esg/dashboard/finance-kpis")
-async def esg_dashboard_finance_kpis(
+def esg_dashboard_finance_kpis(
     project_id: int = Query(...),
     period_id: int = Query(...),
     current_user: dict = Depends(get_current_user),
@@ -3470,7 +3519,7 @@ async def esg_dashboard_finance_kpis(
 
 
 @app.get("/api/esg/periods")
-async def esg_list_periods(
+def esg_list_periods(
     project_id: int = Query(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3506,7 +3555,7 @@ async def esg_list_periods(
 
 
 @app.post("/api/esg/periods")
-async def esg_create_period(
+def esg_create_period(
     payload: EsgReportingPeriodCreateRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3557,7 +3606,7 @@ async def esg_create_period(
 
 
 @app.patch("/api/esg/periods/{period_id}")
-async def esg_update_period(
+def esg_update_period(
     period_id: int,
     payload: EsgReportingPeriodUpdateRequest,
     current_user: dict = Depends(get_current_user),
@@ -3595,7 +3644,7 @@ async def esg_update_period(
 
 
 @app.delete("/api/esg/periods/{period_id}")
-async def esg_delete_period(
+def esg_delete_period(
     period_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3613,7 +3662,7 @@ async def esg_delete_period(
 
 
 @app.get("/api/esg/sites")
-async def esg_list_sites(
+def esg_list_sites(
     project_id: int = Query(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3648,7 +3697,7 @@ async def esg_list_sites(
 
 
 @app.post("/api/esg/sites")
-async def esg_create_site(
+def esg_create_site(
     payload: EsgSiteCreateRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3697,7 +3746,7 @@ async def esg_create_site(
 
 
 @app.patch("/api/esg/sites/{site_id}")
-async def esg_update_site(
+def esg_update_site(
     site_id: int,
     payload: EsgSiteUpdateRequest,
     current_user: dict = Depends(get_current_user),
@@ -3732,7 +3781,7 @@ async def esg_update_site(
 
 
 @app.delete("/api/esg/sites/{site_id}")
-async def esg_delete_site(
+def esg_delete_site(
     site_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3750,7 +3799,7 @@ async def esg_delete_site(
 
 
 @app.get("/api/esg/metrics")
-async def esg_list_metrics(
+def esg_list_metrics(
     project_id: int = Query(...),
     period_id: int = Query(...),
     site_id: Optional[int] = Query(None),
@@ -3801,7 +3850,7 @@ async def esg_list_metrics(
 
 
 @app.post("/api/esg/metrics")
-async def esg_create_metric(
+def esg_create_metric(
     payload: EsgMetricCreateRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3869,7 +3918,7 @@ async def esg_create_metric(
 
 
 @app.patch("/api/esg/metrics/{metric_id}")
-async def esg_update_metric(
+def esg_update_metric(
     metric_id: int,
     payload: EsgMetricUpdateRequest,
     current_user: dict = Depends(get_current_user),
@@ -3932,7 +3981,7 @@ async def esg_update_metric(
 
 
 @app.delete("/api/esg/metrics/{metric_id}")
-async def esg_delete_metric(
+def esg_delete_metric(
     metric_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -3953,7 +4002,7 @@ async def esg_delete_metric(
 # ============================================================================
 
 @app.post("/api/auth/register")
-async def register(user_data: UserRegister, db: Session = Depends(get_db)):
+def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """Register new user"""
     try:
         # Normalize email (case-insensitive uniqueness)
@@ -4046,7 +4095,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         verification_link = f"{frontend_url}/verify-email?token={verification_token}"
         
         try:
-            email_sent = await send_verification_email(user_data.email, user_data.full_name, verification_link)
+            email_sent = run_coro(send_verification_email(user_data.email, user_data.full_name, verification_link))
             if not email_sent:
                 logger.warning(f"Verification email not sent to {user_data.email} (SMTP not configured). Verification link: {verification_link}")
         except Exception as e:
@@ -4071,25 +4120,51 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
 
 
 @app.post("/api/admin/free-trial-lifecycle/run")
-async def run_free_trial_lifecycle(
+def run_free_trial_lifecycle(
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
     now = datetime.utcnow()
     try:
-        stats = await _run_free_trial_lifecycle_once(db, now)
+        stats = run_coro(_run_free_trial_lifecycle_once(db, now))
         return {"message": "Lifecycle run completed", **stats}
     except Exception as e:
         logger.error(f"Free trial lifecycle run error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _enforce_login_attempt_limit(db: Session, email: str, client_ip: str) -> None:
+    """
+    Stop password guessing: too many failed logins for one account, or from one IP address,
+    within the window returns 429. Counts come from login_history, so the limit holds across
+    all worker processes and restarts.
+    """
+    window_minutes = max(1, _env_int("LOGIN_FAILED_WINDOW_MINUTES", 15))
+    per_email = max(1, _env_int("LOGIN_MAX_FAILED_PER_EMAIL", 10))
+    per_ip = max(1, _env_int("LOGIN_MAX_FAILED_PER_IP", 30))
+    since = datetime.utcnow() - timedelta(minutes=window_minutes)
+    failed = db.query(LoginHistory).filter(
+        LoginHistory.event_type == "failed_login",
+        LoginHistory.created_date >= since,
+    )
+    too_many = failed.filter(LoginHistory.user_email == email).count() >= per_email
+    if not too_many and client_ip:
+        too_many = failed.filter(LoginHistory.ip_address == client_ip).count() >= per_ip
+    if too_many:
+        logger.warning(f"Login blocked after repeated failures: {email} from IP {client_ip}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed sign-in attempts. Please wait {window_minutes} minutes or reset your password.",
+        )
+
+
 @app.post("/api/auth/login")
-async def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db)):
+def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db)):
     """Login user and return OTP challenge (MFA)."""
     try:
         # Normalize email
         user_data.email = (user_data.email or "").strip().lower()
+        _enforce_login_attempt_limit(db, user_data.email, _get_client_ip(request))
         # Authenticate user
         user = authenticate_user(db, user_data.email, user_data.password)
 
@@ -4147,7 +4222,7 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
         db.add(challenge)
         db.commit()
 
-        await send_login_otp_email(user.email, otp, expires_minutes=otp_ttl_minutes)
+        run_coro(send_login_otp_email(user.email, otp, expires_minutes=otp_ttl_minutes))
 
         # Log successful login (IP + geo + browser/device for security and compliance)
         # IMPORTANT: This tracks ALL users who log in, not just one user
@@ -4188,7 +4263,7 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
 
 
 @app.post("/api/auth/mfa/verify")
-async def verify_login_otp(req: LoginOtpVerifyRequest, request: Request, db: Session = Depends(get_db)):
+def verify_login_otp(req: LoginOtpVerifyRequest, request: Request, db: Session = Depends(get_db)):
     try:
         challenge_id = (req.challenge_id or "").strip()
         otp = (req.otp or "").strip()
@@ -4265,7 +4340,7 @@ async def verify_login_otp(req: LoginOtpVerifyRequest, request: Request, db: Ses
 
 
 @app.post("/api/learning/signals")
-async def ingest_learning_signal(
+def ingest_learning_signal(
     signal: LearningSignalIn,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -4294,7 +4369,7 @@ async def ingest_learning_signal(
 
 
 @app.post("/api/auth/logout")
-async def logout(
+def logout(
     request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -4371,7 +4446,7 @@ async def _background_cleanup_file_processing_history() -> None:
 
 
 @app.post("/api/auth/forgot-password")
-async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
     """Request password reset - sends reset token to email"""
     try:
         user = db.query(User).filter(User.email == request.email).first()
@@ -4416,7 +4491,7 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
         
         # Send email with reset link
         logger.info(f"Calling send_password_reset_email for {user.email}")
-        email_sent = await send_password_reset_email(user.email, reset_link)
+        email_sent = run_coro(send_password_reset_email(user.email, reset_link))
         logger.info(f"Email sending result: {'SUCCESS' if email_sent else 'FAILED'}")
         
         if not email_sent:
@@ -4447,7 +4522,7 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
 
 
 @app.post("/api/auth/reset-password")
-async def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
     """Reset password using token"""
     try:
         # Find user by reset token
@@ -4548,7 +4623,7 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
 
 
 @app.get("/api/auth/verify-email")
-async def verify_email(token: str, db: Session = Depends(get_db)):
+def verify_email(token: str, db: Session = Depends(get_db)):
     """Verify user email using verification token"""
     try:
         # Find user by verification token
@@ -4596,7 +4671,7 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
 
 
 @app.post("/api/auth/resend-verification")
-async def resend_verification(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def resend_verification(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
     """Resend verification email to user"""
     try:
         user = db.query(User).filter(User.email == request.email).first()
@@ -4631,7 +4706,7 @@ async def resend_verification(request: ForgotPasswordRequest, db: Session = Depe
         
         # Send verification email
         try:
-            email_sent = await send_verification_email(user.email, user.full_name, verification_link)
+            email_sent = run_coro(send_verification_email(user.email, user.full_name, verification_link))
             if not email_sent:
                 logger.warning(f"Verification email not sent to {user.email} (SMTP/Resend not configured). Verification link: {verification_link}")
         except Exception as e:
@@ -4652,7 +4727,7 @@ async def resend_verification(request: ForgotPasswordRequest, db: Session = Depe
 
 
 @app.get("/api/auth/me")
-async def get_me(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_me(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get current user info"""
     user = db.query(User).filter(User.email == current_user["email"]).first()
     return {
@@ -4666,7 +4741,7 @@ async def get_me(current_user: dict = Depends(get_current_user), db: Session = D
 
 
 @app.post("/api/convert/{endpoint}")
-async def convert_document(
+def convert_document(
     endpoint: str,
     file: UploadFile = File(...),
     ocr_lang: Optional[str] = Form(None),
@@ -4689,7 +4764,7 @@ async def convert_document(
     max_size_mb = _plan_file_size_mb(subscription)
     max_bytes = max_size_mb * 1024 * 1024
 
-    raw = await file.read()
+    raw = file.file.read()
     if len(raw) > max_bytes:
         raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -4759,7 +4834,7 @@ async def convert_document(
 
 
 @app.get("/api/suggestions", response_model=Dict[str, Any])
-async def get_suggestions(
+def get_suggestions(
     page: Optional[str] = None,
     has_data: Optional[int] = None,
     tab: Optional[str] = None,
@@ -4966,7 +5041,7 @@ async def support_chat(
 
 
 @app.post("/api/support/chat-with-file", response_model=Dict[str, Any])
-async def support_chat_with_file(
+def support_chat_with_file(
     message: str = Form(...),
     page: Optional[str] = Form(None),
     file: UploadFile = File(...),
@@ -5009,7 +5084,7 @@ async def support_chat_with_file(
 
     max_size_mb = _plan_file_size_mb(subscription)
     max_bytes = max_size_mb * 1024 * 1024
-    content = await file.read()
+    content = file.file.read()
     if len(content) > max_bytes:
         raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -5048,13 +5123,13 @@ async def support_chat_with_file(
 
     try:
         request_id = _get_request_id(request)
-        llm_out = await invoke_llm(
+        llm_out = run_coro(invoke_llm(
             prompt=prompt,
             add_context=False,
             model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4-turbo-preview"),
             max_tokens=900,
             return_usage=True,
-        )
+        ))
         answer = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
         if not answer:
             raise Exception("Empty response")
@@ -5102,7 +5177,7 @@ class ApiKeyResponse(BaseModel):
 
 
 @app.post("/api/developer/keys", response_model=Dict[str, Any])
-async def create_api_key(
+def create_api_key(
     request: ApiKeyCreateRequest,
     current_user: dict = Depends(get_current_admin_user),  # Only admins can create keys
     db: Session = Depends(get_db)
@@ -5145,7 +5220,7 @@ async def create_api_key(
 
 
 @app.post("/api/developer/keys/request-sandbox", response_model=Dict[str, Any])
-async def request_sandbox_api_key(
+def request_sandbox_api_key(
     request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -5237,12 +5312,12 @@ async def request_sandbox_api_key(
         db.refresh(api_key)
 
         try:
-            await send_api_key_email(
+            run_coro(send_api_key_email(
                 email=current_user["email"],
                 api_key=full_key,
                 environment="sandbox",
                 base_url=sandbox_base_url,
-            )
+            ))
         except Exception as e:
             logger.warning(f"Failed to email sandbox API key to {current_user['email']}: {str(e)}")
 
@@ -5278,7 +5353,7 @@ async def request_sandbox_api_key(
 
 
 @app.get("/api/developer/keys", response_model=List[ApiKeyResponse])
-async def list_api_keys(
+def list_api_keys(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -5303,7 +5378,7 @@ async def list_api_keys(
 
 
 @app.get("/api/developer/keys/{key_id}/usage")
-async def get_key_usage(
+def get_key_usage(
     key_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -5342,7 +5417,7 @@ async def get_key_usage(
 
 
 @app.get("/api/developer/usage")
-async def get_user_usage(
+def get_user_usage(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -5383,7 +5458,7 @@ class AccessPatternRequest(BaseModel):
 
 
 @app.post("/api/ai/security/fraud-detection")
-async def detect_fraud(
+def detect_fraud(
     request: FraudDetectionRequest,
     current_user: dict = Depends(get_current_admin_user),  # Admin only
     db: Session = Depends(get_db)
@@ -5397,11 +5472,11 @@ async def detect_fraud(
     """
     try:
         service = SecurityAIService()
-        result = await service.detect_fraud_patterns(
+        result = run_coro(service.detect_fraud_patterns(
             db,
             user_email=request.user_email,
             days=request.days
-        )
+        ))
         return result
     except Exception as e:
         logger.error(f"Fraud detection error: {str(e)}")
@@ -5409,7 +5484,7 @@ async def detect_fraud(
 
 
 @app.post("/api/ai/security/access-patterns")
-async def analyze_access_patterns(
+def analyze_access_patterns(
     request: AccessPatternRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -5424,11 +5499,11 @@ async def analyze_access_patterns(
             raise HTTPException(status_code=403, detail="You can only analyze your own access patterns")
         
         service = SecurityAIService()
-        result = await service.analyze_access_patterns(
+        result = run_coro(service.analyze_access_patterns(
             db,
             user_email=request.user_email,
             days=request.days
-        )
+        ))
         return result
     except HTTPException:
         raise
@@ -5438,7 +5513,7 @@ async def analyze_access_patterns(
 
 
 @app.get("/api/ai/security/api-abuse")
-async def detect_api_abuse(
+def detect_api_abuse(
     api_key_id: Optional[int] = None,
     hours: int = 24,
     current_user: dict = Depends(get_current_admin_user),  # Admin only
@@ -5466,7 +5541,7 @@ async def detect_api_abuse(
 # ============================================================================
 
 @app.get("/api/ai/compliance/gdpr-check")
-async def gdpr_compliance_check(
+def gdpr_compliance_check(
     user_email: Optional[str] = None,
     current_user: dict = Depends(get_current_admin_user),  # Admin only
     db: Session = Depends(get_db)
@@ -5480,7 +5555,7 @@ async def gdpr_compliance_check(
     """
     try:
         service = ComplianceAIService()
-        result = await service.gdpr_compliance_check(db, user_email=user_email)
+        result = run_coro(service.gdpr_compliance_check(db, user_email=user_email))
         return result
     except Exception as e:
         logger.error(f"GDPR compliance check error: {str(e)}")
@@ -5488,7 +5563,7 @@ async def gdpr_compliance_check(
 
 
 @app.get("/api/ai/compliance/privacy-analysis/{user_email}")
-async def analyze_data_privacy(
+def analyze_data_privacy(
     user_email: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -5503,7 +5578,7 @@ async def analyze_data_privacy(
             raise HTTPException(status_code=403, detail="You can only analyze your own privacy data")
         
         service = ComplianceAIService()
-        result = await service.analyze_data_privacy(db, user_email=user_email)
+        result = run_coro(service.analyze_data_privacy(db, user_email=user_email))
         return result
     except HTTPException:
         raise
@@ -5513,7 +5588,7 @@ async def analyze_data_privacy(
 
 
 @app.get("/api/ai/compliance/audit-report")
-async def generate_audit_report(
+def generate_audit_report(
     days: int = 30,
     current_user: dict = Depends(get_current_admin_user),  # Admin only
     db: Session = Depends(get_db)
@@ -5524,7 +5599,7 @@ async def generate_audit_report(
     """
     try:
         service = ComplianceAIService()
-        result = await service.generate_audit_report(db, days=days)
+        result = run_coro(service.generate_audit_report(db, days=days))
         return result
     except Exception as e:
         logger.error(f"Audit report error: {str(e)}")
@@ -5555,7 +5630,7 @@ class AnomalyDetectionRequest(BaseModel):
 
 
 @app.post("/api/ai/ml/forecast")
-async def forecast_time_series(
+def forecast_time_series(
     request: ForecastRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -5566,13 +5641,13 @@ async def forecast_time_series(
     """
     try:
         service = PredictiveMLService()
-        result = await service.forecast_time_series(
+        result = run_coro(service.forecast_time_series(
             data=request.data,
             date_column=request.date_column,
             value_column=request.value_column,
             periods=request.periods,
             method=request.method
-        )
+        ))
         return result
     except Exception as e:
         logger.error(f"Forecast error: {str(e)}")
@@ -5580,7 +5655,7 @@ async def forecast_time_series(
 
 
 @app.post("/api/ai/ml/detect-trends")
-async def detect_trends(
+def detect_trends(
     request: TrendDetectionRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -5590,11 +5665,11 @@ async def detect_trends(
     """
     try:
         service = PredictiveMLService()
-        result = await service.detect_trends(
+        result = run_coro(service.detect_trends(
             data=request.data,
             date_column=request.date_column,
             value_column=request.value_column
-        )
+        ))
         return result
     except Exception as e:
         logger.error(f"Trend detection error: {str(e)}")
@@ -5602,7 +5677,7 @@ async def detect_trends(
 
 
 @app.post("/api/ai/ml/predict-anomalies")
-async def predict_anomalies(
+def predict_anomalies(
     request: AnomalyDetectionRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -5612,10 +5687,10 @@ async def predict_anomalies(
     """
     try:
         service = PredictiveMLService()
-        result = await service.predict_anomalies(
+        result = run_coro(service.predict_anomalies(
             data=request.data,
             value_column=request.value_column
-        )
+        ))
         return result
     except Exception as e:
         logger.error(f"Anomaly detection error: {str(e)}")
@@ -5686,7 +5761,7 @@ async def invoke_llm_endpoint(
 
 
 @app.post("/api/integrations/llm/invoke-with-file")
-async def invoke_llm_with_file_endpoint(
+def invoke_llm_with_file_endpoint(
     prompt: str = Form(...),
     add_context_from_internet: bool = Form(False),
     response_json_schema: Optional[str] = Form(None),
@@ -5703,7 +5778,7 @@ async def invoke_llm_with_file_endpoint(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         if len(content) > max_bytes:
             raise HTTPException(
                 status_code=413,
@@ -5730,12 +5805,12 @@ async def invoke_llm_with_file_endpoint(
 
         try:
             request_id = _get_request_id(request)
-            llm_out = await invoke_llm(
+            llm_out = run_coro(invoke_llm(
                 prompt=combined_prompt,
                 add_context=add_context_from_internet,
                 response_schema=schema_obj,
                 return_usage=True,
-            )
+            ))
         except Exception as llm_error:
             logger.error(f"LLM invocation failed: {str(llm_error)}")
             raise HTTPException(
@@ -5951,7 +6026,7 @@ async def unified_reporting_insight_endpoint(
 
 
 @app.get("/api/unified-reporting/connector/presets")
-async def unified_reporting_connector_presets(current_user: dict = Depends(get_current_user)):
+def unified_reporting_connector_presets(current_user: dict = Depends(get_current_user)):
     """Ready-made settings for common business APIs (no secrets), and whether outbound calls use a fixed IP."""
     return {"presets": public_presets(), "egress": egress_info()}
 
@@ -6068,6 +6143,7 @@ async def ocr_extract(
         ).first()
         max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
         max_size_bytes = max_size_mb * 1024 * 1024
+        _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
         file_content = await file.read()
         file_size_mb = len(file_content) / (1024 * 1024)
@@ -6319,10 +6395,10 @@ async def developer_api_proxy(
                     if user_options.get("max_length") is not None:
                         merged_options["max_length"] = int(user_options.get("max_length") or 0) or 255
 
-                data = await zip_service.process_zip(
+                data = await in_thread(zip_service.process_zip(
                     zip_file=raw,
                     options=merged_options,
-                )
+                ))
             except Exception as e:
                 raise HTTPException(status_code=400, detail=str(e))
             media = "application/zip"
@@ -6518,7 +6594,7 @@ async def developer_api_proxy(
 
 
 @app.post("/api/developer/files/excel-ops/execute")
-async def developer_excel_ops_execute(
+def developer_excel_ops_execute(
     request: Request,
     api_key: str = Form(...),
     file: UploadFile = File(...),
@@ -6544,7 +6620,7 @@ async def developer_excel_ops_execute(
         user_agent = None
 
     started = time.time()
-    raw = await file.read()
+    raw = file.file.read()
     status_code = 200
     response_size = None
 
@@ -6637,7 +6713,7 @@ async def developer_excel_ops_execute(
 
 
 @app.post("/api/developer/files/excel-ops/charts")
-async def developer_excel_ops_charts(
+def developer_excel_ops_charts(
     request: Request,
     api_key: str = Form(...),
     file: UploadFile = File(...),
@@ -6662,7 +6738,7 @@ async def developer_excel_ops_charts(
         user_agent = None
 
     started = time.time()
-    raw = await file.read()
+    raw = file.file.read()
     status_code = 200
     response_size = None
 
@@ -6752,7 +6828,7 @@ async def developer_excel_ops_charts(
 
 
 @app.post("/api/developer/files/generate-pl-with-file")
-async def developer_generate_pl_with_file(
+def developer_generate_pl_with_file(
     request: Request,
     api_key: str = Form(...),
     prompt: str = Form(...),
@@ -6785,7 +6861,7 @@ async def developer_generate_pl_with_file(
         if not (prompt or "").strip():
             raise HTTPException(status_code=400, detail="Prompt is required")
 
-        raw = await file.read()
+        raw = file.file.read()
 
         plan = (getattr(key, "plan", "") or "").strip().lower()
         max_size_mb = 500 if plan == "premium" else 10
@@ -6807,13 +6883,13 @@ async def developer_generate_pl_with_file(
             raise HTTPException(status_code=400, detail=str(e))
 
         pl_service = PLBuilderService()
-        excel_data = await pl_service.generate_pl_from_uploaded_excel(
+        excel_data = run_coro(pl_service.generate_pl_from_uploaded_excel(
             filename=(file.filename or "uploaded_file"),
             content=raw,
             prompt=prompt,
             user_context=context,
             llm_assist_headers_only=bool(llm_assist_headers_only),
-        )
+        ))
 
         if should_apply_watermark(getattr(subscription, "plan", None)):
             excel_data = watermark_xlsx_bytes(excel_data)
@@ -6879,7 +6955,7 @@ async def developer_generate_pl_with_file(
 
 
 @app.post("/api/files/excel-to-ppt")
-async def excel_to_ppt(
+def excel_to_ppt(
     file: UploadFile = File(...),
     mode: str = Query("smart"),
     current_user: dict = Depends(get_current_user),
@@ -6894,9 +6970,10 @@ async def excel_to_ppt(
         # Check file size based on subscription
         max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
         max_size_bytes = max_size_mb * 1024 * 1024
+        _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
         # Read file size
-        file_content = await file.read()
+        file_content = file.file.read()
         file_size_mb = len(file_content) / (1024 * 1024)
 
         if len(file_content) > max_size_bytes:
@@ -6926,19 +7003,19 @@ async def excel_to_ppt(
             if WINDOWS_COM_AVAILABLE:
                 logger.info("Using Windows COM for high-fidelity PPT conversion")
                 com_service = WindowsExcelToPPTService()
-                ppt_data = await com_service.convert_excel_to_ppt(
+                ppt_data = run_coro(com_service.convert_excel_to_ppt(
                     io.BytesIO(file_content),
                     file.filename
-                )
+                ))
             else:
                 logger.info("Using standard ExcelToPPTService for PPT conversion")
                 ppt_service = ExcelToPPTService()
-                ppt_data = await ppt_service.convert_excel_to_ppt(
+                ppt_data = run_coro(ppt_service.convert_excel_to_ppt(
                     io.BytesIO(file_content),
                     file.filename,
                     author_name="Meldra",
                     last_modified_by=gen_name,
-                )
+                ))
 
         if should_apply_watermark(getattr(subscription, "plan", None)):
             ppt_data = watermark_pptx_bytes(ppt_data)
@@ -6988,7 +7065,7 @@ async def excel_to_ppt(
 
 
 @app.post("/api/files/analyze")
-async def analyze_file(
+def analyze_file(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -7005,9 +7082,10 @@ async def analyze_file(
 
         max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
         max_size_bytes = max_size_mb * 1024 * 1024
+        _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
         # Read file content
-        file_content = await file.read()
+        file_content = file.file.read()
         file_size_mb = len(file_content) / (1024 * 1024)
 
         if len(file_content) > max_size_bytes:
@@ -7022,10 +7100,10 @@ async def analyze_file(
 
         # Analyze file
         analyzer = FileAnalyzerService()
-        analysis_result = await analyzer.analyze_excel_file(
+        analysis_result = run_coro(analyzer.analyze_excel_file(
             io.BytesIO(file_content),
             file.filename
-        )
+        ))
 
         # Log processing history (NO file content)
         processing_history = FileProcessingHistory(
@@ -7074,10 +7152,10 @@ async def generate_pl(
 
         # Generate P&L
         pl_service = PLBuilderService()
-        excel_data = await pl_service.generate_pl_from_natural_language(
+        excel_data = await in_thread(pl_service.generate_pl_from_natural_language(
             prompt,
             context
-        )
+        ))
 
         if should_apply_watermark(getattr(subscription, "plan", None)):
             excel_data = watermark_xlsx_bytes(excel_data)
@@ -7111,7 +7189,7 @@ async def generate_pl(
 
 
 @app.post("/api/files/generate-pl-with-file")
-async def generate_pl_with_file(
+def generate_pl_with_file(
     request: Request,
     prompt: str = Form(...),
     context_json: Optional[str] = Form(None),
@@ -7133,7 +7211,7 @@ async def generate_pl_with_file(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -7151,14 +7229,14 @@ async def generate_pl_with_file(
             raise HTTPException(status_code=400, detail=str(e))
 
         pl_service = PLBuilderService()
-        excel_data = await pl_service.generate_pl_from_uploaded_excel(
+        excel_data = run_coro(pl_service.generate_pl_from_uploaded_excel(
             filename=(file.filename or "uploaded_file"),
             content=content,
             prompt=prompt,
             user_context=context,
             llm_assist_headers_only=bool(llm_assist_headers_only),
             candidate_id=(candidate_id or None),
-        )
+        ))
 
         _enforce_upload_quota(subscription, len(content))
         _consume_upload_bytes(db, subscription, current_user["email"], request_id, len(content))
@@ -7179,7 +7257,7 @@ async def generate_pl_with_file(
 
 
 @app.post("/api/files/pl-extraction-preview")
-async def pl_extraction_preview(
+def pl_extraction_preview(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -7191,7 +7269,7 @@ async def pl_extraction_preview(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -7213,7 +7291,7 @@ async def pl_extraction_preview(
 
 
 @app.post("/api/files/universal-analyze")
-async def universal_analyze(
+def universal_analyze(
     file: UploadFile = File(...),
     recalculate: bool = Query(False),
     overrides: str = Form(None),
@@ -7234,7 +7312,7 @@ async def universal_analyze(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         file_size_mb = len(content) / (1024 * 1024)
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size ({file_size_mb:.1f}MB) exceeds {max_size_mb}MB limit")
@@ -7349,7 +7427,7 @@ async def universal_analyze(
 
 
 @app.post("/api/files/standardize-preview")
-async def standardize_preview(
+def standardize_preview(
     request: Request,
     file: UploadFile = File(...),
     dedupe_rows: bool = Form(True),
@@ -7366,7 +7444,7 @@ async def standardize_preview(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -7388,7 +7466,7 @@ async def standardize_preview(
 
 
 @app.post("/api/files/standardize")
-async def standardize_download(
+def standardize_download(
     request: Request,
     file: UploadFile = File(...),
     dedupe_rows: bool = Form(True),
@@ -7406,7 +7484,7 @@ async def standardize_download(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -7447,7 +7525,7 @@ async def standardize_download(
 
 
 @app.post("/api/files/reconcile-preview")
-async def reconcile_preview(
+def reconcile_preview(
     request: Request,
     left_file: UploadFile = File(...),
     right_file: UploadFile = File(...),
@@ -7466,8 +7544,8 @@ async def reconcile_preview(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        left = await left_file.read()
-        right = await right_file.read()
+        left = left_file.file.read()
+        right = right_file.file.read()
         if len(left) > max_bytes or len(right) > max_bytes:
             raise HTTPException(status_code=413, detail=f"Each file must be <= {max_size_mb}MB")
 
@@ -7494,7 +7572,7 @@ async def reconcile_preview(
 
 
 @app.post("/api/files/reconcile")
-async def reconcile_download(
+def reconcile_download(
     request: Request,
     left_file: UploadFile = File(...),
     right_file: UploadFile = File(...),
@@ -7514,8 +7592,8 @@ async def reconcile_download(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        left = await left_file.read()
-        right = await right_file.read()
+        left = left_file.file.read()
+        right = right_file.file.read()
         if len(left) > max_bytes or len(right) > max_bytes:
             raise HTTPException(status_code=413, detail=f"Each file must be <= {max_size_mb}MB")
 
@@ -7564,7 +7642,7 @@ async def reconcile_download(
 
 
 @app.post("/api/files/process-zip")
-async def process_zip(
+def process_zip(
     file: UploadFile = File(...),
     options: str = None,  # JSON string of options
     current_user: dict = Depends(get_current_user),
@@ -7586,8 +7664,9 @@ async def process_zip(
 
         max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
         max_size_bytes = max_size_mb * 1024 * 1024
+        _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
-        file_content = await file.read()
+        file_content = file.file.read()
         file_size_mb = len(file_content) / (1024 * 1024)
 
         if len(file_content) > max_size_bytes:
@@ -7612,7 +7691,7 @@ async def process_zip(
         processing_options['language_replacements'] = language_replacements
 
         # Process ZIP
-        processed_data = await zip_service.process_zip(io.BytesIO(file_content), processing_options)
+        processed_data = run_coro(zip_service.process_zip(io.BytesIO(file_content), processing_options))
 
         # Log processing history
         processing_history = FileProcessingHistory(
@@ -7655,7 +7734,7 @@ async def process_zip(
 # ============================================================================
 
 @app.get("/api/subscriptions/me")
-async def get_my_subscription(
+def get_my_subscription(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -7687,48 +7766,74 @@ async def get_my_subscription(
 
 
 @app.post("/api/subscriptions/upgrade")
-async def upgrade_subscription(
-    request: Request,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Upgrade to premium (simplified - integrate Stripe for real payments)"""
-    subscription = db.query(Subscription).filter(
-        Subscription.user_email == current_user["email"]
-    ).first()
+def upgrade_subscription(current_user: dict = Depends(get_current_user)):
+    """
+    Upgrade to premium. Until card payments are live, only an admin can change a plan
+    (after the customer has paid by invoice); customers can no longer upgrade themselves for free.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_402_PAYMENT_REQUIRED,
+        detail="Online payment is not available yet. Contact Meldra to upgrade your plan.",
+    )
 
-    if subscription:
-        prev_plan, prev_status = subscription.plan, subscription.status
+
+class AdminSetPlanRequest(BaseModel):
+    user_email: EmailStr
+    plan: str = Field(..., pattern="^(free|premium)$")
+    payment_status: Optional[str] = Field("paid", max_length=50)
+
+
+@app.post("/api/admin/subscriptions/set-plan")
+def admin_set_plan(
+    payload: AdminSetPlanRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Admin only: move a customer to a plan, e.g. after an invoice is paid. Every change is logged."""
+    email = str(payload.user_email).strip().lower()
+    if not db.query(User).filter(User.email == email).first():
+        raise HTTPException(status_code=404, detail="User not found")
+    subscription = db.query(Subscription).filter(Subscription.user_email == email).first()
+    if not subscription:
+        subscription = Subscription(user_email=email, plan="free", status="active")
+        db.add(subscription)
+        db.flush()
+
+    prev_plan, prev_status = subscription.plan, subscription.status
+    if payload.plan == "premium":
         subscription.plan = "premium"
         subscription.status = "active"
         subscription.ai_queries_limit = -1  # Unlimited
-        subscription.payment_status = "paid"
+        subscription.payment_status = payload.payment_status or "paid"
         subscription.subscription_start_date = datetime.utcnow()
         subscription.cancelled_at = None
+    else:
+        subscription.plan = "free"
+        subscription.status = "active"
+        subscription.payment_status = payload.payment_status or None
+    db.commit()
+
+    try:
+        db.add(SubscriptionEventLog(
+            user_email=email,
+            event_type=f"admin_set_plan:{current_user['email']}"[:100],
+            prev_plan=prev_plan,
+            new_plan=subscription.plan,
+            prev_status=prev_status,
+            new_status=subscription.status,
+            ip_address=_get_client_ip(request) or None,
+            user_agent=request.headers.get("user-agent") or None,
+        ))
         db.commit()
+    except Exception:
+        db.rollback()
 
-        try:
-            client_ip = _get_client_ip(request)
-            ua = request.headers.get("user-agent", "")
-            db.add(SubscriptionEventLog(
-                user_email=current_user["email"],
-                event_type="upgrade",
-                prev_plan=prev_plan,
-                new_plan=subscription.plan,
-                prev_status=prev_status,
-                new_status=subscription.status,
-                ip_address=client_ip or None,
-                user_agent=ua or None,
-            ))
-            db.commit()
-        except Exception:
-            db.rollback()
-
-    return {"message": "Subscription upgraded to Premium"}
+    return {"user_email": email, "plan": subscription.plan, "status": subscription.status}
 
 
 @app.post("/api/subscriptions/start-trial")
-async def start_trial(
+def start_trial(
     request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -7782,7 +7887,7 @@ async def start_trial(
 
 
 @app.post("/api/subscriptions/cancel")
-async def cancel_subscription(
+def cancel_subscription(
     request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -7825,7 +7930,7 @@ async def cancel_subscription(
 # ============================================================================
 
 @app.post("/api/activity/log")
-async def log_activity(
+def log_activity(
     activity: ActivityLog,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -7858,7 +7963,7 @@ async def log_activity(
 
 
 @app.get("/api/activity/history")
-async def get_activity_history(
+def get_activity_history(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = 50,
@@ -7889,7 +7994,7 @@ async def get_activity_history(
 
 
 @app.post("/api/login-history")
-async def create_login_history(
+def create_login_history(
     login_data: dict,
     request: Request,
     current_user: dict = Depends(get_current_user),
@@ -7925,7 +8030,7 @@ class ConsentRequest(BaseModel):
 
 
 @app.post("/api/consent")
-async def record_consent(body: ConsentRequest, request: Request, db: Session = Depends(get_db)):
+def record_consent(body: ConsentRequest, request: Request, db: Session = Depends(get_db)):
     """Record cookie consent (accept/reject) for compliance. No auth required."""
     try:
         client_ip = _get_client_ip(request)
@@ -7940,7 +8045,7 @@ async def record_consent(body: ConsentRequest, request: Request, db: Session = D
 
 
 @app.get("/api/login-history")
-async def get_login_history(
+def get_login_history(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = 50
@@ -7992,7 +8097,7 @@ class DBDisconnectRequest(BaseModel):
     db_type: str
 
 @app.post("/api/db/test-connection")
-async def test_db_connection(
+def test_db_connection(
     request: DBConnectionRequest,
     current_user: dict = Depends(get_current_user)
 ):
@@ -8003,7 +8108,8 @@ async def test_db_connection(
     try:
         result = DatabaseConnectionService.test_connection(
             request.db_type,
-            request.connection_data
+            request.connection_data,
+            current_user["email"],
         )
         return result
     except Exception as e:
@@ -8014,7 +8120,7 @@ async def test_db_connection(
         )
 
 @app.get("/api/db/schema")
-async def get_db_schema(
+def get_db_schema(
     connection_id: str,
     db_type: str,
     current_user: dict = Depends(get_current_user)
@@ -8024,7 +8130,7 @@ async def get_db_schema(
     ZERO STORAGE: Schema information is fetched on-demand, not stored
     """
     try:
-        result = DatabaseConnectionService.get_schema(connection_id, db_type)
+        result = DatabaseConnectionService.get_schema(connection_id, db_type, current_user["email"])
         if not result.get("success"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -8041,7 +8147,7 @@ async def get_db_schema(
         )
 
 @app.post("/api/db/query")
-async def execute_db_query(
+def execute_db_query(
     request: DBQueryRequest,
     current_user: dict = Depends(get_current_user)
 ):
@@ -8055,6 +8161,7 @@ async def execute_db_query(
             request.db_type,
             request.query,
             request.max_rows or 200000,
+            owner=current_user["email"],
         )
         if not result.get("success"):
             raise HTTPException(
@@ -8072,7 +8179,7 @@ async def execute_db_query(
         )
 
 @app.post("/api/db/disconnect")
-async def disconnect_db(
+def disconnect_db(
     request: DBDisconnectRequest,
     current_user: dict = Depends(get_current_user)
 ):
@@ -8081,7 +8188,7 @@ async def disconnect_db(
     ZERO STORAGE: All connection data is immediately removed from memory
     """
     try:
-        result = DatabaseConnectionService.disconnect(request.connection_id, request.db_type)
+        result = DatabaseConnectionService.disconnect(request.connection_id, request.db_type, current_user["email"])
         return result
     except Exception as e:
         logger.error(f"Disconnect error: {str(e)}")
@@ -8095,7 +8202,7 @@ async def disconnect_db(
 # ============================================================================
 
 @app.get("/api/admin/users")
-async def get_all_users(
+def get_all_users(
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -8115,7 +8222,7 @@ async def get_all_users(
 
 
 @app.get("/api/admin/subscriptions")
-async def get_all_subscriptions(
+def get_all_subscriptions(
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -8136,7 +8243,7 @@ async def get_all_subscriptions(
 
 
 @app.get("/api/admin/ip-tracking")
-async def get_admin_ip_tracking(
+def get_admin_ip_tracking(
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
     limit: int = 200,
@@ -8200,7 +8307,7 @@ async def get_admin_ip_tracking(
 
 
 @app.get("/api/admin/subscription-ip-summary")
-async def get_subscription_ip_summary(
+def get_subscription_ip_summary(
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
     period: str = "30d"  # 7d, 30d, all
@@ -8250,6 +8357,28 @@ _IP_LOOKUP_CACHE: dict = {}
 _IP_LOOKUP_CACHE_LOCK = threading.Lock()
 _IP_LOOKUP_TTL = 3600  # 1 hour
 _IP_LOOKUP_CACHE_MAX = 5000
+
+
+def _upload_size(file: UploadFile) -> int:
+    size = getattr(file, "size", None)
+    if size is not None:
+        return int(size)
+    f = file.file
+    pos = f.tell()
+    f.seek(0, os.SEEK_END)
+    size = f.tell()
+    f.seek(pos)
+    return size
+
+
+def _reject_oversized_upload(file: UploadFile, max_bytes: int, max_mb: int) -> None:
+    """Refuse a file over the plan limit before loading it into memory (the upload itself sits in a temp file)."""
+    size = _upload_size(file)
+    if size > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File size ({size / (1024 * 1024):.1f}MB) exceeds {max_mb}MB limit",
+        )
 
 
 def _get_client_ip(request: Request) -> str:
@@ -8371,7 +8500,7 @@ def _ip_cache_set(key: str, obj: dict):
 
 
 @app.get("/api/ip-lookup")
-async def ip_lookup(request: Request):
+def ip_lookup(request: Request):
     """Proxy to ipapi.co (or ip-api.com on 429) for IP/location. Uses client IP; 1h cache to reduce 429."""
     import requests
     fallback = {"ip": None, "city": None, "country_name": None, "country_code": "XX"}
@@ -8418,7 +8547,7 @@ async def ip_lookup(request: Request):
 
 @app.get("/health")
 @app.get("/api/health")
-async def health_check():
+def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
@@ -8429,7 +8558,7 @@ async def health_check():
 
 
 @app.get("/")
-async def root():
+def root():
     """Root endpoint"""
     return {
         "message": "InsightSheet-lite Backend API",
@@ -8454,7 +8583,7 @@ class EsgExportRequest(BaseModel):
     period_id: int
 
 @app.post("/api/esg/export")
-async def esg_export_report(
+def esg_export_report(
     payload: EsgExportRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -8499,7 +8628,7 @@ async def esg_export_report(
 # --- ESG Audit & Compliance Endpoints ---
 
 @app.get("/api/esg/v2/audit-report")
-async def esg_audit_report(
+def esg_audit_report(
     project_id: int = Query(...),
     period_id: int = Query(...),
     current_user: dict = Depends(get_current_user),
@@ -8580,7 +8709,7 @@ async def esg_audit_report(
 # --- ESG Decarbonization Planner ML ---
 
 @app.get("/api/esg/v2/predict-net-zero/{project_id}")
-async def esg_predict_net_zero(
+def esg_predict_net_zero(
     project_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -8621,7 +8750,7 @@ async def esg_predict_net_zero(
 
     ml_service = PredictiveMLService()
     try:
-        forecast = await ml_service.forecast_time_series(time_series, "date", "emission", periods=12, method="linear")
+        forecast = run_coro(ml_service.forecast_time_series(time_series, "date", "emission", periods=12, method="linear"))
         
         # Calculate Net Zero distance
         final_forecast_val = forecast["forecast"][-1]["value"]
@@ -8676,7 +8805,7 @@ async def esg_predict_net_zero(
 
 
 @app.post("/api/pdf/merge")
-async def api_merge_pdfs(
+def api_merge_pdfs(
     files: List[UploadFile] = File(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -8684,7 +8813,7 @@ async def api_merge_pdfs(
     try:
         pdf_bytes_list = []
         for file in files:
-            content = await file.read()
+            content = file.file.read()
             pdf_bytes_list.append(content)
         
         merged_bytes = merge_pdfs(pdf_bytes_list)
@@ -8696,14 +8825,14 @@ async def api_merge_pdfs(
         raise HTTPException(status_code=400, detail=f"Failed to merge PDFs: {str(e)}")
 
 @app.post("/api/pdf/split")
-async def api_split_pdf(
+def api_split_pdf(
     file: UploadFile = File(...),
     page_ranges: str = Form(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        content = await file.read()
+        content = file.file.read()
         split_bytes = split_pdf(content, page_ranges)
         return Response(content=split_bytes, media_type="application/pdf", headers={
             "Content-Disposition": 'attachment; filename="split.pdf"'

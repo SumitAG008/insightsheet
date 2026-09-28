@@ -47,4 +47,6 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
 # Run database initialization and start server
-CMD ["sh", "-c", "python -c 'from app.database import init_db; init_db()' && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Several worker processes so one slow request never holds up everyone else.
+# WEB_CONCURRENCY sets the count (each process uses roughly 300MB of memory at idle).
+CMD ["sh", "-c", "python -c 'from app.database import init_db; init_db()' && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WEB_CONCURRENCY:-2}"]

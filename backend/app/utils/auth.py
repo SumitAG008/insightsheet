@@ -19,7 +19,29 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this")
+_DEFAULT_SECRET_KEY = "your-secret-key-change-this"
+SECRET_KEY = (os.getenv("JWT_SECRET_KEY") or "").strip() or _DEFAULT_SECRET_KEY
+
+
+def _check_secret_key() -> None:
+    """
+    Login tokens are signed with JWT_SECRET_KEY. With the public default, anyone can forge a
+    token for any account. Warn loudly for now; set REQUIRE_JWT_SECRET=true (once the secret is
+    set on Railway) to refuse to start without a real one.
+    """
+    weak = SECRET_KEY == _DEFAULT_SECRET_KEY or len(SECRET_KEY) < 32
+    if not weak:
+        return
+    message = (
+        "JWT_SECRET_KEY is missing or too short (need 32+ random characters). "
+        "Anyone could forge login tokens. Set it, e.g. to the output of: openssl rand -hex 32"
+    )
+    if (os.getenv("REQUIRE_JWT_SECRET") or "").strip().lower() in ("1", "true", "yes", "on"):
+        raise RuntimeError(message)
+    logger.critical(message)
+
+
+_check_secret_key()
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 

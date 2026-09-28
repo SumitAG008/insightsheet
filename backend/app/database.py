@@ -36,8 +36,10 @@ elif DATABASE_URL.startswith("postgresql"):
     # Create engine with connection pooling and retry logic
     engine = create_engine(
         DATABASE_URL,
-        pool_size=5,  # Number of connections to maintain
-        max_overflow=10,  # Additional connections beyond pool_size
+        # Per worker process. Requests run on a thread pool, so allow enough connections
+        # for concurrent requests; total = workers x (pool_size + max_overflow).
+        pool_size=int(os.getenv("DB_POOL_SIZE", "10")),
+        max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "10")),
         pool_pre_ping=True,  # Verify connections before using (auto-reconnect)
         pool_recycle=3600,  # Recycle connections after 1 hour
         connect_args={

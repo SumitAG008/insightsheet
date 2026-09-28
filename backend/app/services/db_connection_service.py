@@ -6,12 +6,70 @@ import logging
 import re
 from typing import Dict, Any, Optional, List
 import uuid
+import base64
+import hashlib
+import json
+import os
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-# In-memory connection pool (cleared on server restart - zero persistence)
+# In-memory connection pool (cleared on server restart - zero persistence).
+# The server runs several worker processes, each with its own pool. The connection id
+# handed to the browser is therefore a sealed token (encrypted, signed, expiring) that
+# carries the connection settings, so whichever worker receives the next request can
+# reopen the connection. Nothing is written to disk or the database.
 _connection_pool: Dict[str, Dict[str, Any]] = {}
+
+
+def _token_cipher():
+    from cryptography.fernet import Fernet
+    from app.utils.auth import SECRET_KEY
+
+    key = os.getenv("DB_CONNECTION_TOKEN_KEY") or SECRET_KEY
+    digest = hashlib.sha256(f"meldra-db-connection:{key}".encode("utf-8")).digest()
+    return Fernet(base64.urlsafe_b64encode(digest))
+
+
+def _token_ttl_seconds() -> int:
+    try:
+        hours = float(os.getenv("DB_CONNECTION_TTL_HOURS", "12"))
+    except ValueError:
+        hours = 12.0
+    return int(max(0.25, min(hours, 72.0)) * 3600)
+
+
+def _seal_connection(db_type: str, connection_data: Dict[str, Any], owner: str) -> str:
+    payload = json.dumps({"t": db_type, "d": connection_data, "o": owner, "n": uuid.uuid4().hex[:8]})
+    return "conn_" + _token_cipher().encrypt(payload.encode("utf-8")).decode("ascii")
+
+
+def _unseal_connection(connection_id: str) -> Dict[str, Any]:
+    from cryptography.fernet import InvalidToken
+
+    if not connection_id.startswith("conn_"):
+        raise ValueError("Connection not found")
+    try:
+        raw = _token_cipher().decrypt(connection_id[5:].encode("ascii"), ttl=_token_ttl_seconds())
+    except (InvalidToken, ValueError):
+        raise ValueError("Connection expired or not found. Please connect again.")
+    return json.loads(raw)
+
+
+def _pooled_connection(connection_id: str, db_type: str, owner: str) -> Dict[str, Any]:
+    """The open connection for this id, reopening it in this worker if needed. Only its owner may use it."""
+    info = _connection_pool.get(connection_id)
+    if info is not None:
+        if info.get("owner") != owner:
+            raise ValueError("Connection not found")
+        return info
+    sealed = _unseal_connection(connection_id)
+    if sealed.get("o") != owner or sealed.get("t") != db_type:
+        raise ValueError("Connection not found")
+    result = DatabaseConnectionService.test_connection(db_type, sealed.get("d") or {}, owner, connection_id=connection_id)
+    if not result.get("success"):
+        raise ValueError(result.get("error") or "Could not reconnect to the database")
+    return _connection_pool[connection_id]
 
 
 MAX_QUERY_ROWS = 200000
@@ -52,13 +110,13 @@ class DatabaseConnectionService:
     """Service for managing database connections"""
     
     @staticmethod
-    def test_connection(db_type: str, connection_data: Dict[str, Any]) -> Dict[str, Any]:
+    def test_connection(db_type: str, connection_data: Dict[str, Any], owner: str = "", connection_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Test database connection
         Returns connection_id if successful
         """
         try:
-            connection_id = f"conn_{uuid.uuid4().hex[:12]}"
+            connection_id = connection_id or _seal_connection(db_type, connection_data, owner)
             
             if db_type == "postgresql":
                 import psycopg2
@@ -150,6 +208,7 @@ class DatabaseConnectionService:
                 "connection": conn,
                 "db_type": db_type,
                 "connection_data": connection_data,  # Store for MongoDB database name
+                "owner": owner,
                 "created_at": datetime.utcnow(),
                 "last_used": datetime.utcnow()
             }
@@ -168,13 +227,10 @@ class DatabaseConnectionService:
             }
     
     @staticmethod
-    def get_schema(connection_id: str, db_type: str) -> Dict[str, Any]:
+    def get_schema(connection_id: str, db_type: str, owner: str = "") -> Dict[str, Any]:
         """Get database schema (tables and columns)"""
         try:
-            if connection_id not in _connection_pool:
-                raise ValueError("Connection not found")
-            
-            conn_info = _connection_pool[connection_id]
+            conn_info = _pooled_connection(connection_id, db_type, owner)
             conn = conn_info["connection"]
             conn_info["last_used"] = datetime.utcnow()
             
@@ -405,13 +461,10 @@ class DatabaseConnectionService:
             }
     
     @staticmethod
-    def execute_query(connection_id: str, db_type: str, query: str, max_rows: int = MAX_QUERY_ROWS) -> Dict[str, Any]:
+    def execute_query(connection_id: str, db_type: str, query: str, max_rows: int = MAX_QUERY_ROWS, owner: str = "") -> Dict[str, Any]:
         """Execute SQL query and return results"""
         try:
-            if connection_id not in _connection_pool:
-                raise ValueError("Connection not found")
-            
-            conn_info = _connection_pool[connection_id]
+            conn_info = _pooled_connection(connection_id, db_type, owner)
             conn = conn_info["connection"]
             conn_info["last_used"] = datetime.utcnow()
             
@@ -485,10 +538,10 @@ class DatabaseConnectionService:
             }
     
     @staticmethod
-    def disconnect(connection_id: str, db_type: str) -> Dict[str, Any]:
+    def disconnect(connection_id: str, db_type: str, owner: str = "") -> Dict[str, Any]:
         """Close and remove database connection"""
         try:
-            if connection_id in _connection_pool:
+            if connection_id in _connection_pool and _connection_pool[connection_id].get("owner") == owner:
                 conn_info = _connection_pool[connection_id]
                 conn = conn_info["connection"]
                 

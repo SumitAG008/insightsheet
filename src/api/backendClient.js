@@ -675,7 +675,7 @@ export const backendApi = {
     },
 
     getSchema: async (connectionId, dbType) => {
-      const response = await apiCall(`/api/db/schema?connection_id=${connectionId}&db_type=${dbType}`);
+      const response = await apiCall(`/api/db/schema?connection_id=${encodeURIComponent(connectionId)}&db_type=${encodeURIComponent(dbType)}`);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.detail || 'Failed to get schema');

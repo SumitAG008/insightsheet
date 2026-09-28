@@ -4,6 +4,7 @@ Supports both SMTP and Resend API (Resend recommended for cloud platforms)
 """
 import os
 import logging
+import asyncio
 import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -153,7 +154,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
             
             # Send via Resend API
             try:
-                result = resend.Emails.send({
+                result = await asyncio.to_thread(resend.Emails.send, {
                     "from": from_email,
                     "to": [email],
                     "subject": "Reset Your Password - Meldra",
@@ -170,7 +171,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
                     from_email = "onboarding@resend.dev"
                     # Retry with test email
                     try:
-                        result = resend.Emails.send({
+                        result = await asyncio.to_thread(resend.Emails.send, {
                             "from": from_email,
                             "to": [email],
                             "subject": "Reset Your Password - Meldra",
@@ -554,7 +555,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
             
             # Send via Resend API
             try:
-                result = resend.Emails.send({
+                result = await asyncio.to_thread(resend.Emails.send, {
                     "from": from_email,
                     "to": [email],
                     "subject": "Verify Your Email - Meldra",
@@ -571,7 +572,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                     from_email = "onboarding@resend.dev"
                     # Retry with test email
                     try:
-                        result = resend.Emails.send({
+                        result = await asyncio.to_thread(resend.Emails.send, {
                             "from": from_email,
                             "to": [email],
                             "subject": "Verify Your Email - Meldra",
@@ -1025,7 +1026,7 @@ X-API-Key: {api_key}
 {limit_text}Save this key now. For security, it may not be shown again.
 """
 
-        resend.Emails.send({
+        await asyncio.to_thread(resend.Emails.send, {
             "from": from_email,
             "to": [email],
             "subject": f"Your Meldra API Key ({environment})",
@@ -1064,7 +1065,7 @@ async def send_trial_deletion_warning_email(email: str, full_name: str, deletion
                 f"After deletion, you will not be able to log in again. If you need continued access, please upgrade.\n\n"
                 f"The Meldra Team\n"
             )
-            resend.Emails.send({
+            await asyncio.to_thread(resend.Emails.send, {
                 "from": from_email,
                 "to": [email],
                 "subject": "Meldra: account credentials deletion scheduled",
@@ -1145,7 +1146,7 @@ async def send_credentials_deleted_email(email: str, full_name: str) -> bool:
                 f"You will no longer be able to log in again with this account. If you need access, please create a new account or upgrade.\n\n"
                 f"The Meldra Team\n"
             )
-            resend.Emails.send({
+            await asyncio.to_thread(resend.Emails.send, {
                 "from": from_email,
                 "to": [email],
                 "subject": "Meldra: account credentials deleted",
@@ -1260,7 +1261,7 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
             else:
                 from_email = configured_from
             try:
-                resend.Emails.send({
+                await asyncio.to_thread(resend.Emails.send, {
                     "from": f"Meldra <{from_email}>",
                     "to": [email],
                     "subject": subject,
@@ -1278,7 +1279,7 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
             except Exception as resend_error:
                 if "not verified" in str(resend_error).lower() and from_email != "onboarding@resend.dev":
                     from_email = "onboarding@resend.dev"
-                    resend.Emails.send({
+                    await asyncio.to_thread(resend.Emails.send, {
                         "from": f"Meldra <{from_email}>",
                         "to": [email],
                         "subject": subject,

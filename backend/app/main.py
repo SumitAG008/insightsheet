@@ -6161,6 +6161,46 @@ def cancel_subscription(
 # ACTIVITY & ANALYTICS ENDPOINTS
 # ============================================================================
 
+class SearchChoiceIn(BaseModel):
+    q: str = Field("", max_length=200)
+    tool_id: str = Field(..., max_length=64)
+
+
+@app.get("/api/assist/search")
+def assist_search(
+    q: str = Query("", max_length=200),
+    limit: int = Query(8, ge=1, le=20),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Find the right tool from plain words; ranking learns from what people pick and what you use."""
+    from app.services.personalization import search
+
+    return {"results": search(db, current_user["email"], q, limit=limit)}
+
+
+@app.post("/api/assist/search/choose")
+def assist_search_choose(payload: SearchChoiceIn, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Record which tool a search led to, so the same words rank it higher next time."""
+    from app.services.personalization import record_search_choice
+
+    if not record_search_choice(db, current_user["email"], payload.q, payload.tool_id):
+        raise HTTPException(status_code=400, detail="Unknown tool")
+    return {"ok": True}
+
+
+@app.get("/api/assist/suggestions")
+def assist_suggestions(
+    limit: int = Query(6, ge=1, le=12),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Tools suggested for you, from your recent and routine use and what people usually do next."""
+    from app.services.personalization import suggestions
+
+    return {"suggestions": suggestions(db, current_user["email"], limit=limit)}
+
+
 @app.post("/api/activity/log")
 def log_activity(
     activity: ActivityLog,

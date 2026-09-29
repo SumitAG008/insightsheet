@@ -334,6 +334,14 @@ export const backendApi = {
     },
   },
 
+  // Tool search and suggestions that learn from usage
+  assist: {
+    search: async (q) => jsonOrThrow(await apiCall(`/api/assist/search?q=${encodeURIComponent(q)}`), 'Search failed'),
+    suggestions: async () => jsonOrThrow(await apiCall('/api/assist/suggestions'), 'Could not load suggestions'),
+    choose: async (q, toolId) =>
+      jsonOrThrow(await apiCall('/api/assist/search/choose', { method: 'POST', body: { q, tool_id: toolId } }), 'Could not save choice'),
+  },
+
   // Activity
   activity: {
     log: async (activityType, pageName, details) => {

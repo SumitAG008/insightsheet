@@ -43,7 +43,6 @@ export default function ActivityLogger({ children }) {
   const logPageView = useCallback(async () => {
     try {
       const currentUser = await User.me();
-      const ipData = await getIPAndLocation();
       const browser = getBrowserInfo();
       
       // Log activity
@@ -52,7 +51,6 @@ export default function ActivityLogger({ children }) {
         activity_type: 'page_view',
         page_name: location.pathname,
         details: JSON.stringify({ timestamp: new Date().toISOString() }),
-        ip_address: ipData.ip,
         browser: browser
       });
 
@@ -80,7 +78,6 @@ export default function ActivityLogger({ children }) {
 export const logActivity = async (activityType, details = {}) => {
   try {
     const currentUser = await User.me();
-    const ipData = await getIPAndLocation();
     const browser = getBrowserInfo();
     
     await UserActivity.create({
@@ -88,7 +85,6 @@ export const logActivity = async (activityType, details = {}) => {
       activity_type: activityType,
       page_name: window.location.pathname,
       details: JSON.stringify(details),
-      ip_address: ipData.ip,
       browser: browser
     });
 

@@ -72,7 +72,7 @@ export default function Privacy() {
                 <ul className="list-disc list-inside space-y-1 ml-4">
                   <li>Signed-in devices: browser and device type, IP address and approximate location (city, country), used to keep your account secure and to limit a subscription to 2 devices at once. Deleted 30 days after the device signs out.</li>
                   <li>Sign-in history (the same details): deleted after 90 days.</li>
-                  <li>Which tools you use and the words you search for in Meldra (never file contents), used to improve your suggestions: deleted after 180 days.</li>
+                  <li>Which pages and tools you use and the words you search for in Meldra (never file contents), used to improve your suggestions: deleted after 90 days.</li>
                   <li>Cookie consent choices: kept for 2 years as proof of consent.</li>
                   <li>Results of document extraction jobs: deleted when the job expires, within hours.</li>
                 </ul>

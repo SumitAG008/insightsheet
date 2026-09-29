@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
-import { FileSpreadsheet, LayoutDashboard, X } from 'lucide-react';
+import { LayoutDashboard, X } from 'lucide-react';
+import DownloadMenu from './DownloadMenu';
 import { ChartSwitcher, LakeLoading, ReportBody } from './AnswerCard';
 import { FilterBar } from './AnalysisControls';
 import { sanitize } from '@/lib/unifiedReporting/engine';
@@ -24,9 +25,10 @@ function Tile({ b, m, filters, onRemove, onChart }) {
   }, [b.spec, filters, m]);
   const { res, loading } = useResult(spec, m);
   // Sources without the filtered column are shown unfiltered; say so on the tile.
-  const missing = [...new Set(filters.filter((f) => b.spec.series.some((s) => !m.views[s.view]?.dims.includes(f.dim))).map((f) => f.dim))];
+  const missing = b.spec.sql ? [...new Set(filters.map((f) => f.dim))]
+    : [...new Set(filters.filter((f) => b.spec.series.some((s) => !m.views[s.view]?.dims.includes(f.dim))).map((f) => f.dim))];
   return (
-    <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900" data-export-item={b.id}>
       <div className="flex items-start justify-between gap-2">
         <h3 className="m-0 text-[15px] font-semibold leading-snug">{b.spec.title}</h3>
         <div className="flex flex-none items-center gap-1">
@@ -67,7 +69,7 @@ export default function DashboardView({ board, m, filters, onFilters, onRemove, 
       </div>
     );
   }
-  const viewKeys = [...new Set(board.flatMap((b) => b.spec.series.map((s) => s.view)))].filter((k) => m.views[k]);
+  const viewKeys = [...new Set(board.flatMap((b) => (b.spec.sql ? b.spec.tables || [] : b.spec.series.map((s) => s.view))))].filter((k) => m.views[k]);
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -78,7 +80,7 @@ export default function DashboardView({ board, m, filters, onFilters, onRemove, 
           onChange={onFilters}
           note={filters.length ? 'Applies to every tile whose sources have the column.' : 'Filter every tile at once, e.g. one department or a date range.'}
         />
-        <Button variant="outline" size="sm" onClick={onExport}><FileSpreadsheet className="mr-1.5 h-4 w-4" />Export to Excel</Button>
+        <DownloadMenu formats={['pdf', 'pptx', 'docx', 'xlsx']} onPick={onExport} label="Download dashboard" />
       </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
         {board.map((b) => <Tile key={b.id} b={b} m={m} filters={filters} onRemove={onRemove} onChart={onChart} />)}

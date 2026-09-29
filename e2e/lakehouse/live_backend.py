@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "..", "backend"))
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{tempfile.gettempdir()}/meldra_lake_e2e.db")
 os.environ.setdefault("LAKEHOUSE_CATALOG", "rest")
 os.environ.setdefault("POLARIS_URI", "http://localhost:8181/api/catalog")
-if not os.environ.get("POLARIS_CREDENTIAL"):
+if os.environ["LAKEHOUSE_CATALOG"] == "rest" and not os.environ.get("POLARIS_CREDENTIAL"):
     sys.exit("Set POLARIS_CREDENTIAL=<client_id>:<client_secret> for the Polaris principal (see README.md).")
 os.environ.setdefault("POLARIS_WAREHOUSE", "meldra")
 os.environ.setdefault("POLARIS_ACCESS_DELEGATION", "none")

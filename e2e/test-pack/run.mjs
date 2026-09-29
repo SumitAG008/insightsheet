@@ -112,8 +112,9 @@ for (const q of EXPECTED.questions) {
   await page.locator('#ur-q').fill(q.ask);
   await page.locator('#ur-q').press('Enter');
   const card = page.locator('[id^="qa-"]').last();
-  await card.getByRole('button', { name: 'CSV' }).waitFor({ timeout: 120000 });
-  const [dl] = await Promise.all([page.waitForEvent('download'), card.getByRole('button', { name: 'CSV' }).click()]);
+  await card.getByRole('button', { name: /^Download/ }).waitFor({ timeout: 120000 });
+  await card.getByRole('button', { name: /^Download/ }).click();
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: 'CSV' }).click()]);
   const rows = XLSX.utils.sheet_to_json(XLSX.read(fs.readFileSync(await dl.path(), 'utf8'), { type: 'string', raw: true }).Sheets.Sheet1, { header: 1, raw: true });
   const got = Object.fromEntries(rows.slice(1).map((r) => [String(r[0]), r.slice(1).map(Number)]));
   const keys = Object.keys(q.expected);

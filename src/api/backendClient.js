@@ -775,6 +775,7 @@ export const backendApi = {
     preview: async (table) => jsonOrThrow(await apiCall(`/api/lakehouse/sources/${encodeURIComponent(table)}/preview`), 'Could not load rows'),
 
     aggregate: async (series) => jsonOrThrow(await apiCall('/api/lakehouse/aggregate', { method: 'POST', body: { series }, timeoutMs: 5 * 60000 }), 'Could not calculate the answer'),
+    sql: async (body) => jsonOrThrow(await apiCall('/api/lakehouse/sql', { method: 'POST', body, timeoutMs: 2 * 60000 }), 'Could not run the query'),
 
     suggestLinks: async (tables) => jsonOrThrow(await apiCall('/api/lakehouse/suggest-links', { method: 'POST', body: { tables }, timeoutMs: 5 * 60000 }), 'Could not suggest links'),
   },

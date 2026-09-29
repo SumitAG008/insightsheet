@@ -313,19 +313,24 @@ export function buildModel(sources = [], relationships = []) {
     };
   }
 
-  function rowsOf(viewKey) {
-    if (rowCache.has(viewKey)) return rowCache.get(viewKey);
+  /** A source's own rows as the engine and SQL see them: numbers parsed, month from the date column, no lookups. */
+  function baseRowsOf(viewKey) {
     const v = views[viewKey];
-    if (!v) return [];
-    const s = byId[v.id];
-    if (v.remote) return []; // rows stay in the lakehouse; answers come from /api/lakehouse/aggregate
-    const measureKeys = v.measures;
-    let rows = s.rows.map((r) => {
+    if (!v || v.remote) return []; // rows stay in the lakehouse; answers come from /api/lakehouse/aggregate
+    return byId[v.id].rows.map((r) => {
       const o = { ...r };
-      for (const k of measureKeys) o[k] = parseNumber(r[k]);
+      for (const k of v.measures) o[k] = parseNumber(r[k]);
       if (v.dateCol) o.month = toMonth(r[v.dateCol]);
       return o;
     });
+  }
+
+  function rowsOf(viewKey) {
+    if (rowCache.has(viewKey)) return rowCache.get(viewKey);
+    const v = views[viewKey];
+    if (!v || v.remote) return [];
+    const s = byId[v.id];
+    let rows = baseRowsOf(viewKey);
     for (const rel of relationships) {
       if (rel.from.source !== s.id || !byId[rel.to.source] || !joinable(s, byId[rel.to.source])) continue;
       const t = byId[rel.to.source];
@@ -360,7 +365,7 @@ export function buildModel(sources = [], relationships = []) {
   });
   const shared = Object.entries(dimCount).filter(([, n]) => n > 1).map(([d]) => d);
 
-  const currency = (sources.flatMap((s) => s.columns).find((c) => c.currency) || {}).currency || (sources.some((s) => s.kind === 'sample') ? '£' : '');
+  const currency = (sources.flatMap((s) => s.columns).find((c) => c.currency) || {}).currency || (sources.some((s) => s.kind === 'sample' || s.storedKind === 'sample') ? '£' : '');
 
   /** Known values of a dimension: from rows in the browser, or from the lakehouse profile. */
   function valuesOf(viewKey, dim) {
@@ -372,7 +377,7 @@ export function buildModel(sources = [], relationships = []) {
     return (b && byId[b.via.to.source]?.values?.[dim]?.top) || [];
   }
 
-  return { sources, relationships, views, rowsOf, valuesOf, byId, shared, currency, empty: !sources.length };
+  return { sources, relationships, views, rowsOf, baseRowsOf, valuesOf, byId, shared, currency, empty: !sources.length };
 }
 
 /* ---------------- lakehouse sources ---------------- */

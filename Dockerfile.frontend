@@ -10,8 +10,8 @@ COPY tailwind.config.js ./
 COPY postcss.config.js ./
 COPY jsconfig.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (npm ci needs a lockfile; the repo doesn't commit one)
+RUN if [ -f package-lock.json ]; then npm ci; else npm install --no-audit --no-fund; fi
 
 # Copy source code
 COPY src ./src

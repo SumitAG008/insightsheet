@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 from app.services.lakehouse import config
 from app.services.lakehouse import query as lq
+from app.services.lakehouse import sql as lsql
 from app.services.lakehouse import store
 from app.utils.auth import get_current_user
 
@@ -156,6 +157,21 @@ async def preview(table: str, limit: int = 50, current_user: dict = Depends(get_
         return await run_in_threadpool(store.preview, _tenant(current_user), table, limit)
     except Exception as e:
         _fail(e, "show the rows")
+
+
+class SqlRequest(BaseModel):
+    sql: str = Field(..., min_length=1, max_length=lsql.MAX_SQL)
+    tables: Dict[str, str] = Field(..., min_length=1, max_length=lsql.MAX_TABLES)
+
+
+@router.post("/sql")
+async def run_sql(req: SqlRequest, current_user: dict = Depends(get_current_user)):
+    """Run the customer's own SELECT over their stored sources (read-only, own tables only)."""
+    _require()
+    try:
+        return await run_in_threadpool(lsql.run_sql, _tenant(current_user), req.sql, req.tables)
+    except Exception as e:
+        _fail(e, "run the query")
 
 
 class AggregateRequest(BaseModel):

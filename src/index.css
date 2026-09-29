@@ -117,12 +117,12 @@ button:focus-visible {
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 14.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
+    --muted-foreground: 215 20.2% 70%;
     --accent: 0 0% 14.9%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
@@ -185,5 +185,155 @@ button:focus-visible {
 
   .glass-surface-strong {
     @apply bg-white/85 backdrop-blur-xl border border-slate-200/80 shadow-md;
+  }
+
+  /* Dark theme mapping. Pages written for the light theme often hard-code light colours; in the
+     dark theme these rules map them to dark equivalents so every page follows the chosen theme and
+     text keeps its contrast. A page's own dark:* class still wins (same specificity, later layer). */
+  .dark .bg-white { @apply bg-slate-900; }
+  .dark .bg-white\/80, .dark .bg-white\/90, .dark .bg-white\/75, .dark .bg-white\/70, .dark .bg-white\/60, .dark .bg-white\/50 { @apply bg-slate-900/80; }
+  .dark .bg-slate-50, .dark .bg-gray-50, .dark .bg-zinc-50 { @apply bg-slate-900; }
+  .dark .bg-slate-100, .dark .bg-gray-100, .dark .bg-zinc-100 { @apply bg-slate-800; }
+  .dark .bg-slate-200, .dark .bg-gray-200 { @apply bg-slate-700; }
+  .dark .from-white, .dark .from-slate-50, .dark .from-gray-50 { @apply from-slate-950; }
+  .dark .via-white, .dark .via-slate-50, .dark .via-gray-50 { @apply via-slate-950; }
+  .dark .to-white, .dark .to-slate-50, .dark .to-gray-50 { @apply to-slate-900; }
+  .dark .text-slate-900, .dark .text-gray-900, .dark .text-black { @apply text-slate-100; }
+  .dark .text-slate-800, .dark .text-gray-800 { @apply text-slate-200; }
+  .dark .text-slate-700, .dark .text-gray-700 { @apply text-slate-300; }
+  .dark .text-slate-600, .dark .text-gray-600, .dark .text-slate-500, .dark .text-gray-500 { @apply text-slate-400; }
+  .dark .border-slate-100, .dark .border-slate-200, .dark .border-gray-100, .dark .border-gray-200 { @apply border-slate-700; }
+  .dark .border-slate-300, .dark .border-gray-300 { @apply border-slate-600; }
+  .dark .bg-blue-50, .dark .bg-blue-100 { @apply bg-blue-500/10; }
+  .dark .from-blue-50, .dark .from-blue-100 { @apply from-blue-500/10; }
+  .dark .via-blue-50, .dark .via-blue-100 { @apply via-blue-500/10; }
+  .dark .to-blue-50, .dark .to-blue-100 { @apply to-blue-500/10; }
+  .dark .text-blue-700, .dark .text-blue-800, .dark .text-blue-900 { @apply text-blue-300; }
+  .dark .text-blue-600 { @apply text-blue-400; }
+  .dark .border-blue-100, .dark .border-blue-200, .dark .border-blue-300 { @apply border-blue-500/30; }
+  .dark .bg-indigo-50, .dark .bg-indigo-100 { @apply bg-indigo-500/10; }
+  .dark .from-indigo-50, .dark .from-indigo-100 { @apply from-indigo-500/10; }
+  .dark .via-indigo-50, .dark .via-indigo-100 { @apply via-indigo-500/10; }
+  .dark .to-indigo-50, .dark .to-indigo-100 { @apply to-indigo-500/10; }
+  .dark .text-indigo-700, .dark .text-indigo-800, .dark .text-indigo-900 { @apply text-indigo-300; }
+  .dark .text-indigo-600 { @apply text-indigo-400; }
+  .dark .border-indigo-100, .dark .border-indigo-200, .dark .border-indigo-300 { @apply border-indigo-500/30; }
+  .dark .bg-purple-50, .dark .bg-purple-100 { @apply bg-purple-500/10; }
+  .dark .from-purple-50, .dark .from-purple-100 { @apply from-purple-500/10; }
+  .dark .via-purple-50, .dark .via-purple-100 { @apply via-purple-500/10; }
+  .dark .to-purple-50, .dark .to-purple-100 { @apply to-purple-500/10; }
+  .dark .text-purple-700, .dark .text-purple-800, .dark .text-purple-900 { @apply text-purple-300; }
+  .dark .text-purple-600 { @apply text-purple-400; }
+  .dark .border-purple-100, .dark .border-purple-200, .dark .border-purple-300 { @apply border-purple-500/30; }
+  .dark .bg-violet-50, .dark .bg-violet-100 { @apply bg-violet-500/10; }
+  .dark .from-violet-50, .dark .from-violet-100 { @apply from-violet-500/10; }
+  .dark .via-violet-50, .dark .via-violet-100 { @apply via-violet-500/10; }
+  .dark .to-violet-50, .dark .to-violet-100 { @apply to-violet-500/10; }
+  .dark .text-violet-700, .dark .text-violet-800, .dark .text-violet-900 { @apply text-violet-300; }
+  .dark .text-violet-600 { @apply text-violet-400; }
+  .dark .border-violet-100, .dark .border-violet-200, .dark .border-violet-300 { @apply border-violet-500/30; }
+  .dark .bg-sky-50, .dark .bg-sky-100 { @apply bg-sky-500/10; }
+  .dark .from-sky-50, .dark .from-sky-100 { @apply from-sky-500/10; }
+  .dark .via-sky-50, .dark .via-sky-100 { @apply via-sky-500/10; }
+  .dark .to-sky-50, .dark .to-sky-100 { @apply to-sky-500/10; }
+  .dark .text-sky-700, .dark .text-sky-800, .dark .text-sky-900 { @apply text-sky-300; }
+  .dark .text-sky-600 { @apply text-sky-400; }
+  .dark .border-sky-100, .dark .border-sky-200, .dark .border-sky-300 { @apply border-sky-500/30; }
+  .dark .bg-cyan-50, .dark .bg-cyan-100 { @apply bg-cyan-500/10; }
+  .dark .from-cyan-50, .dark .from-cyan-100 { @apply from-cyan-500/10; }
+  .dark .via-cyan-50, .dark .via-cyan-100 { @apply via-cyan-500/10; }
+  .dark .to-cyan-50, .dark .to-cyan-100 { @apply to-cyan-500/10; }
+  .dark .text-cyan-700, .dark .text-cyan-800, .dark .text-cyan-900 { @apply text-cyan-300; }
+  .dark .text-cyan-600 { @apply text-cyan-400; }
+  .dark .border-cyan-100, .dark .border-cyan-200, .dark .border-cyan-300 { @apply border-cyan-500/30; }
+  .dark .bg-teal-50, .dark .bg-teal-100 { @apply bg-teal-500/10; }
+  .dark .from-teal-50, .dark .from-teal-100 { @apply from-teal-500/10; }
+  .dark .via-teal-50, .dark .via-teal-100 { @apply via-teal-500/10; }
+  .dark .to-teal-50, .dark .to-teal-100 { @apply to-teal-500/10; }
+  .dark .text-teal-700, .dark .text-teal-800, .dark .text-teal-900 { @apply text-teal-300; }
+  .dark .text-teal-600 { @apply text-teal-400; }
+  .dark .border-teal-100, .dark .border-teal-200, .dark .border-teal-300 { @apply border-teal-500/30; }
+  .dark .bg-emerald-50, .dark .bg-emerald-100 { @apply bg-emerald-500/10; }
+  .dark .from-emerald-50, .dark .from-emerald-100 { @apply from-emerald-500/10; }
+  .dark .via-emerald-50, .dark .via-emerald-100 { @apply via-emerald-500/10; }
+  .dark .to-emerald-50, .dark .to-emerald-100 { @apply to-emerald-500/10; }
+  .dark .text-emerald-700, .dark .text-emerald-800, .dark .text-emerald-900 { @apply text-emerald-300; }
+  .dark .text-emerald-600 { @apply text-emerald-400; }
+  .dark .border-emerald-100, .dark .border-emerald-200, .dark .border-emerald-300 { @apply border-emerald-500/30; }
+  .dark .bg-green-50, .dark .bg-green-100 { @apply bg-green-500/10; }
+  .dark .from-green-50, .dark .from-green-100 { @apply from-green-500/10; }
+  .dark .via-green-50, .dark .via-green-100 { @apply via-green-500/10; }
+  .dark .to-green-50, .dark .to-green-100 { @apply to-green-500/10; }
+  .dark .text-green-700, .dark .text-green-800, .dark .text-green-900 { @apply text-green-300; }
+  .dark .text-green-600 { @apply text-green-400; }
+  .dark .border-green-100, .dark .border-green-200, .dark .border-green-300 { @apply border-green-500/30; }
+  .dark .bg-lime-50, .dark .bg-lime-100 { @apply bg-lime-500/10; }
+  .dark .from-lime-50, .dark .from-lime-100 { @apply from-lime-500/10; }
+  .dark .via-lime-50, .dark .via-lime-100 { @apply via-lime-500/10; }
+  .dark .to-lime-50, .dark .to-lime-100 { @apply to-lime-500/10; }
+  .dark .text-lime-700, .dark .text-lime-800, .dark .text-lime-900 { @apply text-lime-300; }
+  .dark .text-lime-600 { @apply text-lime-400; }
+  .dark .border-lime-100, .dark .border-lime-200, .dark .border-lime-300 { @apply border-lime-500/30; }
+  .dark .bg-amber-50, .dark .bg-amber-100 { @apply bg-amber-500/10; }
+  .dark .from-amber-50, .dark .from-amber-100 { @apply from-amber-500/10; }
+  .dark .via-amber-50, .dark .via-amber-100 { @apply via-amber-500/10; }
+  .dark .to-amber-50, .dark .to-amber-100 { @apply to-amber-500/10; }
+  .dark .text-amber-700, .dark .text-amber-800, .dark .text-amber-900 { @apply text-amber-300; }
+  .dark .text-amber-600 { @apply text-amber-400; }
+  .dark .border-amber-100, .dark .border-amber-200, .dark .border-amber-300 { @apply border-amber-500/30; }
+  .dark .bg-yellow-50, .dark .bg-yellow-100 { @apply bg-yellow-500/10; }
+  .dark .from-yellow-50, .dark .from-yellow-100 { @apply from-yellow-500/10; }
+  .dark .via-yellow-50, .dark .via-yellow-100 { @apply via-yellow-500/10; }
+  .dark .to-yellow-50, .dark .to-yellow-100 { @apply to-yellow-500/10; }
+  .dark .text-yellow-700, .dark .text-yellow-800, .dark .text-yellow-900 { @apply text-yellow-300; }
+  .dark .text-yellow-600 { @apply text-yellow-400; }
+  .dark .border-yellow-100, .dark .border-yellow-200, .dark .border-yellow-300 { @apply border-yellow-500/30; }
+  .dark .bg-orange-50, .dark .bg-orange-100 { @apply bg-orange-500/10; }
+  .dark .from-orange-50, .dark .from-orange-100 { @apply from-orange-500/10; }
+  .dark .via-orange-50, .dark .via-orange-100 { @apply via-orange-500/10; }
+  .dark .to-orange-50, .dark .to-orange-100 { @apply to-orange-500/10; }
+  .dark .text-orange-700, .dark .text-orange-800, .dark .text-orange-900 { @apply text-orange-300; }
+  .dark .text-orange-600 { @apply text-orange-400; }
+  .dark .border-orange-100, .dark .border-orange-200, .dark .border-orange-300 { @apply border-orange-500/30; }
+  .dark .bg-red-50, .dark .bg-red-100 { @apply bg-red-500/10; }
+  .dark .from-red-50, .dark .from-red-100 { @apply from-red-500/10; }
+  .dark .via-red-50, .dark .via-red-100 { @apply via-red-500/10; }
+  .dark .to-red-50, .dark .to-red-100 { @apply to-red-500/10; }
+  .dark .text-red-700, .dark .text-red-800, .dark .text-red-900 { @apply text-red-300; }
+  .dark .text-red-600 { @apply text-red-400; }
+  .dark .border-red-100, .dark .border-red-200, .dark .border-red-300 { @apply border-red-500/30; }
+  .dark .bg-rose-50, .dark .bg-rose-100 { @apply bg-rose-500/10; }
+  .dark .from-rose-50, .dark .from-rose-100 { @apply from-rose-500/10; }
+  .dark .via-rose-50, .dark .via-rose-100 { @apply via-rose-500/10; }
+  .dark .to-rose-50, .dark .to-rose-100 { @apply to-rose-500/10; }
+  .dark .text-rose-700, .dark .text-rose-800, .dark .text-rose-900 { @apply text-rose-300; }
+  .dark .text-rose-600 { @apply text-rose-400; }
+  .dark .border-rose-100, .dark .border-rose-200, .dark .border-rose-300 { @apply border-rose-500/30; }
+  .dark .bg-pink-50, .dark .bg-pink-100 { @apply bg-pink-500/10; }
+  .dark .from-pink-50, .dark .from-pink-100 { @apply from-pink-500/10; }
+  .dark .via-pink-50, .dark .via-pink-100 { @apply via-pink-500/10; }
+  .dark .to-pink-50, .dark .to-pink-100 { @apply to-pink-500/10; }
+  .dark .text-pink-700, .dark .text-pink-800, .dark .text-pink-900 { @apply text-pink-300; }
+  .dark .text-pink-600 { @apply text-pink-400; }
+  .dark .border-pink-100, .dark .border-pink-200, .dark .border-pink-300 { @apply border-pink-500/30; }
+  .dark .bg-fuchsia-50, .dark .bg-fuchsia-100 { @apply bg-fuchsia-500/10; }
+  .dark .from-fuchsia-50, .dark .from-fuchsia-100 { @apply from-fuchsia-500/10; }
+  .dark .via-fuchsia-50, .dark .via-fuchsia-100 { @apply via-fuchsia-500/10; }
+  .dark .to-fuchsia-50, .dark .to-fuchsia-100 { @apply to-fuchsia-500/10; }
+  .dark .text-fuchsia-700, .dark .text-fuchsia-800, .dark .text-fuchsia-900 { @apply text-fuchsia-300; }
+  .dark .text-fuchsia-600 { @apply text-fuchsia-400; }
+  .dark .border-fuchsia-100, .dark .border-fuchsia-200, .dark .border-fuchsia-300 { @apply border-fuchsia-500/30; }
+
+  /* Dark theme: the page and shared panels follow the theme, so light-on-dark text stays readable. */
+  .dark .app-premium-bg {
+    @apply from-slate-950 via-slate-950 to-slate-900;
+  }
+
+  .dark .glass-surface {
+    @apply bg-slate-900/75 border-slate-800/70;
+  }
+
+  .dark .glass-surface-strong {
+    @apply bg-slate-900/90 border-slate-800/80;
   }
 }

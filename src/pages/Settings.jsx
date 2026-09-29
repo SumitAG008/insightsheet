@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { User, Globe, KeyRound, Paintbrush, MonitorSmartphone } from 'lucide-react';
+import { User, Globe, KeyRound, Paintbrush, MonitorSmartphone, Upload } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,25 @@ export default function Settings() {
 
   const [brandName, setBrandName] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [logoError, setLogoError] = useState('');
+
+  // A logo picked from the computer is stored as an image in this browser (no upload to our servers).
+  const onLogoFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 300 * 1024) {
+      setLogoError('That image is larger than 300 KB. Please choose a smaller file.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogoError('');
+      setLogoUrl(String(reader.result || ''));
+    };
+    reader.onerror = () => setLogoError('This image could not be read.');
+    reader.readAsDataURL(file);
+  };
   const [primaryColor, setPrimaryColor] = useState('');
   const [theme, setTheme] = useState('system');
   const [brandingStatus, setBrandingStatus] = useState('');
@@ -262,7 +281,23 @@ export default function Settings() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('branding_logo_url')}</label>
-                <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder={t('settings_placeholder_logo_url')} />
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={logoUrl.startsWith('data:') ? 'Uploaded image' : logoUrl}
+                    readOnly={logoUrl.startsWith('data:')}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    placeholder={t('settings_placeholder_logo_url')}
+                  />
+                  <label className="inline-flex h-9 shrink-0 cursor-pointer items-center rounded-md border border-input px-3 text-sm font-medium hover:bg-accent">
+                    <Upload className="mr-1.5 h-4 w-4" /> Upload logo
+                    <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" className="hidden" onChange={onLogoFile} />
+                  </label>
+                  {logoUrl && (
+                    <img src={logoUrl} alt="" className="h-9 w-9 shrink-0 rounded border border-input bg-[#fff] object-contain p-0.5" />
+                  )}
+                </div>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">PNG, JPG, SVG or WebP up to 300 KB. Kept in this browser only.</p>
+                {logoError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{logoError}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('branding_primary_color')}</label>

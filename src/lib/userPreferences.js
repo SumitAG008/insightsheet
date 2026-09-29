@@ -130,12 +130,29 @@ export function applyTheme(theme) {
   root.classList.toggle('dark', !!shouldDark);
 }
 
+/** White or near-black, whichever reads better on the given colour (WCAG contrast). */
+export function readableTextOn(hex) {
+  const m = String(hex || '').trim().match(/^#?([0-9a-f]{6})$/i);
+  if (!m) return null;
+  const int = parseInt(m[1], 16);
+  const lin = (v) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  const L = 0.2126 * lin((int >> 16) & 255) + 0.7152 * lin((int >> 8) & 255) + 0.0722 * lin(int & 255);
+  const onWhite = 1.05 / (L + 0.05);
+  const onBlack = (L + 0.05) / 0.05;
+  return onWhite >= onBlack ? '0 0% 100%' : '222 47% 11%';
+}
+
 export function applyPrimaryColor(hex) {
   const triplet = hexToHslTriplet(hex);
   if (!triplet) return;
   const root = document.documentElement;
   root.style.setProperty('--primary', triplet);
   root.style.setProperty('--ring', triplet);
+  // The brand colour is the user's choice; the text on it is chosen for contrast automatically.
+  root.style.setProperty('--primary-foreground', readableTextOn(hex));
 }
 
 export function applyPreferences(email) {

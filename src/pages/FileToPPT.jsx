@@ -416,16 +416,16 @@ export default function FileToPPT() {
                   Max {maxSize}MB {subscription?.plan !== 'premium' && '(Free Plan)'}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  <Badge variant="outline" className="border-[#4169E1] text-[#4169E1] font-semibold">
+                  <Badge variant="outline" className="border-blue-400 text-blue-300 font-semibold">
                     .XLSX
                   </Badge>
-                  <Badge variant="outline" className="border-[#4169E1] text-[#4169E1] font-semibold">
+                  <Badge variant="outline" className="border-blue-400 text-blue-300 font-semibold">
                     .XLS
                   </Badge>
-                  <Badge variant="outline" className="border-[#4169E1] text-[#4169E1] font-semibold">
+                  <Badge variant="outline" className="border-blue-400 text-blue-300 font-semibold">
                     .CSV
                   </Badge>
-                  <Badge variant="outline" className="border-[#4169E1] text-[#4169E1] font-semibold">
+                  <Badge variant="outline" className="border-blue-400 text-blue-300 font-semibold">
                     .PDF
                   </Badge>
                 </div>

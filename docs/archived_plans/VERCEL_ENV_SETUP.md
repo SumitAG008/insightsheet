@@ -108,7 +108,7 @@ Location: `C:\Users\sumit\Documents\Insightlite\backend\.env`
 
 ```env
 # Database
-DATABASE_URL=postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL=postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require
 
 # OpenAI API Key
 OPENAI_API_KEY=sk-your-openai-api-key-here

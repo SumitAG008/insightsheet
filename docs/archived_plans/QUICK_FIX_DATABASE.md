@@ -53,7 +53,7 @@ You're using **Neon PostgreSQL**. Here's how to add the missing columns:
 
 2. **Run:**
    ```bash
-   psql "postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+   psql "postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require&channel_binding=require"
    ```
 
 3. **In psql, run:**
@@ -74,7 +74,7 @@ You're using **Neon PostgreSQL**. Here's how to add the missing columns:
 2. **Find `DATABASE_URL`**
 3. **Update to your Neon connection string:**
    ```
-   postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+   postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require&channel_binding=require
    ```
 4. **Save** → Railway will restart
 5. **Migration will run automatically** on startup

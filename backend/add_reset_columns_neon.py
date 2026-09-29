@@ -6,8 +6,8 @@ import sys
 import os
 from sqlalchemy import create_engine, text
 
-# Your Neon PostgreSQL connection string
-DATABASE_URL = "postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+# Neon PostgreSQL connection string, from the environment (never commit it)
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 def add_reset_columns():
     """Add reset_token and reset_token_expires columns to users table"""

@@ -77,7 +77,7 @@ C:\Users\sumit\Documents\Insightlite\backend\.env
 
 ### **Contents:**
 ```env
-DATABASE_URL=postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL=postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require
 OPENAI_API_KEY=sk-your-openai-api-key-here
 JWT_SECRET_KEY=your-super-secret-jwt-key-change-this
 CORS_ORIGINS=http://localhost:5173,http://localhost:3000,https://meldra.ai
@@ -101,7 +101,7 @@ PORT=8000
    - Click **"Raw Editor"**
    - Paste your `.env` file contents:
      ```
-     DATABASE_URL=postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require
+     DATABASE_URL=postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require
      OPENAI_API_KEY=sk-your-key-here
      JWT_SECRET_KEY=your-secret-key
      CORS_ORIGINS=http://localhost:5173,http://localhost:3000,https://meldra.ai
@@ -148,7 +148,7 @@ PORT=8000
 ### **1. DATABASE_URL** ✅
 You already have this:
 ```
-postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require
+postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require
 ```
 
 ### **2. OPENAI_API_KEY** 🔑

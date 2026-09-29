@@ -30,7 +30,7 @@ Deploy your **FastAPI backend** to **Railway** (easiest) or **Render**. Here's h
 2. Click **"Raw Editor"**
 3. Paste:
    ```
-   DATABASE_URL=postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require
+   DATABASE_URL=postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require
    OPENAI_API_KEY=sk-your-key-here
    JWT_SECRET_KEY=your-secret-key
    CORS_ORIGINS=http://localhost:5173,http://localhost:3000,https://meldra.ai,https://your-frontend.vercel.app

@@ -166,7 +166,8 @@ const kinds = {
 };
 check('AI report renders combo, treemap, funnel, area, heatmap and KPI tiles', Object.values(kinds).every(Boolean), JSON.stringify(kinds));
 await rep.screenshot({ path: `${OUT}/lake-2-ai-report.png` });
-const [dl] = await Promise.all([page.waitForEvent('download'), rep.getByRole('button', { name: 'Excel' }).click()]);
+await rep.getByRole('button', { name: 'Download report' }).click();
+const [dl] = await Promise.all([page.waitForEvent('download'), page.getByRole('menuitem', { name: 'Excel' }).click()]);
 check('report exported to Excel', /\.xlsx$/.test(dl.suggestedFilename()), dl.suggestedFilename());
 await rep.getByRole('button', { name: 'Add all to dashboard' }).click();
 

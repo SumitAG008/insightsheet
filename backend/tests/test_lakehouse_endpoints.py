@@ -107,3 +107,16 @@ def test_upload_limits(lake, monkeypatch):
     assert c.post("/api/lakehouse/upload", files={"file": ("big.csv", big, "text/csv")}).status_code == 413
     r = c.post("/api/lakehouse/upload", files={"file": ("x.exe", "MZ", "application/octet-stream")})
     assert r.status_code == 400 and "upload a" in r.json()["detail"]
+
+
+def test_sql_endpoint(lake):
+    ann = as_user("ann@example.com")
+    [src] = ann.post("/api/lakehouse/upload", files={"file": ("costs.csv", CSV, "text/csv")}).json()["sources"]
+    r = ann.post("/api/lakehouse/sql", json={"sql": "SELECT department, SUM(amount) AS total FROM costs GROUP BY 1 ORDER BY 2 DESC", "tables": {"costs": src["table"]}})
+    assert r.status_code == 200, r.text
+    assert r.json()["columns"] == ["department", "total"] and r.json()["rows"] == [["Sales", 1500.0], ["HR", 250.0]]
+    bad = ann.post("/api/lakehouse/sql", json={"sql": "DROP TABLE costs", "tables": {"costs": src["table"]}})
+    assert bad.status_code == 400 and "Only SELECT" in bad.json()["detail"]
+    bob = as_user("bob@example.com")
+    other = bob.post("/api/lakehouse/sql", json={"sql": "SELECT * FROM costs", "tables": {"costs": src["table"]}})
+    assert other.status_code == 400 and other.json()["detail"] == "Unknown table."

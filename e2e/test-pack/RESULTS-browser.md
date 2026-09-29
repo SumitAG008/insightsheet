@@ -1,6 +1,6 @@
 # Unified Reporting test pack: results (browser mode)
 
-Run 2026-09-27 19:33 UTC against http://localhost:5173, data kept in the browser (lakehouse off).
+Run 2026-09-27 20:50 UTC against http://localhost:5173, data kept in the browser (lakehouse off).
 **17 of 17 checks passed.** Files: employees.csv, expenses.csv, budget.xlsx, opportunities.xlsx (public/unified-reporting-test-pack).
 
 | # | Check | Result | Detail |

@@ -12,7 +12,8 @@ import {
 } from '@/lib/unifiedReporting/engine';
 import { buildModel, isLake, parseFile, refreshSource, rowCountOf, toKey } from '@/lib/unifiedReporting/model';
 import useLakehouse, { namedRows } from '@/components/unifiedReporting/useLakehouse';
-import { downloadBlob, downloadWorkbook, slug, toCSV } from '@/lib/unifiedReporting/export';
+import { downloadBlob, slug, toCSV } from '@/lib/unifiedReporting/export';
+import { FORMATS, downloadReport } from '@/lib/unifiedReporting/reportExport';
 import { computeAsync } from '@/lib/unifiedReporting/remote';
 import { buildSampleSources, sampleSuggestions } from '@/lib/unifiedReporting/sampleData';
 import * as store from '@/lib/unifiedReporting/storage';
@@ -93,7 +94,7 @@ export default function UnifiedReporting() {
   // "this answer used data that has since been removed".
   useEffect(() => {
     if (!sourcesReady) return;
-    const alive = (sp) => Boolean(sp) && sp.series.every((x) => m.views[x.view]);
+    const alive = (sp) => Boolean(sp) && (sp.sql ? (sp.tables || []).length > 0 && sp.tables.every((k) => m.views[k]) : sp.series.every((x) => m.views[x.view]));
     setThread((t) => {
       const next = t.flatMap((x) => {
         if (x.status !== 'done') return [x];
@@ -368,7 +369,7 @@ export default function UnifiedReporting() {
     try {
       const out = await backendApi.unifiedReporting.insight({
         question: q,
-        columns: [spec.groupBy || 'total', ...cols.map((c) => `${c.label} (${c.unit}${c.sys ? `, from ${c.sys}` : ', derived'})`)],
+        columns: [res.labelName || spec.groupBy || 'total', ...cols.map((c) => `${c.label} (${c.unit}${c.sys ? `, from ${c.sys}` : ', derived'})`)],
         rows,
         currency: model.currency,
       });
@@ -503,15 +504,6 @@ export default function UnifiedReporting() {
     toast(`Added ${it.report.specs.length} charts to your dashboard.`);
   };
 
-  const reportExcel = async (id) => {
-    const it = thread.find((x) => x.id === id);
-    try {
-      await downloadWorkbook(it.report.specs.map((spec) => ({ spec })), m, `${slug(it.report.title)}.xlsx`, [], computeAsync);
-    } catch {
-      toast('The Excel file could not be created.');
-    }
-  };
-
   const pin = (id) => {
     const it = thread.find((x) => x.id === id);
     if (!it || board.some((b) => b.id === id)) return;
@@ -519,32 +511,62 @@ export default function UnifiedReporting() {
     toast('Added to your dashboard.');
   };
 
-  const download = async (id) => {
+  const formatName = (f) => FORMATS.find((x) => x.id === f)?.label || f.toUpperCase();
+
+  /** One answer as PDF, PowerPoint, Word, Excel or CSV (the chart as shown, its data and sources). */
+  const download = async (id, format) => {
     const it = thread.find((x) => x.id === id);
     try {
-      downloadBlob(new Blob([toCSV(it.spec, await computeAsync(it.spec, m))], { type: 'text/csv' }), `${slug(it.spec.title)}.csv`);
+      if (format === 'csv') {
+        downloadBlob(new Blob([toCSV(it.spec, await computeAsync(it.spec, m))], { type: 'text/csv' }), `${slug(it.spec.title)}.csv`);
+        return;
+      }
+      const node = document.querySelector(`#qa-${id} [data-export-chart]`);
+      await downloadReport(format, { title: it.spec.title, summary: it.insight }, [{ spec: it.spec, node }], m, { computeFn: computeAsync });
     } catch {
-      toast('The CSV file could not be created.');
+      toast(`The ${formatName(format)} file could not be created.`);
     }
   };
 
-  const downloadExcel = async (id) => {
+  /** A prompt-built report: every chart in one file. */
+  const downloadReportFile = async (id, format) => {
     const it = thread.find((x) => x.id === id);
+    const items = it.report.specs.map((spec, i) => ({ spec, node: document.querySelector(`#qa-${id} [data-export-item="${i}"] [data-export-chart]`) }));
     try {
-      await downloadWorkbook([{ spec: it.spec }], m, `${slug(it.spec.title)}.xlsx`, [], computeAsync);
+      await downloadReport(format, { title: it.report.title, summary: it.report.summary }, items, m, { computeFn: computeAsync });
     } catch {
-      toast('The Excel file could not be created.');
+      toast(`The ${formatName(format)} file could not be created.`);
     }
   };
 
-  const exportBoard = async () => {
+  const exportBoard = async (format) => {
+    const items = board.map((b) => ({ spec: b.spec, node: document.querySelector(`[data-export-item="${b.id}"] [data-export-chart]`) }));
     try {
-      const n = await downloadWorkbook(board, m, `meldra-dashboard-${new Date().toISOString().slice(0, 10)}.xlsx`, boardFilters, computeAsync);
-      toast(`Exported ${n} tile${n === 1 ? '' : 's'} to Excel.`);
+      const n = await downloadReport(format, { title: `Meldra dashboard ${new Date().toISOString().slice(0, 10)}` }, items, m, { computeFn: computeAsync, extraFilters: boardFilters });
+      toast(`Downloaded ${n} tile${n === 1 ? '' : 's'} as ${formatName(format)}.`);
     } catch {
-      toast('Nothing on the dashboard could be exported.');
+      toast('Nothing on the dashboard could be downloaded.');
     }
   };
+
+  /* ---------- custom SQL from the Query panel ---------- */
+  const sqlSpec = (from, sql, meta) => sanitize({ title: from.title, chart: from.chart, sql, sqlMeta: meta, origin: from.sql ? from.origin : from }, m);
+
+  const applySql = async (id, sql, meta) => {
+    const it = thread.find((x) => x.id === id);
+    const sp = sqlSpec(it.spec, sql, meta);
+    patchItem(id, { spec: sp, used: 'edited', insight: '' });
+    await writeInsight(id, it.q, sp);
+  };
+
+  const resetSql = async (id) => {
+    const it = thread.find((x) => x.id === id);
+    if (!it?.spec.origin) return;
+    patchItem(id, { spec: it.spec.origin, insight: '' });
+    await writeInsight(id, it.q, it.spec.origin);
+  };
+
+  const setReportSpec = (id, i, fn) => setThread((t) => t.map((x) => (x.id === id ? { ...x, report: { ...x.report, specs: x.report.specs.map((sp, k) => (k === i ? fn(sp) : sp)) } } : x)));
 
   const submit = (e) => {
     e.preventDefault();
@@ -727,7 +749,9 @@ export default function UnifiedReporting() {
                     m={m}
                     onChart={(id, i, chart) => setThread((t) => t.map((x) => (x.id === id ? { ...x, report: { ...x.report, specs: x.report.specs.map((sp, k) => (k === i ? { ...sp, chart } : sp)) } } : x)))}
                     onPinAll={pinAll}
-                    onExcel={reportExcel}
+                    onDownload={downloadReportFile}
+                    onUseSql={(id, i, sql, meta) => setReportSpec(id, i, (sp) => sqlSpec(sp, sql, meta))}
+                    onResetSql={(id, i) => setReportSpec(id, i, (sp) => sp.origin || sp)}
                   />
                 ) : (
                   <AnswerCard
@@ -739,9 +763,10 @@ export default function UnifiedReporting() {
                     onPin={pin}
                     onChart={(id, chart) => patchItem(id, { spec: { ...thread.find((x) => x.id === id).spec, chart } })}
                     onDownload={download}
-                    onDownloadExcel={downloadExcel}
                     onRunSpec={runSpec}
                     onRefine={refine}
+                    onUseSql={applySql}
+                    onResetSql={resetSql}
                   />
                 )))}
               </div>

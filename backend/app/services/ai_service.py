@@ -2,8 +2,11 @@
 AI/LLM Service for InsightSheet-lite
 ZERO DATA STORAGE - All prompts and responses are ephemeral
 """
+import asyncio
+import functools
 import openai
 import os
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, Dict, Any, List
 import json
 from dotenv import load_dotenv
@@ -11,6 +14,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# The OpenAI client blocks while it waits for an answer, so calls run on these threads and
+# the server keeps serving other requests. They mostly wait on the network, so allow many.
+_ai_threads = ThreadPoolExecutor(
+    max_workers=max(4, int(os.getenv("AI_MAX_CONCURRENT_CALLS", "32") or 32)),
+    thread_name_prefix="openai",
+)
+
+
+async def _call_openai(fn, **kwargs):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(_ai_threads, functools.partial(fn, **kwargs))
 
 
 def assistant_model() -> str:
@@ -104,7 +119,8 @@ async def invoke_llm(
 
         # JSON response mode
         if response_schema:
-            response = openai.chat.completions.create(
+            response = await _call_openai(
+                openai.chat.completions.create,
                 model=effective_model,
                 messages=messages,
                 response_format={"type": "json_object"},
@@ -123,7 +139,8 @@ async def invoke_llm(
 
         # Text response mode
         else:
-            response = openai.chat.completions.create(
+            response = await _call_openai(
+                openai.chat.completions.create,
                 model=effective_model,
                 messages=messages,
                 max_tokens=effective_max_tokens
@@ -158,7 +175,8 @@ async def generate_image(
         str: Temporary image URL
     """
     try:
-        response = openai.images.generate(
+        response = await _call_openai(
+            openai.images.generate,
             model=model,
             prompt=prompt,
             size=size,

@@ -19,6 +19,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [deviceLimit, setDeviceLimit] = useState(null); // { message, devices } when signed in on too many devices
 
   // Get the page user was trying to access (if any)
   const from = location.state?.from?.pathname || '/dashboard';
@@ -42,15 +43,13 @@ export default function Login() {
           setError('Login failed. Please try again.');
         }
       } else {
-        const result = await backendApi.auth.verifyLoginOtp(challengeId, otp);
-        if (result.access_token) {
-          localStorage.setItem('user', JSON.stringify(result.user));
-          navigate(from, { replace: true });
-        } else {
-          setError('Verification failed. Please try again.');
-        }
+        await finishSignIn();
       }
     } catch (err) {
+      if (err.code === 'device_limit') {
+        setDeviceLimit({ message: err.message, devices: err.devices || [] });
+        return;
+      }
       // Check if error is about email verification
       if (err.message && err.message.includes('verify your email')) {
         setError(err.message + ' Click "Resend Verification" below if you need a new link.');
@@ -59,6 +58,42 @@ export default function Login() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const finishSignIn = async (signOutIds) => {
+    const result = await backendApi.auth.verifyLoginOtp(challengeId, otp, signOutIds);
+    if (result.access_token) {
+      localStorage.setItem('user', JSON.stringify(result.user));
+      navigate(from, { replace: true });
+    } else {
+      setError('Verification failed. Please try again.');
+    }
+  };
+
+  const signOutAndContinue = async (sessionId) => {
+    setError('');
+    setLoading(true);
+    try {
+      setDeviceLimit(null);
+      await finishSignIn([sessionId]);
+    } catch (err) {
+      if (err.code === 'device_limit') {
+        setDeviceLimit({ message: err.message, devices: err.devices || [] });
+      } else {
+        setError(err.message || 'Sign-in failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatWhen = (iso) => {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleString();
+    } catch {
+      return iso;
     }
   };
 
@@ -118,6 +153,26 @@ export default function Login() {
               <Alert className="bg-red-50 border-red-200">
                 <AlertDescription className="text-red-700">{error}</AlertDescription>
               </Alert>
+            )}
+            {deviceLimit && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 space-y-3" role="alert">
+                <p className="text-sm text-amber-900">{deviceLimit.message}</p>
+                <ul className="space-y-2">
+                  {deviceLimit.devices.map((d) => (
+                    <li key={d.id} className="flex items-center justify-between gap-3 rounded border border-amber-200 bg-white p-2">
+                      <div className="text-sm text-slate-800">
+                        <div className="font-medium">{d.device}</div>
+                        <div className="text-xs text-slate-500">
+                          {[d.location, d.ip, d.last_active_at && `last active ${formatWhen(d.last_active_at)}`].filter(Boolean).join(' · ')}
+                        </div>
+                      </div>
+                      <Button type="button" size="sm" variant="outline" disabled={loading} onClick={() => signOutAndContinue(d.id)}>
+                        Sign out and continue here
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
             {step === 'password' ? (
               <>

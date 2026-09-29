@@ -44,7 +44,7 @@ If you see "Cannot connect" → Backend is NOT running ❌
 ### Check 2: Database Connection
 Make sure your `.env` file in `backend/` folder has:
 ```env
-DATABASE_URL=postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL=postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require
 ```
 
 ### Check 3: Port Conflict

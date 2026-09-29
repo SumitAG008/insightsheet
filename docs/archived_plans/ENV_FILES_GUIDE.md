@@ -45,7 +45,7 @@ VITE_API_URL=https://your-backend-url.com
 
 ```env
 # Database (use your Neon PostgreSQL)
-DATABASE_URL=postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL=postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require
 
 # OpenAI API Key (get from https://platform.openai.com/api-keys)
 OPENAI_API_KEY=sk-your-openai-api-key-here
@@ -65,7 +65,7 @@ ENVIRONMENT=development
 ## 🔑 Where to Get Values
 
 ### **1. DATABASE_URL**
-- You already have this: `postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require`
+- You already have this: `postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require`
 - **Remove** `&channel_binding=require` if present
 
 ### **2. OPENAI_API_KEY**

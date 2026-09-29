@@ -66,22 +66,13 @@ from app.database import (
     ApiBilling,
     LoginOtpChallenge,
     LearningSignal,
-    EsgProject,
-    EsgReportingPeriod,
-    EsgSite,
-    EsgMetric,
-    EsgEvidenceDocument,
-    EsgMetricSuggestion,
-    EsgFramework,
-    EsgFrameworkRequirement,
-    EsgMetricDefinition,
-    EsgMetricValue,
-    EsgMetricEvidenceLink,
-    EsgTask,
-    EsgMetricApproval,
     UserFeature,
     FeatureKey,
     InvoiceExtractionJob,
+)
+from app.utils.offload import run_coro, in_thread
+from app.services.device_sessions import (
+    DeviceLimitReached, active_sessions, describe as describe_session, max_active_devices, revoke_session, start_session,
 )
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
@@ -94,6 +85,7 @@ from app.services.ai_service import (
 from app.services.unified_reporting_service import build_report, plan_report, write_insight
 from app.services.api_connector_service import ConnectorError, allow_call, egress_info, fetch_records, public_presets, safe_summary
 from app.services.migration_service import suggest_mapping
+import zipfile
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
 from app.services.windows_excel_to_ppt import WindowsExcelToPPTService, WINDOWS_COM_AVAILABLE
@@ -104,7 +96,6 @@ from app.services.ocr_service import (
     pdf_from_image,
 )
 from app.services.file_analyzer import FileAnalyzerService
-from app.services.esg_ml_service import ESGIntelligenceService
 from app.services.pl_builder import PLBuilderService
 from app.services.universal_excel_processor import UniversalExcelProcessor
 from app.services.excel_recalc_service import recalc_xlsx_with_libreoffice_bytes, convert_spreadsheet_to_pdf_bytes
@@ -725,6 +716,8 @@ def _consume_transaction(db: Session, subscription: Subscription, *args) -> None
 def _enforce_conversion_quota(db: Session, user_email: str, conversion_type: str, subscription: Subscription) -> None:
     # Backwards-compatible wrapper used by multiple endpoints.
     # All conversions are metered via the monthly transactions meter.
+    if subscription is None:  # first conversion by a user who has no subscription row yet
+        subscription = _get_or_create_subscription(db, user_email)
     _enforce_transactions_quota(subscription)
     _consume_transaction(db, subscription, user_email, conversion_type)
 
@@ -747,12 +740,49 @@ def _estimate_tokens_from_text(text: str) -> int:
 logger.setLevel(logging.INFO)
 logger.addHandler(file_handler)
 
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int((os.getenv(name) or "").strip() or default)
+    except ValueError:
+        return default
+
+
 # Initialize FastAPI app
 app = FastAPI(
     title="InsightSheet-lite Backend",
     description="Privacy-first data analysis platform with AI-powered insights",
     version="1.0.0"
 )
+
+_MAX_REQUEST_BODY_BYTES = max(1, _env_int("MAX_REQUEST_BODY_MB", 520)) * 1024 * 1024
+
+
+_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+}
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for name, value in _SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    return response
+
+
+@app.middleware("http")
+async def _limit_request_body_size(request: Request, call_next):
+    """Turn away uploads above the largest plan limit before the server spends time and disk on them."""
+    declared = request.headers.get("content-length")
+    if declared and declared.isdigit() and int(declared) > _MAX_REQUEST_BODY_BYTES:
+        return JSONResponse(
+            status_code=413,
+            content={"detail": f"Upload too large (limit {_MAX_REQUEST_BODY_BYTES // (1024 * 1024)}MB)"},
+        )
+    return await call_next(request)
 
 # CORS Configuration - SECURITY: Only HTTPS in production
 # Detect if we're in production (Railway/Vercel) or local development
@@ -864,10 +894,37 @@ async def startup_event():
 
     threading.Thread(target=_sweeper_loop, daemon=True).start()
 
-    # Background TTL cleanup for session-scoped history
-    asyncio.create_task(_background_cleanup_file_processing_history())
+    # The server runs several worker processes. Scheduled jobs (history cleanup,
+    # trial reminder/expiry emails) must run in only one of them, or customers get
+    # duplicate emails. Each loop gets its own thread and event loop so its database
+    # and email work never stalls request handling.
+    if _acquire_background_jobs_lock():
+        logger.info("This worker runs the scheduled background jobs")
+        for job in (_background_cleanup_file_processing_history, _background_free_trial_lifecycle, _background_data_retention):
+            threading.Thread(target=asyncio.run, args=(job(),), daemon=True, name=job.__name__).start()
 
-    asyncio.create_task(_background_free_trial_lifecycle())
+
+_background_jobs_lock_file = None
+
+
+def _acquire_background_jobs_lock() -> bool:
+    """True in exactly one worker process per container (set RUN_BACKGROUND_JOBS=false to disable here)."""
+    global _background_jobs_lock_file
+    if os.getenv("RUN_BACKGROUND_JOBS", "true").strip().lower() in ("0", "false", "no", "off"):
+        return False
+    try:
+        import fcntl
+    except ImportError:  # Windows development machine: single process
+        return True
+    path = os.path.join(tempfile.gettempdir(), "meldra_background_jobs.lock")
+    f = open(path, "w")
+    try:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.close()
+        return False
+    _background_jobs_lock_file = f  # held for the life of this process
+    return True
 
 
 def _playwright_temp_ttl_seconds() -> int:
@@ -1143,7 +1200,7 @@ def _run_books_to_scrape_job(job_id: str) -> None:
         db.close()
 
 
-def _run_invoice_extraction_job(job_id: str) -> None:
+def _run_invoice_extraction_job(job_id: str, content: bytes = b"") -> None:
     from app.database import SessionLocal
 
     db = SessionLocal()
@@ -1163,10 +1220,8 @@ def _run_invoice_extraction_job(job_id: str) -> None:
             cfg = {}
 
         filename = (cfg.get("filename") or "invoice.pdf").strip() or "invoice.pdf"
-        b64 = cfg.get("content_base64") or ""
-        if not b64:
+        if not content:
             raise ValueError("Missing file content")
-        content = base64.b64decode(b64)
         ocr_lang = (cfg.get("ocr_lang") or None)
         max_pages = int(cfg.get("max_pages") or 25)
 
@@ -1491,7 +1546,7 @@ async def run_playwright_custom_url_connector(
 
 
 @app.get("/api/connectors/playwright/jobs/{job_id}", response_model=PlaywrightJobStatusResponse)
-async def get_playwright_job_status(
+def get_playwright_job_status(
     job_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -1520,7 +1575,7 @@ async def get_playwright_job_status(
 
 
 @app.get("/api/connectors/playwright/jobs/{job_id}/download")
-async def download_playwright_job_artifact(
+def download_playwright_job_artifact(
     job_id: str,
     type: str = Query("csv"),
     current_user: dict = Depends(get_current_user),
@@ -1569,16 +1624,22 @@ async def run_invoice_extraction(
     db: Session = Depends(get_db),
 ):
     _enforce_feature(db, current_user["email"], "invoice_extractor")
+    try:
+        content = base64.b64decode(payload.content_base64 or "", validate=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="The file could not be read")
+    if not content:
+        raise HTTPException(status_code=400, detail="The file is empty")
     job_id = _create_invoice_job_id()
     now = datetime.utcnow()
     job = InvoiceExtractionJob(
         job_id=job_id,
         user_email=current_user["email"],
         status="queued",
+        # The file itself is never stored: it goes to the worker thread in memory only.
         config_json=json.dumps(
             {
                 "filename": payload.filename,
-                "content_base64": payload.content_base64,
                 "ocr_lang": payload.ocr_lang,
                 "max_pages": payload.max_pages,
             }
@@ -1589,12 +1650,12 @@ async def run_invoice_extraction(
     db.commit()
 
     loop = asyncio.get_running_loop()
-    loop.run_in_executor(None, _run_invoice_extraction_job, job_id)
+    loop.run_in_executor(None, _run_invoice_extraction_job, job_id, content)
     return {"job_id": job_id}
 
 
 @app.get("/api/unstructured/invoice/jobs/{job_id}", response_model=InvoiceJobStatusResponse)
-async def get_invoice_extraction_status(
+def get_invoice_extraction_status(
     job_id: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -1623,7 +1684,7 @@ async def get_invoice_extraction_status(
 
 
 @app.get("/api/unstructured/invoice/jobs/{job_id}/download")
-async def download_invoice_extraction_artifact(
+def download_invoice_extraction_artifact(
     job_id: str,
     type: str = Query("header_csv"),
     current_user: dict = Depends(get_current_user),
@@ -1670,7 +1731,7 @@ async def download_invoice_extraction_artifact(
 
 
 @app.get("/api/features/me")
-async def get_my_features(
+def get_my_features(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1689,7 +1750,7 @@ async def get_my_features(
 
 
 @app.post("/api/features/redeem")
-async def redeem_feature_key(
+def redeem_feature_key(
     payload: FeatureRedeemRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -1730,7 +1791,7 @@ async def redeem_feature_key(
 
 
 @app.post("/api/admin/features/grant")
-async def admin_grant_feature(
+def admin_grant_feature(
     payload: FeatureGrantRequest,
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
@@ -1758,7 +1819,7 @@ async def admin_grant_feature(
 
 
 @app.post("/api/admin/features/key")
-async def admin_create_feature_key(
+def admin_create_feature_key(
     payload: FeatureKeyCreateRequest,
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
@@ -1804,6 +1865,8 @@ class UserLogin(BaseModel):
 class LoginOtpVerifyRequest(BaseModel):
     challenge_id: str
     otp: str
+    device_id: Optional[str] = Field(None, max_length=64)  # random id the browser keeps
+    sign_out_session_ids: Optional[List[str]] = Field(None, max_length=10)  # devices to sign out to make room
 
 class LearningSignalIn(BaseModel):
     kind: str
@@ -1940,2012 +2003,114 @@ class ActivityLog(BaseModel):
     details: Optional[Any] = None  # Can be str, dict, or None - accepts any type
 
 
-class EsgProjectCreateRequest(BaseModel):
-    name: str
-    description: Optional[str] = None
 
 
-class EsgProjectUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-
-
-class EsgReportingPeriodCreateRequest(BaseModel):
-    project_id: int
-    name: str
-    framework: Optional[str] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-
-
-class EsgReportingPeriodUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    framework: Optional[str] = None
-    start_date: Optional[datetime] = None
-    end_date: Optional[datetime] = None
-
-
-class EsgSiteCreateRequest(BaseModel):
-    project_id: int
-    name: str
-    country: Optional[str] = None
-    region: Optional[str] = None
-
-
-class EsgSiteUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    country: Optional[str] = None
-    region: Optional[str] = None
-
-
-class EsgMetricCreateRequest(BaseModel):
-    project_id: int
-    period_id: int
-    site_id: Optional[int] = None
-    scope: Optional[str] = None
-    category: str
-    subcategory: Optional[str] = None
-    value: Optional[float] = None
-    unit: Optional[str] = None
-    notes: Optional[str] = None
-    source_document_id: Optional[int] = None
-    source_page_from: Optional[int] = None
-    source_page_to: Optional[int] = None
-
-
-class EsgMetricUpdateRequest(BaseModel):
-    site_id: Optional[int] = None
-    scope: Optional[str] = None
-    category: Optional[str] = None
-    subcategory: Optional[str] = None
-    value: Optional[float] = None
-    unit: Optional[str] = None
-    notes: Optional[str] = None
-    source_document_id: Optional[int] = None
-    source_page_from: Optional[int] = None
-    source_page_to: Optional[int] = None
-
-
-class EsgEvidenceCreateRequest(BaseModel):
-    project_id: int
-    period_id: int
-    site_id: Optional[int] = None
-
-
-class EsgSuggestionReviewRequest(BaseModel):
-    status: str  # approved|rejected
-
-
-class EsgV2FrameworkUpsertRequest(BaseModel):
-    project_id: int
-    key: str
-    name: str
-    enabled: bool = True
-
-
-class EsgV2RequirementUpsertRequest(BaseModel):
-    project_id: int
-    framework_key: str
-    code: str
-    title: str
-    description: Optional[str] = None
-    granularity: str = "org"  # org|site|both
-    evidence_required: bool = True
-
-
-class EsgV2MetricDefinitionUpsertRequest(BaseModel):
-    project_id: int
-    key: str
-    name: str
-    category: Optional[str] = None
-    unit: Optional[str] = None
-    description: Optional[str] = None
-    granularity: str = "org"  # org|site|both
-
-
-class EsgV2MetricValueUpsertRequest(BaseModel):
-    project_id: int
-    period_id: int
-    site_id: Optional[int] = None
-    metric_definition_id: int
-    value: Optional[float] = None
-    unit: Optional[str] = None
-    notes: Optional[str] = None
-    status: Optional[str] = None  # missing|in_progress|submitted|needs_changes|approved|locked
-
-
-class EsgV2EvidenceLinkCreateRequest(BaseModel):
-    project_id: int
-    period_id: int
-    metric_value_id: int
-    evidence_document_id: int
-    excerpt: Optional[str] = None
-    page_ref: Optional[str] = None
-
-
-class EsgV2ApproveMetricRequest(BaseModel):
-    project_id: int
-    period_id: int
-    metric_value_id: int
-    evidence_waiver: bool = False
-    waiver_justification: Optional[str] = None
-    waiver_risk_level: Optional[str] = None  # low|medium|high
-
-
-def _esg_require_owner(email: str, row_user_email: str) -> None:
-    if (row_user_email or "").strip().lower() != (email or "").strip().lower():
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-
-def _esg_v2_require_project_access(db: Session, email: str, project_id: int) -> EsgProject:
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    return proj
-
-
-def _esg_v2_require_period_access(db: Session, email: str, project_id: int, period_id: int) -> EsgReportingPeriod:
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-    return period
-
-
-@app.get("/api/esg/projects")
-async def esg_list_projects(
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    rows = (
-        db.query(EsgProject)
-        .filter(EsgProject.user_email == email)
-        .order_by(EsgProject.created_date.desc())
-        .all()
-    )
-    return [
-        {
-            "id": r.id,
-            "name": r.name,
-            "description": r.description,
-            "created_date": r.created_date,
-            "updated_date": r.updated_date,
-        }
-        for r in rows
-    ]
-
-
-@app.post("/api/esg/projects")
-async def esg_create_project(
-    payload: EsgProjectCreateRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    name = (payload.name or "").strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Project name is required")
-
-    existing = (
-        db.query(EsgProject)
-        .filter(EsgProject.user_email == email, EsgProject.name == name)
-        .first()
-    )
-    if existing:
-        raise HTTPException(status_code=400, detail="Project already exists")
-
-    row = EsgProject(user_email=email, name=name, description=payload.description)
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "name": row.name,
-        "description": row.description,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.patch("/api/esg/projects/{project_id}")
-async def esg_update_project(
-    project_id: int,
-    payload: EsgProjectUpdateRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    row = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Not found")
-    _esg_require_owner(email, row.user_email)
-
-    if payload.name is not None:
-        name = (payload.name or "").strip()
-        if not name:
-            raise HTTPException(status_code=400, detail="Project name cannot be empty")
-        row.name = name
-    if payload.description is not None:
-        row.description = payload.description
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "name": row.name,
-        "description": row.description,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.delete("/api/esg/projects/{project_id}")
-async def esg_delete_project(
-    project_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    row = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not row:
-        return {"message": "ok"}
-    _esg_require_owner(email, row.user_email)
-
-    db.query(EsgMetric).filter(EsgMetric.project_id == project_id, EsgMetric.user_email == email).delete()
-    db.query(EsgSite).filter(EsgSite.project_id == project_id, EsgSite.user_email == email).delete()
-    db.query(EsgReportingPeriod).filter(EsgReportingPeriod.project_id == project_id, EsgReportingPeriod.user_email == email).delete()
-    db.delete(row)
-    db.commit()
-    return {"message": "ok"}
-
-
-@app.get("/api/esg/v2/frameworks")
-async def esg_v2_list_frameworks(
-    project_id: int = Query(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    _esg_v2_require_project_access(db, email, project_id)
-    rows = (
-        db.query(EsgFramework)
-        .filter(EsgFramework.user_email == email, EsgFramework.project_id == project_id)
-        .order_by(EsgFramework.created_date.desc())
-        .all()
-    )
-    return [
-        {
-            "id": r.id,
-            "project_id": r.project_id,
-            "key": r.key,
-            "name": r.name,
-            "enabled": r.enabled,
-            "created_date": r.created_date,
-            "updated_date": r.updated_date,
-        }
-        for r in rows
-    ]
-
-
-@app.post("/api/esg/v2/frameworks")
-async def esg_v2_upsert_framework(
-    payload: EsgV2FrameworkUpsertRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    _esg_v2_require_project_access(db, email, payload.project_id)
-
-    key = (payload.key or "").strip().lower()
-    name = (payload.name or "").strip()
-    if not key or not name:
-        raise HTTPException(status_code=400, detail="Framework key and name are required")
-
-    row = (
-        db.query(EsgFramework)
-        .filter(EsgFramework.user_email == email, EsgFramework.project_id == payload.project_id, EsgFramework.key == key)
-        .first()
-    )
-    if not row:
-        row = EsgFramework(user_email=email, project_id=payload.project_id, key=key, name=name, enabled=bool(payload.enabled))
-        db.add(row)
-    else:
-        row.name = name
-        row.enabled = bool(payload.enabled)
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "key": row.key,
-        "name": row.name,
-        "enabled": row.enabled,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.get("/api/esg/v2/requirements")
-async def esg_v2_list_requirements(
-    project_id: int = Query(...),
-    framework_key: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    _esg_v2_require_project_access(db, email, project_id)
-
-    q = db.query(EsgFrameworkRequirement).filter(
-        EsgFrameworkRequirement.user_email == email,
-        EsgFrameworkRequirement.project_id == project_id,
-    )
-    if framework_key is not None:
-        q = q.filter(EsgFrameworkRequirement.framework_key == (framework_key or "").strip().lower())
-    rows = q.order_by(EsgFrameworkRequirement.created_date.desc()).all()
-    return [
-        {
-            "id": r.id,
-            "project_id": r.project_id,
-            "framework_key": r.framework_key,
-            "code": r.code,
-            "title": r.title,
-            "description": r.description,
-            "granularity": r.granularity,
-            "evidence_required": r.evidence_required,
-            "created_date": r.created_date,
-            "updated_date": r.updated_date,
-        }
-        for r in rows
-    ]
-
-
-@app.post("/api/esg/v2/requirements")
-async def esg_v2_upsert_requirement(
-    payload: EsgV2RequirementUpsertRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    _esg_v2_require_project_access(db, email, payload.project_id)
-
-    framework_key = (payload.framework_key or "").strip().lower()
-    code = (payload.code or "").strip()
-    title = (payload.title or "").strip()
-    if not framework_key or not code or not title:
-        raise HTTPException(status_code=400, detail="framework_key, code, title are required")
-
-    gran = (payload.granularity or "org").strip().lower()
-    if gran not in ("org", "site", "both"):
-        raise HTTPException(status_code=400, detail="Invalid granularity")
-
-    row = (
-        db.query(EsgFrameworkRequirement)
-        .filter(
-            EsgFrameworkRequirement.user_email == email,
-            EsgFrameworkRequirement.project_id == payload.project_id,
-            EsgFrameworkRequirement.framework_key == framework_key,
-            EsgFrameworkRequirement.code == code,
-        )
-        .first()
-    )
-    if not row:
-        row = EsgFrameworkRequirement(
-            user_email=email,
-            project_id=payload.project_id,
-            framework_key=framework_key,
-            code=code,
-            title=title,
-            description=payload.description,
-            granularity=gran,
-            evidence_required=bool(payload.evidence_required),
-        )
-        db.add(row)
-    else:
-        row.title = title
-        row.description = payload.description
-        row.granularity = gran
-        row.evidence_required = bool(payload.evidence_required)
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "framework_key": row.framework_key,
-        "code": row.code,
-        "title": row.title,
-        "description": row.description,
-        "granularity": row.granularity,
-        "evidence_required": row.evidence_required,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.get("/api/esg/v2/metric-definitions")
-async def esg_v2_list_metric_definitions(
-    project_id: int = Query(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    _esg_v2_require_project_access(db, email, project_id)
-    rows = (
-        db.query(EsgMetricDefinition)
-        .filter(EsgMetricDefinition.user_email == email, EsgMetricDefinition.project_id == project_id)
-        .order_by(EsgMetricDefinition.created_date.desc())
-        .all()
-    )
-    return [
-        {
-            "id": r.id,
-            "project_id": r.project_id,
-            "key": r.key,
-            "name": r.name,
-            "category": r.category,
-            "unit": r.unit,
-            "description": r.description,
-            "granularity": r.granularity,
-            "created_date": r.created_date,
-            "updated_date": r.updated_date,
-        }
-        for r in rows
-    ]
-
-
-@app.post("/api/esg/v2/metric-definitions")
-async def esg_v2_upsert_metric_definition(
-    payload: EsgV2MetricDefinitionUpsertRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    _esg_v2_require_project_access(db, email, payload.project_id)
-
-    key = (payload.key or "").strip()
-    name = (payload.name or "").strip()
-    if not key or not name:
-        raise HTTPException(status_code=400, detail="Metric definition key and name are required")
-
-    gran = (payload.granularity or "org").strip().lower()
-    if gran not in ("org", "site", "both"):
-        raise HTTPException(status_code=400, detail="Invalid granularity")
-
-    row = (
-        db.query(EsgMetricDefinition)
-        .filter(EsgMetricDefinition.user_email == email, EsgMetricDefinition.project_id == payload.project_id, EsgMetricDefinition.key == key)
-        .first()
-    )
-    if not row:
-        row = EsgMetricDefinition(
-            user_email=email,
-            project_id=payload.project_id,
-            key=key,
-            name=name,
-            category=payload.category,
-            unit=payload.unit,
-            description=payload.description,
-            granularity=gran,
-        )
-        db.add(row)
-    else:
-        row.name = name
-        row.category = payload.category
-        row.unit = payload.unit
-        row.description = payload.description
-        row.granularity = gran
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "key": row.key,
-        "name": row.name,
-        "category": row.category,
-        "unit": row.unit,
-        "description": row.description,
-        "granularity": row.granularity,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.get("/api/esg/v2/metric-values")
-async def esg_v2_list_metric_values(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    site_id: Optional[int] = Query(None),
-    metric_definition_id: Optional[int] = Query(None),
-    status: Optional[str] = Query(None),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    _esg_v2_require_project_access(db, email, project_id)
-    _esg_v2_require_period_access(db, email, project_id, period_id)
-
-    q = db.query(EsgMetricValue).filter(
-        EsgMetricValue.user_email == email,
-        EsgMetricValue.project_id == project_id,
-        EsgMetricValue.period_id == period_id,
-    )
-    if site_id is not None:
-        q = q.filter(EsgMetricValue.site_id == site_id)
-    if metric_definition_id is not None:
-        q = q.filter(EsgMetricValue.metric_definition_id == metric_definition_id)
-    if status is not None:
-        q = q.filter(EsgMetricValue.status == (status or "").strip().lower())
-
-    rows = q.order_by(EsgMetricValue.updated_date.desc()).all()
-    return [
-        {
-            "id": r.id,
-            "project_id": r.project_id,
-            "period_id": r.period_id,
-            "site_id": r.site_id,
-            "metric_definition_id": r.metric_definition_id,
-            "value": r.value,
-            "unit": r.unit,
-            "notes": r.notes,
-            "status": r.status,
-            "created_date": r.created_date,
-            "updated_date": r.updated_date,
-        }
-        for r in rows
-    ]
-
-
-@app.post("/api/esg/v2/metric-values")
-async def esg_v2_upsert_metric_value(
-    payload: EsgV2MetricValueUpsertRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    _esg_v2_require_project_access(db, email, payload.project_id)
-    _esg_v2_require_period_access(db, email, payload.project_id, payload.period_id)
-
-    mdef = db.query(EsgMetricDefinition).filter(EsgMetricDefinition.id == payload.metric_definition_id).first()
-    if not mdef:
-        raise HTTPException(status_code=404, detail="Metric definition not found")
-    _esg_require_owner(email, mdef.user_email)
-    if mdef.project_id != payload.project_id:
-        raise HTTPException(status_code=400, detail="Metric definition does not belong to project")
-
-    if payload.site_id is not None:
-        site = db.query(EsgSite).filter(EsgSite.id == payload.site_id).first()
-        if not site:
-            raise HTTPException(status_code=404, detail="Site not found")
-        _esg_require_owner(email, site.user_email)
-        if site.project_id != payload.project_id:
-            raise HTTPException(status_code=400, detail="Site does not belong to project")
-
-    row = (
-        db.query(EsgMetricValue)
-        .filter(
-            EsgMetricValue.user_email == email,
-            EsgMetricValue.project_id == payload.project_id,
-            EsgMetricValue.period_id == payload.period_id,
-            EsgMetricValue.site_id == payload.site_id,
-            EsgMetricValue.metric_definition_id == payload.metric_definition_id,
-        )
-        .first()
-    )
-    if not row:
-        row = EsgMetricValue(
-            user_email=email,
-            project_id=payload.project_id,
-            period_id=payload.period_id,
-            site_id=payload.site_id,
-            metric_definition_id=payload.metric_definition_id,
-            value=payload.value,
-            unit=payload.unit,
-            notes=payload.notes,
-            status=(payload.status or "missing"),
-        )
-        db.add(row)
-    else:
-        if row.status == "locked":
-            raise HTTPException(status_code=400, detail="Metric value is locked")
-        row.value = payload.value
-        row.unit = payload.unit
-        row.notes = payload.notes
-        if payload.status is not None:
-            row.status = (payload.status or "").strip().lower()
-    db.commit()
-    db.refresh(row)
-
-    ai_alerts = []
-    try:
-        if payload.value is not None:
-            float_val = float(payload.value)
-            hist_rows = db.query(EsgMetricValue).filter(
-                EsgMetricValue.user_email == email,
-                EsgMetricValue.project_id == payload.project_id,
-                EsgMetricValue.site_id == payload.site_id,
-                EsgMetricValue.metric_definition_id == payload.metric_definition_id,
-                EsgMetricValue.id != row.id
-            ).all()
-
-            hist_floats = []
-            for h in hist_rows:
-                try:
-                    if h.value is not None:
-                        hist_floats.append(float(h.value))
-                except (ValueError, TypeError):
-                    pass
-
-            if len(hist_floats) >= 2:
-                z_res = ESGIntelligenceService.detect_anomalies_zscore(float_val, hist_floats)
-                if z_res.get("is_anomaly"):
-                    ai_alerts.append(z_res)
-    except (ValueError, TypeError):
-        pass
-
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "period_id": row.period_id,
-        "site_id": row.site_id,
-        "metric_definition_id": row.metric_definition_id,
-        "value": row.value,
-        "unit": row.unit,
-        "notes": row.notes,
-        "status": row.status,
-        "ai_alerts": ai_alerts,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.post("/api/esg/v2/evidence-links")
-async def esg_v2_create_evidence_link(
-    payload: EsgV2EvidenceLinkCreateRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    _esg_v2_require_project_access(db, email, payload.project_id)
-    _esg_v2_require_period_access(db, email, payload.project_id, payload.period_id)
-
-    mv = db.query(EsgMetricValue).filter(EsgMetricValue.id == payload.metric_value_id).first()
-    if not mv:
-        raise HTTPException(status_code=404, detail="Metric value not found")
-    _esg_require_owner(email, mv.user_email)
-    if mv.project_id != payload.project_id or mv.period_id != payload.period_id:
-        raise HTTPException(status_code=400, detail="Metric value does not belong to project/period")
-
-    ev = db.query(EsgEvidenceDocument).filter(EsgEvidenceDocument.id == payload.evidence_document_id).first()
-    if not ev:
-        raise HTTPException(status_code=404, detail="Evidence not found")
-    _esg_require_owner(email, ev.user_email)
-    if ev.project_id != payload.project_id or ev.period_id != payload.period_id:
-        raise HTTPException(status_code=400, detail="Evidence does not belong to project/period")
-
-    row = (
-        db.query(EsgMetricEvidenceLink)
-        .filter(
-            EsgMetricEvidenceLink.user_email == email,
-            EsgMetricEvidenceLink.metric_value_id == payload.metric_value_id,
-            EsgMetricEvidenceLink.evidence_document_id == payload.evidence_document_id,
-        )
-        .first()
-    )
-    if not row:
-        row = EsgMetricEvidenceLink(
-            user_email=email,
-            project_id=payload.project_id,
-            period_id=payload.period_id,
-            metric_value_id=payload.metric_value_id,
-            evidence_document_id=payload.evidence_document_id,
-            excerpt=payload.excerpt,
-            page_ref=payload.page_ref,
-        )
-        db.add(row)
-        db.commit()
-        db.refresh(row)
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "period_id": row.period_id,
-        "metric_value_id": row.metric_value_id,
-        "evidence_document_id": row.evidence_document_id,
-        "excerpt": row.excerpt,
-        "page_ref": row.page_ref,
-        "created_date": row.created_date,
-    }
-
-
-@app.post("/api/esg/v2/metric-values/approve")
-async def esg_v2_approve_metric_value(
-    payload: EsgV2ApproveMetricRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    _esg_v2_require_project_access(db, email, payload.project_id)
-    _esg_v2_require_period_access(db, email, payload.project_id, payload.period_id)
-
-    mv = db.query(EsgMetricValue).filter(EsgMetricValue.id == payload.metric_value_id).first()
-    if not mv:
-        raise HTTPException(status_code=404, detail="Metric value not found")
-    _esg_require_owner(email, mv.user_email)
-    if mv.project_id != payload.project_id or mv.period_id != payload.period_id:
-        raise HTTPException(status_code=400, detail="Metric value does not belong to project/period")
-    if mv.status == "locked":
-        raise HTTPException(status_code=400, detail="Metric value is locked")
-
-    evidence_count = (
-        db.query(func.count(EsgMetricEvidenceLink.id))
-        .filter(
-            EsgMetricEvidenceLink.user_email == email,
-            EsgMetricEvidenceLink.metric_value_id == payload.metric_value_id,
-        )
-        .scalar()
-    )
-    evidence_count = int(evidence_count or 0)
-
-    waiver = bool(payload.evidence_waiver)
-    if waiver:
-        if current_user.get("role") != "admin":
-            raise HTTPException(status_code=403, detail="Evidence waiver requires admin")
-        justification = (payload.waiver_justification or "").strip()
-        if not justification:
-            raise HTTPException(status_code=400, detail="waiver_justification is required")
-        risk = (payload.waiver_risk_level or "").strip().lower()
-        if risk not in ("low", "medium", "high"):
-            raise HTTPException(status_code=400, detail="waiver_risk_level must be low|medium|high")
-    else:
-        if evidence_count < 1:
-            raise HTTPException(status_code=400, detail="At least one evidence document is required before approval")
-
-    mv.status = "approved"
-    approval = EsgMetricApproval(
-        user_email=email,
-        project_id=payload.project_id,
-        period_id=payload.period_id,
-        metric_value_id=payload.metric_value_id,
-        approved_by=email,
-        evidence_waiver=waiver,
-        waiver_justification=(payload.waiver_justification if waiver else None),
-        waiver_risk_level=((payload.waiver_risk_level or "").strip().lower() if waiver else None),
-    )
-    db.add(approval)
-    db.commit()
-    db.refresh(approval)
-
-    return {
-        "metric_value_id": mv.id,
-        "status": mv.status,
-        "evidence_count": evidence_count,
-        "approval": {
-            "id": approval.id,
-            "approved_by": approval.approved_by,
-            "approved_at": approval.approved_at,
-            "evidence_waiver": approval.evidence_waiver,
-            "waiver_justification": approval.waiver_justification,
-            "waiver_risk_level": approval.waiver_risk_level,
-        },
-    }
-
-
-@app.get("/api/esg/evidence")
-async def esg_list_evidence(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    limit: int = Query(100),
-    offset: int = Query(0),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    limit = max(1, min(int(limit or 100), 500))
-    offset = max(0, int(offset or 0))
-
-    rows = (
-        db.query(EsgEvidenceDocument)
-        .filter(
-            EsgEvidenceDocument.user_email == email,
-            EsgEvidenceDocument.project_id == project_id,
-            EsgEvidenceDocument.period_id == period_id,
-        )
-        .order_by(EsgEvidenceDocument.created_date.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
-    return [
-        {
-            "id": r.id,
-            "project_id": r.project_id,
-            "period_id": r.period_id,
-            "site_id": r.site_id,
-            "filename": r.filename,
-            "content_type": r.content_type,
-            "file_size_bytes": r.file_size_bytes,
-            "storage_path": r.storage_path,
-            "doc_type": r.doc_type,
-            "status": r.status,
-            "created_date": r.created_date,
-            "updated_date": r.updated_date,
-        }
-        for r in rows
-    ]
-
-
-@app.post("/api/esg/evidence/upload")
-async def esg_upload_evidence(
-    project_id: int = Form(...),
-    period_id: int = Form(...),
-    site_id: Optional[int] = Form(None),
-    file: UploadFile = File(...),
-    request: Request = None,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-    if site_id is not None:
-        site = db.query(EsgSite).filter(EsgSite.id == site_id).first()
-        if not site:
-            raise HTTPException(status_code=404, detail="Site not found")
-        _esg_require_owner(email, site.user_email)
-        if site.project_id != project_id:
-            raise HTTPException(status_code=400, detail="Site does not belong to project")
-
-    subscription = _get_or_create_subscription(db, email)
-    max_size_mb = _plan_file_size_mb(subscription)
-    max_bytes = max_size_mb * 1024 * 1024
-    content = await file.read()
-    if len(content) > max_bytes:
-        raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
-    _enforce_upload_quota(subscription, len(content))
-
-    import uuid
-    safe_filename = _ascii_safe_filename(file.filename or "evidence")
-    evidence_dir = os.path.join("storage", "esg_evidence", email, str(project_id), str(period_id))
-    os.makedirs(evidence_dir, exist_ok=True)
-    storage_name = f"{uuid.uuid4().hex}_{safe_filename}"
-    storage_path = os.path.join(evidence_dir, storage_name)
-    with open(storage_path, "wb") as f:
-        f.write(content)
-
-    row = EsgEvidenceDocument(
-        project_id=project_id,
-        period_id=period_id,
-        user_email=email,
-        site_id=site_id,
-        filename=safe_filename,
-        content_type=file.content_type,
-        file_size_bytes=len(content),
-        storage_path=storage_path,
-        storage_provider="local",
-        storage_bucket=None,
-        storage_key=None,
-        status="uploaded",
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-
-    _consume_upload_bytes(db, subscription, email, _get_request_id(request), len(content))
-
-    activity = UserActivity(
-        user_email=email,
-        activity_type="esg_evidence_upload",
-        page_name="esg",
-        details=json.dumps({"project_id": project_id, "period_id": period_id, "site_id": site_id, "evidence_id": row.id}),
-    )
-    db.add(activity)
-    db.commit()
-
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "period_id": row.period_id,
-        "site_id": row.site_id,
-        "filename": row.filename,
-        "content_type": row.content_type,
-        "file_size_bytes": row.file_size_bytes,
-        "status": row.status,
-        "created_date": row.created_date,
-    }
-
-
-@app.get("/api/esg/evidence/{evidence_id}/download")
-async def esg_download_evidence(
-    evidence_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    ev = db.query(EsgEvidenceDocument).filter(EsgEvidenceDocument.id == evidence_id).first()
-    if not ev:
-        raise HTTPException(status_code=404, detail="Not found")
-    _esg_require_owner(email, ev.user_email)
-
-    if (ev.storage_provider or "local") != "local":
-        raise HTTPException(status_code=501, detail="Non-local storage provider not implemented yet")
-
-    if not ev.storage_path or not os.path.exists(ev.storage_path):
-        raise HTTPException(status_code=404, detail="Stored file not found")
-
-    def _iterfile():
-        with open(ev.storage_path, "rb") as f:
-            yield from f
-
-    headers = {"Content-Disposition": f'attachment; filename="{ev.filename}"'}
-    return StreamingResponse(
-        _iterfile(),
-        media_type=ev.content_type or "application/octet-stream",
-        headers=headers,
-    )
-
-
-@app.post("/api/esg/evidence/{evidence_id}/extract")
-async def esg_extract_evidence(
-    evidence_id: int,
-    request: Request = None,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    ev = db.query(EsgEvidenceDocument).filter(EsgEvidenceDocument.id == evidence_id).first()
-    if not ev:
-        raise HTTPException(status_code=404, detail="Not found")
-    _esg_require_owner(email, ev.user_email)
-
-    proj = db.query(EsgProject).filter(EsgProject.id == ev.project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == ev.period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-
-    subscription = _get_or_create_subscription(db, email)
-    _enforce_ai_quota(subscription)
-
-    if not ev.storage_path or not os.path.exists(ev.storage_path):
-        raise HTTPException(status_code=404, detail="Stored file not found")
-
-    with open(ev.storage_path, "rb") as f:
-        content = f.read()
-
-    try:
-        svc = IngestionService(IngestLimits(max_bytes=max(1, len(content))))
-        ingested = svc.ingest(ev.filename, content)
-        extracted_text = (ingested or {}).get("extracted_text") or ""
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Failed to ingest file: {str(e)}")
-
-    schema_obj = {
-        "type": "json_object",
-        "properties": {
-            "doc_type": {"type": "string"},
-            "suggested_metrics": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "scope": {"type": "string"},
-                        "category": {"type": "string"},
-                        "subcategory": {"type": "string"},
-                        "value": {"type": "number"},
-                        "unit": {"type": "string"},
-                        "notes": {"type": "string"},
-                        "confidence": {"type": "number"},
-                    },
-                },
-            },
-        },
-    }
-
-    prompt = (
-        "You are an ESG data extraction assistant. Extract ESG-relevant measurements from the evidence text. "
-        "Return JSON with doc_type and suggested_metrics. suggested_metrics should be normalized and concise. "
-        "If no ESG metrics found, return an empty suggested_metrics array.\n\n"
-        f"Project: {proj.name}\n"
-        f"Reporting period: {period.name} (framework: {period.framework})\n"
-        f"Evidence filename: {ev.filename}\n\n"
-        "EVIDENCE TEXT:\n"
-        f"{extracted_text}"
-    )
-
-    try:
-        llm_out = await invoke_llm(
-            prompt=prompt,
-            response_schema=schema_obj,
-            model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4o-mini"),
-            max_tokens=int(os.getenv("AI_ASSISTANT_MAX_TOKENS", "1200") or "1200"),
-            return_usage=True,
-        )
-    except Exception as e:
-        ev.status = "failed"
-        db.commit()
-        raise HTTPException(status_code=500, detail=f"AI extraction failed: {str(e)}")
-
-    extraction = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
-    usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
-    total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
-    _consume_ai_quota(db, subscription, email, _get_request_id(request), total_tokens)
-
-    import json as _json
-    ev.extracted_text = extracted_text
-    ev.extraction_json = _json.dumps(extraction) if extraction is not None else None
-    ev.doc_type = (extraction or {}).get("doc_type") if isinstance(extraction, dict) else None
-    ev.status = "extracted"
-    db.commit()
-
-    db.query(EsgMetricSuggestion).filter(
-        EsgMetricSuggestion.user_email == email,
-        EsgMetricSuggestion.evidence_document_id == ev.id,
-    ).delete(synchronize_session=False)
-    db.commit()
-
-    created = []
-    suggested = (extraction or {}).get("suggested_metrics") if isinstance(extraction, dict) else None
-    if isinstance(suggested, list):
-        for s in suggested:
-            if not isinstance(s, dict):
-                continue
-            cat = (s.get("category") or "").strip()
-            if not cat:
-                continue
-            sug = EsgMetricSuggestion(
-                evidence_document_id=ev.id,
-                project_id=ev.project_id,
-                period_id=ev.period_id,
-                user_email=email,
-                site_id=ev.site_id,
-                scope=(s.get("scope") or None),
-                category=cat,
-                subcategory=(s.get("subcategory") or None),
-                value=(s.get("value") if isinstance(s.get("value"), (int, float)) else None),
-                unit=(s.get("unit") or None),
-                notes=(s.get("notes") or None),
-                confidence=(s.get("confidence") if isinstance(s.get("confidence"), (int, float)) else None),
-                status="pending",
-            )
-            db.add(sug)
-            db.flush()
-            created.append(sug)
-        db.commit()
-
-    activity = UserActivity(
-        user_email=email,
-        activity_type="esg_evidence_extract",
-        page_name="esg",
-        details=json.dumps({"project_id": ev.project_id, "period_id": ev.period_id, "site_id": ev.site_id, "evidence_id": ev.id}),
-    )
-    db.add(activity)
-    db.commit()
-
-    return {
-        "evidence_id": ev.id,
-        "doc_type": ev.doc_type,
-        "status": ev.status,
-        "suggestions_created": len(created),
-    }
-
-
-@app.get("/api/esg/suggestions")
-async def esg_list_metric_suggestions(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    evidence_document_id: Optional[int] = Query(None),
-    status: Optional[str] = Query(None),
-    limit: int = Query(100),
-    offset: int = Query(0),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    limit = max(1, min(int(limit or 100), 500))
-    offset = max(0, int(offset or 0))
-
-    q = db.query(EsgMetricSuggestion).filter(
-        EsgMetricSuggestion.user_email == email,
-        EsgMetricSuggestion.project_id == project_id,
-        EsgMetricSuggestion.period_id == period_id,
-    )
-    if evidence_document_id is not None:
-        q = q.filter(EsgMetricSuggestion.evidence_document_id == evidence_document_id)
-    if status is not None:
-        q = q.filter(EsgMetricSuggestion.status == status)
-    rows = q.order_by(EsgMetricSuggestion.created_date.desc()).offset(offset).limit(limit).all()
-    return [
-        {
-            "id": r.id,
-            "evidence_document_id": r.evidence_document_id,
-            "project_id": r.project_id,
-            "period_id": r.period_id,
-            "site_id": r.site_id,
-            "scope": r.scope,
-            "category": r.category,
-            "subcategory": r.subcategory,
-            "value": r.value,
-            "unit": r.unit,
-            "notes": r.notes,
-            "confidence": r.confidence,
-            "status": r.status,
-            "approved_metric_id": r.approved_metric_id,
-            "created_date": r.created_date,
-            "updated_date": r.updated_date,
-        }
-        for r in rows
-    ]
-
-
-@app.get("/api/esg/dashboard/insights")
-async def esg_dashboard_ai_insights(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    request: Request = None,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    subscription = _get_or_create_subscription(db, email)
-    _enforce_ai_quota(subscription)
-
-    metrics = (
-        db.query(EsgMetric)
-        .filter(
-            EsgMetric.user_email == email,
-            EsgMetric.project_id == project_id,
-            EsgMetric.period_id == period_id,
-        )
-        .order_by(EsgMetric.created_date.desc())
-        .limit(200)
-        .all()
-    )
-
-    evidence = (
-        db.query(EsgEvidenceDocument)
-        .filter(
-            EsgEvidenceDocument.user_email == email,
-            EsgEvidenceDocument.project_id == project_id,
-            EsgEvidenceDocument.period_id == period_id,
-        )
-        .order_by(EsgEvidenceDocument.created_date.desc())
-        .limit(50)
-        .all()
-    )
-
-    metrics_block = [
-        {
-            "id": m.id,
-            "site_id": m.site_id,
-            "scope": m.scope,
-            "category": m.category,
-            "subcategory": m.subcategory,
-            "value": m.value,
-            "unit": m.unit,
-            "source_document_id": m.source_document_id,
-        }
-        for m in metrics
-    ]
-    evidence_block = [
-        {
-            "id": e.id,
-            "filename": e.filename,
-            "doc_type": e.doc_type,
-            "status": e.status,
-        }
-        for e in evidence
-    ]
-
-    schema_obj = {
-        "type": "json_object",
-        "properties": {
-            "summary": {"type": "string"},
-            "insights": {"type": "array", "items": {"type": "string"}},
-            "risks": {"type": "array", "items": {"type": "string"}},
-            "recommended_actions": {"type": "array", "items": {"type": "string"}},
-            "citations": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "metric_id": {"type": "integer"},
-                        "evidence_id": {"type": "integer"},
-                        "note": {"type": "string"},
-                    },
-                },
-            },
-        },
-    }
-
-    prompt = (
-        "You are an ESG reporting analyst. Create a concise dashboard insight summary for the reporting period. "
-        "Focus on finance and ESG decision-making. Use the provided metrics and evidence list. "
-        "Add citations by referencing metric_id and evidence_id where possible.\n\n"
-        f"Project: {proj.name}\n"
-        f"Period: {period.name} (framework: {period.framework})\n\n"
-        f"Metrics (JSON): {json.dumps(metrics_block)}\n\n"
-        f"Evidence (JSON): {json.dumps(evidence_block)}\n"
-    )
-
-    llm_out = await invoke_llm(
-        prompt=prompt,
-        response_schema=schema_obj,
-        model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4o-mini"),
-        max_tokens=int(os.getenv("AI_ASSISTANT_MAX_TOKENS", "1200") or "1200"),
-        return_usage=True,
-    )
-    content = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
-    usage = (llm_out or {}).get("usage") if isinstance(llm_out, dict) else None
-    total_tokens = int((usage or {}).get("total_tokens", 0) or 0)
-    _consume_ai_quota(db, subscription, email, _get_request_id(request), total_tokens)
-
-    return {"insights": content}
-
-
-@app.get("/api/esg/dashboard/summary")
-async def esg_dashboard_summary(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    sites_count = db.query(EsgSite).filter(
-        EsgSite.user_email == email,
-        EsgSite.project_id == project_id,
-    ).count()
-    metrics_count = db.query(EsgMetric).filter(
-        EsgMetric.user_email == email,
-        EsgMetric.project_id == project_id,
-        EsgMetric.period_id == period_id,
-    ).count()
-    evidence_count = db.query(EsgEvidenceDocument).filter(
-        EsgEvidenceDocument.user_email == email,
-        EsgEvidenceDocument.project_id == project_id,
-        EsgEvidenceDocument.period_id == period_id,
-    ).count()
-    pending_suggestions = db.query(EsgMetricSuggestion).filter(
-        EsgMetricSuggestion.user_email == email,
-        EsgMetricSuggestion.project_id == project_id,
-        EsgMetricSuggestion.period_id == period_id,
-        EsgMetricSuggestion.status == "pending",
-    ).count()
-    metrics_without_evidence = db.query(EsgMetric).filter(
-        EsgMetric.user_email == email,
-        EsgMetric.project_id == project_id,
-        EsgMetric.period_id == period_id,
-        EsgMetric.source_document_id.is_(None),
-    ).count()
-
-    return {
-        "project": {"id": proj.id, "name": proj.name},
-        "period": {"id": period.id, "name": period.name, "framework": period.framework},
-        "counts": {
-            "sites": sites_count,
-            "metrics": metrics_count,
-            "evidence": evidence_count,
-            "pending_suggestions": pending_suggestions,
-            "metrics_without_evidence": metrics_without_evidence,
-        },
-    }
-
-
-@app.get("/api/esg/activities")
-async def esg_list_activities(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    limit: int = Query(50),
-    offset: int = Query(0),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    limit = max(1, min(int(limit or 50), 200))
-    offset = max(0, int(offset or 0))
-
-    like_prefix = "esg_%"
-    proj_token = f'"project_id": {int(project_id)}'
-    period_token = f'"period_id": {int(period_id)}'
-    details_text = cast(UserActivity.details, String)
-    rows = (
-        db.query(UserActivity)
-        .filter(
-            UserActivity.user_email == email,
-            UserActivity.activity_type.like(like_prefix),
-            UserActivity.details.isnot(None),
-            details_text.contains(proj_token),
-            details_text.contains(period_token),
-        )
-        .order_by(UserActivity.created_date.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
-    return [
-        {
-            "id": r.id,
-            "activity_type": r.activity_type,
-            "page_name": r.page_name,
-            "details": r.details,
-            "created_date": r.created_date,
-        }
-        for r in rows
-    ]
-
-
-@app.get("/api/esg/dashboard/anomalies")
-async def esg_dashboard_anomalies(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    metrics = (
-        db.query(EsgMetric)
-        .filter(
-            EsgMetric.user_email == email,
-            EsgMetric.project_id == project_id,
-            EsgMetric.period_id == period_id,
-        )
-        .all()
-    )
-
-    by_key: Dict[str, List[float]] = {}
-    for m in metrics:
-        if m.value is None:
-            continue
-        key = f"{(m.category or '').strip().lower()}::{(m.subcategory or '').strip().lower()}::{(m.unit or '').strip().lower()}"
-        by_key.setdefault(key, []).append(float(m.value))
-
-    anomalies = []
-    for k, vals in by_key.items():
-        if len(vals) < 4:
-            continue
-        try:
-            mean = sum(vals) / len(vals)
-            var = sum((v - mean) ** 2 for v in vals) / max(1, (len(vals) - 1))
-            std = var ** 0.5
-        except Exception:
-            continue
-        if std <= 0:
-            continue
-        last = vals[0]
-        z = abs((last - mean) / std)
-        if z >= 3.0:
-            anomalies.append({
-                "key": k,
-                "z_score": float(z),
-                "mean": float(mean),
-                "std": float(std),
-                "value": float(last),
-                "severity": "high" if z >= 4.0 else "medium",
-            })
-
-    anomalies = sorted(anomalies, key=lambda x: x.get("z_score", 0), reverse=True)[:50]
-    return {"anomalies": anomalies}
-
-
-@app.get("/api/esg/dashboard/finance-kpis")
-async def esg_dashboard_finance_kpis(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    metrics = (
-        db.query(EsgMetric)
-        .filter(
-            EsgMetric.user_email == email,
-            EsgMetric.project_id == project_id,
-            EsgMetric.period_id == period_id,
-        )
-        .all()
-    )
-
-    def _is_cost_metric(m: EsgMetric) -> bool:
-        cat = (m.category or "").lower()
-        unit = (m.unit or "").lower().strip()
-        return ("cost" in cat or "spend" in cat or unit in ("gbp", "usd", "eur", "inr"))
-
-    total_cost = 0.0
-    for m in metrics:
-        if m.value is None:
-            continue
-        if _is_cost_metric(m):
-            try:
-                total_cost += float(m.value)
-            except Exception:
-                pass
-
-    total_emissions = 0.0
-    for m in metrics:
-        if m.value is None:
-            continue
-        unit = (m.unit or "").lower().strip()
-        cat = (m.category or "").lower()
-        if unit in ("tco2", "tco2e", "kgco2", "kgco2e") or "emission" in cat:
-            try:
-                total_emissions += float(m.value)
-            except Exception:
-                pass
-
-    return {
-        "kpis": {
-            "total_utilities_spend": total_cost,
-            "total_emissions_reported": total_emissions,
-        }
-    }
-
-
-@app.get("/api/esg/periods")
-async def esg_list_periods(
-    project_id: int = Query(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-
-    rows = (
-        db.query(EsgReportingPeriod)
-        .filter(
-            EsgReportingPeriod.user_email == email,
-            EsgReportingPeriod.project_id == project_id,
-        )
-        .order_by(EsgReportingPeriod.created_date.desc())
-        .all()
-    )
-    return [
-        {
-            "id": r.id,
-            "project_id": r.project_id,
-            "name": r.name,
-            "framework": r.framework,
-            "start_date": r.start_date,
-            "end_date": r.end_date,
-            "created_date": r.created_date,
-            "updated_date": r.updated_date,
-        }
-        for r in rows
-    ]
-
-
-@app.post("/api/esg/periods")
-async def esg_create_period(
-    payload: EsgReportingPeriodCreateRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == payload.project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-
-    name = (payload.name or "").strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Period name is required")
-
-    existing = (
-        db.query(EsgReportingPeriod)
-        .filter(
-            EsgReportingPeriod.project_id == payload.project_id,
-            EsgReportingPeriod.user_email == email,
-            EsgReportingPeriod.name == name,
-        )
-        .first()
-    )
-    if existing:
-        raise HTTPException(status_code=400, detail="Period already exists")
-
-    row = EsgReportingPeriod(
-        project_id=payload.project_id,
-        user_email=email,
-        name=name,
-        framework=payload.framework,
-        start_date=payload.start_date,
-        end_date=payload.end_date,
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "name": row.name,
-        "framework": row.framework,
-        "start_date": row.start_date,
-        "end_date": row.end_date,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.patch("/api/esg/periods/{period_id}")
-async def esg_update_period(
-    period_id: int,
-    payload: EsgReportingPeriodUpdateRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    row = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Not found")
-    _esg_require_owner(email, row.user_email)
-
-    if payload.name is not None:
-        name = (payload.name or "").strip()
-        if not name:
-            raise HTTPException(status_code=400, detail="Period name cannot be empty")
-        row.name = name
-    if payload.framework is not None:
-        row.framework = payload.framework
-    if payload.start_date is not None:
-        row.start_date = payload.start_date
-    if payload.end_date is not None:
-        row.end_date = payload.end_date
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "name": row.name,
-        "framework": row.framework,
-        "start_date": row.start_date,
-        "end_date": row.end_date,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.delete("/api/esg/periods/{period_id}")
-async def esg_delete_period(
-    period_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    row = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not row:
-        return {"message": "ok"}
-    _esg_require_owner(email, row.user_email)
-
-    db.query(EsgMetric).filter(EsgMetric.period_id == period_id, EsgMetric.user_email == email).delete()
-    db.delete(row)
-    db.commit()
-    return {"message": "ok"}
-
-
-@app.get("/api/esg/sites")
-async def esg_list_sites(
-    project_id: int = Query(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-
-    rows = (
-        db.query(EsgSite)
-        .filter(
-            EsgSite.user_email == email,
-            EsgSite.project_id == project_id,
-        )
-        .order_by(EsgSite.created_date.desc())
-        .all()
-    )
-    return [
-        {
-            "id": r.id,
-            "project_id": r.project_id,
-            "name": r.name,
-            "country": r.country,
-            "region": r.region,
-            "created_date": r.created_date,
-            "updated_date": r.updated_date,
-        }
-        for r in rows
-    ]
-
-
-@app.post("/api/esg/sites")
-async def esg_create_site(
-    payload: EsgSiteCreateRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == payload.project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-
-    name = (payload.name or "").strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Site name is required")
-
-    existing = (
-        db.query(EsgSite)
-        .filter(
-            EsgSite.project_id == payload.project_id,
-            EsgSite.user_email == email,
-            EsgSite.name == name,
-        )
-        .first()
-    )
-    if existing:
-        raise HTTPException(status_code=400, detail="Site already exists")
-
-    row = EsgSite(
-        project_id=payload.project_id,
-        user_email=email,
-        name=name,
-        country=payload.country,
-        region=payload.region,
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "name": row.name,
-        "country": row.country,
-        "region": row.region,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.patch("/api/esg/sites/{site_id}")
-async def esg_update_site(
-    site_id: int,
-    payload: EsgSiteUpdateRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    row = db.query(EsgSite).filter(EsgSite.id == site_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Not found")
-    _esg_require_owner(email, row.user_email)
-
-    if payload.name is not None:
-        name = (payload.name or "").strip()
-        if not name:
-            raise HTTPException(status_code=400, detail="Site name cannot be empty")
-        row.name = name
-    if payload.country is not None:
-        row.country = payload.country
-    if payload.region is not None:
-        row.region = payload.region
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "name": row.name,
-        "country": row.country,
-        "region": row.region,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.delete("/api/esg/sites/{site_id}")
-async def esg_delete_site(
-    site_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    row = db.query(EsgSite).filter(EsgSite.id == site_id).first()
-    if not row:
-        return {"message": "ok"}
-    _esg_require_owner(email, row.user_email)
-
-    db.query(EsgMetric).filter(EsgMetric.site_id == site_id, EsgMetric.user_email == email).delete()
-    db.delete(row)
-    db.commit()
-    return {"message": "ok"}
-
-
-@app.get("/api/esg/metrics")
-async def esg_list_metrics(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    site_id: Optional[int] = Query(None),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    q = db.query(EsgMetric).filter(
-        EsgMetric.user_email == email,
-        EsgMetric.project_id == project_id,
-        EsgMetric.period_id == period_id,
-    )
-    if site_id is not None:
-        q = q.filter(EsgMetric.site_id == site_id)
-    rows = q.order_by(EsgMetric.created_date.desc()).all()
-    return [
-        {
-            "id": r.id,
-            "project_id": r.project_id,
-            "period_id": r.period_id,
-            "site_id": r.site_id,
-            "scope": r.scope,
-            "category": r.category,
-            "subcategory": r.subcategory,
-            "value": r.value,
-            "unit": r.unit,
-            "notes": r.notes,
-            "source_document_id": r.source_document_id,
-            "source_page_from": r.source_page_from,
-            "source_page_to": r.source_page_to,
-            "created_date": r.created_date,
-            "updated_date": r.updated_date,
-        }
-        for r in rows
-    ]
-
-
-@app.post("/api/esg/metrics")
-async def esg_create_metric(
-    payload: EsgMetricCreateRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    proj = db.query(EsgProject).filter(EsgProject.id == payload.project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    _esg_require_owner(email, proj.user_email)
-
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == payload.period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-    _esg_require_owner(email, period.user_email)
-    if period.project_id != payload.project_id:
-        raise HTTPException(status_code=400, detail="Period does not belong to project")
-
-    if payload.site_id is not None:
-        site = db.query(EsgSite).filter(EsgSite.id == payload.site_id).first()
-        if not site:
-            raise HTTPException(status_code=404, detail="Site not found")
-        _esg_require_owner(email, site.user_email)
-        if site.project_id != payload.project_id:
-            raise HTTPException(status_code=400, detail="Site does not belong to project")
-
-    category = (payload.category or "").strip()
-    if not category:
-        raise HTTPException(status_code=400, detail="Metric category is required")
-
-    row = EsgMetric(
-        user_email=email,
-        project_id=payload.project_id,
-        period_id=payload.period_id,
-        site_id=payload.site_id,
-        scope=payload.scope,
-        category=category,
-        subcategory=payload.subcategory,
-        value=payload.value,
-        unit=payload.unit,
-        notes=payload.notes,
-        source_document_id=payload.source_document_id,
-        source_page_from=payload.source_page_from,
-        source_page_to=payload.source_page_to,
-    )
-    db.add(row)
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "period_id": row.period_id,
-        "site_id": row.site_id,
-        "scope": row.scope,
-        "category": row.category,
-        "subcategory": row.subcategory,
-        "value": row.value,
-        "unit": row.unit,
-        "notes": row.notes,
-        "source_document_id": row.source_document_id,
-        "source_page_from": row.source_page_from,
-        "source_page_to": row.source_page_to,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.patch("/api/esg/metrics/{metric_id}")
-async def esg_update_metric(
-    metric_id: int,
-    payload: EsgMetricUpdateRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    row = db.query(EsgMetric).filter(EsgMetric.id == metric_id).first()
-    if not row:
-        raise HTTPException(status_code=404, detail="Not found")
-    _esg_require_owner(email, row.user_email)
-
-    if payload.site_id is not None:
-        site = db.query(EsgSite).filter(EsgSite.id == payload.site_id).first()
-        if not site:
-            raise HTTPException(status_code=404, detail="Site not found")
-        _esg_require_owner(email, site.user_email)
-        if site.project_id != row.project_id:
-            raise HTTPException(status_code=400, detail="Site does not belong to project")
-        row.site_id = payload.site_id
-    if payload.scope is not None:
-        row.scope = payload.scope
-    if payload.category is not None:
-        category = (payload.category or "").strip()
-        if not category:
-            raise HTTPException(status_code=400, detail="Metric category cannot be empty")
-        row.category = category
-    if payload.subcategory is not None:
-        row.subcategory = payload.subcategory
-    if payload.value is not None:
-        row.value = payload.value
-    if payload.unit is not None:
-        row.unit = payload.unit
-    if payload.notes is not None:
-        row.notes = payload.notes
-    if payload.source_document_id is not None:
-        row.source_document_id = payload.source_document_id
-    if payload.source_page_from is not None:
-        row.source_page_from = payload.source_page_from
-    if payload.source_page_to is not None:
-        row.source_page_to = payload.source_page_to
-    db.commit()
-    db.refresh(row)
-    return {
-        "id": row.id,
-        "project_id": row.project_id,
-        "period_id": row.period_id,
-        "site_id": row.site_id,
-        "scope": row.scope,
-        "category": row.category,
-        "subcategory": row.subcategory,
-        "value": row.value,
-        "unit": row.unit,
-        "notes": row.notes,
-        "source_document_id": row.source_document_id,
-        "source_page_from": row.source_page_from,
-        "source_page_to": row.source_page_to,
-        "created_date": row.created_date,
-        "updated_date": row.updated_date,
-    }
-
-
-@app.delete("/api/esg/metrics/{metric_id}")
-async def esg_delete_metric(
-    metric_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    email = current_user["email"]
-    row = db.query(EsgMetric).filter(EsgMetric.id == metric_id).first()
-    if not row:
-        return {"message": "ok"}
-    _esg_require_owner(email, row.user_email)
-
-    db.delete(row)
-    db.commit()
-    return {"message": "ok"}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # ============================================================================
@@ -3953,7 +2118,7 @@ async def esg_delete_metric(
 # ============================================================================
 
 @app.post("/api/auth/register")
-async def register(user_data: UserRegister, db: Session = Depends(get_db)):
+def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """Register new user"""
     try:
         # Normalize email (case-insensitive uniqueness)
@@ -4046,7 +2211,7 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
         verification_link = f"{frontend_url}/verify-email?token={verification_token}"
         
         try:
-            email_sent = await send_verification_email(user_data.email, user_data.full_name, verification_link)
+            email_sent = run_coro(send_verification_email(user_data.email, user_data.full_name, verification_link))
             if not email_sent:
                 logger.warning(f"Verification email not sent to {user_data.email} (SMTP not configured). Verification link: {verification_link}")
         except Exception as e:
@@ -4071,25 +2236,51 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
 
 
 @app.post("/api/admin/free-trial-lifecycle/run")
-async def run_free_trial_lifecycle(
+def run_free_trial_lifecycle(
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
     now = datetime.utcnow()
     try:
-        stats = await _run_free_trial_lifecycle_once(db, now)
+        stats = run_coro(_run_free_trial_lifecycle_once(db, now))
         return {"message": "Lifecycle run completed", **stats}
     except Exception as e:
         logger.error(f"Free trial lifecycle run error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
+def _enforce_login_attempt_limit(db: Session, email: str, client_ip: str) -> None:
+    """
+    Stop password guessing: too many failed logins for one account, or from one IP address,
+    within the window returns 429. Counts come from login_history, so the limit holds across
+    all worker processes and restarts.
+    """
+    window_minutes = max(1, _env_int("LOGIN_FAILED_WINDOW_MINUTES", 15))
+    per_email = max(1, _env_int("LOGIN_MAX_FAILED_PER_EMAIL", 10))
+    per_ip = max(1, _env_int("LOGIN_MAX_FAILED_PER_IP", 30))
+    since = datetime.utcnow() - timedelta(minutes=window_minutes)
+    failed = db.query(LoginHistory).filter(
+        LoginHistory.event_type == "failed_login",
+        LoginHistory.created_date >= since,
+    )
+    too_many = failed.filter(LoginHistory.user_email == email).count() >= per_email
+    if not too_many and client_ip:
+        too_many = failed.filter(LoginHistory.ip_address == client_ip).count() >= per_ip
+    if too_many:
+        logger.warning(f"Login blocked after repeated failures: {email} from IP {client_ip}")
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many failed sign-in attempts. Please wait {window_minutes} minutes or reset your password.",
+        )
+
+
 @app.post("/api/auth/login")
-async def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db)):
+def login(user_data: UserLogin, request: Request, db: Session = Depends(get_db)):
     """Login user and return OTP challenge (MFA)."""
     try:
         # Normalize email
         user_data.email = (user_data.email or "").strip().lower()
+        _enforce_login_attempt_limit(db, user_data.email, _get_client_ip(request))
         # Authenticate user
         user = authenticate_user(db, user_data.email, user_data.password)
 
@@ -4147,7 +2338,7 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
         db.add(challenge)
         db.commit()
 
-        await send_login_otp_email(user.email, otp, expires_minutes=otp_ttl_minutes)
+        run_coro(send_login_otp_email(user.email, otp, expires_minutes=otp_ttl_minutes))
 
         # Log successful login (IP + geo + browser/device for security and compliance)
         # IMPORTANT: This tracks ALL users who log in, not just one user
@@ -4188,7 +2379,7 @@ async def login(user_data: UserLogin, request: Request, db: Session = Depends(ge
 
 
 @app.post("/api/auth/mfa/verify")
-async def verify_login_otp(req: LoginOtpVerifyRequest, request: Request, db: Session = Depends(get_db)):
+def verify_login_otp(req: LoginOtpVerifyRequest, request: Request, db: Session = Depends(get_db)):
     try:
         challenge_id = (req.challenge_id or "").strip()
         otp = (req.otp or "").strip()
@@ -4212,9 +2403,6 @@ async def verify_login_otp(req: LoginOtpVerifyRequest, request: Request, db: Ses
             db.commit()
             raise HTTPException(status_code=401, detail="Invalid code")
 
-        ch.consumed_at = datetime.utcnow()
-        db.commit()
-
         user = db.query(User).filter(User.email == ch.user_email).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -4225,20 +2413,50 @@ async def verify_login_otp(req: LoginOtpVerifyRequest, request: Request, db: Ses
         dev_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES_DEV", "10080"))
         minutes = dev_minutes if (dev_email and user.email == dev_email) else ACCESS_TOKEN_EXPIRE_MINUTES
         access_token_expires = timedelta(minutes=minutes)
-        access_token = create_access_token(
-            data={"sub": user.email, "role": user.role},
-            expires_delta=access_token_expires,
-        )
 
         client_ip = _get_client_ip(request)
         user_agent = request.headers.get("user-agent", "")
         browser_info = _parse_user_agent(user_agent)
+        location = _resolve_geolocation(client_ip) if client_ip else None
+        label = " on ".join(x for x in (browser_info.get("browser"), browser_info.get("device")) if x) or None
+        try:
+            session = start_session(
+                db,
+                user.email,
+                device_id=req.device_id,
+                device_label=label,
+                ip=client_ip,
+                location=location,
+                lifetime=access_token_expires,
+                sign_out_ids=req.sign_out_session_ids,
+            )
+        except DeviceLimitReached as limit:
+            # The code stays valid: the user can choose a device to sign out and try again.
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": {
+                        "code": "device_limit",
+                        "message": f"Your account is already signed in on {limit.limit} devices. "
+                                   "Sign one of them out to continue on this device.",
+                        "limit": limit.limit,
+                        "devices": limit.devices,
+                    }
+                },
+            )
+
+        ch.consumed_at = datetime.utcnow()
+        db.commit()
+        access_token = create_access_token(
+            data={"sub": user.email, "role": user.role, "sid": session.session_id},
+            expires_delta=access_token_expires,
+        )
         db.add(
             LoginHistory(
                 user_email=user.email,
                 event_type="login",
                 ip_address=client_ip or None,
-                location=_resolve_geolocation(client_ip) if client_ip else None,
+                location=location,
                 browser=browser_info.get("browser"),
                 device=browser_info.get("device"),
             )
@@ -4265,7 +2483,7 @@ async def verify_login_otp(req: LoginOtpVerifyRequest, request: Request, db: Ses
 
 
 @app.post("/api/learning/signals")
-async def ingest_learning_signal(
+def ingest_learning_signal(
     signal: LearningSignalIn,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -4293,14 +2511,34 @@ async def ingest_learning_signal(
     return {"ok": True}
 
 
+@app.get("/api/auth/devices")
+def list_signed_in_devices(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Devices this account is signed in on (at most MAX_ACTIVE_DEVICES), with approximate location."""
+    sid = current_user.get("session_id")
+    return {
+        "limit": max_active_devices(),
+        "devices": [describe_session(s, sid) for s in active_sessions(db, current_user["email"])],
+    }
+
+
+@app.delete("/api/auth/devices/{session_id}")
+def sign_out_device(session_id: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Sign one of your devices out. It must sign in again (with a new code) to be used."""
+    if not revoke_session(db, current_user["email"], session_id, "signed_out_by_other_device"):
+        raise HTTPException(status_code=404, detail="Device not found")
+    return {"ok": True}
+
+
 @app.post("/api/auth/logout")
-async def logout(
+def logout(
     request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Client-side logout (JWT is stateless). Also clears session-scoped FileProcessingHistory."""
+    """Sign this device out (its token stops working) and clear session-scoped FileProcessingHistory."""
     try:
+        if current_user.get("session_id"):
+            revoke_session(db, current_user["email"], current_user["session_id"], "logout")
         # Track logout event (best-effort)
         try:
             client_ip = _get_client_ip(request)
@@ -4348,6 +2586,25 @@ def _session_history_ttl_minutes() -> int:
     return max(int(ACCESS_TOKEN_EXPIRE_MINUTES), int(dev_minutes))
 
 
+async def _background_data_retention() -> None:
+    """Delete personal data past its retention period (see app/services/data_retention.py), every 6 hours."""
+    from app.database import SessionLocal
+    from app.services.data_retention import purge_expired_personal_data
+
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                removed = purge_expired_personal_data(db)
+                if any(removed.values()):
+                    logger.info("Data retention: removed %s", {k: v for k, v in removed.items() if v})
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning(f"Data retention run failed: {type(e).__name__}")
+        await asyncio.sleep(6 * 60 * 60)
+
+
 async def _background_cleanup_file_processing_history() -> None:
     """Periodic cleanup so file_processing_history does not persist after session expiry."""
     from app.database import SessionLocal
@@ -4371,7 +2628,7 @@ async def _background_cleanup_file_processing_history() -> None:
 
 
 @app.post("/api/auth/forgot-password")
-async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
     """Request password reset - sends reset token to email"""
     try:
         user = db.query(User).filter(User.email == request.email).first()
@@ -4416,7 +2673,7 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
         
         # Send email with reset link
         logger.info(f"Calling send_password_reset_email for {user.email}")
-        email_sent = await send_password_reset_email(user.email, reset_link)
+        email_sent = run_coro(send_password_reset_email(user.email, reset_link))
         logger.info(f"Email sending result: {'SUCCESS' if email_sent else 'FAILED'}")
         
         if not email_sent:
@@ -4447,7 +2704,7 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
 
 
 @app.post("/api/auth/reset-password")
-async def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
     """Reset password using token"""
     try:
         # Find user by reset token
@@ -4548,7 +2805,7 @@ async def reset_password(request: ResetPasswordRequest, db: Session = Depends(ge
 
 
 @app.get("/api/auth/verify-email")
-async def verify_email(token: str, db: Session = Depends(get_db)):
+def verify_email(token: str, db: Session = Depends(get_db)):
     """Verify user email using verification token"""
     try:
         # Find user by verification token
@@ -4596,7 +2853,7 @@ async def verify_email(token: str, db: Session = Depends(get_db)):
 
 
 @app.post("/api/auth/resend-verification")
-async def resend_verification(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+def resend_verification(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
     """Resend verification email to user"""
     try:
         user = db.query(User).filter(User.email == request.email).first()
@@ -4631,7 +2888,7 @@ async def resend_verification(request: ForgotPasswordRequest, db: Session = Depe
         
         # Send verification email
         try:
-            email_sent = await send_verification_email(user.email, user.full_name, verification_link)
+            email_sent = run_coro(send_verification_email(user.email, user.full_name, verification_link))
             if not email_sent:
                 logger.warning(f"Verification email not sent to {user.email} (SMTP/Resend not configured). Verification link: {verification_link}")
         except Exception as e:
@@ -4652,7 +2909,7 @@ async def resend_verification(request: ForgotPasswordRequest, db: Session = Depe
 
 
 @app.get("/api/auth/me")
-async def get_me(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_me(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get current user info"""
     user = db.query(User).filter(User.email == current_user["email"]).first()
     return {
@@ -4666,7 +2923,7 @@ async def get_me(current_user: dict = Depends(get_current_user), db: Session = D
 
 
 @app.post("/api/convert/{endpoint}")
-async def convert_document(
+def convert_document(
     endpoint: str,
     file: UploadFile = File(...),
     ocr_lang: Optional[str] = Form(None),
@@ -4689,7 +2946,7 @@ async def convert_document(
     max_size_mb = _plan_file_size_mb(subscription)
     max_bytes = max_size_mb * 1024 * 1024
 
-    raw = await file.read()
+    raw = file.file.read()
     if len(raw) > max_bytes:
         raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -4759,7 +3016,7 @@ async def convert_document(
 
 
 @app.get("/api/suggestions", response_model=Dict[str, Any])
-async def get_suggestions(
+def get_suggestions(
     page: Optional[str] = None,
     has_data: Optional[int] = None,
     tab: Optional[str] = None,
@@ -4966,7 +3223,7 @@ async def support_chat(
 
 
 @app.post("/api/support/chat-with-file", response_model=Dict[str, Any])
-async def support_chat_with_file(
+def support_chat_with_file(
     message: str = Form(...),
     page: Optional[str] = Form(None),
     file: UploadFile = File(...),
@@ -5009,7 +3266,7 @@ async def support_chat_with_file(
 
     max_size_mb = _plan_file_size_mb(subscription)
     max_bytes = max_size_mb * 1024 * 1024
-    content = await file.read()
+    content = file.file.read()
     if len(content) > max_bytes:
         raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -5048,13 +3305,13 @@ async def support_chat_with_file(
 
     try:
         request_id = _get_request_id(request)
-        llm_out = await invoke_llm(
+        llm_out = run_coro(invoke_llm(
             prompt=prompt,
             add_context=False,
             model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4-turbo-preview"),
             max_tokens=900,
             return_usage=True,
-        )
+        ))
         answer = (llm_out or {}).get("content") if isinstance(llm_out, dict) else llm_out
         if not answer:
             raise Exception("Empty response")
@@ -5102,7 +3359,7 @@ class ApiKeyResponse(BaseModel):
 
 
 @app.post("/api/developer/keys", response_model=Dict[str, Any])
-async def create_api_key(
+def create_api_key(
     request: ApiKeyCreateRequest,
     current_user: dict = Depends(get_current_admin_user),  # Only admins can create keys
     db: Session = Depends(get_db)
@@ -5145,7 +3402,7 @@ async def create_api_key(
 
 
 @app.post("/api/developer/keys/request-sandbox", response_model=Dict[str, Any])
-async def request_sandbox_api_key(
+def request_sandbox_api_key(
     request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -5237,12 +3494,12 @@ async def request_sandbox_api_key(
         db.refresh(api_key)
 
         try:
-            await send_api_key_email(
+            run_coro(send_api_key_email(
                 email=current_user["email"],
                 api_key=full_key,
                 environment="sandbox",
                 base_url=sandbox_base_url,
-            )
+            ))
         except Exception as e:
             logger.warning(f"Failed to email sandbox API key to {current_user['email']}: {str(e)}")
 
@@ -5278,7 +3535,7 @@ async def request_sandbox_api_key(
 
 
 @app.get("/api/developer/keys", response_model=List[ApiKeyResponse])
-async def list_api_keys(
+def list_api_keys(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -5303,7 +3560,7 @@ async def list_api_keys(
 
 
 @app.get("/api/developer/keys/{key_id}/usage")
-async def get_key_usage(
+def get_key_usage(
     key_id: int,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -5342,7 +3599,7 @@ async def get_key_usage(
 
 
 @app.get("/api/developer/usage")
-async def get_user_usage(
+def get_user_usage(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -5383,7 +3640,7 @@ class AccessPatternRequest(BaseModel):
 
 
 @app.post("/api/ai/security/fraud-detection")
-async def detect_fraud(
+def detect_fraud(
     request: FraudDetectionRequest,
     current_user: dict = Depends(get_current_admin_user),  # Admin only
     db: Session = Depends(get_db)
@@ -5397,11 +3654,11 @@ async def detect_fraud(
     """
     try:
         service = SecurityAIService()
-        result = await service.detect_fraud_patterns(
+        result = run_coro(service.detect_fraud_patterns(
             db,
             user_email=request.user_email,
             days=request.days
-        )
+        ))
         return result
     except Exception as e:
         logger.error(f"Fraud detection error: {str(e)}")
@@ -5409,7 +3666,7 @@ async def detect_fraud(
 
 
 @app.post("/api/ai/security/access-patterns")
-async def analyze_access_patterns(
+def analyze_access_patterns(
     request: AccessPatternRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -5424,11 +3681,11 @@ async def analyze_access_patterns(
             raise HTTPException(status_code=403, detail="You can only analyze your own access patterns")
         
         service = SecurityAIService()
-        result = await service.analyze_access_patterns(
+        result = run_coro(service.analyze_access_patterns(
             db,
             user_email=request.user_email,
             days=request.days
-        )
+        ))
         return result
     except HTTPException:
         raise
@@ -5438,7 +3695,7 @@ async def analyze_access_patterns(
 
 
 @app.get("/api/ai/security/api-abuse")
-async def detect_api_abuse(
+def detect_api_abuse(
     api_key_id: Optional[int] = None,
     hours: int = 24,
     current_user: dict = Depends(get_current_admin_user),  # Admin only
@@ -5466,7 +3723,7 @@ async def detect_api_abuse(
 # ============================================================================
 
 @app.get("/api/ai/compliance/gdpr-check")
-async def gdpr_compliance_check(
+def gdpr_compliance_check(
     user_email: Optional[str] = None,
     current_user: dict = Depends(get_current_admin_user),  # Admin only
     db: Session = Depends(get_db)
@@ -5480,7 +3737,7 @@ async def gdpr_compliance_check(
     """
     try:
         service = ComplianceAIService()
-        result = await service.gdpr_compliance_check(db, user_email=user_email)
+        result = run_coro(service.gdpr_compliance_check(db, user_email=user_email))
         return result
     except Exception as e:
         logger.error(f"GDPR compliance check error: {str(e)}")
@@ -5488,7 +3745,7 @@ async def gdpr_compliance_check(
 
 
 @app.get("/api/ai/compliance/privacy-analysis/{user_email}")
-async def analyze_data_privacy(
+def analyze_data_privacy(
     user_email: str,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -5503,7 +3760,7 @@ async def analyze_data_privacy(
             raise HTTPException(status_code=403, detail="You can only analyze your own privacy data")
         
         service = ComplianceAIService()
-        result = await service.analyze_data_privacy(db, user_email=user_email)
+        result = run_coro(service.analyze_data_privacy(db, user_email=user_email))
         return result
     except HTTPException:
         raise
@@ -5513,7 +3770,7 @@ async def analyze_data_privacy(
 
 
 @app.get("/api/ai/compliance/audit-report")
-async def generate_audit_report(
+def generate_audit_report(
     days: int = 30,
     current_user: dict = Depends(get_current_admin_user),  # Admin only
     db: Session = Depends(get_db)
@@ -5524,7 +3781,7 @@ async def generate_audit_report(
     """
     try:
         service = ComplianceAIService()
-        result = await service.generate_audit_report(db, days=days)
+        result = run_coro(service.generate_audit_report(db, days=days))
         return result
     except Exception as e:
         logger.error(f"Audit report error: {str(e)}")
@@ -5555,7 +3812,7 @@ class AnomalyDetectionRequest(BaseModel):
 
 
 @app.post("/api/ai/ml/forecast")
-async def forecast_time_series(
+def forecast_time_series(
     request: ForecastRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -5566,13 +3823,13 @@ async def forecast_time_series(
     """
     try:
         service = PredictiveMLService()
-        result = await service.forecast_time_series(
+        result = run_coro(service.forecast_time_series(
             data=request.data,
             date_column=request.date_column,
             value_column=request.value_column,
             periods=request.periods,
             method=request.method
-        )
+        ))
         return result
     except Exception as e:
         logger.error(f"Forecast error: {str(e)}")
@@ -5580,7 +3837,7 @@ async def forecast_time_series(
 
 
 @app.post("/api/ai/ml/detect-trends")
-async def detect_trends(
+def detect_trends(
     request: TrendDetectionRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -5590,11 +3847,11 @@ async def detect_trends(
     """
     try:
         service = PredictiveMLService()
-        result = await service.detect_trends(
+        result = run_coro(service.detect_trends(
             data=request.data,
             date_column=request.date_column,
             value_column=request.value_column
-        )
+        ))
         return result
     except Exception as e:
         logger.error(f"Trend detection error: {str(e)}")
@@ -5602,7 +3859,7 @@ async def detect_trends(
 
 
 @app.post("/api/ai/ml/predict-anomalies")
-async def predict_anomalies(
+def predict_anomalies(
     request: AnomalyDetectionRequest,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -5612,10 +3869,10 @@ async def predict_anomalies(
     """
     try:
         service = PredictiveMLService()
-        result = await service.predict_anomalies(
+        result = run_coro(service.predict_anomalies(
             data=request.data,
             value_column=request.value_column
-        )
+        ))
         return result
     except Exception as e:
         logger.error(f"Anomaly detection error: {str(e)}")
@@ -5686,7 +3943,7 @@ async def invoke_llm_endpoint(
 
 
 @app.post("/api/integrations/llm/invoke-with-file")
-async def invoke_llm_with_file_endpoint(
+def invoke_llm_with_file_endpoint(
     prompt: str = Form(...),
     add_context_from_internet: bool = Form(False),
     response_json_schema: Optional[str] = Form(None),
@@ -5703,7 +3960,7 @@ async def invoke_llm_with_file_endpoint(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         if len(content) > max_bytes:
             raise HTTPException(
                 status_code=413,
@@ -5730,12 +3987,12 @@ async def invoke_llm_with_file_endpoint(
 
         try:
             request_id = _get_request_id(request)
-            llm_out = await invoke_llm(
+            llm_out = run_coro(invoke_llm(
                 prompt=combined_prompt,
                 add_context=add_context_from_internet,
                 response_schema=schema_obj,
                 return_usage=True,
-            )
+            ))
         except Exception as llm_error:
             logger.error(f"LLM invocation failed: {str(llm_error)}")
             raise HTTPException(
@@ -5951,7 +4208,7 @@ async def unified_reporting_insight_endpoint(
 
 
 @app.get("/api/unified-reporting/connector/presets")
-async def unified_reporting_connector_presets(current_user: dict = Depends(get_current_user)):
+def unified_reporting_connector_presets(current_user: dict = Depends(get_current_user)):
     """Ready-made settings for common business APIs (no secrets), and whether outbound calls use a fixed IP."""
     return {"presets": public_presets(), "egress": egress_info()}
 
@@ -6068,6 +4325,7 @@ async def ocr_extract(
         ).first()
         max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
         max_size_bytes = max_size_mb * 1024 * 1024
+        _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
         file_content = await file.read()
         file_size_mb = len(file_content) / (1024 * 1024)
@@ -6319,10 +4577,10 @@ async def developer_api_proxy(
                     if user_options.get("max_length") is not None:
                         merged_options["max_length"] = int(user_options.get("max_length") or 0) or 255
 
-                data = await zip_service.process_zip(
+                data = await in_thread(zip_service.process_zip(
                     zip_file=raw,
                     options=merged_options,
-                )
+                ))
             except Exception as e:
                 raise HTTPException(status_code=400, detail=str(e))
             media = "application/zip"
@@ -6518,7 +4776,7 @@ async def developer_api_proxy(
 
 
 @app.post("/api/developer/files/excel-ops/execute")
-async def developer_excel_ops_execute(
+def developer_excel_ops_execute(
     request: Request,
     api_key: str = Form(...),
     file: UploadFile = File(...),
@@ -6544,7 +4802,7 @@ async def developer_excel_ops_execute(
         user_agent = None
 
     started = time.time()
-    raw = await file.read()
+    raw = file.file.read()
     status_code = 200
     response_size = None
 
@@ -6637,7 +4895,7 @@ async def developer_excel_ops_execute(
 
 
 @app.post("/api/developer/files/excel-ops/charts")
-async def developer_excel_ops_charts(
+def developer_excel_ops_charts(
     request: Request,
     api_key: str = Form(...),
     file: UploadFile = File(...),
@@ -6662,7 +4920,7 @@ async def developer_excel_ops_charts(
         user_agent = None
 
     started = time.time()
-    raw = await file.read()
+    raw = file.file.read()
     status_code = 200
     response_size = None
 
@@ -6752,7 +5010,7 @@ async def developer_excel_ops_charts(
 
 
 @app.post("/api/developer/files/generate-pl-with-file")
-async def developer_generate_pl_with_file(
+def developer_generate_pl_with_file(
     request: Request,
     api_key: str = Form(...),
     prompt: str = Form(...),
@@ -6785,7 +5043,7 @@ async def developer_generate_pl_with_file(
         if not (prompt or "").strip():
             raise HTTPException(status_code=400, detail="Prompt is required")
 
-        raw = await file.read()
+        raw = file.file.read()
 
         plan = (getattr(key, "plan", "") or "").strip().lower()
         max_size_mb = 500 if plan == "premium" else 10
@@ -6807,13 +5065,13 @@ async def developer_generate_pl_with_file(
             raise HTTPException(status_code=400, detail=str(e))
 
         pl_service = PLBuilderService()
-        excel_data = await pl_service.generate_pl_from_uploaded_excel(
+        excel_data = run_coro(pl_service.generate_pl_from_uploaded_excel(
             filename=(file.filename or "uploaded_file"),
             content=raw,
             prompt=prompt,
             user_context=context,
             llm_assist_headers_only=bool(llm_assist_headers_only),
-        )
+        ))
 
         if should_apply_watermark(getattr(subscription, "plan", None)):
             excel_data = watermark_xlsx_bytes(excel_data)
@@ -6878,13 +5136,59 @@ async def developer_generate_pl_with_file(
         raise HTTPException(status_code=500, detail="P&L generation failed")
 
 
+def _native_workbook_deck(xlsx_bytes: bytes, filename: str, branding=None) -> Optional[bytes]:
+    """
+    Excel/CSV to slides: each table as native table slides, each chart as a native editable chart
+    and each picture at full quality, one per slide. None when the file has nothing to show or
+    can't be read this way, so the caller falls back to the older converter. Only counts are
+    logged, never content.
+    """
+    from app.services.xlsx_objects_to_pptx import convert_workbook_objects, csv_to_xlsx
+
+    title = re.sub(r"\.(xlsx|xlsm|csv)$", "", filename or "", flags=re.I).replace("_", " ").strip()
+    try:
+        if (filename or "").lower().endswith(".csv"):
+            xlsx_bytes = csv_to_xlsx(xlsx_bytes)
+        deck, report = convert_workbook_objects(xlsx_bytes, title=title, branding=branding)
+    except Exception as e:
+        logger.warning(f"Native workbook conversion unavailable ({type(e).__name__}); using data slides")
+        return None
+    logger.info(
+        "Excel to PPT (native): tables=%s charts=%s new_types=%s pictures=%s duplicates=%s empty=%s failed=%s",
+        report["tables"], report["charts"], report["new_chart_types"], report["pictures"],
+        len(report["duplicates_skipped"]), len(report["empty_charts_skipped"]), len(report["skipped"]),
+    )
+    return deck
+
+
 @app.post("/api/files/excel-to-ppt")
-async def excel_to_ppt(
+def excel_to_ppt(
     file: UploadFile = File(...),
     mode: str = Query("smart"),
+    theme: str = Form("light"),
+    brand_color: Optional[str] = Form(None),
+    font: Optional[str] = Form(None),
+    company: Optional[str] = Form(None, max_length=120),
+    logo: Optional[UploadFile] = File(None),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Design choices apply to this deck only; nothing is stored.
+    from app.services.xlsx_objects_to_pptx import Branding, validate_logo, THEMES
+
+    try:
+        logo_png = validate_logo(logo.file.read()) if logo is not None and logo.filename else None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if brand_color and not re.fullmatch(r"#?[0-9A-Fa-f]{6}", brand_color.strip()):
+        raise HTTPException(status_code=400, detail="Brand colour must be a hex colour such as #0B3D91")
+    branding = Branding(
+        theme=theme if theme in THEMES else "light",
+        brand_color=brand_color,
+        font=font or "Calibri",
+        company=(company or "").strip(),
+        logo=logo_png,
+    )
     try:
         subscription = db.query(Subscription).filter(
             Subscription.user_email == current_user["email"]
@@ -6894,9 +5198,10 @@ async def excel_to_ppt(
         # Check file size based on subscription
         max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
         max_size_bytes = max_size_mb * 1024 * 1024
+        _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
         # Read file size
-        file_content = await file.read()
+        file_content = file.file.read()
         file_size_mb = len(file_content) / (1024 * 1024)
 
         if len(file_content) > max_size_bytes:
@@ -6921,24 +5226,29 @@ async def excel_to_ppt(
             ppt_data, err = pdf_to_pptx(pdf_bytes)
             if err:
                 raise HTTPException(status_code=400, detail=f"Exact conversion failed: {err}")
+        elif file.filename.lower().endswith((".xlsx", ".xlsm", ".csv")) and (
+            native := _native_workbook_deck(file_content, file.filename, branding)
+        ):
+            # Tables as native tables; charts copied as native, editable charts; pictures at full quality.
+            ppt_data = native
         else:
             gen_name = (current_user or {}).get("full_name") or (current_user or {}).get("email")
             if WINDOWS_COM_AVAILABLE:
                 logger.info("Using Windows COM for high-fidelity PPT conversion")
                 com_service = WindowsExcelToPPTService()
-                ppt_data = await com_service.convert_excel_to_ppt(
+                ppt_data = run_coro(com_service.convert_excel_to_ppt(
                     io.BytesIO(file_content),
                     file.filename
-                )
+                ))
             else:
                 logger.info("Using standard ExcelToPPTService for PPT conversion")
                 ppt_service = ExcelToPPTService()
-                ppt_data = await ppt_service.convert_excel_to_ppt(
+                ppt_data = run_coro(ppt_service.convert_excel_to_ppt(
                     io.BytesIO(file_content),
                     file.filename,
                     author_name="Meldra",
                     last_modified_by=gen_name,
-                )
+                ))
 
         if should_apply_watermark(getattr(subscription, "plan", None)):
             ppt_data = watermark_pptx_bytes(ppt_data)
@@ -6988,7 +5298,7 @@ async def excel_to_ppt(
 
 
 @app.post("/api/files/analyze")
-async def analyze_file(
+def analyze_file(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -7005,9 +5315,10 @@ async def analyze_file(
 
         max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
         max_size_bytes = max_size_mb * 1024 * 1024
+        _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
         # Read file content
-        file_content = await file.read()
+        file_content = file.file.read()
         file_size_mb = len(file_content) / (1024 * 1024)
 
         if len(file_content) > max_size_bytes:
@@ -7022,10 +5333,10 @@ async def analyze_file(
 
         # Analyze file
         analyzer = FileAnalyzerService()
-        analysis_result = await analyzer.analyze_excel_file(
+        analysis_result = run_coro(analyzer.analyze_excel_file(
             io.BytesIO(file_content),
             file.filename
-        )
+        ))
 
         # Log processing history (NO file content)
         processing_history = FileProcessingHistory(
@@ -7074,10 +5385,10 @@ async def generate_pl(
 
         # Generate P&L
         pl_service = PLBuilderService()
-        excel_data = await pl_service.generate_pl_from_natural_language(
+        excel_data = await in_thread(pl_service.generate_pl_from_natural_language(
             prompt,
             context
-        )
+        ))
 
         if should_apply_watermark(getattr(subscription, "plan", None)):
             excel_data = watermark_xlsx_bytes(excel_data)
@@ -7111,7 +5422,7 @@ async def generate_pl(
 
 
 @app.post("/api/files/generate-pl-with-file")
-async def generate_pl_with_file(
+def generate_pl_with_file(
     request: Request,
     prompt: str = Form(...),
     context_json: Optional[str] = Form(None),
@@ -7133,7 +5444,7 @@ async def generate_pl_with_file(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -7151,14 +5462,14 @@ async def generate_pl_with_file(
             raise HTTPException(status_code=400, detail=str(e))
 
         pl_service = PLBuilderService()
-        excel_data = await pl_service.generate_pl_from_uploaded_excel(
+        excel_data = run_coro(pl_service.generate_pl_from_uploaded_excel(
             filename=(file.filename or "uploaded_file"),
             content=content,
             prompt=prompt,
             user_context=context,
             llm_assist_headers_only=bool(llm_assist_headers_only),
             candidate_id=(candidate_id or None),
-        )
+        ))
 
         _enforce_upload_quota(subscription, len(content))
         _consume_upload_bytes(db, subscription, current_user["email"], request_id, len(content))
@@ -7179,7 +5490,7 @@ async def generate_pl_with_file(
 
 
 @app.post("/api/files/pl-extraction-preview")
-async def pl_extraction_preview(
+def pl_extraction_preview(
     file: UploadFile = File(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -7191,7 +5502,7 @@ async def pl_extraction_preview(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -7213,7 +5524,7 @@ async def pl_extraction_preview(
 
 
 @app.post("/api/files/universal-analyze")
-async def universal_analyze(
+def universal_analyze(
     file: UploadFile = File(...),
     recalculate: bool = Query(False),
     overrides: str = Form(None),
@@ -7234,7 +5545,7 @@ async def universal_analyze(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         file_size_mb = len(content) / (1024 * 1024)
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size ({file_size_mb:.1f}MB) exceeds {max_size_mb}MB limit")
@@ -7349,7 +5660,7 @@ async def universal_analyze(
 
 
 @app.post("/api/files/standardize-preview")
-async def standardize_preview(
+def standardize_preview(
     request: Request,
     file: UploadFile = File(...),
     dedupe_rows: bool = Form(True),
@@ -7366,7 +5677,7 @@ async def standardize_preview(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -7388,7 +5699,7 @@ async def standardize_preview(
 
 
 @app.post("/api/files/standardize")
-async def standardize_download(
+def standardize_download(
     request: Request,
     file: UploadFile = File(...),
     dedupe_rows: bool = Form(True),
@@ -7406,7 +5717,7 @@ async def standardize_download(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        content = await file.read()
+        content = file.file.read()
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -7447,7 +5758,7 @@ async def standardize_download(
 
 
 @app.post("/api/files/reconcile-preview")
-async def reconcile_preview(
+def reconcile_preview(
     request: Request,
     left_file: UploadFile = File(...),
     right_file: UploadFile = File(...),
@@ -7466,8 +5777,8 @@ async def reconcile_preview(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        left = await left_file.read()
-        right = await right_file.read()
+        left = left_file.file.read()
+        right = right_file.file.read()
         if len(left) > max_bytes or len(right) > max_bytes:
             raise HTTPException(status_code=413, detail=f"Each file must be <= {max_size_mb}MB")
 
@@ -7494,7 +5805,7 @@ async def reconcile_preview(
 
 
 @app.post("/api/files/reconcile")
-async def reconcile_download(
+def reconcile_download(
     request: Request,
     left_file: UploadFile = File(...),
     right_file: UploadFile = File(...),
@@ -7514,8 +5825,8 @@ async def reconcile_download(
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
-        left = await left_file.read()
-        right = await right_file.read()
+        left = left_file.file.read()
+        right = right_file.file.read()
         if len(left) > max_bytes or len(right) > max_bytes:
             raise HTTPException(status_code=413, detail=f"Each file must be <= {max_size_mb}MB")
 
@@ -7564,9 +5875,9 @@ async def reconcile_download(
 
 
 @app.post("/api/files/process-zip")
-async def process_zip(
+def process_zip(
     file: UploadFile = File(...),
-    options: str = None,  # JSON string of options
+    options: Optional[str] = Form(None),  # JSON string of options
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -7586,8 +5897,9 @@ async def process_zip(
 
         max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
         max_size_bytes = max_size_mb * 1024 * 1024
+        _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
-        file_content = await file.read()
+        file_content = file.file.read()
         file_size_mb = len(file_content) / (1024 * 1024)
 
         if len(file_content) > max_size_bytes:
@@ -7597,11 +5909,15 @@ async def process_zip(
             )
 
         # Validate file type
-        if not file.filename.endswith('.zip'):
+        if not (file.filename or "").lower().endswith('.zip'):
             raise HTTPException(status_code=400, detail="Invalid file type. Please upload a ZIP file.")
 
-        # Parse options
-        processing_options = json.loads(options) if options else {}
+        try:
+            processing_options = json.loads(options) if options else {}
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid options JSON")
+        if not isinstance(processing_options, dict):
+            raise HTTPException(status_code=400, detail="Invalid options JSON")
 
         # Get language replacements
         zip_service = ZipProcessorService()
@@ -7612,7 +5928,13 @@ async def process_zip(
         processing_options['language_replacements'] = language_replacements
 
         # Process ZIP
-        processed_data = await zip_service.process_zip(io.BytesIO(file_content), processing_options)
+        try:
+            processed_data = run_coro(zip_service.process_zip(io.BytesIO(file_content), processing_options))
+        except (ValueError, zipfile.BadZipFile):
+            raise HTTPException(
+                status_code=400,
+                detail="This ZIP could not be processed: it is damaged, too large when unpacked, or contains programs or unsafe paths.",
+            )
 
         # Log processing history
         processing_history = FileProcessingHistory(
@@ -7655,7 +5977,7 @@ async def process_zip(
 # ============================================================================
 
 @app.get("/api/subscriptions/me")
-async def get_my_subscription(
+def get_my_subscription(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -7687,48 +6009,74 @@ async def get_my_subscription(
 
 
 @app.post("/api/subscriptions/upgrade")
-async def upgrade_subscription(
-    request: Request,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Upgrade to premium (simplified - integrate Stripe for real payments)"""
-    subscription = db.query(Subscription).filter(
-        Subscription.user_email == current_user["email"]
-    ).first()
+def upgrade_subscription(current_user: dict = Depends(get_current_user)):
+    """
+    Upgrade to premium. Until card payments are live, only an admin can change a plan
+    (after the customer has paid by invoice); customers can no longer upgrade themselves for free.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_402_PAYMENT_REQUIRED,
+        detail="Online payment is not available yet. Contact Meldra to upgrade your plan.",
+    )
 
-    if subscription:
-        prev_plan, prev_status = subscription.plan, subscription.status
+
+class AdminSetPlanRequest(BaseModel):
+    user_email: EmailStr
+    plan: str = Field(..., pattern="^(free|premium)$")
+    payment_status: Optional[str] = Field("paid", max_length=50)
+
+
+@app.post("/api/admin/subscriptions/set-plan")
+def admin_set_plan(
+    payload: AdminSetPlanRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Admin only: move a customer to a plan, e.g. after an invoice is paid. Every change is logged."""
+    email = str(payload.user_email).strip().lower()
+    if not db.query(User).filter(User.email == email).first():
+        raise HTTPException(status_code=404, detail="User not found")
+    subscription = db.query(Subscription).filter(Subscription.user_email == email).first()
+    if not subscription:
+        subscription = Subscription(user_email=email, plan="free", status="active")
+        db.add(subscription)
+        db.flush()
+
+    prev_plan, prev_status = subscription.plan, subscription.status
+    if payload.plan == "premium":
         subscription.plan = "premium"
         subscription.status = "active"
         subscription.ai_queries_limit = -1  # Unlimited
-        subscription.payment_status = "paid"
+        subscription.payment_status = payload.payment_status or "paid"
         subscription.subscription_start_date = datetime.utcnow()
         subscription.cancelled_at = None
+    else:
+        subscription.plan = "free"
+        subscription.status = "active"
+        subscription.payment_status = payload.payment_status or None
+    db.commit()
+
+    try:
+        db.add(SubscriptionEventLog(
+            user_email=email,
+            event_type=f"admin_set_plan:{current_user['email']}"[:100],
+            prev_plan=prev_plan,
+            new_plan=subscription.plan,
+            prev_status=prev_status,
+            new_status=subscription.status,
+            ip_address=_get_client_ip(request) or None,
+            user_agent=request.headers.get("user-agent") or None,
+        ))
         db.commit()
+    except Exception:
+        db.rollback()
 
-        try:
-            client_ip = _get_client_ip(request)
-            ua = request.headers.get("user-agent", "")
-            db.add(SubscriptionEventLog(
-                user_email=current_user["email"],
-                event_type="upgrade",
-                prev_plan=prev_plan,
-                new_plan=subscription.plan,
-                prev_status=prev_status,
-                new_status=subscription.status,
-                ip_address=client_ip or None,
-                user_agent=ua or None,
-            ))
-            db.commit()
-        except Exception:
-            db.rollback()
-
-    return {"message": "Subscription upgraded to Premium"}
+    return {"user_email": email, "plan": subscription.plan, "status": subscription.status}
 
 
 @app.post("/api/subscriptions/start-trial")
-async def start_trial(
+def start_trial(
     request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -7782,7 +6130,7 @@ async def start_trial(
 
 
 @app.post("/api/subscriptions/cancel")
-async def cancel_subscription(
+def cancel_subscription(
     request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -7824,8 +6172,48 @@ async def cancel_subscription(
 # ACTIVITY & ANALYTICS ENDPOINTS
 # ============================================================================
 
+class SearchChoiceIn(BaseModel):
+    q: str = Field("", max_length=200)
+    tool_id: str = Field(..., max_length=64)
+
+
+@app.get("/api/assist/search")
+def assist_search(
+    q: str = Query("", max_length=200),
+    limit: int = Query(8, ge=1, le=20),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Find the right tool from plain words; ranking learns from what people pick and what you use."""
+    from app.services.personalization import search
+
+    return {"results": search(db, current_user["email"], q, limit=limit)}
+
+
+@app.post("/api/assist/search/choose")
+def assist_search_choose(payload: SearchChoiceIn, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Record which tool a search led to, so the same words rank it higher next time."""
+    from app.services.personalization import record_search_choice
+
+    if not record_search_choice(db, current_user["email"], payload.q, payload.tool_id):
+        raise HTTPException(status_code=400, detail="Unknown tool")
+    return {"ok": True}
+
+
+@app.get("/api/assist/suggestions")
+def assist_suggestions(
+    limit: int = Query(6, ge=1, le=12),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Tools suggested for you, from your recent and routine use and what people usually do next."""
+    from app.services.personalization import suggestions
+
+    return {"suggestions": suggestions(db, current_user["email"], limit=limit)}
+
+
 @app.post("/api/activity/log")
-async def log_activity(
+def log_activity(
     activity: ActivityLog,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -7858,7 +6246,7 @@ async def log_activity(
 
 
 @app.get("/api/activity/history")
-async def get_activity_history(
+def get_activity_history(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = 50,
@@ -7889,7 +6277,7 @@ async def get_activity_history(
 
 
 @app.post("/api/login-history")
-async def create_login_history(
+def create_login_history(
     login_data: dict,
     request: Request,
     current_user: dict = Depends(get_current_user),
@@ -7925,7 +6313,7 @@ class ConsentRequest(BaseModel):
 
 
 @app.post("/api/consent")
-async def record_consent(body: ConsentRequest, request: Request, db: Session = Depends(get_db)):
+def record_consent(body: ConsentRequest, request: Request, db: Session = Depends(get_db)):
     """Record cookie consent (accept/reject) for compliance. No auth required."""
     try:
         client_ip = _get_client_ip(request)
@@ -7940,7 +6328,7 @@ async def record_consent(body: ConsentRequest, request: Request, db: Session = D
 
 
 @app.get("/api/login-history")
-async def get_login_history(
+def get_login_history(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = 50
@@ -7992,7 +6380,7 @@ class DBDisconnectRequest(BaseModel):
     db_type: str
 
 @app.post("/api/db/test-connection")
-async def test_db_connection(
+def test_db_connection(
     request: DBConnectionRequest,
     current_user: dict = Depends(get_current_user)
 ):
@@ -8003,7 +6391,8 @@ async def test_db_connection(
     try:
         result = DatabaseConnectionService.test_connection(
             request.db_type,
-            request.connection_data
+            request.connection_data,
+            current_user["email"],
         )
         return result
     except Exception as e:
@@ -8014,7 +6403,7 @@ async def test_db_connection(
         )
 
 @app.get("/api/db/schema")
-async def get_db_schema(
+def get_db_schema(
     connection_id: str,
     db_type: str,
     current_user: dict = Depends(get_current_user)
@@ -8024,7 +6413,7 @@ async def get_db_schema(
     ZERO STORAGE: Schema information is fetched on-demand, not stored
     """
     try:
-        result = DatabaseConnectionService.get_schema(connection_id, db_type)
+        result = DatabaseConnectionService.get_schema(connection_id, db_type, current_user["email"])
         if not result.get("success"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -8041,7 +6430,7 @@ async def get_db_schema(
         )
 
 @app.post("/api/db/query")
-async def execute_db_query(
+def execute_db_query(
     request: DBQueryRequest,
     current_user: dict = Depends(get_current_user)
 ):
@@ -8055,6 +6444,7 @@ async def execute_db_query(
             request.db_type,
             request.query,
             request.max_rows or 200000,
+            owner=current_user["email"],
         )
         if not result.get("success"):
             raise HTTPException(
@@ -8072,7 +6462,7 @@ async def execute_db_query(
         )
 
 @app.post("/api/db/disconnect")
-async def disconnect_db(
+def disconnect_db(
     request: DBDisconnectRequest,
     current_user: dict = Depends(get_current_user)
 ):
@@ -8081,7 +6471,7 @@ async def disconnect_db(
     ZERO STORAGE: All connection data is immediately removed from memory
     """
     try:
-        result = DatabaseConnectionService.disconnect(request.connection_id, request.db_type)
+        result = DatabaseConnectionService.disconnect(request.connection_id, request.db_type, current_user["email"])
         return result
     except Exception as e:
         logger.error(f"Disconnect error: {str(e)}")
@@ -8095,7 +6485,7 @@ async def disconnect_db(
 # ============================================================================
 
 @app.get("/api/admin/users")
-async def get_all_users(
+def get_all_users(
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -8115,7 +6505,7 @@ async def get_all_users(
 
 
 @app.get("/api/admin/subscriptions")
-async def get_all_subscriptions(
+def get_all_subscriptions(
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db)
 ):
@@ -8136,7 +6526,7 @@ async def get_all_subscriptions(
 
 
 @app.get("/api/admin/ip-tracking")
-async def get_admin_ip_tracking(
+def get_admin_ip_tracking(
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
     limit: int = 200,
@@ -8200,7 +6590,7 @@ async def get_admin_ip_tracking(
 
 
 @app.get("/api/admin/subscription-ip-summary")
-async def get_subscription_ip_summary(
+def get_subscription_ip_summary(
     current_user: dict = Depends(get_current_admin_user),
     db: Session = Depends(get_db),
     period: str = "30d"  # 7d, 30d, all
@@ -8252,11 +6642,43 @@ _IP_LOOKUP_TTL = 3600  # 1 hour
 _IP_LOOKUP_CACHE_MAX = 5000
 
 
+def _upload_size(file: UploadFile) -> int:
+    size = getattr(file, "size", None)
+    if size is not None:
+        return int(size)
+    f = file.file
+    pos = f.tell()
+    f.seek(0, os.SEEK_END)
+    size = f.tell()
+    f.seek(pos)
+    return size
+
+
+def _reject_oversized_upload(file: UploadFile, max_bytes: int, max_mb: int) -> None:
+    """Refuse a file over the plan limit before loading it into memory (the upload itself sits in a temp file)."""
+    size = _upload_size(file)
+    if size > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File size ({size / (1024 * 1024):.1f}MB) exceeds {max_mb}MB limit",
+        )
+
+
 def _get_client_ip(request: Request) -> str:
-    """Resolve client IP from X-Forwarded-For, X-Real-IP, or request.client. Required for security and compliance."""
+    """
+    Resolve the client IP (used for login limits, audit logs and consent records).
+
+    X-Forwarded-For is "client, proxy1, proxy2": each proxy appends the address it saw,
+    but the caller can put anything at the start. Only the entries added by our own
+    proxies can be trusted, so take the one TRUSTED_PROXY_HOPS from the right
+    (1 = Railway's edge, which the browser talks to directly).
+    """
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        hops = [h.strip() for h in forwarded.split(",") if h.strip()]
+        trusted = max(1, _env_int("TRUSTED_PROXY_HOPS", 1))
+        if hops:
+            return hops[-trusted] if len(hops) >= trusted else hops[0]
     real = request.headers.get("x-real-ip")
     if real:
         return real.strip()
@@ -8371,7 +6793,7 @@ def _ip_cache_set(key: str, obj: dict):
 
 
 @app.get("/api/ip-lookup")
-async def ip_lookup(request: Request):
+def ip_lookup(request: Request):
     """Proxy to ipapi.co (or ip-api.com on 429) for IP/location. Uses client IP; 1h cache to reduce 429."""
     import requests
     fallback = {"ip": None, "city": None, "country_name": None, "country_code": "XX"}
@@ -8418,7 +6840,7 @@ async def ip_lookup(request: Request):
 
 @app.get("/health")
 @app.get("/api/health")
-async def health_check():
+def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
@@ -8429,7 +6851,7 @@ async def health_check():
 
 
 @app.get("/")
-async def root():
+def root():
     """Root endpoint"""
     return {
         "message": "InsightSheet-lite Backend API",
@@ -8448,235 +6870,10 @@ if __name__ == "__main__":
         port=port,
         reload=True
     )
-# --- AWS S3 ESG Export ---
-class EsgExportRequest(BaseModel):
-    project_id: int
-    period_id: int
-
-@app.post("/api/esg/export")
-async def esg_export_report(
-    payload: EsgExportRequest,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    email = current_user["email"]
-
-    # Verify project
-    proj = db.query(EsgProject).filter(EsgProject.id == payload.project_id).first()
-    if not proj:
-        raise HTTPException(status_code=404, detail="Project not found")
-    
-    period = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.id == payload.period_id).first()
-    if not period:
-        raise HTTPException(status_code=404, detail="Period not found")
-
-    # Get metrics
-    metrics = db.query(EsgMetricValue).filter(
-        EsgMetricValue.project_id == payload.project_id,
-        EsgMetricValue.period_id == payload.period_id
-    ).all()
-
-    # Generate JSON report
-    import json
-    report_data = {
-        "project": proj.name,
-        "period": period.name,
-        "exported_by": email,
-        "metrics": [{"id": m.id, "value": m.value, "unit": m.unit, "status": m.status} for m in metrics]
-    }
-    
-    report_bytes = json.dumps(report_data, indent=2).encode('utf-8')
-    filename = f"esg_report_{payload.project_id}_{payload.period_id}.json"
-
-    from app.services.aws_s3_service import AWSS3Service
-    s3_service = AWSS3Service()
-    try:
-        url = s3_service.upload_export(report_bytes, filename)
-        return {"url": url, "message": "Export created successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# --- ESG Audit & Compliance Endpoints ---
-
-@app.get("/api/esg/v2/audit-report")
-async def esg_audit_report(
-    project_id: int = Query(...),
-    period_id: int = Query(...),
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    from app.services.esg_ml_service import ESGIntelligenceService
-    
-    # 1. Fetch metrics and their history for anomaly detection
-    metrics = db.query(EsgMetricValue).filter(
-        EsgMetricValue.project_id == project_id,
-        EsgMetricValue.period_id == period_id
-    ).all()
-    
-    anomalies = []
-    auditable_metrics = []
-    
-    # Simple metric dict for the AI
-    metric_summary = {}
-
-    for m in metrics:
-        metric_summary[f"Metric ID {m.id}"] = f"{m.value} {m.unit} (Status: {m.status})"
-        
-        # Get historical data for the same metric definition to run anomaly detection
-        hist_metrics = db.query(EsgMetricValue).filter(
-            EsgMetricValue.metric_definition_id == m.metric_definition_id,
-            EsgMetricValue.project_id == project_id,
-            EsgMetricValue.period_id != period_id
-        ).all()
-        
-        hist_vals = [hm.value for hm in hist_metrics if hm.value is not None]
-        
-        z_score_info = None
-        if len(hist_vals) >= 2 and m.value is not None:
-            z_score_info = ESGIntelligenceService.detect_anomalies_zscore(m.value, hist_vals)
-            if z_score_info.get("is_anomaly"):
-                anomalies.append({
-                    "metric_id": m.id,
-                    "value": m.value,
-                    "detail": z_score_info.get("reason"),
-                    "algorithm": "Z-Score"
-                })
-        
-        if len(hist_vals) >= 4 and m.value is not None:
-            iqr_info = ESGIntelligenceService.detect_anomalies_iqr(m.value, hist_vals)
-            if iqr_info.get("is_anomaly"):
-                anomalies.append({
-                    "metric_id": m.id,
-                    "value": m.value,
-                    "detail": iqr_info.get("reason"),
-                    "algorithm": "IQR"
-                })
-
-        # Count evidence
-        evidence_count = db.query(EsgMetricEvidenceLink).filter(EsgMetricEvidenceLink.metric_value_id == m.id).count()
-
-        auditable_metrics.append({
-            "id": m.id,
-            "metric_definition_id": m.metric_definition_id,
-            "value": m.value,
-            "unit": m.unit,
-            "status": m.status,
-            "evidence_count": evidence_count,
-            "z_score_info": z_score_info
-        })
-        
-    # Draft Narrative
-    fw = db.query(EsgFramework).filter(EsgFramework.project_id == project_id, EsgFramework.enabled == True).first()
-    framework_name = fw.name if fw else "Global ESG Standard"
-    ai_narrative = ESGIntelligenceService.draft_narrative_local_llm(framework_name, metric_summary)
-    
-    return {
-        "auditable_metrics": auditable_metrics,
-        "anomalies": anomalies,
-        "ai_narrative": ai_narrative,
-        "compliance_score": 100 if not anomalies else max(0, 100 - len(anomalies) * 10)
-    }
-
-# --- ESG Decarbonization Planner ML ---
-
-@app.get("/api/esg/v2/predict-net-zero/{project_id}")
-async def esg_predict_net_zero(
-    project_id: int,
-    current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    from app.services.predictive_ml_service import PredictiveMLService
-    import datetime
-    
-    # 1. Fetch periods and their GHG metrics
-    periods = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.project_id == project_id).order_by(EsgReportingPeriod.start_date).all()
-    
-    time_series = []
-    
-    # Aggregate "GHG" or "Scope" metrics per period
-    for p in periods:
-        metrics = db.query(EsgMetricValue).filter(
-            EsgMetricValue.period_id == p.id,
-            EsgMetricValue.project_id == project_id
-        ).all()
-        
-        # Calculate total emission for period
-        total_emission = sum(m.value for m in metrics if m.value is not None)
-        if total_emission == 0 and len(metrics) > 0:
-            total_emission = sum(m.value for m in metrics if m.value is not None)
-            
-        dt_val = p.start_date.isoformat() if p.start_date else p.created_date.isoformat()
-        if total_emission > 0:
-             time_series.append({"date": dt_val, "emission": total_emission})
-        
-    # ML service requires minimum 10 points. If we lack it, we realistically simulate back to provide a demo for the platform!
-    if len(time_series) < 10:
-        base_val = time_series[-1]["emission"] if time_series else 50000.0
-        synthetic_series = []
-        for i in range(12):
-             synth_date = datetime.datetime.utcnow() - datetime.timedelta(days=30*(12-i))
-             synth_val = base_val + (base_val * 0.05 * (12-i)) # Synthetic decay indicating they have been reducing slowly
-             synthetic_series.append({"date": synth_date.isoformat(), "emission": synth_val})
-        time_series = synthetic_series + time_series
-
-    ml_service = PredictiveMLService()
-    try:
-        forecast = await ml_service.forecast_time_series(time_series, "date", "emission", periods=12, method="linear")
-        
-        # Calculate Net Zero distance
-        final_forecast_val = forecast["forecast"][-1]["value"]
-        current_val = time_series[-1]["emission"]
-        
-        return {
-            "historical": time_series,
-            "forecast": forecast,
-            "net_zero_projection": {
-                "current_metric": current_val,
-                "projected_metric": final_forecast_val,
-                "reduction_percentage": round(((current_val - final_forecast_val) / current_val) * 100, 2) if current_val > 0 else 0
-            }
-        }
-    except Exception as e:
-        logger.error(f"ML Net-Zero Prediction Error: {e}", exc_info=True)
-        # DEMO FALLBACK: If ML fails (e.g. no internet for OpenAI, or numpy/pandas issue), provide an enterprise demo response
-        import datetime
-        now = datetime.datetime.utcnow()
-        mock_hist = [
-            {"date": (now - datetime.timedelta(days=30*i)).isoformat(), "emission": 50000.0 - (1000*i)}
-            for i in range(12, 0, -1)
-        ]
-        mock_forecast = [
-            {
-                "date": (now + datetime.timedelta(days=30*i)).isoformat(), 
-                "value": mock_hist[-1]["emission"] - (1500*i),
-                "upper_bound": mock_hist[-1]["emission"] - (1200*i),
-                "lower_bound": mock_hist[-1]["emission"] - (1800*i)
-            }
-            for i in range(1, 13)
-        ]
-        
-        return {
-            "historical": mock_hist,
-            "forecast": {
-                "method": "fallback",
-                "forecast": mock_forecast,
-                "statistics": {"trend": "decreasing"},
-                "insights": [
-                    "AI connection timeout: using standard exponential smoothing.",
-                    "Trajectory indicates 30% reduction within the next 2 years.",
-                    "Highest emissions are identified in Scope 3 Supply Chain."
-                ]
-            },
-            "net_zero_projection": {
-                "current_metric": mock_hist[-1]["emission"],
-                "projected_metric": mock_forecast[-1]["value"],
-                "reduction_percentage": 25.5
-            }
-        }
 
 
 @app.post("/api/pdf/merge")
-async def api_merge_pdfs(
+def api_merge_pdfs(
     files: List[UploadFile] = File(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -8684,7 +6881,7 @@ async def api_merge_pdfs(
     try:
         pdf_bytes_list = []
         for file in files:
-            content = await file.read()
+            content = file.file.read()
             pdf_bytes_list.append(content)
         
         merged_bytes = merge_pdfs(pdf_bytes_list)
@@ -8696,14 +6893,14 @@ async def api_merge_pdfs(
         raise HTTPException(status_code=400, detail=f"Failed to merge PDFs: {str(e)}")
 
 @app.post("/api/pdf/split")
-async def api_split_pdf(
+def api_split_pdf(
     file: UploadFile = File(...),
     page_ranges: str = Form(...),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     try:
-        content = await file.read()
+        content = file.file.read()
         split_bytes = split_pdf(content, page_ranges)
         return Response(content=split_bytes, media_type="application/pdf", headers={
             "Content-Disposition": 'attachment; filename="split.pdf"'

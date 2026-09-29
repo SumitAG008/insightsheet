@@ -12,6 +12,7 @@ import AIInsights from '../components/dashboard/AIInsights';
 import ChartPanel from '../components/dashboard/ChartPanel';
 import EnhancedChartPanel from '../components/dashboard/EnhancedChartPanel';
 import SuggestionsPanel from '@/components/SuggestionsPanel';
+import SuggestedTools from '@/components/assist/SuggestedTools';
 import AIAssistant from '../components/dashboard/AIAssistant';
 import TemplateSelector from '../components/dashboard/TemplateSelector';
 import DataTransform from '../components/dashboard/DataTransform';
@@ -612,6 +613,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-white dark:bg-slate-950">
         <div className="container mx-auto px-4 py-12">
+          <SuggestedTools />
           {/* Header */}
           <div className="text-center mb-16 animate-fade-in">
             <div className="flex justify-center mb-6">

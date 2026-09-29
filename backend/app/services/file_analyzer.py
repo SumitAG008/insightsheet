@@ -50,6 +50,17 @@ def _make_json_safe(obj: Any) -> Any:
     return obj
 
 
+
+def _to_number(series: "pd.Series") -> "pd.Series":
+    """Numbers as people type them: "1,200.50", "$300", "(45)", "12%" -> 1200.5, 300, -45, 12."""
+    if series.dtype != object:
+        return pd.to_numeric(series, errors='coerce')
+    text = series.astype(str).str.strip()
+    negative = text.str.match(r'^\(.*\)$')
+    cleaned = text.str.replace(r'[()\s,$€£₹%]', '', regex=True)
+    numbers = pd.to_numeric(cleaned.where(series.notna()), errors='coerce')
+    return numbers.where(~negative, -numbers)
+
 class FileAnalyzerService:
     """Service to analyze Excel files and generate insights"""
 
@@ -248,7 +259,7 @@ class FileAnalyzerService:
 
             # Determine type
             try:
-                numeric_data = pd.to_numeric(df[col], errors='coerce')
+                numeric_data = _to_number(df[col])
                 if numeric_data.notna().sum() / len(df) > 0.5:
                     col_info['type'] = 'numeric'
                     col_info['min'] = float(numeric_data.min())

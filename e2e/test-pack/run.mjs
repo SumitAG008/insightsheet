@@ -7,6 +7,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import XLSX from 'xlsx';
 
+// Storing in the lakehouse is opt-in: tick the box before uploading.
+const optInToLakehouse = async (page) => {
+  const box = page.getByLabel(/Store in the Meldra lakehouse/);
+  if (await box.count()) await box.first().check();
+};
+
 // Playwright is not a project dependency: install it, or point PLAYWRIGHT_MODULE at a global copy.
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 
@@ -67,6 +73,7 @@ if (await page.getByRole('button', { name: 'Remove all data' }).count()) {
 
 // ---- One source is not unified reporting ----
 const file = (f) => path.join(PACK, f);
+if (MODE === 'lakehouse') await optInToLakehouse(page);
 await page.locator('input[type=file]').first().setInputFiles([file('employees.csv')]);
 await page.getByText(/One source so far/).waitFor({ timeout: 60000 });
 await nav().getByRole('button', { name: /^Ask/ }).click();

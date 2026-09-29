@@ -160,7 +160,7 @@ Same as Railway (see above)
 
 Your database is already set up at:
 ```
-postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require
+postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require
 ```
 
 **Just use this in your backend environment variables!**

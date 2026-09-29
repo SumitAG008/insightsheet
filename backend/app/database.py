@@ -26,23 +26,25 @@ elif DATABASE_URL.startswith("postgresql"):
     parsed = urllib.parse.urlparse(DATABASE_URL)
     query_params = urllib.parse.parse_qs(parsed.query)
     
-    # Ensure SSL mode is set (required for Neon)
+    # SSL is required for every remote database (e.g. Neon). A database on this machine
+    # (local development, CI) uses SSL only if it offers it. An sslmode in the URL wins.
+    local_host = (parsed.hostname or "") in ("localhost", "127.0.0.1", "::1")
+    sslmode = (query_params.get("sslmode") or ["prefer" if local_host else "require"])[0]
     if 'sslmode' not in query_params:
-        if '?' in DATABASE_URL:
-            DATABASE_URL += "&sslmode=require"
-        else:
-            DATABASE_URL += "?sslmode=require"
+        DATABASE_URL += ("&" if "?" in DATABASE_URL else "?") + f"sslmode={sslmode}"
     
     # Create engine with connection pooling and retry logic
     engine = create_engine(
         DATABASE_URL,
-        pool_size=5,  # Number of connections to maintain
-        max_overflow=10,  # Additional connections beyond pool_size
+        # Per worker process. Requests run on a thread pool, so allow enough connections
+        # for concurrent requests; total = workers x (pool_size + max_overflow).
+        pool_size=int(os.getenv("DB_POOL_SIZE", "10")),
+        max_overflow=int(os.getenv("DB_MAX_OVERFLOW", "10")),
         pool_pre_ping=True,  # Verify connections before using (auto-reconnect)
         pool_recycle=3600,  # Recycle connections after 1 hour
         connect_args={
             "connect_timeout": 10,  # 10 second connection timeout
-            "sslmode": "require"  # Force SSL for security
+            "sslmode": sslmode,
         },
         echo=False  # Set to True for SQL debugging
     )
@@ -84,352 +86,30 @@ class User(Base):
     updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class EsgFramework(Base):
-    __tablename__ = "esg_frameworks"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String(255), index=True, nullable=False)
-    project_id = Column(Integer, index=True, nullable=False)
 
-    key = Column(String(50), nullable=False)  # esrs|gri|sasb|custom
-    name = Column(String(255), nullable=False)
-    enabled = Column(Boolean, default=True, nullable=False)
 
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    __table_args__ = (
-        UniqueConstraint("user_email", "project_id", "key", name="uq_esg_frameworks_user_project_key"),
-        Index("ix_esg_frameworks_user_project_enabled", "user_email", "project_id", "enabled"),
-    )
 
 
-class EsgFrameworkRequirement(Base):
-    __tablename__ = "esg_framework_requirements"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String(255), index=True, nullable=False)
-    project_id = Column(Integer, index=True, nullable=False)
-    framework_key = Column(String(50), index=True, nullable=False)
 
-    code = Column(String(255), nullable=False)
-    title = Column(String(500), nullable=False)
-    description = Column(Text, nullable=True)
 
-    granularity = Column(String(20), default="org", nullable=False)  # org|site|both
-    evidence_required = Column(Boolean, default=True, nullable=False)
 
-    # Enterprise AI / Vector Database Integration
-    vector_id = Column(String(255), index=True, nullable=True) 
-    ai_interpretation_rules = Column(Text, nullable=True) # JSON rules the AI must strict follow
 
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    __table_args__ = (
-        UniqueConstraint(
-            "user_email",
-            "project_id",
-            "framework_key",
-            "code",
-            name="uq_esg_req_user_project_framework_code",
-        ),
-        Index("ix_esg_req_user_project_framework", "user_email", "project_id", "framework_key"),
-    )
 
 
-class EsgMetricDefinition(Base):
-    __tablename__ = "esg_metric_definitions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String(255), index=True, nullable=False)
-    project_id = Column(Integer, index=True, nullable=False)
 
-    key = Column(String(255), nullable=False)  # stable key (e.g., ghg_scope_1)
-    name = Column(String(500), nullable=False)
-    category = Column(String(50), nullable=True)  # E|S|G
-    unit = Column(String(50), nullable=True)
-    description = Column(Text, nullable=True)
-    granularity = Column(String(20), default="org", nullable=False)  # org|site|both
 
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    __table_args__ = (
-        UniqueConstraint("user_email", "project_id", "key", name="uq_esg_metric_defs_user_project_key"),
-        Index("ix_esg_metric_defs_user_project", "user_email", "project_id"),
-    )
 
 
-class EsgMetricValue(Base):
-    __tablename__ = "esg_metric_values"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String(255), index=True, nullable=False)
-    project_id = Column(Integer, index=True, nullable=False)
-    period_id = Column(Integer, index=True, nullable=False)
-    site_id = Column(Integer, index=True, nullable=True)
 
-    metric_definition_id = Column(Integer, index=True, nullable=False)
 
-    value = Column(Float, nullable=True)
-    unit = Column(String(50), nullable=True)
-    notes = Column(Text, nullable=True)
 
-    status = Column(String(30), default="missing", index=True)  # missing|in_progress|submitted|needs_changes|approved|locked
-
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        Index("ix_esg_metric_values_user_project_period", "user_email", "project_id", "period_id"),
-        Index("ix_esg_metric_values_user_project_period_status", "user_email", "project_id", "period_id", "status"),
-    )
-
-
-class EsgMetricEvidenceLink(Base):
-    __tablename__ = "esg_metric_evidence_links"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String(255), index=True, nullable=False)
-    project_id = Column(Integer, index=True, nullable=False)
-    period_id = Column(Integer, index=True, nullable=False)
-
-    metric_value_id = Column(Integer, index=True, nullable=False)
-    evidence_document_id = Column(Integer, index=True, nullable=False)
-
-    excerpt = Column(Text, nullable=True)
-    page_ref = Column(String(100), nullable=True)
-
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-
-    __table_args__ = (
-        UniqueConstraint(
-            "user_email",
-            "metric_value_id",
-            "evidence_document_id",
-            name="uq_esg_metric_evidence_link",
-        ),
-        Index("ix_esg_metric_evidence_user_project_period", "user_email", "project_id", "period_id"),
-    )
-
-
-class EsgTask(Base):
-    __tablename__ = "esg_tasks"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String(255), index=True, nullable=False)
-    project_id = Column(Integer, index=True, nullable=False)
-    period_id = Column(Integer, index=True, nullable=False)
-    site_id = Column(Integer, index=True, nullable=True)
-
-    task_type = Column(String(50), nullable=False)  # collect_data|upload_evidence|review|approve|remediate
-    title = Column(String(500), nullable=False)
-    description = Column(Text, nullable=True)
-
-    metric_value_id = Column(Integer, index=True, nullable=True)
-
-    assigned_to = Column(String(255), nullable=True)
-    due_date = Column(DateTime, nullable=True)
-    status = Column(String(30), default="todo", index=True)  # todo|in_progress|blocked|done|cancelled
-
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        Index("ix_esg_tasks_user_project_period_status", "user_email", "project_id", "period_id", "status"),
-    )
-
-
-class EsgMetricApproval(Base):
-    __tablename__ = "esg_metric_approvals"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String(255), index=True, nullable=False)
-    project_id = Column(Integer, index=True, nullable=False)
-    period_id = Column(Integer, index=True, nullable=False)
-
-    metric_value_id = Column(Integer, index=True, nullable=False)
-    approved_by = Column(String(255), index=True, nullable=False)
-    approved_at = Column(DateTime, default=datetime.utcnow, index=True)
-
-    evidence_waiver = Column(Boolean, default=False, nullable=False)
-    waiver_justification = Column(Text, nullable=True)
-    waiver_risk_level = Column(String(20), nullable=True)  # low|medium|high
-
-    __table_args__ = (
-        Index("ix_esg_approvals_user_project_period", "user_email", "project_id", "period_id"),
-        Index("ix_esg_approvals_metric_value", "metric_value_id"),
-    )
-
-
-class EsgEvidenceDocument(Base):
-    __tablename__ = "esg_evidence_documents"
-
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, index=True, nullable=False)
-    period_id = Column(Integer, index=True, nullable=False)
-    user_email = Column(String(255), index=True, nullable=False)
-    site_id = Column(Integer, index=True, nullable=True)
-
-    filename = Column(String(500), nullable=False)
-    content_type = Column(String(200), nullable=True)
-    file_size_bytes = Column(Integer, nullable=True)
-    storage_path = Column(String(1000), nullable=False)
-
-    storage_provider = Column(String(30), default="local", nullable=False)
-    storage_bucket = Column(String(255), nullable=True)
-    storage_key = Column(String(1000), nullable=True)
-
-    doc_type = Column(String(100), nullable=True)
-    extracted_text = Column(Text, nullable=True)
-    extraction_json = Column(Text, nullable=True)
-    status = Column(String(30), default="uploaded", index=True)
-
-    # Enterprise AI / Confidence Scoring
-    embedding_status = Column(String(50), default="PENDING", index=True) # PENDING, EMBEDDED, FAILED
-    confidence_score_avg = Column(Float, nullable=True)
-
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        Index(
-            "ix_esg_evidence_user_project_period_created",
-            "user_email",
-            "project_id",
-            "period_id",
-            "created_date",
-        ),
-        Index(
-            "ix_esg_evidence_user_project_period_status",
-            "user_email",
-            "project_id",
-            "period_id",
-            "status",
-        ),
-    )
-
-
-class EsgMetricSuggestion(Base):
-    __tablename__ = "esg_metric_suggestions"
-
-    id = Column(Integer, primary_key=True, index=True)
-    evidence_document_id = Column(Integer, index=True, nullable=False)
-    project_id = Column(Integer, index=True, nullable=False)
-    period_id = Column(Integer, index=True, nullable=False)
-    user_email = Column(String(255), index=True, nullable=False)
-    site_id = Column(Integer, index=True, nullable=True)
-
-    scope = Column(String(20), nullable=True)
-    category = Column(String(255), nullable=False)
-    subcategory = Column(String(255), nullable=True)
-    value = Column(Float, nullable=True)
-    unit = Column(String(50), nullable=True)
-    notes = Column(Text, nullable=True)
-
-    confidence = Column(Float, nullable=True)
-    status = Column(String(30), default="pending", index=True)  # pending, approved, rejected
-    approved_metric_id = Column(Integer, index=True, nullable=True)
-
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        Index(
-            "ix_esg_suggestions_user_project_period_created",
-            "user_email",
-            "project_id",
-            "period_id",
-            "created_date",
-        ),
-        Index(
-            "ix_esg_suggestions_user_project_period_status",
-            "user_email",
-            "project_id",
-            "period_id",
-            "status",
-        ),
-        Index(
-            "ix_esg_suggestions_evidence_status",
-            "evidence_document_id",
-            "status",
-        ),
-    )
-
-
-class EsgProject(Base):
-    __tablename__ = "esg_projects"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_email = Column(String(255), index=True, nullable=False)
-    name = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        UniqueConstraint("user_email", "name", name="uq_esg_projects_user_name"),
-    )
-
-
-class EsgReportingPeriod(Base):
-    __tablename__ = "esg_reporting_periods"
-
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, index=True, nullable=False)
-    user_email = Column(String(255), index=True, nullable=False)
-    name = Column(String(255), nullable=False)
-    framework = Column(String(100), nullable=True)
-    start_date = Column(DateTime, nullable=True)
-    end_date = Column(DateTime, nullable=True)
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        UniqueConstraint("project_id", "name", name="uq_esg_periods_project_name"),
-    )
-
-
-class EsgSite(Base):
-    __tablename__ = "esg_sites"
-
-    id = Column(Integer, primary_key=True, index=True)
-    project_id = Column(Integer, index=True, nullable=False)
-    user_email = Column(String(255), index=True, nullable=False)
-    name = Column(String(255), nullable=False)
-    country = Column(String(100), nullable=True)
-    region = Column(String(100), nullable=True)
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    __table_args__ = (
-        UniqueConstraint("project_id", "name", name="uq_esg_sites_project_name"),
-    )
-
-
-class EsgMetric(Base):
-    __tablename__ = "esg_metrics"
-
-    id = Column(Integer, primary_key=True, index=True)
-    period_id = Column(Integer, index=True, nullable=False)
-    project_id = Column(Integer, index=True, nullable=False)
-    user_email = Column(String(255), index=True, nullable=False)
-    site_id = Column(Integer, index=True, nullable=True)
-
-    scope = Column(String(20), nullable=True)
-    category = Column(String(255), nullable=False)
-    subcategory = Column(String(255), nullable=True)
-    value = Column(Float, nullable=True)
-    unit = Column(String(50), nullable=True)
-    notes = Column(Text, nullable=True)
-
-    source_document_id = Column(Integer, index=True, nullable=True)
-    source_page_from = Column(Integer, nullable=True)
-    source_page_to = Column(Integer, nullable=True)
-
-    created_date = Column(DateTime, default=datetime.utcnow, index=True)
-    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class LoginOtpChallenge(Base):
@@ -542,6 +222,24 @@ class LoginHistory(Base):
     device = Column(String(255), nullable=True)
     session_duration = Column(Integer, nullable=True)  # in seconds
     created_date = Column(DateTime, default=datetime.utcnow)
+
+
+class UserSession(Base):
+    """One signed-in device. A subscription may be active on a limited number of devices at once."""
+    __tablename__ = "user_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(64), unique=True, index=True, nullable=False)
+    user_email = Column(String(255), index=True, nullable=False)
+    device_id = Column(String(64), index=True, nullable=True)  # random id kept by the browser/app
+    device_label = Column(String(255), nullable=True)  # e.g. "Chrome on Windows"
+    ip_address = Column(String(100), nullable=True)
+    location = Column(String(255), nullable=True)  # city, country
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_seen_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    revoked_at = Column(DateTime, nullable=True)
+    revoked_reason = Column(String(50), nullable=True)  # logout, signed_out_by_other_device, replaced
 
 
 class UserActivity(Base):

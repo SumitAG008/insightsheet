@@ -4,6 +4,12 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// Storing in the lakehouse is opt-in: tick the box before uploading.
+const optInToLakehouse = async (page) => {
+  const box = page.getByLabel(/Store in the Meldra lakehouse/);
+  if (await box.count()) await box.first().check();
+};
+
 // Playwright is not a project dependency: install it, or point PLAYWRIGHT_MODULE at a global copy.
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 
@@ -63,6 +69,7 @@ check('upload offers "Store in the Meldra lakehouse", on by default', await togg
 // ---------- 2. A large file through the UI into Iceberg ----------
 if (BIG) {
   const t0 = performance.now();
+  await optInToLakehouse(page);
   await page.locator('input[type=file]').first().setInputFiles(BIG);
   const card = page.locator('div.rounded-2xl').filter({ has: page.getByText('Meldra lakehouse', { exact: true }) }).first();
   await card.waitFor({ timeout: 15 * 60000 });

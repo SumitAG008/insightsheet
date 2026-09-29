@@ -67,7 +67,7 @@ Your backend needs passwords and API keys. Add them:
 3. **Paste this** (replace the values):
 
 ```env
-DATABASE_URL=postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require
+DATABASE_URL=postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require
 OPENAI_API_KEY=sk-YOUR-ACTUAL-KEY-HERE
 JWT_SECRET_KEY=generate-a-random-string-here
 CORS_ORIGINS=http://localhost:5173,http://localhost:3000,https://meldra.ai,https://your-frontend.vercel.app
@@ -153,7 +153,7 @@ Scroll down to **"Environment Variables"** section.
 Click **"Add Environment Variable"** for each:
 
 1. **Key:** `DATABASE_URL`
-   **Value:** `postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require`
+   **Value:** `postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require`
 
 2. **Key:** `OPENAI_API_KEY`
    **Value:** `sk-your-actual-key-here`

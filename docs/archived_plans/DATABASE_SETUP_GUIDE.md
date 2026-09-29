@@ -4,7 +4,7 @@
 
 Your Neon PostgreSQL database connection string is:
 ```
-postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require&channel_binding=require
 ```
 
 ---
@@ -24,7 +24,7 @@ postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-wes
 
 3. **Add this line:**
    ```env
-   DATABASE_URL=postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require
+   DATABASE_URL=postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require
    ```
 
    **Note:** Remove `&channel_binding=require` as it might cause issues with SQLAlchemy.
@@ -159,7 +159,7 @@ Your database should have these tables:
 cd backend
 
 # 2. Create .env file with your connection string
-echo "DATABASE_URL=postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require" > .env
+echo "DATABASE_URL=postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require" > .env
 echo "JWT_SECRET_KEY=your-secret-key-here" >> .env
 
 # 3. Test connection
@@ -180,7 +180,7 @@ python -m uvicorn app.main:app --reload
 2. **Verify Neon database** is active in Neon dashboard
 3. **Test connection** using `psql` command:
    ```bash
-   psql 'postgresql://neondb_owner:npg_fDwMP0Rk2vAe@ep-small-dream-abw9afwj-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require'
+   psql 'postgresql://USER:PASSWORD@YOUR-NEON-HOST/neondb?sslmode=require'
    ```
 4. **Check table structure** matches expected schema
 

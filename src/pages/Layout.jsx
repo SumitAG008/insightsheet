@@ -4,7 +4,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart, ArrowRightLeft, Search } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart, ArrowRightLeft } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -279,7 +279,6 @@ export default function Layout({ children, currentPageName }) {
       <nav className="glass-surface-strong dark:bg-slate-900/95 dark:border-slate-800 sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <div className="flex shrink-0 items-center">
             <Link
               to={user && user.email ? createPageUrl('Dashboard') : '/pricing'}
               className="group rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -293,22 +292,7 @@ export default function Layout({ children, currentPageName }) {
               />
             </Link>
 
-            {user && user.email && (
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                className="ml-2 flex shrink-0 items-center gap-2 whitespace-nowrap rounded-lg border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                aria-label="Search tools (Ctrl+K)"
-                title="Search tools (Ctrl+K)"
-              >
-                <Search className="w-4 h-4" />
-                <span className="hidden min-[1700px]:inline">Search</span>
-                <kbd className="hidden min-[1700px]:inline rounded border border-slate-200 dark:border-slate-600 px-1.5 text-[11px] font-sans text-slate-400">Ctrl K</kbd>
-              </button>
-            )}
-            </div>
-
-            <div className="hidden xl:flex min-w-0 items-center gap-0.5 [&_span]:whitespace-nowrap [&>a]:px-2 [&>button]:px-2 max-[1439px]:[&>a]:px-1.5 max-[1439px]:[&>button]:px-1.5 max-[1439px]:[&>a]:text-[13px] max-[1439px]:[&>button]:text-[13px] min-[1700px]:[&>a]:px-3 min-[1700px]:[&>button]:px-3 [&>a>svg:first-child]:hidden [&>button>svg:first-child]:hidden min-[1800px]:[&>a>svg:first-child]:block min-[1800px]:[&>button>svg:first-child]:block">
+            <div className="hidden xl:flex items-center gap-1 [&>a>svg:first-child]:hidden [&>button>svg:first-child]:hidden 2xl:[&>a>svg:first-child]:block 2xl:[&>button>svg:first-child]:block">
               {/* Show menu items only when user is logged in */}
               {user && user.email ? (
                 <>
@@ -319,7 +303,7 @@ export default function Layout({ children, currentPageName }) {
                         type="button"
                         className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                           [createPageUrl('Dashboard')].some(p => isActive(p))
-                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
+                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
                             : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
                         }`}
                       >
@@ -534,8 +518,8 @@ export default function Layout({ children, currentPageName }) {
                     to="/developers"
                     className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
                       location.pathname.toLowerCase() === '/developers'
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
-                        : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
+                        : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 hover:scale-105'
                     }`}
                     title="developer.meldra.ai – API docs"
                   >
@@ -610,23 +594,21 @@ export default function Layout({ children, currentPageName }) {
               )}
 
               {user && user.email ? (
-                <div className="ml-2 flex shrink-0 items-center pl-2 border-l border-slate-200 dark:border-slate-700">
+                <div className="ml-4 flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="flex items-center gap-1 px-1.5 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
-                        title={user.email}
-                        aria-label={`Account: ${user.email}`}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                        title="Account"
                       >
-                        <span className="grid h-8 w-8 place-items-center rounded-full bg-blue-600 text-sm font-semibold text-white" aria-hidden="true">{user.email.charAt(0).toUpperCase()}</span>
+                        <span className="2xl:hidden grid h-7 w-7 place-items-center rounded-full bg-blue-600 text-xs font-semibold text-white" aria-hidden="true">{user.email.charAt(0).toUpperCase()}</span>
+                        <span className="text-sm text-slate-700 dark:text-slate-300 font-medium hidden 2xl:inline max-w-[180px] truncate">{user.email}</span>
                         <ChevronDown className="w-4 h-4 opacity-70" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-[220px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
                       <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_account')}</DropdownMenuLabel>
-                      <div className="px-2 pb-2 text-sm font-medium text-slate-800 dark:text-slate-200 truncate max-w-[260px]" title={user.email}>{user.email}</div>
-                      <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={openOnboarding} className="flex items-center gap-2 cursor-pointer">
                         <HelpCircle className="w-4 h-4" />
                         {t('nav_onboarding')}

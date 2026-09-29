@@ -26,12 +26,12 @@ elif DATABASE_URL.startswith("postgresql"):
     parsed = urllib.parse.urlparse(DATABASE_URL)
     query_params = urllib.parse.parse_qs(parsed.query)
     
-    # Ensure SSL mode is set (required for Neon)
+    # SSL is required for every remote database (e.g. Neon). A database on this machine
+    # (local development, CI) uses SSL only if it offers it. An sslmode in the URL wins.
+    local_host = (parsed.hostname or "") in ("localhost", "127.0.0.1", "::1")
+    sslmode = (query_params.get("sslmode") or ["prefer" if local_host else "require"])[0]
     if 'sslmode' not in query_params:
-        if '?' in DATABASE_URL:
-            DATABASE_URL += "&sslmode=require"
-        else:
-            DATABASE_URL += "?sslmode=require"
+        DATABASE_URL += ("&" if "?" in DATABASE_URL else "?") + f"sslmode={sslmode}"
     
     # Create engine with connection pooling and retry logic
     engine = create_engine(
@@ -44,7 +44,7 @@ elif DATABASE_URL.startswith("postgresql"):
         pool_recycle=3600,  # Recycle connections after 1 hour
         connect_args={
             "connect_timeout": 10,  # 10 second connection timeout
-            "sslmode": "require"  # Force SSL for security
+            "sslmode": sslmode,
         },
         echo=False  # Set to True for SQL debugging
     )

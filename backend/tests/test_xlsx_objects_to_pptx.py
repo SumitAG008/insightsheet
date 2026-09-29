@@ -101,7 +101,7 @@ def test_edit_data_workbook_is_embedded():
     assert report["edit_data_available"]
     names = zipfile.ZipFile(io.BytesIO(deck)).namelist()
     assert any(n.startswith("ppt/embeddings/") and n.endswith(".xlsx") for n in names)
-    assert sum(1 for n in names if n.startswith("ppt/embeddings/")) == 1  # shared, not one copy per chart
+    assert sum(1 for n in names if n.startswith("ppt/embeddings/")) == report["charts"]  # one per chart, as PowerPoint does
 
 
 def test_keep_duplicates_option():
@@ -137,3 +137,93 @@ def test_endpoint_uses_native_charts_and_watermark_keeps_them():
     assert r.status_code == 200, r.text
     prs = Presentation(io.BytesIO(r.content))
     assert sum(1 for s in prs.slides for sh in s.shapes if sh.has_chart) == 2
+
+
+# ---------------------------------------------------------------- tables, CSV, a real Excel workbook
+
+from app.services.xlsx_objects_to_pptx import csv_to_xlsx  # noqa: E402
+from app.services.xlsx_tables import format_cell, format_number  # noqa: E402
+
+FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "chart_essentials.xlsx")
+
+
+@pytest.mark.parametrize("value,fmt,expected", [
+    (1592398, "#,##0", "1,592,398"),
+    (0.331, "0.0%", "33.1%"),
+    (1234.5, '"$"#,##0.00', "$1,234.50"),
+    (1234.5, "[$£-809]#,##0.00", "£1,234.50"),
+    (-1234.5, "#,##0.00;(#,##0.00)", "(1,234.50)"),
+    (2500000, '#,##0,"K"', "2,500K"),
+    (42, "General", "42"),
+    (0.125, "General", "0.125"),
+])
+def test_excel_number_formats(value, fmt, expected):
+    assert format_number(value, fmt) == expected
+
+
+def test_excel_date_formats():
+    from datetime import datetime, time
+
+    assert format_cell(datetime(2018, 1, 1), "mmm-yyyy")[0] == "Jan-2018"
+    assert format_cell(datetime(2024, 3, 9), "dd/mm/yyyy")[0] == "09/03/2024"
+    assert format_cell(datetime(2024, 3, 9), "m/d/yyyy")[0] == "3/9/2024"
+    assert format_cell(time(0, 45, 49), "h:mm:ss")[0] == "0:45:49"
+
+
+def _slides_text(deck):
+    prs = Presentation(io.BytesIO(deck))
+    out = []
+    for s in prs.slides:
+        kinds = ["table" if sh.has_table else "chart" if sh.has_chart else "picture" if sh.shape_type == 13 else None for sh in s.shapes]
+        out.append([k for k in kinds if k])
+    return prs, out
+
+
+def test_real_workbook_every_chart_table_and_new_chart_type():
+    deck, report = convert_workbook_objects(open(FIXTURE, "rb").read(), title="Chart Essentials")
+    assert report["charts"] == 26 and report["new_chart_types"] == 2
+    assert len(report["empty_charts_skipped"]) == 2 and report["skipped"] == []
+    assert report["tables"] == 14
+    prs, kinds = _slides_text(deck)
+    # A slide holds a table or a chart, never both.
+    assert all(len(set(k)) <= 1 for k in kinds)
+    # Treemap/sunburst: hidden-name references resolved and the values stored in the chart.
+    z = zipfile.ZipFile(io.BytesIO(deck))
+    for n in [n for n in z.namelist() if n.startswith("ppt/charts/chartEx") and n.endswith(".xml")]:
+        x = z.read(n).decode()
+        assert "_xlchart" not in x and x.count("<cx:lvl") >= 2 and "<cx:pt " in x
+    assert not any(b"printSettings" in z.read(n) for n in z.namelist() if n.startswith("ppt/charts/chart"))
+    # Headings: the YearData pie is titled by its only series, as Excel shows it.
+    headings = [sh.text_frame.text for s in prs.slides for sh in s.shapes if sh.has_text_frame]
+    assert "Domestic" in headings
+    # Tables keep Excel's formatting.
+    cells = [c.text for s in prs.slides for sh in s.shapes if sh.has_table for r in sh.table.rows for c in r.cells]
+    assert "1,592,398" in cells and "33.1%" in cells and "Jan-2018" in cells
+
+
+def test_tables_come_before_charts_on_each_tab():
+    deck, _ = convert_workbook_objects(open(FIXTURE, "rb").read())
+    _, kinds = _slides_text(deck)
+    flat = [k[0] for k in kinds if k]
+    # Within the run of slides for a tab, no table appears after a chart. Tab dividers reset the run.
+    prs = Presentation(io.BytesIO(deck))
+    seen_chart = False
+    for s in prs.slides:
+        k = [("t" if sh.has_table else "c" if sh.has_chart else None) for sh in s.shapes]
+        k = [x for x in k if x]
+        if not k:
+            seen_chart = False  # tab divider
+            continue
+        if k[0] == "c":
+            seen_chart = True
+        else:
+            assert not seen_chart
+
+
+def test_csv_becomes_table_slides_without_invented_charts():
+    rows = ["Region,Month,Revenue"] + [f"R{i % 3},M{i},{1000 + i * 37}" for i in range(40)]
+    deck, report = convert_workbook_objects(csv_to_xlsx("\n".join(rows).encode()), title="Revenue")
+    assert report["charts"] == 0 and report["tables"] == 1 and report["table_slides"] == 3  # 40 rows, 15 per slide
+    prs, kinds = _slides_text(deck)
+    headers = [sh.table.cell(0, 0).text for s in prs.slides for sh in s.shapes if sh.has_table]
+    assert headers == ["Region"] * 3  # header repeated on every page

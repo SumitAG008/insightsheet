@@ -26,7 +26,11 @@ from pptx import Presentation
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.opc.package import Part
 from pptx.opc.packuri import PackURI
+from pptx.dml.color import RGBColor
+from pptx.enum.text import PP_ALIGN
 from pptx.util import Emu, Inches, Pt
+
+from .xlsx_tables import SheetTable, find_tables
 
 NS = {
     "main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
@@ -52,7 +56,7 @@ CT_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 EMU_PER_PX = 9525
 EMU_PER_PT = 12700
 SLIDE_W, SLIDE_H = Inches(13.333), Inches(7.5)
-MAX_EMBED_BYTES = 15 * 1024 * 1024  # embed the workbook for "Edit Data" up to this size
+MAX_EMBED_BYTES = 3 * 1024 * 1024  # each chart embeds its own copy for "Edit Data", so keep it small
 
 
 @dataclass
@@ -73,6 +77,9 @@ class ConversionReport:
     charts: int = 0
     chartex: int = 0
     pictures: int = 0
+    tables: int = 0
+    table_slides: int = 0
+    tables_cut: List[str] = field(default_factory=list)
     skipped: List[str] = field(default_factory=list)
     duplicates_skipped: List[str] = field(default_factory=list)
     empty_skipped: List[str] = field(default_factory=list)
@@ -84,6 +91,9 @@ class ConversionReport:
             "charts": self.charts,
             "new_chart_types": self.chartex,
             "pictures": self.pictures,
+            "tables": self.tables,
+            "table_slides": self.table_slides,
+            "tables_cut": self.tables_cut,
             "skipped": self.skipped,
             "duplicates_skipped": self.duplicates_skipped,
             "empty_charts_skipped": self.empty_skipped,
@@ -101,6 +111,12 @@ class _Workbook:
         ct = etree.fromstring(self.zip.read("[Content_Types].xml"))
         self.ct_override = {o.get("PartName").lstrip("/"): o.get("ContentType") for o in ct.findall("ct:Override", NS)}
         self.ct_default = {d.get("Extension").lower(): d.get("ContentType") for d in ct.findall("ct:Default", NS)}
+        book = etree.fromstring(self.zip.read("xl/workbook.xml"))
+        self.defined_names = {
+            d.get("name"): (d.text or "").strip()
+            for d in book.findall("main:definedNames/main:definedName", NS)
+            if d.get("localSheetId") is None
+        }
 
     def xml(self, path: str):
         return etree.fromstring(self.zip.read(path))
@@ -136,6 +152,11 @@ def _chart_title(wb: _Workbook, obj: WorkbookObject) -> str:
         text = _text(title)
         if not text and title is not None:  # title taken from a cell: use its stored value
             text = " ".join(v.text or "" for v in title.iterfind(".//c:v", NS)).strip()
+        if not text and title is not None:
+            # An automatic title: Excel shows the series name when the chart has one series.
+            series = root.findall(".//c:plotArea/*/c:ser", NS)
+            if len(series) == 1:
+                text = " ".join(v.text or "" for v in series[0].iterfind("c:tx//c:v", NS)).strip()
         return text
     return _text(root.find(".//cx:chart/cx:title", NS))
 
@@ -293,13 +314,24 @@ class _Copier:
         return part
 
     def workbook_part(self) -> Part:
-        if self.embedded is None:
-            self.embedded = Part(PackURI("/ppt/embeddings/Microsoft_Excel_Worksheet1.xlsx"), CT_XLSX, self.package, self.wb.data)
-        return self.embedded
+        """A fresh embedded copy of the workbook: PowerPoint gives every chart its own."""
+        self.embed_count = getattr(self, "embed_count", 0) + 1
+        return Part(PackURI(f"/ppt/embeddings/Microsoft_Excel_Worksheet{self.embed_count}.xlsx"), CT_XLSX, self.package, self.wb.data)
 
-    def attach_chart_data(self, chart_part: Part) -> None:
-        """Point a chart at the embedded workbook so PowerPoint's "Edit Data" opens the source sheets."""
+    def attach_chart_data(self, chart_part: Part, chartex: bool = False) -> None:
+        """Point a chart at an embedded copy of the workbook so PowerPoint's "Edit Data" opens it."""
         root = etree.fromstring(chart_part.blob)
+        if chartex:
+            data = root.find("cx:chartData", NS)
+            if data is None or data.find("cx:externalData", NS) is not None:
+                return
+            rid = chart_part.relate_to(self.workbook_part(), RT_PACKAGE)
+            ext = etree.Element("{%s}externalData" % NS["cx"], nsmap={"cx": NS["cx"], "r": R_NS})
+            ext.set("{%s}id" % R_NS, rid)
+            ext.set("{%s}autoUpdate" % NS["cx"], "0")
+            data.insert(0, ext)
+            chart_part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+            return
         if root.find("c:externalData", NS) is not None:
             return
         rid = chart_part.relate_to(self.workbook_part(), RT_PACKAGE)
@@ -336,6 +368,32 @@ class _CellValues:
     def __init__(self, data: bytes):
         self.data = data
         self._wb = None
+
+    def workbook(self):
+        if self._wb is None:
+            import openpyxl
+
+            self._wb = openpyxl.load_workbook(io.BytesIO(self.data), data_only=True)
+        return self._wb
+
+    def grid(self, ref: str) -> Optional[List[list]]:
+        """Values of a range as rows of cells."""
+        parsed = _parse_ref(ref)
+        if not parsed:
+            return None
+        if self._wb is None:
+            import openpyxl
+
+            self._wb = openpyxl.load_workbook(io.BytesIO(self.data), data_only=True)
+        sheet, rng = parsed
+        if sheet not in self._wb.sheetnames:
+            return None
+        cells = self._wb[sheet][rng]
+        if not isinstance(cells, tuple):
+            return [[cells.value]]
+        if cells and not isinstance(cells[0], tuple):  # a single row or column comes back flat
+            return [[c.value] for c in cells] if ":" in rng and rng.split(":")[0].rstrip("0123456789") == rng.split(":")[1].rstrip("0123456789") else [[c.value for c in cells]]
+        return [[c.value for c in row] for row in cells]
 
     def get(self, ref: str) -> Optional[list]:
         parsed = _parse_ref(ref)
@@ -418,6 +476,55 @@ def _fill_missing_caches(root, values: _CellValues) -> bool:
     return changed
 
 
+def _fill_chartex_data(root, wb: "_Workbook", values: _CellValues) -> bool:
+    """
+    Excel's newer chart types (treemap, sunburst, waterfall, histogram, box & whisker, funnel)
+    point at their data through hidden workbook names (_xlchart.v1.N) and store no values, which
+    PowerPoint can't resolve. Replace each name with its range and store the values in the chart.
+    Hierarchical categories (several columns) become one level per column, leaf level first.
+    """
+    cx = "{%s}" % NS["cx"]
+    changed = False
+    for f in root.iter(cx + "f"):
+        name = (f.text or "").strip()
+        if name in wb.defined_names:
+            f.text = wb.defined_names[name]
+            changed = True
+    for dim in list(root.iter(cx + "strDim", cx + "numDim")):
+        f = dim.find(cx + "f")
+        if f is None or dim.find(cx + "lvl") is not None:
+            continue
+        rows = values.grid(f.text or "")
+        if not rows:
+            continue
+        is_num = dim.tag == cx + "numDim"
+        columns = list(zip(*rows)) if rows else []
+        anchor = f
+        for col in (columns if is_num else list(reversed(columns))):
+            lvl = etree.Element(cx + "lvl")
+            lvl.set("ptCount", str(len(col)))
+            if is_num:
+                lvl.set("formatCode", "General")
+            for i, v in enumerate(col):
+                if v is None or v == "":
+                    continue
+                if is_num:
+                    try:
+                        v = float(str(v).replace(",", ""))
+                    except ValueError:
+                        continue
+                    text = repr(v) if not float(v).is_integer() else str(int(v))
+                else:
+                    text = str(v)
+                pt = etree.SubElement(lvl, cx + "pt")
+                pt.set("idx", str(i))
+                pt.text = text
+            anchor.addnext(lvl)
+            anchor = lvl
+        changed = True
+    return changed
+
+
 def _fit(w: int, h: int, box_w: int, box_h: int) -> Tuple[int, int]:
     scale = min(box_w / w, box_h / h)
     return int(w * scale), int(h * scale)
@@ -481,8 +588,84 @@ def _signature(wb: _Workbook, obj: WorkbookObject) -> str:
     return f"{obj.kind}:" + hashlib.sha256(etree.tostring(root, method="c14n")).hexdigest()
 
 
+TABLE_ROWS_PER_SLIDE = 15
+TABLE_COLS_PER_SLIDE = 10
+TABLE_MAX_ROWS = 200
+
+
+def _add_heading(slide, text: str, margin: int, width: int, title_h: int) -> None:
+    tb = slide.shapes.add_textbox(margin, Inches(0.25), width, title_h)
+    tb.text_frame.word_wrap = True
+    tb.text_frame.text = text
+    run = tb.text_frame.paragraphs[0].runs[0]
+    run.font.size = Pt(24 if len(text) <= 60 else 20)
+    run.font.bold = True
+
+
+def _add_table_slides(prs, blank, table: SheetTable, heading: str, margin: int, title_h: int) -> int:
+    """A table as native PowerPoint table slides: long tables continue with the header repeated,
+    wide tables are split with the first column repeated. Returns the number of slides added."""
+    header, body = table.rows[0], table.rows[1:]
+    n_cols = len(header)
+    col_groups = [list(range(n_cols))]
+    if n_cols > TABLE_COLS_PER_SLIDE:
+        step = TABLE_COLS_PER_SLIDE - 1
+        col_groups = [[0] + list(range(i, min(i + step, n_cols))) for i in range(1, n_cols, step)]
+    row_pages = [body[i:i + TABLE_ROWS_PER_SLIDE] for i in range(0, len(body), TABLE_ROWS_PER_SLIDE)] or [[]]
+    pages = [(rows, cols) for cols in col_groups for rows in row_pages]
+    box_w = prs.slide_width - 2 * margin
+    box_h = prs.slide_height - title_h - 2 * margin
+    added = 0
+    for n, (rows, cols) in enumerate(pages, start=1):
+        slide = prs.slides.add_slide(blank)
+        _add_heading(slide, heading + (f" ({n} of {len(pages)})" if len(pages) > 1 else ""), margin, box_w, title_h)
+        grid = [header] + rows
+        # Larger text for smaller tables; the whole table always fits the slide.
+        size = 18 if len(grid) <= 8 else 16 if len(grid) <= 12 else 14
+        if len(cols) > 6:
+            size -= 2
+        if len(cols) > 8:
+            size -= 2
+        font = Pt(size)
+        row_h = min(int(font * 2.0), int(box_h / len(grid)))
+        height = row_h * len(grid)
+        # Column widths follow the longest text in each column; narrow tables are not stretched.
+        char_w = int(font * 0.62)
+        lengths = [max(4, min(40, max(len(r[c].text) for r in grid))) for c in cols]
+        widths = [max(Inches(0.8), l * char_w + Inches(0.3)) for l in lengths]
+        if sum(widths) > box_w:
+            scale = box_w / sum(widths)
+            widths = [int(w * scale) for w in widths]
+        table_w = sum(widths)
+        left = margin + (box_w - table_w) // 2
+        shape = slide.shapes.add_table(len(grid), len(cols), left, title_h + margin, table_w, height)
+        tbl = shape.table
+        for j, w in enumerate(widths):
+            tbl.columns[j].width = w
+        for i, row in enumerate(grid):
+            tbl.rows[i].height = row_h
+            for j, c in enumerate(cols):
+                src = row[c]
+                cell = tbl.cell(i, j)
+                cell.text = src.text
+                cell.margin_top = cell.margin_bottom = Inches(0.03)
+                para = cell.text_frame.paragraphs[0]
+                para.alignment = PP_ALIGN.RIGHT if src.numeric and j > 0 else PP_ALIGN.LEFT
+                for run in para.runs:
+                    run.font.size = font
+                    run.font.bold = i == 0 or src.bold
+        added += 1
+    if table.total_rows > len(body):
+        note = slide.shapes.add_textbox(margin, prs.slide_height - margin, box_w, Inches(0.3))
+        note.text_frame.text = f"Showing the first {len(body)} of {table.total_rows} rows."
+        note.text_frame.paragraphs[0].runs[0].font.size = Pt(11)
+        note.text_frame.paragraphs[0].runs[0].font.color.rgb = RGBColor(0x59, 0x59, 0x59)
+    return added
+
+
 def convert_workbook_objects(
-    xlsx_bytes: bytes, title: str = "", embed_data: bool = True, keep_duplicates: bool = False
+    xlsx_bytes: bytes, title: str = "", embed_data: bool = True, keep_duplicates: bool = False,
+    include_tables: bool = True,
 ) -> Tuple[Optional[bytes], dict]:
     """
     Build a presentation with a section slide per tab and one slide per chart or picture.
@@ -519,7 +702,21 @@ def convert_workbook_objects(
             seen[sig] = o
             unique.append(o)
         objects = unique
-    if not objects:
+
+    cell_values = _CellValues(xlsx_bytes)
+    tables: List[SheetTable] = []
+    if include_tables:
+        try:
+            book = cell_values.workbook()
+            for sheet in report.sheets:
+                if sheet in book.sheetnames and hasattr(book[sheet], "iter_rows"):
+                    for t in find_tables(book[sheet], sheet, max_rows=TABLE_MAX_ROWS):
+                        tables.append(t)
+                        if t.total_rows > len(t.rows) - 1:
+                            report.tables_cut.append(f"{sheet}: first {len(t.rows) - 1} of {t.total_rows} rows")
+        except Exception as e:
+            report.skipped.append(f"tables ({type(e).__name__}: {e})")
+    if not objects and not tables:
         return None, report.as_dict()
 
     prs = Presentation()
@@ -527,13 +724,15 @@ def convert_workbook_objects(
     blank = prs.slide_layouts[6]
     title_layout = prs.slide_layouts[0]
     copier = _Copier(wb, prs.part.package)
-    cell_values = _CellValues(xlsx_bytes)
     embed = embed_data and len(xlsx_bytes) <= MAX_EMBED_BYTES
 
     if title:
         s = prs.slides.add_slide(title_layout)
         s.shapes.title.text = title
-        s.placeholders[1].text = f"{len(objects)} charts and pictures from {len({o.sheet for o in objects})} tabs"
+        n_charts = sum(1 for o in objects if o.kind != "picture")
+        n_pics = len(objects) - n_charts
+        parts = [f"{n} {w}{'s' if n != 1 else ''}" for n, w in ((len(tables), "table"), (n_charts, "chart"), (n_pics, "picture")) if n]
+        s.placeholders[1].text = f"{', '.join(parts)} from {len({o.sheet for o in objects} | {t.sheet for t in tables})} tabs"
 
     for o in objects:
         if o.kind != "picture":
@@ -555,19 +754,38 @@ def convert_workbook_objects(
 
     margin, title_h = Inches(0.4), Inches(0.8)
     box_w, box_h = SLIDE_W - 2 * margin, SLIDE_H - title_h - 2 * margin
-    by_sheet: Dict[str, List[WorkbookObject]] = {}
+    by_sheet: Dict[str, list] = {}
     for o in objects:
         by_sheet.setdefault(o.sheet, []).append(o)
+    for t in tables:
+        by_sheet.setdefault(t.sheet, []).append(t)
 
     for sheet in report.sheets:
-        items = sorted(by_sheet.get(sheet, []), key=lambda o: o.order)
+        # Tables first, then charts and pictures, each in reading order on the sheet.
+        items = sorted(by_sheet.get(sheet, []), key=lambda o: (not isinstance(o, SheetTable), o.order))
         if not items:
             continue
         if len(by_sheet) > 1:
             sec = prs.slides.add_slide(title_layout)
             sec.shapes.title.text = sheet
-            sec.placeholders[1].text = f"{len(items)} {'item' if len(items) == 1 else 'items'}"
-        for n, obj in enumerate(items, start=1):
+            n_t = sum(1 for i in items if isinstance(i, SheetTable))
+            n_o = len(items) - n_t
+            sec.placeholders[1].text = ", ".join(
+                f"{n} {w}{'s' if n != 1 else ''}" for n, w in ((n_t, "table"), (n_o, "chart" if all(getattr(i, "kind", "") != "picture" for i in items) else "chart or picture")) if n
+            )
+        n = 0
+        for obj in items:
+            if isinstance(obj, SheetTable):
+                heading = obj.title or f"{sheet} — table"
+                if obj.title and obj.title != sheet and sum(1 for t in tables if t.title == obj.title) > 1:
+                    heading += f" — {sheet}"
+                try:
+                    report.table_slides += _add_table_slides(prs, blank, obj, heading, margin, title_h)
+                    report.tables += 1
+                except Exception as e:
+                    report.skipped.append(f"{sheet}: table ({type(e).__name__}: {e})")
+                continue
+            n += 1
             try:
                 slide = prs.slides.add_slide(blank)
                 if obj.title:
@@ -580,10 +798,7 @@ def convert_workbook_objects(
                         heading += f" ({seen_tab[key]} of {same_tab[key]})"
                 else:
                     heading = f"{sheet} — {'Picture' if obj.kind == 'picture' else 'Chart'} {n}"
-                tb = slide.shapes.add_textbox(margin, Inches(0.25), box_w, title_h)
-                tb.text_frame.text = heading
-                tb.text_frame.paragraphs[0].runs[0].font.size = Pt(24)
-                tb.text_frame.paragraphs[0].runs[0].font.bold = True
+                _add_heading(slide, heading, margin, box_w, title_h)
 
                 cx, cy = _fit(obj.width, obj.height, box_w, box_h)
                 x = margin + (box_w - cx) // 2
@@ -593,12 +808,16 @@ def convert_workbook_objects(
                     report.pictures += 1
                     continue
                 part = copier.copy(obj.part)
+                root = etree.fromstring(part.blob)
                 if obj.kind == "chart":
-                    root = etree.fromstring(part.blob)
-                    if _fill_missing_caches(root, cell_values):
-                        part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
-                if obj.kind == "chart" and embed:
-                    copier.attach_chart_data(part)
+                    _fill_missing_caches(root, cell_values)
+                    for ps in root.findall("c:printSettings", NS):  # Excel-only; PowerPoint charts have none
+                        root.remove(ps)
+                else:
+                    _fill_chartex_data(root, wb, cell_values)
+                part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+                if embed:
+                    copier.attach_chart_data(part, chartex=obj.kind == "chartex")
                     report.data_embedded = True
                 rid = slide.part.relate_to(part, RT.CHART if obj.kind == "chart" else RT_CHARTEX)
                 shape_id = max((sp.shape_id for sp in slide.shapes), default=1) + 1
@@ -614,3 +833,44 @@ def convert_workbook_objects(
     out = io.BytesIO()
     prs.save(out)
     return out.getvalue(), report.as_dict()
+
+
+def csv_to_xlsx(csv_bytes: bytes) -> bytes:
+    """A CSV as a one-sheet workbook with typed values (numbers as numbers), for table slides."""
+    import csv
+    import openpyxl
+    from openpyxl.styles import Font
+
+    text = None
+    for enc in ("utf-8-sig", "cp1252", "latin-1"):
+        try:
+            text = csv_bytes.decode(enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    sample = text[:20000]
+    try:
+        dialect = csv.Sniffer().sniff(sample, delimiters=",;\t|")
+    except csv.Error:
+        dialect = csv.excel
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Data"
+    for i, row in enumerate(csv.reader(io.StringIO(text), dialect)):
+        out = []
+        for v in row:
+            v = v.strip()
+            num = v.replace(",", "") if dialect.delimiter != "," else v
+            try:
+                out.append(int(num) if re.fullmatch(r"-?\d{1,15}", num) else float(num) if re.fullmatch(r"-?\d*\.\d+|-?\d+\.\d*", num) else v)
+            except ValueError:
+                out.append(v)
+        ws.append(out)
+        if i == 0:
+            for cell in ws[1]:
+                cell.font = Font(bold=True)
+        if i >= 20000:
+            break
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()

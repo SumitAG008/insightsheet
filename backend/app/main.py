@@ -5062,21 +5062,24 @@ def developer_generate_pl_with_file(
 
 def _native_workbook_deck(xlsx_bytes: bytes, filename: str) -> Optional[bytes]:
     """
-    One slide per chart or picture in the workbook, charts kept as native editable charts.
-    None when the workbook has no charts or pictures (or can't be read this way), so the
-    caller falls back to building slides from the data. Only counts are logged, never content.
+    Excel/CSV to slides: each table as native table slides, each chart as a native editable chart
+    and each picture at full quality, one per slide. None when the file has nothing to show or
+    can't be read this way, so the caller falls back to the older converter. Only counts are
+    logged, never content.
     """
-    from app.services.xlsx_objects_to_pptx import convert_workbook_objects
+    from app.services.xlsx_objects_to_pptx import convert_workbook_objects, csv_to_xlsx
 
-    title = re.sub(r"\.(xlsx|xlsm)$", "", filename or "", flags=re.I).replace("_", " ").strip()
+    title = re.sub(r"\.(xlsx|xlsm|csv)$", "", filename or "", flags=re.I).replace("_", " ").strip()
     try:
+        if (filename or "").lower().endswith(".csv"):
+            xlsx_bytes = csv_to_xlsx(xlsx_bytes)
         deck, report = convert_workbook_objects(xlsx_bytes, title=title)
     except Exception as e:
         logger.warning(f"Native workbook conversion unavailable ({type(e).__name__}); using data slides")
         return None
     logger.info(
-        "Excel to PPT (native): charts=%s new_types=%s pictures=%s duplicates=%s empty=%s failed=%s",
-        report["charts"], report["new_chart_types"], report["pictures"],
+        "Excel to PPT (native): tables=%s charts=%s new_types=%s pictures=%s duplicates=%s empty=%s failed=%s",
+        report["tables"], report["charts"], report["new_chart_types"], report["pictures"],
         len(report["duplicates_skipped"]), len(report["empty_charts_skipped"]), len(report["skipped"]),
     )
     return deck
@@ -5126,10 +5129,10 @@ def excel_to_ppt(
             ppt_data, err = pdf_to_pptx(pdf_bytes)
             if err:
                 raise HTTPException(status_code=400, detail=f"Exact conversion failed: {err}")
-        elif file.filename.lower().endswith((".xlsx", ".xlsm")) and (
+        elif file.filename.lower().endswith((".xlsx", ".xlsm", ".csv")) and (
             native := _native_workbook_deck(file_content, file.filename)
         ):
-            # Charts copied as native, editable PowerPoint charts; pictures at full quality.
+            # Tables as native tables; charts copied as native, editable charts; pictures at full quality.
             ppt_data = native
         else:
             gen_name = (current_user or {}).get("full_name") or (current_user or {}).get("email")

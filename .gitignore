@@ -28,3 +28,25 @@ AI_ML_EXPANSION_ROADMAP.md
 
 # e2e run output
 e2e/**/.out/
+
+# Visual Studio / Copilot indexes (contain copies of the code)
+.vs/
+
+# Local databases, uploads and generated files
+*.db
+*.sqlite
+*.sqlite3
+backend/logs/
+/*.pptx
+/*.xlsx
+/*.docx
+/*.pdf
+
+# Stray files from interrupted git commands
+/Auto-merging
+/Automatic
+/CONFLICT
+/FETCH_HEAD
+/From
+/Saved
+/git

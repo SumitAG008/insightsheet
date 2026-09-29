@@ -1,0 +1,616 @@
+"""
+Excel workbook -> PowerPoint, one slide per chart or picture, charts kept as native editable charts.
+
+Excel and PowerPoint store charts in the same DrawingML chart format, so instead of re-drawing a
+chart (and losing its formatting), each chart part is copied from the workbook into the
+presentation together with everything it references (style, colours, pictures used as fills,
+shapes drawn on the chart). The source workbook is embedded so "Edit Data" works in PowerPoint.
+Pictures are copied as the original image files. Newer Excel chart types (treemap, sunburst,
+waterfall, histogram, box & whisker, funnel: "chartEx") are copied the same way.
+
+Only the workbook's package structure is read; openpyxl is not used, because it drops the
+chartEx types and silently skips charts it cannot parse.
+"""
+from __future__ import annotations
+
+import hashlib
+import io
+import posixpath
+import re
+import zipfile
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+
+from lxml import etree
+from pptx import Presentation
+from pptx.opc.constants import RELATIONSHIP_TYPE as RT
+from pptx.opc.package import Part
+from pptx.opc.packuri import PackURI
+from pptx.util import Emu, Inches, Pt
+
+NS = {
+    "main": "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
+    "r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
+    "rel": "http://schemas.openxmlformats.org/package/2006/relationships",
+    "ct": "http://schemas.openxmlformats.org/package/2006/content-types",
+    "xdr": "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
+    "a": "http://schemas.openxmlformats.org/drawingml/2006/main",
+    "c": "http://schemas.openxmlformats.org/drawingml/2006/chart",
+    "cx": "http://schemas.microsoft.com/office/drawing/2014/chartex",
+    "mc": "http://schemas.openxmlformats.org/markup-compatibility/2006",
+    "p": "http://schemas.openxmlformats.org/presentationml/2006/main",
+}
+R_NS = NS["r"]
+CHART_URI = "http://schemas.openxmlformats.org/drawingml/2006/chart"
+CHARTEX_URI = "http://schemas.microsoft.com/office/drawing/2014/chartex"
+RT_CHARTEX = "http://schemas.microsoft.com/office/2014/relationships/chartEx"
+RT_PACKAGE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/package"
+RT_CHARTSHEET = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chartsheet"
+RT_DRAWING = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing"
+CT_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+EMU_PER_PX = 9525
+EMU_PER_PT = 12700
+SLIDE_W, SLIDE_H = Inches(13.333), Inches(7.5)
+MAX_EMBED_BYTES = 15 * 1024 * 1024  # embed the workbook for "Edit Data" up to this size
+
+
+@dataclass
+class WorkbookObject:
+    sheet: str
+    kind: str  # "chart", "chartex" or "picture"
+    part: str  # path of the chart / image inside the workbook
+    width: int  # EMU, as placed on the sheet
+    height: int
+    order: Tuple[int, int]  # (row, col) of the top-left corner, for reading order
+    name: str = ""
+    title: str = ""
+
+
+@dataclass
+class ConversionReport:
+    sheets: List[str] = field(default_factory=list)
+    charts: int = 0
+    chartex: int = 0
+    pictures: int = 0
+    skipped: List[str] = field(default_factory=list)
+    duplicates_skipped: List[str] = field(default_factory=list)
+    empty_skipped: List[str] = field(default_factory=list)
+    data_embedded: bool = False
+
+    def as_dict(self) -> dict:
+        return {
+            "sheets": self.sheets,
+            "charts": self.charts,
+            "new_chart_types": self.chartex,
+            "pictures": self.pictures,
+            "skipped": self.skipped,
+            "duplicates_skipped": self.duplicates_skipped,
+            "empty_charts_skipped": self.empty_skipped,
+            "edit_data_available": self.data_embedded,
+        }
+
+
+class _Workbook:
+    """Read-only view of an .xlsx package."""
+
+    def __init__(self, data: bytes):
+        self.data = data
+        self.zip = zipfile.ZipFile(io.BytesIO(data))
+        self.names = set(self.zip.namelist())
+        ct = etree.fromstring(self.zip.read("[Content_Types].xml"))
+        self.ct_override = {o.get("PartName").lstrip("/"): o.get("ContentType") for o in ct.findall("ct:Override", NS)}
+        self.ct_default = {d.get("Extension").lower(): d.get("ContentType") for d in ct.findall("ct:Default", NS)}
+
+    def xml(self, path: str):
+        return etree.fromstring(self.zip.read(path))
+
+    def content_type(self, path: str) -> str:
+        return self.ct_override.get(path) or self.ct_default.get(posixpath.splitext(path)[1][1:].lower(), "application/octet-stream")
+
+    def rels(self, path: str) -> Dict[str, Tuple[str, str, bool]]:
+        """rId -> (type, absolute target, external) for a part."""
+        rels_path = posixpath.join(posixpath.dirname(path), "_rels", posixpath.basename(path) + ".rels")
+        if rels_path not in self.names:
+            return {}
+        out = {}
+        for r in self.xml(rels_path).findall("rel:Relationship", NS):
+            external = r.get("TargetMode") == "External"
+            target = r.get("Target")
+            if not external:
+                target = target.lstrip("/") if target.startswith("/") else posixpath.normpath(posixpath.join(posixpath.dirname(path), target))
+            out[r.get("Id")] = (r.get("Type"), target, external)
+        return out
+
+
+def _text(el) -> str:
+    return "".join(t.text or "" for t in el.iter("{%s}t" % NS["a"])).strip() if el is not None else ""
+
+
+def _chart_title(wb: _Workbook, obj: WorkbookObject) -> str:
+    root = wb.xml(obj.part)
+    if obj.kind == "chart":
+        if root.find(".//c:autoTitleDeleted[@val='1']", NS) is not None:
+            return ""
+        title = root.find(".//c:chart/c:title", NS)
+        text = _text(title)
+        if not text and title is not None:  # title taken from a cell: use its stored value
+            text = " ".join(v.text or "" for v in title.iterfind(".//c:v", NS)).strip()
+        return text
+    return _text(root.find(".//cx:chart/cx:title", NS))
+
+
+def _sheet_geometry(wb: _Workbook, sheet_path: str):
+    """Column widths (EMU) and row heights (EMU) of a worksheet, for sizing cell-anchored objects."""
+    if sheet_path not in wb.names or "worksheets/" not in sheet_path:
+        return (lambda c: 64 * EMU_PER_PX), (lambda r: 20 * EMU_PER_PX)
+    root = wb.xml(sheet_path)
+    fmt = root.find("main:sheetFormatPr", NS)
+    default_w = float(fmt.get("defaultColWidth") or 0) if fmt is not None else 0
+    base_w = float(fmt.get("baseColWidth") or 8) if fmt is not None else 8
+    default_w_px = int(default_w * 7 + 5) if default_w else int(base_w * 7 + 12)
+    default_h_pt = float(fmt.get("defaultRowHeight") or 15) if fmt is not None else 15
+    widths: Dict[int, int] = {}
+    for col in root.findall("main:cols/main:col", NS):
+        w = float(col.get("width") or 0)
+        hidden = col.get("hidden") in ("1", "true")
+        for c in range(int(col.get("min")), int(col.get("max")) + 1):
+            widths[c - 1] = 0 if hidden else int(w * 7 + 5) * EMU_PER_PX
+    heights: Dict[int, int] = {}
+    for row in root.iterfind("main:sheetData/main:row", NS):
+        if row.get("ht"):
+            heights[int(row.get("r")) - 1] = int(float(row.get("ht")) * EMU_PER_PT)
+    return (lambda c: widths.get(c, default_w_px * EMU_PER_PX)), (lambda r: heights.get(r, int(default_h_pt * EMU_PER_PT)))
+
+
+def _anchor_size(anchor, col_w, row_h) -> Tuple[int, int, Tuple[int, int]]:
+    tag = etree.QName(anchor).localname
+    frm = anchor.find("xdr:from", NS)
+    order = (0, 0)
+    if frm is not None:
+        fc, fr = int(frm.findtext("xdr:col", "0", NS)), int(frm.findtext("xdr:row", "0", NS))
+        order = (fr, fc)
+    if tag == "twoCellAnchor":
+        to = anchor.find("xdr:to", NS)
+        fc, fco = int(frm.findtext("xdr:col", "0", NS)), int(frm.findtext("xdr:colOff", "0", NS))
+        fr, fro = int(frm.findtext("xdr:row", "0", NS)), int(frm.findtext("xdr:rowOff", "0", NS))
+        tc, tco = int(to.findtext("xdr:col", "0", NS)), int(to.findtext("xdr:colOff", "0", NS))
+        tr, tro = int(to.findtext("xdr:row", "0", NS)), int(to.findtext("xdr:rowOff", "0", NS))
+        w = sum(col_w(c) for c in range(fc, tc)) - fco + tco
+        h = sum(row_h(r) for r in range(fr, tr)) - fro + tro
+        return max(w, 1), max(h, 1), order
+    ext = anchor.find("xdr:ext", NS)
+    if ext is not None:
+        return int(ext.get("cx")), int(ext.get("cy")), order
+    return 16 * 64 * EMU_PER_PX, 20 * 20 * EMU_PER_PX, order
+
+
+def _objects_in(node, drawing_rels) -> List[Tuple[str, str, str]]:
+    """(kind, part path, name) for every chart/picture under a drawing node, groups flattened."""
+    found = []
+    for el in node.iter():
+        if not isinstance(el.tag, str):
+            continue
+        local = etree.QName(el).localname
+        if local == "graphicData":
+            uri = el.get("uri")
+            child = el.find("c:chart", NS) if uri == CHART_URI else el.find("cx:chart", NS) if uri == CHARTEX_URI else None
+            if child is not None:
+                rel = drawing_rels.get(child.get("{%s}id" % R_NS))
+                if rel:
+                    frame = el.getparent().getparent()
+                    cnv = frame.find(".//xdr:cNvPr", NS)
+                    found.append(("chart" if uri == CHART_URI else "chartex", rel[1], cnv.get("name", "") if cnv is not None else ""))
+        elif local == "pic" and etree.QName(el).namespace == NS["xdr"]:
+            blip = el.find(".//a:blip", NS)
+            rid = blip.get("{%s}embed" % R_NS) if blip is not None else None
+            rel = drawing_rels.get(rid) if rid else None
+            if rel and not rel[2]:
+                cnv = el.find(".//xdr:cNvPr", NS)
+                found.append(("picture", rel[1], cnv.get("name", "") if cnv is not None else ""))
+    # An mc:AlternateContent (how Excel wraps chartEx) holds the object twice: keep the first per part.
+    seen, unique = set(), []
+    for item in found:
+        if item[1] not in seen:
+            seen.add(item[1])
+            unique.append(item)
+    return unique
+
+
+def read_workbook_objects(wb: _Workbook, report: ConversionReport) -> List[WorkbookObject]:
+    book = wb.xml("xl/workbook.xml")
+    book_rels = wb.rels("xl/workbook.xml")
+    objects: List[WorkbookObject] = []
+    for sheet in book.findall("main:sheets/main:sheet", NS):
+        name = sheet.get("name")
+        rel = book_rels.get(sheet.get("{%s}id" % R_NS))
+        if not rel or sheet.get("state") in ("hidden", "veryHidden"):
+            continue
+        sheet_path = rel[1]
+        report.sheets.append(name)
+        col_w, row_h = _sheet_geometry(wb, sheet_path)
+        for d_type, d_path, d_ext in wb.rels(sheet_path).values():
+            if d_type != RT_DRAWING or d_ext or d_path not in wb.names:
+                continue
+            drawing = wb.xml(d_path)
+            d_rels = wb.rels(d_path)
+            for anchor in drawing:
+                if not isinstance(anchor.tag, str) or etree.QName(anchor).localname not in ("twoCellAnchor", "oneCellAnchor", "absoluteAnchor"):
+                    continue
+                w, h, order = _anchor_size(anchor, col_w, row_h)
+                if rel[0] == RT_CHARTSHEET:
+                    w, h = SLIDE_W, SLIDE_H
+                for kind, part, obj_name in _objects_in(anchor, d_rels):
+                    if part not in wb.names:
+                        report.skipped.append(f"{name}: {obj_name or part} (missing part)")
+                        continue
+                    objects.append(WorkbookObject(name, kind, part, w, h, order, obj_name))
+    return objects
+
+
+class _Copier:
+    """Copies workbook parts (and everything they reference) into the presentation package."""
+
+    def __init__(self, wb: _Workbook, package):
+        self.wb = wb
+        self.package = package
+        self.copied: Dict[str, Part] = {}
+        self.counters: Dict[str, int] = {}
+        self.embedded: Optional[Part] = None
+
+    def _new_name(self, src: str) -> PackURI:
+        folder = "ppt/charts" if "/charts/" in src else "ppt/media" if "/media/" in src else "ppt/drawings" if "/drawings/" in src else "ppt/embeddings"
+        stem, ext = posixpath.splitext(posixpath.basename(src))
+        stem = re.sub(r"\d+$", "", stem) or "part"
+        existing = {str(p.partname) for p in self.package.iter_parts()}
+        n = self.counters.get(folder + stem, 0)
+        while True:
+            n += 1
+            name = f"/{folder}/{stem}{n}{ext}"
+            if name not in existing:
+                self.counters[folder + stem] = n
+                return PackURI(name)
+
+    def copy(self, src: str) -> Part:
+        if src in self.copied:
+            return self.copied[src]
+        blob = self.wb.zip.read(src)
+        part = Part(self._new_name(src), self.wb.content_type(src), self.package, blob)
+        self.copied[src] = part
+        rid_map = {}
+        for rid, (rtype, target, external) in self.wb.rels(src).items():
+            if external:
+                rid_map[rid] = part.rels.get_or_add_ext_rel(rtype, target)
+            elif target in self.wb.names:
+                rid_map[rid] = part.relate_to(self.copy(target), rtype)
+        if rid_map and blob.lstrip().startswith(b"<"):
+            root = etree.fromstring(blob)
+            for el in root.iter():
+                for attr, value in list(el.attrib.items()):
+                    if attr.startswith("{%s}" % R_NS) and value in rid_map:
+                        el.set(attr, rid_map[value])
+            part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+        return part
+
+    def workbook_part(self) -> Part:
+        if self.embedded is None:
+            self.embedded = Part(PackURI("/ppt/embeddings/Microsoft_Excel_Worksheet1.xlsx"), CT_XLSX, self.package, self.wb.data)
+        return self.embedded
+
+    def attach_chart_data(self, chart_part: Part) -> None:
+        """Point a chart at the embedded workbook so PowerPoint's "Edit Data" opens the source sheets."""
+        root = etree.fromstring(chart_part.blob)
+        if root.find("c:externalData", NS) is not None:
+            return
+        rid = chart_part.relate_to(self.workbook_part(), RT_PACKAGE)
+        ext = etree.Element("{%s}externalData" % NS["c"], nsmap={"c": NS["c"], "r": R_NS})
+        ext.set("{%s}id" % R_NS, rid)
+        etree.SubElement(ext, "{%s}autoUpdate" % NS["c"]).set("val", "0")
+        # Schema order: ... c:chart, c:spPr, c:txPr, c:externalData, c:printSettings, c:userShapes
+        anchor = None
+        for tag in ("txPr", "spPr", "chart"):
+            anchor = root.find("c:%s" % tag, NS)
+            if anchor is not None:
+                break
+        if anchor is not None:
+            anchor.addnext(ext)
+        else:
+            root.append(ext)
+        chart_part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+
+
+def _parse_ref(ref: str) -> Optional[Tuple[str, str]]:
+    """'Sheet 1'!$B$2:$B$7 -> ("Sheet 1", "B2:B7"). None for anything more complex."""
+    ref = (ref or "").strip().lstrip("(").rstrip(")")
+    if "!" not in ref or "," in ref:
+        return None
+    sheet, rng = ref.rsplit("!", 1)
+    if sheet.startswith("'") and sheet.endswith("'"):
+        sheet = sheet[1:-1].replace("''", "'")
+    return sheet, rng.replace("$", "")
+
+
+class _CellValues:
+    """Cell values of the workbook (the last calculated results, not formulas), loaded on first use."""
+
+    def __init__(self, data: bytes):
+        self.data = data
+        self._wb = None
+
+    def get(self, ref: str) -> Optional[list]:
+        parsed = _parse_ref(ref)
+        if not parsed:
+            return None
+        if self._wb is None:
+            import openpyxl
+
+            self._wb = openpyxl.load_workbook(io.BytesIO(self.data), data_only=True)
+        sheet, rng = parsed
+        if sheet not in self._wb.sheetnames:
+            return None
+        cells = self._wb[sheet][rng]
+        if not isinstance(cells, tuple):
+            return [cells.value]
+        flat = []
+        for row in cells:
+            flat.extend(c.value for c in (row if isinstance(row, tuple) else (row,)))
+        return flat
+
+
+def _is_number(v) -> bool:
+    try:
+        float(str(v).replace(",", ""))
+        return True
+    except ValueError:
+        return False
+
+
+def _fill_missing_caches(root, values: _CellValues) -> bool:
+    """
+    PowerPoint draws a chart from the values stored in it. Files written by tools other than
+    Excel often store only the cell references, which would show an empty chart, so fill the
+    values in from the cells. Charts that already carry values are left as they are.
+    """
+    from datetime import date, datetime
+
+    c = "{%s}" % NS["c"]
+    changed = False
+    for ref in list(root.iter(c + "numRef", c + "strRef")):
+        f = ref.find(c + "f")
+        is_num = ref.tag == c + "numRef"
+        cache = ref.find(c + ("numCache" if is_num else "strCache"))
+        if f is None or (cache is not None and cache.find(c + "pt") is not None):
+            continue
+        cells = values.get(f.text)
+        if cells is None:
+            continue
+        if is_num and ref.getparent() is not None and ref.getparent().tag == c + "cat" and any(
+            isinstance(v, str) and v.strip() and not _is_number(v) for v in cells
+        ):
+            # Text categories (e.g. month names) written as a number reference: store them as text.
+            ref.tag = c + "strRef"
+            is_num = False
+            cache = ref.find(c + "numCache")
+        if cache is not None:
+            ref.remove(cache)
+        cache = etree.Element(c + ("numCache" if is_num else "strCache"))
+        if is_num:
+            etree.SubElement(cache, c + "formatCode").text = "General"
+        etree.SubElement(cache, c + "ptCount").set("val", str(len(cells)))
+        for i, v in enumerate(cells):
+            if v is None or v == "":
+                continue
+            if is_num:
+                if isinstance(v, (datetime, date)):
+                    from openpyxl.utils.datetime import to_excel
+
+                    v = to_excel(v)
+                if isinstance(v, bool) or not isinstance(v, (int, float)):
+                    try:
+                        v = float(str(v).replace(",", ""))
+                    except ValueError:
+                        continue
+            pt = etree.SubElement(cache, c + "pt")
+            pt.set("idx", str(i))
+            etree.SubElement(pt, c + "v").text = repr(v) if isinstance(v, float) else str(v)
+        f.addnext(cache)
+        changed = True
+    return changed
+
+
+def _fit(w: int, h: int, box_w: int, box_h: int) -> Tuple[int, int]:
+    scale = min(box_w / w, box_h / h)
+    return int(w * scale), int(h * scale)
+
+
+def _graphic_frame_xml(shape_id: int, name: str, x: int, y: int, cx: int, cy: int, rid: str, chartex: bool) -> str:
+    uri = CHARTEX_URI if chartex else CHART_URI
+    inner = (f'<cx:chart xmlns:cx="{NS["cx"]}" r:id="{rid}"/>' if chartex else f'<c:chart xmlns:c="{NS["c"]}" r:id="{rid}"/>')
+    frame = (
+        f'<p:graphicFrame xmlns:p="{NS["p"]}" xmlns:a="{NS["a"]}" xmlns:r="{R_NS}">'
+        f'<p:nvGraphicFramePr><p:cNvPr id="{shape_id}" name="{_xml_attr(name)}"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>'
+        f'<p:xfrm><a:off x="{x}" y="{y}"/><a:ext cx="{cx}" cy="{cy}"/></p:xfrm>'
+        f'<a:graphic><a:graphicData uri="{uri}">{inner}</a:graphicData></a:graphic></p:graphicFrame>'
+    )
+    if not chartex:
+        return frame
+    # PowerPoint 2016+ reads the chartEx; older versions show the fallback text instead.
+    fallback = (
+        f'<p:sp xmlns:p="{NS["p"]}" xmlns:a="{NS["a"]}"><p:nvSpPr><p:cNvPr id="{shape_id}" name="{_xml_attr(name)}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>'
+        f'<p:spPr><a:xfrm><a:off x="{x}" y="{y}"/><a:ext cx="{cx}" cy="{cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr>'
+        f'<p:txBody><a:bodyPr anchor="ctr"/><a:lstStyle/><a:p><a:pPr algn="ctr"/><a:r><a:rPr lang="en-US"/>'
+        f'<a:t>This chart needs PowerPoint 2016 or later.</a:t></a:r></a:p></p:txBody></p:sp>'
+    )
+    return (
+        f'<mc:AlternateContent xmlns:mc="{NS["mc"]}" xmlns:cx1="http://schemas.microsoft.com/office/drawing/2015/9/8/chartex">'
+        f'<mc:Choice Requires="cx1">{frame}</mc:Choice><mc:Fallback>{fallback}</mc:Fallback></mc:AlternateContent>'
+    )
+
+
+def _xml_attr(s: str) -> str:
+    return (s or "").replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _is_empty_chart(wb: _Workbook, obj: WorkbookObject) -> bool:
+    """A chart frame with no data series (an empty placeholder left on the sheet)."""
+    if obj.kind == "picture":
+        return False
+    root = wb.xml(obj.part)
+    if obj.kind == "chart":
+        return root.find(".//c:ser", NS) is None
+    return root.find(".//cx:series", NS) is None
+
+
+def _signature(wb: _Workbook, obj: WorkbookObject) -> str:
+    """
+    Identity of what a viewer sees. Pictures: the image bytes. Charts: the whole chart
+    definition (type, grouping, style, titles, plotted values) with only the cell addresses and
+    Excel's internal IDs removed, so a chart copied to another tab that plots the same numbers
+    matches, while a stacked and a clustered version of the same data do not.
+    """
+    blob = wb.zip.read(obj.part)
+    if obj.kind == "picture":
+        return "pic:" + hashlib.sha256(blob).hexdigest()
+    root = etree.fromstring(blob)
+    for el in list(root.iter()):
+        if not isinstance(el.tag, str):
+            continue
+        local = etree.QName(el).localname
+        if local in ("f", "extLst", "externalData") and el.getparent() is not None:
+            el.getparent().remove(el)
+    return f"{obj.kind}:" + hashlib.sha256(etree.tostring(root, method="c14n")).hexdigest()
+
+
+def convert_workbook_objects(
+    xlsx_bytes: bytes, title: str = "", embed_data: bool = True, keep_duplicates: bool = False
+) -> Tuple[Optional[bytes], dict]:
+    """
+    Build a presentation with a section slide per tab and one slide per chart or picture.
+    A chart or picture that looks the same as an earlier one (e.g. a logo on every tab, or a
+    chart copied to several tabs) appears once unless keep_duplicates is set.
+    Returns (pptx bytes, report). pptx bytes is None when the workbook has no charts or pictures.
+    """
+    wb = _Workbook(xlsx_bytes)
+    report = ConversionReport()
+    objects = read_workbook_objects(wb, report)
+    kept = []
+    for o in objects:
+        try:
+            empty = _is_empty_chart(wb, o)
+        except Exception:
+            empty = False
+        if empty:
+            report.empty_skipped.append(f"{o.sheet}: {o.name or o.kind}")
+        else:
+            kept.append(o)
+    objects = kept
+    if not keep_duplicates:
+        seen: Dict[str, WorkbookObject] = {}
+        unique = []
+        for o in sorted(objects, key=lambda o: (report.sheets.index(o.sheet), o.order)):
+            try:
+                sig = _signature(wb, o)
+            except Exception:
+                sig = o.part
+            if sig in seen:
+                first = seen[sig]
+                report.duplicates_skipped.append(f"{o.sheet}: {o.name or o.kind} (same as {first.sheet}: {first.name or first.kind})")
+                continue
+            seen[sig] = o
+            unique.append(o)
+        objects = unique
+    if not objects:
+        return None, report.as_dict()
+
+    prs = Presentation()
+    prs.slide_width, prs.slide_height = SLIDE_W, SLIDE_H
+    blank = prs.slide_layouts[6]
+    title_layout = prs.slide_layouts[0]
+    copier = _Copier(wb, prs.part.package)
+    cell_values = _CellValues(xlsx_bytes)
+    embed = embed_data and len(xlsx_bytes) <= MAX_EMBED_BYTES
+
+    if title:
+        s = prs.slides.add_slide(title_layout)
+        s.shapes.title.text = title
+        s.placeholders[1].text = f"{len(objects)} charts and pictures from {len({o.sheet for o in objects})} tabs"
+
+    for o in objects:
+        if o.kind != "picture":
+            try:
+                o.title = _chart_title(wb, o)
+            except Exception:
+                o.title = ""
+    # Every slide heading must be unique: a title used on several tabs gets the tab name,
+    # and one used more than once on the same tab gets a number.
+    title_tabs: Dict[str, set] = {}
+    for o in objects:
+        if o.title:
+            title_tabs.setdefault(o.title, set()).add(o.sheet)
+    same_tab: Dict[Tuple[str, str], int] = {}
+    for o in objects:
+        if o.title:
+            same_tab[(o.title, o.sheet)] = same_tab.get((o.title, o.sheet), 0) + 1
+    seen_tab: Dict[Tuple[str, str], int] = {}
+
+    margin, title_h = Inches(0.4), Inches(0.8)
+    box_w, box_h = SLIDE_W - 2 * margin, SLIDE_H - title_h - 2 * margin
+    by_sheet: Dict[str, List[WorkbookObject]] = {}
+    for o in objects:
+        by_sheet.setdefault(o.sheet, []).append(o)
+
+    for sheet in report.sheets:
+        items = sorted(by_sheet.get(sheet, []), key=lambda o: o.order)
+        if not items:
+            continue
+        if len(by_sheet) > 1:
+            sec = prs.slides.add_slide(title_layout)
+            sec.shapes.title.text = sheet
+            sec.placeholders[1].text = f"{len(items)} {'item' if len(items) == 1 else 'items'}"
+        for n, obj in enumerate(items, start=1):
+            try:
+                slide = prs.slides.add_slide(blank)
+                if obj.title:
+                    heading = obj.title
+                    if len(title_tabs[obj.title]) > 1:
+                        heading += f" — {sheet}"
+                    key = (obj.title, sheet)
+                    if same_tab[key] > 1:
+                        seen_tab[key] = seen_tab.get(key, 0) + 1
+                        heading += f" ({seen_tab[key]} of {same_tab[key]})"
+                else:
+                    heading = f"{sheet} — {'Picture' if obj.kind == 'picture' else 'Chart'} {n}"
+                tb = slide.shapes.add_textbox(margin, Inches(0.25), box_w, title_h)
+                tb.text_frame.text = heading
+                tb.text_frame.paragraphs[0].runs[0].font.size = Pt(24)
+                tb.text_frame.paragraphs[0].runs[0].font.bold = True
+
+                cx, cy = _fit(obj.width, obj.height, box_w, box_h)
+                x = margin + (box_w - cx) // 2
+                y = title_h + margin + (box_h - cy) // 2
+                if obj.kind == "picture":
+                    slide.shapes.add_picture(io.BytesIO(wb.zip.read(obj.part)), Emu(x), Emu(y), Emu(cx), Emu(cy))
+                    report.pictures += 1
+                    continue
+                part = copier.copy(obj.part)
+                if obj.kind == "chart":
+                    root = etree.fromstring(part.blob)
+                    if _fill_missing_caches(root, cell_values):
+                        part._blob = etree.tostring(root, xml_declaration=True, encoding="UTF-8", standalone=True)
+                if obj.kind == "chart" and embed:
+                    copier.attach_chart_data(part)
+                    report.data_embedded = True
+                rid = slide.part.relate_to(part, RT.CHART if obj.kind == "chart" else RT_CHARTEX)
+                shape_id = max((sp.shape_id for sp in slide.shapes), default=1) + 1
+                frame = etree.fromstring(_graphic_frame_xml(shape_id, obj.name or heading, x, y, cx, cy, rid, obj.kind == "chartex"))
+                slide.shapes._spTree.append(frame)
+                if obj.kind == "chart":
+                    report.charts += 1
+                else:
+                    report.chartex += 1
+            except Exception as e:  # one bad object must not lose the rest of the deck
+                report.skipped.append(f"{sheet}: {obj.name or obj.part} ({type(e).__name__}: {e})")
+
+    out = io.BytesIO()
+    prs.save(out)
+    return out.getvalue(), report.as_dict()

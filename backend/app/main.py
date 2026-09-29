@@ -712,6 +712,8 @@ def _consume_transaction(db: Session, subscription: Subscription, *args) -> None
 def _enforce_conversion_quota(db: Session, user_email: str, conversion_type: str, subscription: Subscription) -> None:
     # Backwards-compatible wrapper used by multiple endpoints.
     # All conversions are metered via the monthly transactions meter.
+    if subscription is None:  # first conversion by a user who has no subscription row yet
+        subscription = _get_or_create_subscription(db, user_email)
     _enforce_transactions_quota(subscription)
     _consume_transaction(db, subscription, user_email, conversion_type)
 
@@ -5058,6 +5060,28 @@ def developer_generate_pl_with_file(
         raise HTTPException(status_code=500, detail="P&L generation failed")
 
 
+def _native_workbook_deck(xlsx_bytes: bytes, filename: str) -> Optional[bytes]:
+    """
+    One slide per chart or picture in the workbook, charts kept as native editable charts.
+    None when the workbook has no charts or pictures (or can't be read this way), so the
+    caller falls back to building slides from the data. Only counts are logged, never content.
+    """
+    from app.services.xlsx_objects_to_pptx import convert_workbook_objects
+
+    title = re.sub(r"\.(xlsx|xlsm)$", "", filename or "", flags=re.I).replace("_", " ").strip()
+    try:
+        deck, report = convert_workbook_objects(xlsx_bytes, title=title)
+    except Exception as e:
+        logger.warning(f"Native workbook conversion unavailable ({type(e).__name__}); using data slides")
+        return None
+    logger.info(
+        "Excel to PPT (native): charts=%s new_types=%s pictures=%s duplicates=%s empty=%s failed=%s",
+        report["charts"], report["new_chart_types"], report["pictures"],
+        len(report["duplicates_skipped"]), len(report["empty_charts_skipped"]), len(report["skipped"]),
+    )
+    return deck
+
+
 @app.post("/api/files/excel-to-ppt")
 def excel_to_ppt(
     file: UploadFile = File(...),
@@ -5102,6 +5126,11 @@ def excel_to_ppt(
             ppt_data, err = pdf_to_pptx(pdf_bytes)
             if err:
                 raise HTTPException(status_code=400, detail=f"Exact conversion failed: {err}")
+        elif file.filename.lower().endswith((".xlsx", ".xlsm")) and (
+            native := _native_workbook_deck(file_content, file.filename)
+        ):
+            # Charts copied as native, editable PowerPoint charts; pictures at full quality.
+            ppt_data = native
         else:
             gen_name = (current_user or {}).get("full_name") or (current_user or {}).get("email")
             if WINDOWS_COM_AVAILABLE:

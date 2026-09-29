@@ -1,6 +1,6 @@
 
 // pages/FilenameCleaner.js - ZIP processor with 10MB file size limit enforcement
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,8 @@ import { Upload, Download, Sparkles, FileArchive, Wand2, CheckCircle, AlertCircl
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NavigationWarningModal from '@/components/common/NavigationWarningModal';
+import { cleanName, planRenames } from '@/lib/filenameCleaning';
+import { readArchive, writeRenamedArchive } from '@/lib/zipRename';
 
 export default function FilenameCleaner() {
   const navigate = useNavigate();
@@ -18,6 +20,7 @@ export default function FilenameCleaner() {
   const [zipFile, setZipFile] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [preview, setPreview] = useState([]);
+  const archiveRef = useRef(null);
   const [processedCount, setProcessedCount] = useState(0);
   const [history, setHistory] = useState([]);
   const [user, setUser] = useState(null);
@@ -105,36 +108,6 @@ export default function FilenameCleaner() {
     }
   };
 
-  // Comprehensive Unicode to ASCII character mapping (Unicode escapes to avoid encoding/smart-quote parse errors)
-  const unicodeToAsciiMap = {
-    '\u00E4': 'a', '\u00F6': 'o', '\u00FC': 'u', '\u00DF': 'ss', '\u00C4': 'A', '\u00D6': 'O', '\u00DC': 'U',
-    '\u00E0': 'a', '\u00E2': 'a', '\u00E7': 'c', '\u00E8': 'e', '\u00E9': 'e', '\u00EA': 'e', '\u00EB': 'e',
-    '\u00EC': 'i', '\u00EE': 'i', '\u00EF': 'i', '\u00F2': 'o', '\u00F4': 'o', '\u00F9': 'u', '\u00FB': 'u', '\u00FF': 'y',
-    '\u00C0': 'A', '\u00C2': 'A', '\u00C7': 'C', '\u00C8': 'E', '\u00C9': 'E', '\u00CA': 'E', '\u00CB': 'E',
-    '\u00CC': 'I', '\u00CE': 'I', '\u00CF': 'I', '\u00D2': 'O', '\u00D4': 'O', '\u00D9': 'U', '\u00DB': 'U', '\u0178': 'Y',
-    '\u00E1': 'a', '\u00ED': 'i', '\u00F3': 'o', '\u00FA': 'u', '\u00F1': 'n', '\u00C1': 'A', '\u00CD': 'I', '\u00D3': 'O', '\u00DA': 'U', '\u00D1': 'N',
-    '\u00E3': 'a', '\u00F5': 'o', '\u00C3': 'A', '\u00D5': 'O',
-    '\u00E5': 'a', '\u00E6': 'ae', '\u00F8': 'o', '\u00C5': 'A', '\u00C6': 'AE', '\u00D8': 'O',
-    '\u010D': 'c', '\u010F': 'd', '\u011B': 'e', '\u0148': 'n', '\u0159': 'r', '\u0161': 's', '\u0165': 't', '\u016F': 'u', '\u017E': 'z',
-    '\u010C': 'C', '\u010E': 'D', '\u011A': 'E', '\u0147': 'N', '\u0158': 'R', '\u0160': 'S', '\u0164': 'T', '\u016E': 'U', '\u017D': 'Z',
-    '\u0105': 'a', '\u0107': 'c', '\u0119': 'e', '\u0142': 'l', '\u0144': 'n', '\u015B': 's', '\u017A': 'z', '\u017C': 'z',
-    '\u0104': 'A', '\u0106': 'C', '\u0118': 'E', '\u0141': 'L', '\u0143': 'N', '\u015A': 'S', '\u0179': 'Z', '\u017B': 'Z',
-    '\u0103': 'a', '\u0219': 's', '\u021B': 't', '\u0102': 'A', '\u0218': 'S', '\u021A': 'T',
-    '\u011F': 'g', '\u0131': 'i', '\u015F': 's', '\u011E': 'G', '\u0130': 'I', '\u015E': 'S',
-    '\u00BF': '', '\u00A1': '', '\u00B0': '', '\u00A9': 'c', '\u00AE': 'r', '\u2122': 'tm'
-  };
-
-  const languageCharMaps = {
-    german: { 'ä': 'a', 'ö': 'o', 'ü': 'u', 'ß': 'ss', 'Ä': 'A', 'Ö': 'O', 'Ü': 'U' },
-    italian: { 'à': 'a', 'è': 'e', 'é': 'e', 'ì': 'i', 'ò': 'o', 'ù': 'u' },
-    greek: { regex: /[\u0370-\u03FF\u1F00-\u1FFF]/g, replacement: '' },
-    chinese: { regex: /[\u4E00-\u9FFF]/g, replacement: '' },
-    spanish: { 'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ñ': 'n', 'ü': 'u', '¿': '', '¡': '' },
-    russian: { regex: /[А-Яа-яЁё]/g, replacement: '' },
-    arabic: { regex: /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF]/g, replacement: '' },
-    japanese: { regex: /[\u3040-\u309F\u30A0-\u30FF\u31F0-\u31FF]/g, replacement: '' }
-  };
-
   const quickPresets = [
     { name: 'Basic', config: { allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-', disallowedCharacters: '', replacementCharacter: '-' } },
     { name: 'Basic Underscore', config: { allowedCharacters: 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_', disallowedCharacters: ' -', replacementCharacter: '_' } },
@@ -176,238 +149,6 @@ export default function FilenameCleaner() {
     setPreview([]);
   };
 
-  // Convert Unicode characters to ASCII equivalents
-  const convertUnicodeToAscii = (text) => {
-    let result = text;
-    
-    // First, apply comprehensive Unicode to ASCII mapping
-    Object.keys(unicodeToAsciiMap).forEach(char => {
-      result = result.split(char).join(unicodeToAsciiMap[char]);
-    });
-    
-    // Then, normalize remaining Unicode characters using Unicode normalization
-    // This handles characters that decompose (e.g., é → e + combining mark)
-    try {
-      // Normalize to NFD (decomposed form) to separate base characters from combining marks
-      result = result.normalize('NFD');
-      // Remove combining diacritical marks (Unicode category: Mn - Mark, nonspacing)
-      result = result.replace(/[\u0300-\u036f]/g, '');
-      // Normalize back to NFC (composed form)
-      result = result.normalize('NFC');
-    } catch (e) {
-      // If normalization fails, continue with what we have
-      console.warn('Unicode normalization failed:', e);
-    }
-    
-    return result;
-  };
-
-  const processFilename = (filename) => {
-    const parts = filename.split('.');
-    const extension = parts.length > 1 && options.preserveExtension ? '.' + parts.pop() : '';
-    let baseName = parts.join('.');
-
-    // Step 1: Convert Unicode to ASCII (handles ü→u, é→e, etc.)
-    baseName = convertUnicodeToAscii(baseName);
-
-    // Step 2: Apply language-specific replacements (if enabled)
-    Object.keys(selectedLanguages).forEach(lang => {
-      if (selectedLanguages[lang]) {
-        const map = languageCharMaps[lang];
-        if (map.regex) {
-          baseName = baseName.replace(map.regex, map.replacement || options.replacementCharacter);
-        } else {
-          Object.keys(map).forEach(char => {
-            baseName = baseName.split(char).join(map[char]);
-          });
-        }
-      }
-    });
-
-    // Step 3: Apply custom rules (user-defined find & replace)
-    options.customRules.forEach(rule => {
-      if (rule.find && rule.replace !== undefined) {
-        baseName = baseName.split(rule.find).join(rule.replace);
-      }
-    });
-
-    // Step 4: Remove disallowed characters
-    if (options.disallowedCharacters) {
-      options.disallowedCharacters.split('').forEach(char => {
-        baseName = baseName.split(char).join(options.replacementCharacter);
-      });
-    }
-
-    // Step 5: Filter to allowed characters only
-    if (options.allowedCharacters) {
-      const allowed = new Set(options.allowedCharacters.split(''));
-      baseName = baseName.split('').map(char => 
-        allowed.has(char) ? char : options.replacementCharacter
-      ).join('');
-    }
-
-    // Step 6: Clean up multiple replacement characters
-    baseName = baseName.replace(new RegExp(`\\${options.replacementCharacter}{2,}`, 'g'), options.replacementCharacter);
-    baseName = baseName.replace(new RegExp(`^\\${options.replacementCharacter}+|\\${options.replacementCharacter}+$`, 'g'), '');
-
-    // Step 7: Truncate if too long
-    if (options.maxLength && baseName.length > options.maxLength) {
-      baseName = baseName.substring(0, options.maxLength);
-    }
-
-    return baseName + extension;
-  };
-
-  const readZipFile = async (file) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const dataView = new DataView(arrayBuffer);
-    const files = [];
-    let offset = 0;
-
-    while (offset < arrayBuffer.byteLength - 4) {
-      const signature = dataView.getUint32(offset, true);
-      
-      if (signature === 0x04034b50) {
-        offset += 4;
-        const version = dataView.getUint16(offset, true);
-        offset += 2;
-        const flags = dataView.getUint16(offset, true);
-        offset += 2;
-        const method = dataView.getUint16(offset, true);
-        offset += 2;
-        const time = dataView.getUint16(offset, true);
-        offset += 2;
-        const date = dataView.getUint16(offset, true);
-        offset += 2;
-        const crc32 = dataView.getUint32(offset, true);
-        offset += 4;
-        const compressedSize = dataView.getUint32(offset, true);
-        offset += 4;
-        const uncompressedSize = dataView.getUint32(offset, true);
-        offset += 4;
-        const filenameLength = dataView.getUint16(offset, true);
-        offset += 2;
-        const extraLength = dataView.getUint16(offset, true);
-        offset += 2;
-
-        const filenameBytes = new Uint8Array(arrayBuffer, offset, filenameLength);
-        const filename = new TextDecoder('utf-8').decode(filenameBytes);
-        offset += filenameLength;
-
-        offset += extraLength;
-
-        const fileData = new Uint8Array(arrayBuffer, offset, compressedSize);
-        offset += compressedSize;
-
-        files.push({
-          filename,
-          data: fileData,
-          method,
-          crc32,
-          compressedSize,
-          uncompressedSize,
-          time,
-          date
-        });
-      } else if (signature === 0x02014b50 || signature === 0x06054b50) {
-        break;
-      } else {
-        offset++;
-      }
-    }
-
-    return files;
-  };
-
-  const createZipFile = (files) => {
-    const centralDirectoryEntries = [];
-    let centralDirectorySize = 0;
-    let offsetOfCentralDirectory = 0;
-    const chunks = [];
-
-    files.forEach(({ newName, data, method, crc32, compressedSize, uncompressedSize, time, date }) => {
-      const filenameBytes = new TextEncoder().encode(newName);
-      const filenameLength = filenameBytes.length;
-
-      const localFileHeader = new Uint8Array(30 + filenameLength);
-      const view = new DataView(localFileHeader.buffer);
-      
-      view.setUint32(0, 0x04034b50, true);
-      view.setUint16(4, 20, true);
-      view.setUint16(6, 0, true);
-      view.setUint16(8, method, true);
-      view.setUint16(10, time, true);
-      view.setUint16(12, date, true);
-      view.setUint32(14, crc32, true);
-      view.setUint32(18, compressedSize, true);
-      view.setUint32(22, uncompressedSize, true);
-      view.setUint16(26, filenameLength, true);
-      view.setUint16(28, 0, true);
-      localFileHeader.set(filenameBytes, 30);
-
-      chunks.push(localFileHeader);
-      chunks.push(data);
-
-      const centralDirEntry = {
-        filename: newName,
-        filenameBytes,
-        filenameLength,
-        method,
-        crc32,
-        compressedSize,
-        uncompressedSize,
-        time,
-        date,
-        offset: offsetOfCentralDirectory
-      };
-      centralDirectoryEntries.push(centralDirEntry);
-
-      offsetOfCentralDirectory += localFileHeader.length + data.length;
-    });
-
-    centralDirectoryEntries.forEach(entry => {
-      const centralDirHeader = new Uint8Array(46 + entry.filenameLength);
-      const view = new DataView(centralDirHeader.buffer);
-      
-      view.setUint32(0, 0x02014b50, true);
-      view.setUint16(4, 20, true);
-      view.setUint16(6, 20, true);
-      view.setUint16(8, 0, true);
-      view.setUint16(10, entry.method, true);
-      view.setUint16(12, entry.time, true);
-      view.setUint16(14, entry.date, true);
-      view.setUint32(16, entry.crc32, true);
-      view.setUint32(20, entry.compressedSize, true);
-      view.setUint32(24, entry.uncompressedSize, true);
-      view.setUint16(28, entry.filenameLength, true);
-      view.setUint16(30, 0, true);
-      view.setUint16(32, 0, true);
-      view.setUint16(34, 0, true);
-      view.setUint16(36, 0, true);
-      view.setUint32(38, 0, true);
-      view.setUint32(42, entry.offset, true);
-      centralDirHeader.set(entry.filenameBytes, 46);
-
-      chunks.push(centralDirHeader);
-      centralDirectorySize += centralDirHeader.length;
-    });
-
-    const endOfCentralDir = new Uint8Array(22);
-    const eview = new DataView(endOfCentralDir.buffer);
-    eview.setUint32(0, 0x06054b50, true);
-    eview.setUint16(4, 0, true);
-    eview.setUint16(6, 0, true);
-    eview.setUint16(8, centralDirectoryEntries.length, true);
-    eview.setUint16(10, centralDirectoryEntries.length, true); // Total number of entries in central directory
-    eview.setUint32(12, centralDirectorySize, true);
-    eview.setUint32(16, offsetOfCentralDirectory, true);
-    eview.setUint16(20, 0, true);
-
-    chunks.push(endOfCentralDir);
-
-    return new Blob(chunks, { type: 'application/zip' });
-  };
-
   const handlePreview = async () => {
     if (!zipFile) {
       alert('Please upload a ZIP file first');
@@ -419,36 +160,11 @@ export default function FilenameCleaner() {
     setProcessedCount(0);
 
     try {
-      const files = await readZipFile(zipFile);
-      const totalFiles = files.length;
-      
-      // Process files with progress updates for large ZIPs
-      const previewData = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const processedName = processFilename(file.filename);
-        previewData.push({
-          original: file.filename,
-          processed: processedName,
-          changed: file.filename !== processedName,
-          data: file.data,
-          method: file.method,
-          crc32: file.crc32,
-          compressedSize: file.compressedSize,
-          uncompressedSize: file.uncompressedSize,
-          time: file.time,
-          date: file.date
-        });
-        
-        // Update progress every 10 files for large ZIPs
-        if (totalFiles > 50 && (i + 1) % 10 === 0) {
-          setProcessedCount(i + 1);
-          await new Promise(resolve => setTimeout(resolve, 10)); // Small delay to update UI
-        }
-      }
-
+      const { zip, paths } = await readArchive(zipFile);
+      archiveRef.current = zip;
+      const previewData = planRenames(paths, options, selectedLanguages);
       setPreview(previewData);
-      setProcessedCount(totalFiles);
+      setProcessedCount(previewData.length);
     } catch (error) {
       console.error('Error reading ZIP:', error);
       alert('Error reading ZIP file. Please ensure it is a valid ZIP file.');
@@ -467,23 +183,8 @@ export default function FilenameCleaner() {
     setProcessedCount(0);
 
     try {
-      for (let i = 0; i < preview.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 50));
-        setProcessedCount(i + 1);
-      }
-
-      const renamedFiles = preview.map(item => ({
-        newName: item.processed,
-        data: item.data,
-        method: item.method,
-        crc32: item.crc32,
-        compressedSize: item.compressedSize,
-        uncompressedSize: item.uncompressedSize,
-        time: item.time,
-        date: item.date
-      }));
-
-      const newZipBlob = createZipFile(renamedFiles);
+      const newZipBlob = await writeRenamedArchive(archiveRef.current, preview);
+      setProcessedCount(preview.length);
 
       const now = new Date();
       const year = now.getFullYear();
@@ -497,7 +198,7 @@ export default function FilenameCleaner() {
       const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}_${milliseconds}`;
       
       const originalName = zipFile.name.replace(/\.zip$/i, '');
-      const processedOriginalName = processFilename(originalName);
+      const processedOriginalName = cleanName(originalName, { ...options, preserveExtension: false }, selectedLanguages);
       const newZipFilename = `processed_${processedOriginalName}_${timestamp}.zip`;
 
       const url = URL.createObjectURL(newZipBlob);

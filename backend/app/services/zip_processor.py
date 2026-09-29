@@ -44,7 +44,8 @@ class ZipProcessorService:
                         return False
 
                     # Check for directory traversal
-                    if '..' in info.filename or info.filename.startswith('/'):
+                    parts = info.filename.replace('\\', '/').split('/')
+                    if '..' in parts or info.filename.startswith(('/', '\\')):
                         logger.warning(f"Suspicious path: {info.filename}")
                         return False
 
@@ -60,6 +61,22 @@ class ZipProcessorService:
             logger.error(f"Error validating ZIP: {str(e)}")
             return False
 
+    @staticmethod
+    def expand_char_set(spec: Optional[str]) -> Optional[set]:
+        """'a-z0-9-_' -> the letters a..z, digits 0..9, '-' and '_' (a '-' at either end is literal)."""
+        if not spec:
+            return None
+        chars = set()
+        i = 0
+        while i < len(spec):
+            if i + 2 < len(spec) and spec[i + 1] == '-' and ord(spec[i]) <= ord(spec[i + 2]):
+                chars.update(chr(c) for c in range(ord(spec[i]), ord(spec[i + 2]) + 1))
+                i += 3
+            else:
+                chars.add(spec[i])
+                i += 1
+        return chars
+
     def sanitize_filename(
         self,
         filename: str,
@@ -68,81 +85,55 @@ class ZipProcessorService:
         replace_char: str = '_',
         remove_spaces: bool = False,
         max_length: int = 255,
-        language_replacements: Optional[Dict[str, str]] = None
+        language_replacements: Optional[Dict[str, str]] = None,
+        keep_extension: bool = True,
     ) -> str:
         """
-        Sanitize filename with advanced options
-
-        Args:
-            filename: Original filename
-            allowed_chars: Allowed characters (whitelist)
-            disallowed_chars: Disallowed characters (blacklist)
-            replace_char: Character to use for replacements
-            remove_spaces: Whether to remove spaces
-            max_length: Maximum filename length
-            language_replacements: Language-specific character replacements
-
-        Returns:
-            str: Sanitized filename
+        Clean one file or folder name. The extension is kept (and lowercased only if needed to
+        pass the allowed characters). Allowed characters accept ranges such as 'a-z0-9'; a letter
+        whose lowercase form is allowed is lowercased rather than replaced.
         """
+        rep = replace_char or ''
         try:
-            # Remove null bytes and control characters
-            filename = "".join(char for char in filename if ord(char) >= 32)
+            name = "".join(ch for ch in filename if ord(ch) >= 32)
+            # Language rules first, before accents are stripped (so German ä can become ae).
+            for old, new in (language_replacements or {}).items():
+                name = name.replace(old, new)
 
-            # Normalize Unicode to ASCII (handles ü→u, é→e, etc.)
-            filename = unicodedata.normalize('NFD', filename)
-            # Remove combining diacritical marks (Unicode category: Mn - Mark, nonspacing)
-            filename = ''.join(
-                c for c in filename
-                if unicodedata.category(c) != 'Mn'
-            )
-            # Normalize back to NFC
-            filename = unicodedata.normalize('NFC', filename)
+            dot = name.rfind('.')
+            if keep_extension and 0 < dot < len(name) - 1:
+                base, ext = name[:dot], name[dot:]
+            else:
+                base, ext = name, ''
 
-            # Handle language-specific replacements
-            if language_replacements:
-                for old_char, new_char in language_replacements.items():
-                    filename = filename.replace(old_char, new_char)
+            allowed = self.expand_char_set(allowed_chars)
+            if allowed is not None and ext:
+                allowed = allowed | {'.'}
 
-            # Handle disallowed characters
-            if disallowed_chars:
-                pattern = '[' + re.escape(disallowed_chars) + ']'
-                filename = re.sub(pattern, replace_char if replace_char else '', filename)
+            def clean(part: str) -> str:
+                part = unicodedata.normalize('NFD', part)
+                part = ''.join(c for c in part if unicodedata.category(c) != 'Mn')
+                part = unicodedata.normalize('NFKC', part)
+                if remove_spaces:
+                    part = part.replace(' ', '')
+                if disallowed_chars:
+                    part = ''.join(rep if c in disallowed_chars else c for c in part)
+                if allowed is not None:
+                    part = ''.join(
+                        c if c in allowed else (c.lower() if c.lower() in allowed else rep) for c in part
+                    )
+                # Keep printable ASCII only (anything else becomes the replacement character).
+                return ''.join(c if c.isascii() and c.isprintable() else rep for c in part)
 
-            # Handle allowed characters (whitelist)
-            if allowed_chars:
-                allowed_set = set(allowed_chars)
-                filename = ''.join(
-                    c if c in allowed_set else replace_char
-                    for c in filename
-                )
+            base, ext = clean(base), clean(ext)
+            if rep:
+                base = re.sub(f'(?:{re.escape(rep)}){{2,}}', rep, base)
+            base = re.sub(r'[._-]{2,}', lambda m: m.group(0)[0], base)
+            base = base.strip('. ' + rep)
 
-            # Normalize Unicode
-            filename = unicodedata.normalize('NFKD', filename)
-            filename = ''.join(
-                c for c in filename
-                if c.isascii() and (c.isprintable() or c in '-_.')
-            )
-
-            # Handle spaces
-            if remove_spaces:
-                filename = filename.replace(' ', '')
-
-            # Clean up multiple dots/dashes/underscores
-            filename = re.sub(r'[._-]+', lambda m: m.group(0)[0], filename)
-
-            # Remove leading/trailing dots and spaces
-            filename = filename.strip('. ')
-
-            # Truncate if too long
-            if len(filename) > max_length:
-                filename = filename[:max_length]
-
-            # Ensure filename isn't empty
-            if not filename or filename.isspace():
-                filename = f"renamed_file_{secrets.token_hex(4)}"
-
-            return filename
+            if max_length and len(base) + len(ext) > max_length:
+                base = base[: max(1, max_length - len(ext))]
+            return (base or 'file') + ext
 
         except Exception as e:
             logger.error(f"Error sanitizing filename: {str(e)}")
@@ -182,6 +173,7 @@ class ZipProcessorService:
 
             # Process files
             processed_files = []
+            used_paths: set = set()
 
             with zipfile.ZipFile(temp_input, 'r') as source_zip:
                 for item in source_zip.infolist():
@@ -190,41 +182,30 @@ class ZipProcessorService:
                         continue
 
                     try:
-                        # Get original name
-                        original_name = os.path.basename(item.filename)
-
-                        # Sanitize filename
-                        new_name = self.sanitize_filename(
-                            original_name,
+                        clean_opts = dict(
                             allowed_chars=options.get('allowed_chars'),
                             disallowed_chars=options.get('disallowed_chars'),
                             replace_char=options.get('replace_char', '_'),
                             remove_spaces=options.get('remove_spaces', False),
                             max_length=options.get('max_length', 255),
-                            language_replacements=options.get('language_replacements')
+                            language_replacements=options.get('language_replacements'),
                         )
+                        # Clean every folder name and the file name, keeping the structure.
+                        segments = [p for p in item.filename.replace('\\', '/').split('/') if p and p != '.']
+                        cleaned = [
+                            self.sanitize_filename(seg, keep_extension=(i == len(segments) - 1), **clean_opts)
+                            for i, seg in enumerate(segments)
+                        ]
+                        new_path = self._unique_path('/'.join(cleaned), used_paths, clean_opts['replace_char'] or '-')
 
-                        # Maintain directory structure
-                        new_path = os.path.normpath(
-                            os.path.join(
-                                os.path.dirname(item.filename),
-                                new_name
-                            )
-                        ).replace('\\', '/')
-
-                        # Prevent directory traversal
-                        if '..' in new_path or new_path.startswith('/'):
-                            logger.warning(f"Skipping suspicious path: {new_path}")
-                            continue
-
-                        # Read file content
                         with source_zip.open(item) as source:
                             content = source.read()
 
                         processed_files.append({
                             'path': new_path,
                             'content': content,
-                            'original': item.filename
+                            'original': item.filename,
+                            'date_time': item.date_time,
                         })
 
                     except Exception as e:
@@ -236,7 +217,9 @@ class ZipProcessorService:
 
             with zipfile.ZipFile(temp_output, 'w', zipfile.ZIP_DEFLATED) as target_zip:
                 for file_info in processed_files:
-                    target_zip.writestr(file_info['path'], file_info['content'])
+                    info = zipfile.ZipInfo(file_info['path'], date_time=file_info['date_time'])
+                    info.compress_type = zipfile.ZIP_DEFLATED
+                    target_zip.writestr(info, file_info['content'])
 
             # Read output file
             with open(temp_output, 'rb') as f:
@@ -252,6 +235,19 @@ class ZipProcessorService:
             # Cleanup
             if temp_dir and os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir, ignore_errors=True)
+
+    @staticmethod
+    def _unique_path(path: str, used: set, sep: str) -> str:
+        """Add -2, -3, ... when a cleaned path clashes with one already written (case-insensitive)."""
+        candidate, n = path, 2
+        folder, _, name = path.rpartition('/')
+        dot = name.rfind('.')
+        base, ext = (name[:dot], name[dot:]) if dot > 0 else (name, '')
+        while candidate.lower() in used:
+            candidate = f"{folder + '/' if folder else ''}{base}{sep}{n}{ext}"
+            n += 1
+        used.add(candidate.lower())
+        return candidate
 
     def get_language_replacements(self, languages: List[str]) -> Dict[str, str]:
         """

@@ -85,6 +85,7 @@ from app.services.ai_service import (
 from app.services.unified_reporting_service import build_report, plan_report, write_insight
 from app.services.api_connector_service import ConnectorError, allow_call, egress_info, fetch_records, public_presets, safe_summary
 from app.services.migration_service import suggest_mapping
+import zipfile
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
 from app.services.windows_excel_to_ppt import WindowsExcelToPPTService, WINDOWS_COM_AVAILABLE
@@ -5876,7 +5877,7 @@ def reconcile_download(
 @app.post("/api/files/process-zip")
 def process_zip(
     file: UploadFile = File(...),
-    options: str = None,  # JSON string of options
+    options: Optional[str] = Form(None),  # JSON string of options
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -5908,11 +5909,15 @@ def process_zip(
             )
 
         # Validate file type
-        if not file.filename.endswith('.zip'):
+        if not (file.filename or "").lower().endswith('.zip'):
             raise HTTPException(status_code=400, detail="Invalid file type. Please upload a ZIP file.")
 
-        # Parse options
-        processing_options = json.loads(options) if options else {}
+        try:
+            processing_options = json.loads(options) if options else {}
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid options JSON")
+        if not isinstance(processing_options, dict):
+            raise HTTPException(status_code=400, detail="Invalid options JSON")
 
         # Get language replacements
         zip_service = ZipProcessorService()
@@ -5923,7 +5928,13 @@ def process_zip(
         processing_options['language_replacements'] = language_replacements
 
         # Process ZIP
-        processed_data = run_coro(zip_service.process_zip(io.BytesIO(file_content), processing_options))
+        try:
+            processed_data = run_coro(zip_service.process_zip(io.BytesIO(file_content), processing_options))
+        except (ValueError, zipfile.BadZipFile):
+            raise HTTPException(
+                status_code=400,
+                detail="This ZIP could not be processed: it is damaged, too large when unpacked, or contains programs or unsafe paths.",
+            )
 
         # Log processing history
         processing_history = FileProcessingHistory(

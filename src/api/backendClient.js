@@ -4,6 +4,7 @@
  */
 
 import { clearAllAppSessionData } from '@/utils/clearAppData';
+import { getDeviceId } from '@/lib/deviceId';
 
 // SECURITY: Require HTTPS API URL - no localhost fallback in production
 const API_URL = import.meta.env.VITE_API_URL || (() => {
@@ -127,15 +128,28 @@ export const backendApi = {
       return data;
     },
 
-    verifyLoginOtp: async (challengeId, otp) => {
+    verifyLoginOtp: async (challengeId, otp, signOutSessionIds) => {
       const response = await apiCall('/api/auth/mfa/verify', {
         method: 'POST',
-        body: { challenge_id: challengeId, otp },
+        body: {
+          challenge_id: challengeId,
+          otp,
+          device_id: getDeviceId(),
+          ...(signOutSessionIds && signOutSessionIds.length ? { sign_out_session_ids: signOutSessionIds } : {}),
+        },
         timeoutMs: 25000,
       });
       const data = await response.json();
 
       if (!response.ok) {
+        // Signed in on the maximum number of devices: the caller shows them so one can be signed out.
+        if (response.status === 409 && data.detail && data.detail.code === 'device_limit') {
+          const err = new Error(data.detail.message);
+          err.code = 'device_limit';
+          err.devices = data.detail.devices || [];
+          err.limit = data.detail.limit;
+          throw err;
+        }
         throw new Error(data.detail || `OTP verify failed: ${response.status}`);
       }
 
@@ -147,9 +161,22 @@ export const backendApi = {
     },
 
     logout: () => {
+      // End this device's session on the server too (best effort), so it frees a device slot.
+      const token = getToken();
+      if (token) {
+        fetch(`${API_URL}/api/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+      }
       clearAllAppSessionData();
       setToken(null);
     },
+
+    devices: async () => jsonOrThrow(await apiCall('/api/auth/devices'), 'Could not load your devices'),
+
+    signOutDevice: async (sessionId) =>
+      jsonOrThrow(
+        await apiCall(`/api/auth/devices/${encodeURIComponent(sessionId)}`, { method: 'DELETE' }),
+        'Could not sign that device out',
+      ),
 
     me: async () => {
       const response = await apiCall('/api/auth/me');

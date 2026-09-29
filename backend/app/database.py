@@ -224,6 +224,24 @@ class LoginHistory(Base):
     created_date = Column(DateTime, default=datetime.utcnow)
 
 
+class UserSession(Base):
+    """One signed-in device. A subscription may be active on a limited number of devices at once."""
+    __tablename__ = "user_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(64), unique=True, index=True, nullable=False)
+    user_email = Column(String(255), index=True, nullable=False)
+    device_id = Column(String(64), index=True, nullable=True)  # random id kept by the browser/app
+    device_label = Column(String(255), nullable=True)  # e.g. "Chrome on Windows"
+    ip_address = Column(String(100), nullable=True)
+    location = Column(String(255), nullable=True)  # city, country
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    last_seen_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    revoked_at = Column(DateTime, nullable=True)
+    revoked_reason = Column(String(50), nullable=True)  # logout, signed_out_by_other_device, replaced
+
+
 class UserActivity(Base):
     __tablename__ = "user_activities"
 

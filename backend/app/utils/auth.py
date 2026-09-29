@@ -198,7 +198,19 @@ def get_current_user(
             detail="Inactive user",
         )
 
+    # The token belongs to one signed-in device; it stops working once that device is signed out
+    # (from another device, by logging out, or when the account signs in on too many devices).
+    from app.services.device_sessions import session_is_active
+
+    sid = payload.get("sid")
+    if not sid or not session_is_active(db, sid, user.email):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This device was signed out. Please sign in again.",
+        )
+
     return {
+        "session_id": sid,
         "id": user.id,
         "email": user.email,
         "full_name": user.full_name,

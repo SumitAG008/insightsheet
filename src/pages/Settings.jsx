@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { User, Globe, KeyRound, Paintbrush } from 'lucide-react';
+import { User, Globe, KeyRound, Paintbrush, MonitorSmartphone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,32 @@ export default function Settings() {
   const [primaryColor, setPrimaryColor] = useState('');
   const [theme, setTheme] = useState('system');
   const [brandingStatus, setBrandingStatus] = useState('');
+
+  const [devices, setDevices] = useState(null); // { limit, devices } signed-in devices
+  const [devicesStatus, setDevicesStatus] = useState('');
+
+  const loadDevices = async () => {
+    try {
+      setDevices(await backendApi.auth.devices());
+    } catch (e) {
+      setDevicesStatus(e?.message || 'Could not load your devices.');
+    }
+  };
+
+  useEffect(() => {
+    loadDevices();
+  }, []);
+
+  const signOutDevice = async (id) => {
+    setDevicesStatus('');
+    try {
+      await backendApi.auth.signOutDevice(id);
+      setDevicesStatus('Device signed out.');
+      loadDevices();
+    } catch (e) {
+      setDevicesStatus(e?.message || 'Could not sign that device out.');
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -140,6 +166,37 @@ export default function Settings() {
             {profileStatus ? (
               <p className="text-sm text-slate-600 dark:text-slate-400">{profileStatus}</p>
             ) : null}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border-slate-200 dark:border-slate-700/50 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
+              <MonitorSmartphone className="w-5 h-5" /> Signed-in devices
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Your subscription can be used on {devices?.limit || 2} devices at the same time.
+            </p>
+            <ul className="space-y-2">
+              {(devices?.devices || []).map((d) => (
+                <li key={d.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 dark:border-slate-700 p-3">
+                  <div>
+                    <div className="font-medium text-slate-900 dark:text-white">
+                      {d.device}{d.current ? ' (this device)' : ''}
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      {[d.location, d.ip, d.last_active_at && `last active ${new Date(d.last_active_at).toLocaleString()}`].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                  {!d.current && (
+                    <Button variant="outline" size="sm" onClick={() => signOutDevice(d.id)}>Sign out</Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {devicesStatus ? <p className="text-sm text-slate-600 dark:text-slate-400">{devicesStatus}</p> : null}
           </CardContent>
         </Card>
 

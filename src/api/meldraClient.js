@@ -314,6 +314,11 @@ export const backendApi = {
     },
 
     logout: () => {
+      // End this device's session on the server too (best effort), so it frees a device slot.
+      const token = getToken();
+      if (token) {
+        fetch(`${API_URL}/api/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+      }
       clearAllAppSessionData();
       setToken(null);
     },

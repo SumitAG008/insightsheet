@@ -71,6 +71,9 @@ from app.database import (
     InvoiceExtractionJob,
 )
 from app.utils.offload import run_coro, in_thread
+from app.services.device_sessions import (
+    DeviceLimitReached, active_sessions, describe as describe_session, max_active_devices, revoke_session, start_session,
+)
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
     get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
@@ -1857,6 +1860,8 @@ class UserLogin(BaseModel):
 class LoginOtpVerifyRequest(BaseModel):
     challenge_id: str
     otp: str
+    device_id: Optional[str] = Field(None, max_length=64)  # random id the browser keeps
+    sign_out_session_ids: Optional[List[str]] = Field(None, max_length=10)  # devices to sign out to make room
 
 class LearningSignalIn(BaseModel):
     kind: str
@@ -2393,9 +2398,6 @@ def verify_login_otp(req: LoginOtpVerifyRequest, request: Request, db: Session =
             db.commit()
             raise HTTPException(status_code=401, detail="Invalid code")
 
-        ch.consumed_at = datetime.utcnow()
-        db.commit()
-
         user = db.query(User).filter(User.email == ch.user_email).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
@@ -2406,20 +2408,50 @@ def verify_login_otp(req: LoginOtpVerifyRequest, request: Request, db: Session =
         dev_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES_DEV", "10080"))
         minutes = dev_minutes if (dev_email and user.email == dev_email) else ACCESS_TOKEN_EXPIRE_MINUTES
         access_token_expires = timedelta(minutes=minutes)
-        access_token = create_access_token(
-            data={"sub": user.email, "role": user.role},
-            expires_delta=access_token_expires,
-        )
 
         client_ip = _get_client_ip(request)
         user_agent = request.headers.get("user-agent", "")
         browser_info = _parse_user_agent(user_agent)
+        location = _resolve_geolocation(client_ip) if client_ip else None
+        label = " on ".join(x for x in (browser_info.get("browser"), browser_info.get("device")) if x) or None
+        try:
+            session = start_session(
+                db,
+                user.email,
+                device_id=req.device_id,
+                device_label=label,
+                ip=client_ip,
+                location=location,
+                lifetime=access_token_expires,
+                sign_out_ids=req.sign_out_session_ids,
+            )
+        except DeviceLimitReached as limit:
+            # The code stays valid: the user can choose a device to sign out and try again.
+            return JSONResponse(
+                status_code=409,
+                content={
+                    "detail": {
+                        "code": "device_limit",
+                        "message": f"Your account is already signed in on {limit.limit} devices. "
+                                   "Sign one of them out to continue on this device.",
+                        "limit": limit.limit,
+                        "devices": limit.devices,
+                    }
+                },
+            )
+
+        ch.consumed_at = datetime.utcnow()
+        db.commit()
+        access_token = create_access_token(
+            data={"sub": user.email, "role": user.role, "sid": session.session_id},
+            expires_delta=access_token_expires,
+        )
         db.add(
             LoginHistory(
                 user_email=user.email,
                 event_type="login",
                 ip_address=client_ip or None,
-                location=_resolve_geolocation(client_ip) if client_ip else None,
+                location=location,
                 browser=browser_info.get("browser"),
                 device=browser_info.get("device"),
             )
@@ -2474,14 +2506,34 @@ def ingest_learning_signal(
     return {"ok": True}
 
 
+@app.get("/api/auth/devices")
+def list_signed_in_devices(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Devices this account is signed in on (at most MAX_ACTIVE_DEVICES), with approximate location."""
+    sid = current_user.get("session_id")
+    return {
+        "limit": max_active_devices(),
+        "devices": [describe_session(s, sid) for s in active_sessions(db, current_user["email"])],
+    }
+
+
+@app.delete("/api/auth/devices/{session_id}")
+def sign_out_device(session_id: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Sign one of your devices out. It must sign in again (with a new code) to be used."""
+    if not revoke_session(db, current_user["email"], session_id, "signed_out_by_other_device"):
+        raise HTTPException(status_code=404, detail="Device not found")
+    return {"ok": True}
+
+
 @app.post("/api/auth/logout")
 def logout(
     request: Request,
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Client-side logout (JWT is stateless). Also clears session-scoped FileProcessingHistory."""
+    """Sign this device out (its token stops working) and clear session-scoped FileProcessingHistory."""
     try:
+        if current_user.get("session_id"):
+            revoke_session(db, current_user["email"], current_user["session_id"], "logout")
         # Track logout event (best-effort)
         try:
             client_ip = _get_client_ip(request)

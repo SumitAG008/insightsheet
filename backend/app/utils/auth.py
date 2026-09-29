@@ -153,7 +153,8 @@ def decode_token(token: str) -> dict:
         )
 
 
-async def get_current_user(
+# Plain (not async) so FastAPI runs the database lookup in its thread pool, not on the event loop.
+def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> dict:
@@ -205,7 +206,7 @@ async def get_current_user(
     }
 
 
-async def get_current_admin_user(
+def get_current_admin_user(
     current_user: dict = Depends(get_current_user)
 ) -> dict:
     """

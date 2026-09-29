@@ -765,6 +765,22 @@ app = FastAPI(
 _MAX_REQUEST_BODY_BYTES = max(1, _env_int("MAX_REQUEST_BODY_MB", 520)) * 1024 * 1024
 
 
+_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+}
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    response = await call_next(request)
+    for name, value in _SECURITY_HEADERS.items():
+        response.headers.setdefault(name, value)
+    return response
+
+
 @app.middleware("http")
 async def _limit_request_body_size(request: Request, call_next):
     """Turn away uploads above the largest plan limit before the server spends time and disk on them."""
@@ -8382,10 +8398,20 @@ def _reject_oversized_upload(file: UploadFile, max_bytes: int, max_mb: int) -> N
 
 
 def _get_client_ip(request: Request) -> str:
-    """Resolve client IP from X-Forwarded-For, X-Real-IP, or request.client. Required for security and compliance."""
+    """
+    Resolve the client IP (used for login limits, audit logs and consent records).
+
+    X-Forwarded-For is "client, proxy1, proxy2": each proxy appends the address it saw,
+    but the caller can put anything at the start. Only the entries added by our own
+    proxies can be trusted, so take the one TRUSTED_PROXY_HOPS from the right
+    (1 = Railway's edge, which the browser talks to directly).
+    """
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
-        return forwarded.split(",")[0].strip()
+        hops = [h.strip() for h in forwarded.split(",") if h.strip()]
+        trusted = max(1, _env_int("TRUSTED_PROXY_HOPS", 1))
+        if hops:
+            return hops[-trusted] if len(hops) >= trusted else hops[0]
     real = request.headers.get("x-real-ip")
     if real:
         return real.strip()
@@ -8635,7 +8661,10 @@ def esg_audit_report(
     db: Session = Depends(get_db)
 ):
     from app.services.esg_ml_service import ESGIntelligenceService
-    
+
+    _esg_v2_require_project_access(db, current_user["email"], project_id)
+    _esg_v2_require_period_access(db, current_user["email"], project_id, period_id)
+
     # 1. Fetch metrics and their history for anomaly detection
     metrics = db.query(EsgMetricValue).filter(
         EsgMetricValue.project_id == project_id,
@@ -8716,7 +8745,9 @@ def esg_predict_net_zero(
 ):
     from app.services.predictive_ml_service import PredictiveMLService
     import datetime
-    
+
+    _esg_v2_require_project_access(db, current_user["email"], project_id)
+
     # 1. Fetch periods and their GHG metrics
     periods = db.query(EsgReportingPeriod).filter(EsgReportingPeriod.project_id == project_id).order_by(EsgReportingPeriod.start_date).all()
     

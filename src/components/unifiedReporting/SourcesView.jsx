@@ -45,7 +45,7 @@ export function UploadZone({ onFiles, busy, compact, lake, storeInLake, onStoreI
         <label className="mx-auto mt-3 flex w-fit cursor-pointer items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
           <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={Boolean(storeInLake)} onChange={(e) => onStoreInLake(e.target.checked)} />
           <Warehouse className="h-4 w-4 text-emerald-600" />
-          Store in the Meldra lakehouse (for large data and access from any device)
+          Store in the Meldra lakehouse (kept on Meldra's servers until you delete it; for large data and access from any device)
         </label>
       )}
     </div>

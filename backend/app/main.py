@@ -899,7 +899,7 @@ async def startup_event():
     # and email work never stalls request handling.
     if _acquire_background_jobs_lock():
         logger.info("This worker runs the scheduled background jobs")
-        for job in (_background_cleanup_file_processing_history, _background_free_trial_lifecycle):
+        for job in (_background_cleanup_file_processing_history, _background_free_trial_lifecycle, _background_data_retention):
             threading.Thread(target=asyncio.run, args=(job(),), daemon=True, name=job.__name__).start()
 
 
@@ -1199,7 +1199,7 @@ def _run_books_to_scrape_job(job_id: str) -> None:
         db.close()
 
 
-def _run_invoice_extraction_job(job_id: str) -> None:
+def _run_invoice_extraction_job(job_id: str, content: bytes = b"") -> None:
     from app.database import SessionLocal
 
     db = SessionLocal()
@@ -1219,10 +1219,8 @@ def _run_invoice_extraction_job(job_id: str) -> None:
             cfg = {}
 
         filename = (cfg.get("filename") or "invoice.pdf").strip() or "invoice.pdf"
-        b64 = cfg.get("content_base64") or ""
-        if not b64:
+        if not content:
             raise ValueError("Missing file content")
-        content = base64.b64decode(b64)
         ocr_lang = (cfg.get("ocr_lang") or None)
         max_pages = int(cfg.get("max_pages") or 25)
 
@@ -1625,16 +1623,22 @@ async def run_invoice_extraction(
     db: Session = Depends(get_db),
 ):
     _enforce_feature(db, current_user["email"], "invoice_extractor")
+    try:
+        content = base64.b64decode(payload.content_base64 or "", validate=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="The file could not be read")
+    if not content:
+        raise HTTPException(status_code=400, detail="The file is empty")
     job_id = _create_invoice_job_id()
     now = datetime.utcnow()
     job = InvoiceExtractionJob(
         job_id=job_id,
         user_email=current_user["email"],
         status="queued",
+        # The file itself is never stored: it goes to the worker thread in memory only.
         config_json=json.dumps(
             {
                 "filename": payload.filename,
-                "content_base64": payload.content_base64,
                 "ocr_lang": payload.ocr_lang,
                 "max_pages": payload.max_pages,
             }
@@ -1645,7 +1649,7 @@ async def run_invoice_extraction(
     db.commit()
 
     loop = asyncio.get_running_loop()
-    loop.run_in_executor(None, _run_invoice_extraction_job, job_id)
+    loop.run_in_executor(None, _run_invoice_extraction_job, job_id, content)
     return {"job_id": job_id}
 
 
@@ -2579,6 +2583,25 @@ def _session_history_ttl_minutes() -> int:
     except Exception:
         dev_minutes = 10080
     return max(int(ACCESS_TOKEN_EXPIRE_MINUTES), int(dev_minutes))
+
+
+async def _background_data_retention() -> None:
+    """Delete personal data past its retention period (see app/services/data_retention.py), every 6 hours."""
+    from app.database import SessionLocal
+    from app.services.data_retention import purge_expired_personal_data
+
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                removed = purge_expired_personal_data(db)
+                if any(removed.values()):
+                    logger.info("Data retention: removed %s", {k: v for k, v in removed.items() if v})
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning(f"Data retention run failed: {type(e).__name__}")
+        await asyncio.sleep(6 * 60 * 60)
 
 
 async def _background_cleanup_file_processing_history() -> None:

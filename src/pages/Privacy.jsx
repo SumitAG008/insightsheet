@@ -61,21 +61,30 @@ export default function Privacy() {
               <div>
                 <h3 className="font-semibold text-slate-900 mb-2">Account Information (Stored):</h3>
                 <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li>Email address (from Google login)</li>
-                  <li>Full name (from Google profile)</li>
+                  <li>Email address and name</li>
                   <li>Subscription status and plan details</li>
                   <li>AI query usage statistics</li>
                   <li>Payment transaction records</li>
                 </ul>
               </div>
               <div>
+                <h3 className="font-semibold text-slate-900 mb-2">Security and Usage Data (Stored, then Deleted):</h3>
+                <ul className="list-disc list-inside space-y-1 ml-4">
+                  <li>Signed-in devices: browser and device type, IP address and approximate location (city, country), used to keep your account secure and to limit a subscription to 2 devices at once. Deleted 30 days after the device signs out.</li>
+                  <li>Sign-in history (the same details): deleted after 90 days.</li>
+                  <li>Which tools you use and the words you search for in Meldra (never file contents), used to improve your suggestions: deleted after 180 days.</li>
+                  <li>Cookie consent choices: kept for 2 years as proof of consent.</li>
+                  <li>Results of document extraction jobs: deleted when the job expires, within hours.</li>
+                </ul>
+              </div>
+              <div>
                 <h3 className="font-semibold text-slate-900 mb-2">Data We DO NOT Collect:</h3>
                 <ul className="list-disc list-inside space-y-1 ml-4 text-red-700">
-                  <li>❌ Your uploaded CSV files</li>
+                  <li>❌ Your uploaded files (processed in memory and discarded), unless you choose to store data in the Meldra lakehouse, where it stays until you delete it</li>
                   <li>❌ Content of your spreadsheets</li>
                   <li>❌ Any sensitive business data</li>
                   <li>❌ Personal information from your files</li>
-                  <li>❌ IP addresses or tracking data</li>
+                  <li>❌ Advertising or cross-site tracking data</li>
                 </ul>
               </div>
             </div>

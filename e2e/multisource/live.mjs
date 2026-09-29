@@ -8,6 +8,12 @@ import { execFileSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import XLSX from 'xlsx';
 
+// Storing in the lakehouse is opt-in: tick the box before uploading.
+const optInToLakehouse = async (page) => {
+  const box = page.getByLabel(/Store in the Meldra lakehouse/);
+  if (await box.count()) await box.first().check();
+};
+
 // Playwright is not a project dependency: install it, or point PLAYWRIGHT_MODULE at a global copy.
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 
@@ -89,6 +95,7 @@ await open();
 await nav().getByRole('button', { name: /Data sources/ }).click();
 
 // ---------- 1. Spreadsheet (Excel upload) ----------
+await optInToLakehouse(page);
 await page.locator('input[type=file]').first().setInputFiles(SRC.xlsx);
 await lakeCards().filter({ hasText: 'team_budgets' }).waitFor({ timeout: 120000 });
 check('Excel workbook uploaded and stored in the lakehouse', true, '10 teams');

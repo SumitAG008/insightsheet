@@ -21,7 +21,7 @@ const choices = (src) => src.columns.map((c) => ({ name: c.name, key: c.key, rol
 
 export default function useLakehouse({ sources, setSources, toast }) {
   const [lake, setLake] = useState({ enabled: false, checked: false });
-  const [storeInLake, setStoreInLake] = useState(true);
+  const [storeInLake, setStoreInLake] = useState(false); // opt-in: by default data stays in the browser
   const [lakeLinks, setLakeLinks] = useState([]);
 
   useEffect(() => {

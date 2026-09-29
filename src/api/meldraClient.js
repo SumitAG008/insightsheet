@@ -584,6 +584,13 @@ export const backendApi = {
     excelToPpt: async (file, options = {}) => {
       const formData = new FormData();
       formData.append('file', file);
+      // Presentation design (applies to this deck only; nothing is stored on the server)
+      const design = (options && options.design) || {};
+      if (design.theme) formData.append('theme', design.theme);
+      if (design.brandColor) formData.append('brand_color', design.brandColor);
+      if (design.font) formData.append('font', design.font);
+      if (design.company) formData.append('company', design.company);
+      if (design.logo) formData.append('logo', design.logo);
 
       const mode = (options && options.mode) ? String(options.mode) : '';
       const qs = mode ? `?mode=${encodeURIComponent(mode)}` : '';

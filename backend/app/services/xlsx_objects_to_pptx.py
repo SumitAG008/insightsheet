@@ -13,6 +13,7 @@ chartEx types and silently skips charts it cannot parse.
 """
 from __future__ import annotations
 
+import copy
 import hashlib
 import io
 import posixpath
@@ -25,6 +26,7 @@ from lxml import etree
 from pptx import Presentation
 from pptx.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx.opc.package import Part
+from pptx.oxml import parse_xml
 from pptx.opc.packuri import PackURI
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
@@ -588,6 +590,7 @@ def _signature(wb: _Workbook, obj: WorkbookObject) -> str:
     return f"{obj.kind}:" + hashlib.sha256(etree.tostring(root, method="c14n")).hexdigest()
 
 
+FOOTER_H = Inches(0.3)
 TABLE_ROWS_PER_SLIDE = 15
 TABLE_COLS_PER_SLIDE = 10
 TABLE_MAX_ROWS = 200
@@ -614,7 +617,7 @@ def _add_table_slides(prs, blank, table: SheetTable, heading: str, margin: int, 
     row_pages = [body[i:i + TABLE_ROWS_PER_SLIDE] for i in range(0, len(body), TABLE_ROWS_PER_SLIDE)] or [[]]
     pages = [(rows, cols) for cols in col_groups for rows in row_pages]
     box_w = prs.slide_width - 2 * margin
-    box_h = prs.slide_height - title_h - 2 * margin
+    box_h = prs.slide_height - title_h - 2 * margin - FOOTER_H
     added = 0
     for n, (rows, cols) in enumerate(pages, start=1):
         slide = prs.slides.add_slide(blank)
@@ -656,16 +659,43 @@ def _add_table_slides(prs, blank, table: SheetTable, heading: str, margin: int, 
                     run.font.bold = i == 0 or src.bold
         added += 1
     if table.total_rows > len(body):
-        note = slide.shapes.add_textbox(margin, prs.slide_height - margin, box_w, Inches(0.3))
+        note = slide.shapes.add_textbox(margin, prs.slide_height - margin - FOOTER_H, box_w, Inches(0.3))
         note.text_frame.text = f"Showing the first {len(body)} of {table.total_rows} rows."
         note.text_frame.paragraphs[0].runs[0].font.size = Pt(11)
         note.text_frame.paragraphs[0].runs[0].font.color.rgb = RGBColor(0x59, 0x59, 0x59)
     return added
 
 
+RT_THEME = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"
+
+
+def _use_workbook_theme(prs, wb: "_Workbook") -> bool:
+    """
+    Charts mostly say "accent colour 2" or "body font" rather than a fixed colour or font, and
+    that is looked up in the document's theme. Give the presentation the workbook's colour and
+    font scheme so every chart is painted exactly as in Excel (slide styling uses fixed colours).
+    """
+    theme_path = next((t for (rt, t, ext) in wb.rels("xl/workbook.xml").values() if rt == RT_THEME and not ext), None)
+    if not theme_path or theme_path not in wb.names:
+        return False
+    src = wb.xml(theme_path)
+    part = prs.slide_master.part.part_related_by(RT.THEME)
+    dst = etree.fromstring(part.blob)
+    changed = False
+    for tag in ("clrScheme", "fontScheme"):
+        new = src.find(".//a:themeElements/a:%s" % tag, NS)
+        old = dst.find(".//a:themeElements/a:%s" % tag, NS)
+        if new is not None and old is not None:
+            old.getparent().replace(old, copy.deepcopy(new))
+            changed = True
+    if changed:
+        part._blob = etree.tostring(dst, xml_declaration=True, encoding="UTF-8", standalone=True)
+    return changed
+
+
 def convert_workbook_objects(
     xlsx_bytes: bytes, title: str = "", embed_data: bool = True, keep_duplicates: bool = False,
-    include_tables: bool = True,
+    include_tables: bool = True, branding: Optional["Branding"] = None,
 ) -> Tuple[Optional[bytes], dict]:
     """
     Build a presentation with a section slide per tab and one slide per chart or picture.
@@ -724,10 +754,16 @@ def convert_workbook_objects(
     blank = prs.slide_layouts[6]
     title_layout = prs.slide_layouts[0]
     copier = _Copier(wb, prs.part.package)
+    try:
+        _use_workbook_theme(prs, wb)
+    except Exception as e:  # the charts still work, with the presentation's default palette
+        report.skipped.append(f"workbook theme ({type(e).__name__})")
     embed = embed_data and len(xlsx_bytes) <= MAX_EMBED_BYTES
 
+    cover_slides = set()
     if title:
         s = prs.slides.add_slide(title_layout)
+        cover_slides.add(s.slide_id)
         s.shapes.title.text = title
         n_charts = sum(1 for o in objects if o.kind != "picture")
         n_pics = len(objects) - n_charts
@@ -753,7 +789,7 @@ def convert_workbook_objects(
     seen_tab: Dict[Tuple[str, str], int] = {}
 
     margin, title_h = Inches(0.4), Inches(0.8)
-    box_w, box_h = SLIDE_W - 2 * margin, SLIDE_H - title_h - 2 * margin
+    box_w, box_h = SLIDE_W - 2 * margin, SLIDE_H - title_h - 2 * margin - FOOTER_H
     by_sheet: Dict[str, list] = {}
     for o in objects:
         by_sheet.setdefault(o.sheet, []).append(o)
@@ -767,6 +803,7 @@ def convert_workbook_objects(
             continue
         if len(by_sheet) > 1:
             sec = prs.slides.add_slide(title_layout)
+            cover_slides.add(sec.slide_id)
             sec.shapes.title.text = sheet
             n_t = sum(1 for i in items if isinstance(i, SheetTable))
             n_o = len(items) - n_t
@@ -821,7 +858,7 @@ def convert_workbook_objects(
                     report.data_embedded = True
                 rid = slide.part.relate_to(part, RT.CHART if obj.kind == "chart" else RT_CHARTEX)
                 shape_id = max((sp.shape_id for sp in slide.shapes), default=1) + 1
-                frame = etree.fromstring(_graphic_frame_xml(shape_id, obj.name or heading, x, y, cx, cy, rid, obj.kind == "chartex"))
+                frame = parse_xml(_graphic_frame_xml(shape_id, obj.name or heading, x, y, cx, cy, rid, obj.kind == "chartex"))
                 slide.shapes._spTree.append(frame)
                 if obj.kind == "chart":
                     report.charts += 1
@@ -830,9 +867,148 @@ def convert_workbook_objects(
             except Exception as e:  # one bad object must not lose the rest of the deck
                 report.skipped.append(f"{sheet}: {obj.name or obj.part} ({type(e).__name__}: {e})")
 
+    apply_branding(prs, branding or Branding(), cover_slides)
     out = io.BytesIO()
     prs.save(out)
     return out.getvalue(), report.as_dict()
+
+
+# ---------------------------------------------------------------- branding
+
+THEMES = {
+    # background, text, muted text, accent, table band
+    "light": ("FFFFFF", "1F2937", "6B7280", "2563EB", "F3F4F6"),
+    "dark": ("0F172A", "F1F5F9", "94A3B8", "38BDF8", "1E293B"),
+    "corporate": ("FFFFFF", "0F172A", "64748B", "0B3D91", "EEF2F7"),
+    "warm": ("FFFBF5", "3B2A1A", "8B7355", "C2410C", "FDF1E4"),
+    "green": ("F8FBF8", "1B2E1F", "5B7560", "15803D", "E8F3EA"),
+}
+FONTS = ["Calibri", "Arial", "Segoe UI", "Verdana", "Tahoma", "Trebuchet MS", "Georgia", "Times New Roman", "Garamond", "Aptos"]
+
+
+@dataclass
+class Branding:
+    theme: str = "light"
+    brand_color: Optional[str] = None  # hex such as "#0B3D91"
+    font: str = "Calibri"
+    company: str = ""
+    logo: Optional[bytes] = None  # PNG/JPEG bytes, already validated
+
+    def colors(self):
+        bg, text, muted, accent, band = THEMES.get(self.theme, THEMES["light"])
+        if self.brand_color and re.fullmatch(r"#?[0-9A-Fa-f]{6}", self.brand_color.strip()):
+            accent = self.brand_color.strip().lstrip("#").upper()
+        return [RGBColor.from_string(c) for c in (bg, text, muted, accent, band)]
+
+
+def _on_color(rgb: RGBColor) -> RGBColor:
+    r, g, b = rgb[0], rgb[1], rgb[2]
+    return RGBColor(0x11, 0x18, 0x27) if (0.299 * r + 0.587 * g + 0.114 * b) > 170 else RGBColor(0xFF, 0xFF, 0xFF)
+
+
+def _style_runs(frame, font: str, color: RGBColor, size=None, bold=None) -> None:
+    for p in frame.paragraphs:
+        for r in p.runs:
+            r.font.name = font
+            r.font.color.rgb = color
+            if size is not None:
+                r.font.size = size
+            if bold is not None:
+                r.font.bold = bold
+
+
+def apply_branding(prs, brand: Branding, cover_slides: set) -> None:
+    """Theme, brand colour, font, logo and footer on every slide. Charts keep their Excel look."""
+    from pptx.enum.shapes import MSO_SHAPE
+
+    bg, text, muted, accent, band = brand.colors()
+    font = brand.font if brand.font in FONTS else "Calibri"
+    on_accent = _on_color(accent)
+    logo_size = None
+    if brand.logo:
+        from PIL import Image
+
+        with Image.open(io.BytesIO(brand.logo)) as im:
+            logo_size = im.size
+    W, H = prs.slide_width, prs.slide_height
+    total = len(prs.slides)
+    for number, slide in enumerate(prs.slides, start=1):
+        fill = slide.background.fill
+        fill.solid()
+        fill.fore_color.rgb = bg
+        cover = slide.slide_id in cover_slides
+        if cover:
+            bar = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, 0, 0, Inches(0.35), H)
+            bar.fill.solid()
+            bar.fill.fore_color.rgb = accent
+            bar.line.fill.background()
+            for ph in slide.placeholders:
+                idx = ph.placeholder_format.idx
+                _style_runs(ph.text_frame, font, text if idx == 0 else muted, bold=True if idx == 0 else None)
+            if logo_size:
+                h = Inches(1.0)
+                w = int(h * logo_size[0] / logo_size[1])
+                if w > Inches(3):
+                    w, h = Inches(3), int(Inches(3) * logo_size[1] / logo_size[0])
+                slide.shapes.add_picture(io.BytesIO(brand.logo), W - w - Inches(0.6), Inches(0.5), w, h)
+            continue
+        logo_w = 0
+        if logo_size:
+            h = Inches(0.5)
+            logo_w = min(int(h * logo_size[0] / logo_size[1]), Inches(2))
+            h = int(logo_w * logo_size[1] / logo_size[0])
+            slide.shapes.add_picture(io.BytesIO(brand.logo), W - logo_w - Inches(0.4), Inches(0.3), logo_w, h)
+        for shape in list(slide.shapes):
+            if shape.has_text_frame and shape.top == Inches(0.25):  # the slide heading
+                if logo_w:
+                    shape.width = W - Inches(0.8) - logo_w - Inches(0.3)
+                _style_runs(shape.text_frame, font, text)
+                line = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.4), Inches(1.0), Inches(1.2), Inches(0.06))
+                line.fill.solid()
+                line.fill.fore_color.rgb = accent
+                line.line.fill.background()
+            elif shape.has_text_frame:
+                _style_runs(shape.text_frame, font, muted)
+            elif shape.has_table:
+                tbl = shape.table
+                tbl.first_row = True
+                tbl.horz_banding = False
+                for i, row in enumerate(tbl.rows):
+                    for cell in row.cells:
+                        cell.fill.solid()
+                        cell.fill.fore_color.rgb = accent if i == 0 else (band if i % 2 == 0 else bg)
+                        _style_runs(cell.text_frame, font, on_accent if i == 0 else text)
+        footer_y = H - Inches(0.35)
+        if brand.company:
+            fb = slide.shapes.add_textbox(Inches(0.4), footer_y, W // 2, Inches(0.3))
+            fb.text_frame.text = brand.company
+            _style_runs(fb.text_frame, font, muted, size=Pt(10))
+        nb = slide.shapes.add_textbox(W - Inches(1.4), footer_y, Inches(1.0), Inches(0.3))
+        nb.text_frame.text = f"{number} / {total}"
+        nb.text_frame.paragraphs[0].alignment = PP_ALIGN.RIGHT
+        _style_runs(nb.text_frame, font, muted, size=Pt(10))
+
+
+def validate_logo(data: bytes, max_bytes: int = 2 * 1024 * 1024) -> bytes:
+    """A logo upload as PNG bytes; raises ValueError for anything that isn't a normal image."""
+    from PIL import Image
+
+    if not data or len(data) > max_bytes:
+        raise ValueError("The logo must be an image of 2 MB or less")
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            if im.format not in ("PNG", "JPEG", "GIF", "BMP", "WEBP"):
+                raise ValueError("The logo must be a PNG, JPG, GIF, BMP or WebP image")
+            if im.width * im.height > 25_000_000:
+                raise ValueError("The logo image is too large")
+            im.load()
+            out = io.BytesIO()
+            (im.convert("RGBA") if im.mode not in ("RGB", "RGBA") else im).save(out, "PNG")
+            return out.getvalue()
+    except ValueError:
+        raise
+    except Exception:
+        raise ValueError("The logo could not be read as an image")
 
 
 def csv_to_xlsx(csv_bytes: bytes) -> bytes:

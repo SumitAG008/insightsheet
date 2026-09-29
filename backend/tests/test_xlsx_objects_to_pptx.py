@@ -227,3 +227,62 @@ def test_csv_becomes_table_slides_without_invented_charts():
     prs, kinds = _slides_text(deck)
     headers = [sh.table.cell(0, 0).text for s in prs.slides for sh in s.shapes if sh.has_table]
     assert headers == ["Region"] * 3  # header repeated on every page
+
+
+def test_charts_use_the_workbook_colour_and_font_theme():
+    """Charts refer to theme colours (accent 1, 2, ...); the deck must carry the workbook's theme,
+    or an orange series in Excel turns red in PowerPoint."""
+    deck, _ = convert_workbook_objects(open(FIXTURE, "rb").read())
+    z = zipfile.ZipFile(io.BytesIO(deck))
+    theme = next(z.read(n).decode() for n in z.namelist() if n.startswith("ppt/theme/"))
+    wb_theme = zipfile.ZipFile(FIXTURE).read("xl/theme/theme1.xml").decode()
+    import re as _re
+    accents = lambda t: _re.findall(r'<a:(accent\d)><a:srgbClr val="(\w+)"', t)
+    assert accents(theme) == accents(wb_theme) and ("accent2", "ED7D31") in accents(theme)
+    assert 'typeface="Calibri Light"' in theme
+
+
+def _logo_png():
+    b = io.BytesIO()
+    Image.new("RGB", (300, 100), "orange").save(b, "PNG")
+    return b.getvalue()
+
+
+def test_branding_theme_colour_font_logo_and_footer():
+    from app.services.xlsx_objects_to_pptx import Branding
+
+    deck, _ = convert_workbook_objects(
+        _workbook(), title="Pack",
+        branding=Branding(theme="dark", brand_color="#7C3AED", font="Georgia", company="Acme Ltd", logo=_logo_png()),
+    )
+    prs = Presentation(io.BytesIO(deck))
+    for s in prs.slides:
+        assert str(s.background.fill.fore_color.rgb) == "0F172A"  # dark theme background
+    body = [s for s in prs.slides if any(sh.has_chart for sh in s.shapes)]
+    for s in body:
+        pics = [sh for sh in s.shapes if sh.shape_type == 13]
+        assert pics, "logo on every content slide"
+        texts = [sh.text_frame.text for sh in s.shapes if sh.has_text_frame]
+        assert "Acme Ltd" in texts and any("/" in t for t in texts)  # footer and slide number
+        fonts = {r.font.name for sh in s.shapes if sh.has_text_frame for p in sh.text_frame.paragraphs for r in p.runs}
+        assert fonts == {"Georgia"}
+
+
+def test_endpoint_design_options_and_validation():
+    main = pytest.importorskip("app.main", reason="full backend dependencies not installed")
+    from fastapi.testclient import TestClient
+
+    main.init_db()
+    main.app.dependency_overrides[main.get_current_user] = lambda: {"email": "ppt-design@example.com", "full_name": "T"}
+    xlsx = ("pack.xlsx", _workbook(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    try:
+        c = TestClient(main.app)
+        ok = c.post("/api/files/excel-to-ppt", files={"file": xlsx, "logo": ("logo.png", _logo_png(), "image/png")},
+                    data={"theme": "corporate", "brand_color": "#0B3D91", "company": "Acme"})
+        assert ok.status_code == 200, ok.text
+        bad_logo = c.post("/api/files/excel-to-ppt", files={"file": xlsx, "logo": ("logo.png", b"not an image", "image/png")})
+        assert bad_logo.status_code == 400
+        bad_colour = c.post("/api/files/excel-to-ppt", files={"file": xlsx}, data={"brand_color": "red; drop"})
+        assert bad_colour.status_code == 400
+    finally:
+        main.app.dependency_overrides.clear()

@@ -11,7 +11,28 @@ import {
   Image as ImageIcon, BarChart3, Table, Zap, PieChart, TrendingUp, Lock
 } from 'lucide-react';
 
+const DESIGN_KEY = 'meldra.pptDesign';
+const THEMES = [
+  { id: 'light', label: 'Light', bg: '#FFFFFF', accent: '#2563EB' },
+  { id: 'dark', label: 'Dark', bg: '#0F172A', accent: '#38BDF8' },
+  { id: 'corporate', label: 'Corporate', bg: '#FFFFFF', accent: '#0B3D91' },
+  { id: 'warm', label: 'Warm', bg: '#FFFBF5', accent: '#C2410C' },
+  { id: 'green', label: 'Green', bg: '#F8FBF8', accent: '#15803D' },
+];
+const FONTS = ['Calibri', 'Arial', 'Segoe UI', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Georgia', 'Times New Roman', 'Garamond', 'Aptos'];
+
+// The design choice is remembered in this browser only; the logo is sent with each conversion and never stored.
+const loadDesign = () => {
+  try {
+    return { theme: 'light', brandColor: '', font: 'Calibri', company: '', ...JSON.parse(localStorage.getItem(DESIGN_KEY) || '{}') };
+  } catch {
+    return { theme: 'light', brandColor: '', font: 'Calibri', company: '' };
+  }
+};
+
 export default function FileToPPT() {
+  const [design, setDesign] = useState(loadDesign);
+  const [logoFile, setLogoFile] = useState(null);
   const [file, setFile] = useState(null);
   const [converting, setConverting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -21,6 +42,24 @@ export default function FileToPPT() {
   const [progressMessage, setProgressMessage] = useState('');
   const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
+
+  useEffect(() => {
+    try { localStorage.setItem(DESIGN_KEY, JSON.stringify(design)); } catch { /* storage unavailable */ }
+  }, [design]);
+
+  const updateDesign = (patch) => setDesign((d) => ({ ...d, ...patch }));
+
+  const handleLogo = (e) => {
+    const f = e.target.files?.[0];
+    if (!f) { setLogoFile(null); return; }
+    if (!/^image\/(png|jpeg|gif|bmp|webp)$/.test(f.type) || f.size > 2 * 1024 * 1024) {
+      setError('Logo must be a PNG, JPG, GIF, BMP or WebP image of 2 MB or less.');
+      e.target.value = '';
+      return;
+    }
+    setError('');
+    setLogoFile(f);
+  };
 
   // Load required libraries and user data
   useEffect(() => {
@@ -136,7 +175,7 @@ export default function FileToPPT() {
       setProgress(40);
       setProgressMessage('Converting spreadsheet (server-side)...');
 
-      const blob = await backendApi.files.excelToPpt(file);
+      const blob = await backendApi.files.excelToPpt(file, { design: { ...design, logo: logoFile } });
 
       setProgress(85);
       setProgressMessage('Downloading PowerPoint...');
@@ -417,6 +456,77 @@ export default function FileToPPT() {
                 </Button>
               )}
             </div>
+
+            {fileType !== 'pdf' && (
+              <div className="mb-4 rounded-xl border border-slate-700/60 bg-slate-800/40 p-4">
+                <p className="text-white font-semibold mb-3">Presentation design</p>
+                <div className="flex flex-wrap gap-2 mb-4" role="radiogroup" aria-label="Theme">
+                  {THEMES.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={design.theme === t.id}
+                      onClick={() => updateDesign({ theme: t.id })}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${design.theme === t.id ? 'border-[#4169E1] ring-2 ring-[#4169E1]/40 text-white' : 'border-slate-600 text-slate-300'}`}
+                    >
+                      <span className="inline-block h-4 w-6 rounded border border-slate-500" style={{ background: `linear-gradient(90deg, ${t.bg} 60%, ${design.brandColor || t.accent} 60%)` }} />
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="text-sm text-slate-300">
+                    Brand colour
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={design.brandColor || THEMES.find((t) => t.id === design.theme)?.accent || '#2563EB'}
+                        onChange={(e) => updateDesign({ brandColor: e.target.value })}
+                        className="h-9 w-12 rounded border border-slate-600 bg-transparent"
+                        aria-label="Brand colour"
+                      />
+                      {design.brandColor && (
+                        <button type="button" className="text-xs text-slate-400 underline" onClick={() => updateDesign({ brandColor: '' })}>
+                          Use theme colour
+                        </button>
+                      )}
+                    </div>
+                  </label>
+                  <label className="text-sm text-slate-300">
+                    Font
+                    <select
+                      value={design.font}
+                      onChange={(e) => updateDesign({ font: e.target.value })}
+                      className="mt-1 block w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-white"
+                    >
+                      {FONTS.map((f) => <option key={f} value={f}>{f}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm text-slate-300">
+                    Company name (footer)
+                    <input
+                      type="text"
+                      maxLength={120}
+                      value={design.company}
+                      onChange={(e) => updateDesign({ company: e.target.value })}
+                      placeholder="e.g. Acme Ltd"
+                      className="mt-1 block w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-white"
+                    />
+                  </label>
+                  <label className="text-sm text-slate-300">
+                    Logo (PNG or JPG, up to 2 MB)
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/gif,image/bmp,image/webp"
+                      onChange={handleLogo}
+                      className="mt-1 block w-full text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-slate-700 file:px-3 file:py-2 file:text-white"
+                    />
+                  </label>
+                </div>
+                <p className="mt-3 text-xs text-slate-400">Charts keep their exact Excel look. The design applies to backgrounds, headings, tables and cover slides.</p>
+              </div>
+            )}
 
             {progress > 0 && (
               <div className="mb-4">

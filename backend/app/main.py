@@ -5060,7 +5060,7 @@ def developer_generate_pl_with_file(
         raise HTTPException(status_code=500, detail="P&L generation failed")
 
 
-def _native_workbook_deck(xlsx_bytes: bytes, filename: str) -> Optional[bytes]:
+def _native_workbook_deck(xlsx_bytes: bytes, filename: str, branding=None) -> Optional[bytes]:
     """
     Excel/CSV to slides: each table as native table slides, each chart as a native editable chart
     and each picture at full quality, one per slide. None when the file has nothing to show or
@@ -5073,7 +5073,7 @@ def _native_workbook_deck(xlsx_bytes: bytes, filename: str) -> Optional[bytes]:
     try:
         if (filename or "").lower().endswith(".csv"):
             xlsx_bytes = csv_to_xlsx(xlsx_bytes)
-        deck, report = convert_workbook_objects(xlsx_bytes, title=title)
+        deck, report = convert_workbook_objects(xlsx_bytes, title=title, branding=branding)
     except Exception as e:
         logger.warning(f"Native workbook conversion unavailable ({type(e).__name__}); using data slides")
         return None
@@ -5089,9 +5089,30 @@ def _native_workbook_deck(xlsx_bytes: bytes, filename: str) -> Optional[bytes]:
 def excel_to_ppt(
     file: UploadFile = File(...),
     mode: str = Query("smart"),
+    theme: str = Form("light"),
+    brand_color: Optional[str] = Form(None),
+    font: Optional[str] = Form(None),
+    company: Optional[str] = Form(None, max_length=120),
+    logo: Optional[UploadFile] = File(None),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    # Design choices apply to this deck only; nothing is stored.
+    from app.services.xlsx_objects_to_pptx import Branding, validate_logo, THEMES
+
+    try:
+        logo_png = validate_logo(logo.file.read()) if logo is not None and logo.filename else None
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if brand_color and not re.fullmatch(r"#?[0-9A-Fa-f]{6}", brand_color.strip()):
+        raise HTTPException(status_code=400, detail="Brand colour must be a hex colour such as #0B3D91")
+    branding = Branding(
+        theme=theme if theme in THEMES else "light",
+        brand_color=brand_color,
+        font=font or "Calibri",
+        company=(company or "").strip(),
+        logo=logo_png,
+    )
     try:
         subscription = db.query(Subscription).filter(
             Subscription.user_email == current_user["email"]
@@ -5130,7 +5151,7 @@ def excel_to_ppt(
             if err:
                 raise HTTPException(status_code=400, detail=f"Exact conversion failed: {err}")
         elif file.filename.lower().endswith((".xlsx", ".xlsm", ".csv")) and (
-            native := _native_workbook_deck(file_content, file.filename)
+            native := _native_workbook_deck(file_content, file.filename, branding)
         ):
             # Tables as native tables; charts copied as native, editable charts; pictures at full quality.
             ppt_data = native

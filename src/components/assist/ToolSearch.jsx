@@ -3,15 +3,20 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Command as CommandPrimitive } from 'cmdk';
-import { Search } from 'lucide-react';
+import { CornerDownLeft, Loader2, Search } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { backendApi } from '@/api/backendClient';
+import { DEFAULT_ICON, TOOLS, TOOLS_BY_ID, searchLocally } from './toolCatalog';
+
+// With an empty box and no history yet, show the most-used tools.
+const STARTERS = ['excel_to_ppt', 'filename_cleaner', 'pdf_doc_converter', 'reconciliation', 'file_analyzer', 'unified_reporting'].map((id) => TOOLS_BY_ID[id]);
 
 export default function ToolSearch({ open, onOpenChange }) {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState('');
   const requestId = useRef(0);
 
   useEffect(() => {
@@ -19,15 +24,18 @@ export default function ToolSearch({ open, onOpenChange }) {
     const id = ++requestId.current;
     setLoading(true);
     const timer = setTimeout(async () => {
+      const q = query.trim();
+      let res;
       try {
-        const res = query.trim()
-          ? (await backendApi.assist.search(query)).results
-          : (await backendApi.assist.suggestions()).suggestions;
-        if (id === requestId.current) setResults(res || []);
+        res = q ? (await backendApi.assist.search(q)).results : (await backendApi.assist.suggestions()).suggestions;
       } catch {
-        if (id === requestId.current) setResults([]);
-      } finally {
-        if (id === requestId.current) setLoading(false);
+        res = null; // server unavailable: search on the device instead
+      }
+      if (!res || (!q && res.length === 0)) res = q ? searchLocally(q) : STARTERS;
+      if (id === requestId.current) {
+        setResults(res);
+        setSelected(res[0]?.id || ''); // Enter always opens the best match
+        setLoading(false);
       }
     }, query.trim() ? 180 : 0);
     return () => clearTimeout(timer);
@@ -45,38 +53,59 @@ export default function ToolSearch({ open, onOpenChange }) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden p-0 sm:max-w-xl">
+      <DialogContent className="top-[20%] translate-y-0 overflow-hidden p-0 sm:max-w-xl gap-0 [&>button]:hidden">
         <DialogTitle className="sr-only">Search Meldra tools</DialogTitle>
-        <CommandPrimitive shouldFilter={false} className="flex w-full flex-col">
-          <div className="flex items-center border-b px-3">
-            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+        <CommandPrimitive shouldFilter={false} loop value={selected} onValueChange={setSelected} className="flex w-full flex-col">
+          <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-700 px-4">
+            <Search className="h-5 w-5 shrink-0 text-slate-400" />
             <CommandPrimitive.Input
               value={query}
               onValueChange={setQuery}
+              autoFocus
               placeholder="What do you want to do? e.g. excel to ppt, rename files, bank rec"
-              className="h-12 w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+              className="h-14 w-full bg-transparent text-base text-slate-900 dark:text-slate-100 outline-none placeholder:text-slate-400"
             />
+            {loading && <Loader2 className="h-4 w-4 shrink-0 animate-spin text-slate-400" />}
+            <kbd className="shrink-0 rounded border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 text-[11px] text-slate-400">Esc</kbd>
           </div>
-          <CommandPrimitive.List className="max-h-[360px] overflow-y-auto p-2">
+          <CommandPrimitive.List className="max-h-[min(420px,60vh)] overflow-y-auto p-2">
             {!loading && results.length === 0 && (
-              <CommandPrimitive.Empty className="py-6 text-center text-sm text-slate-500">No matching tool. Try other words.</CommandPrimitive.Empty>
+              <CommandPrimitive.Empty className="py-10 text-center text-sm text-slate-500">
+                No tool matches “{query.trim()}”. Try other words, e.g. “pdf”, “rename”, “charts”.
+              </CommandPrimitive.Empty>
             )}
             {results.length > 0 && (
-              <CommandPrimitive.Group heading={query.trim() ? 'Tools' : 'Suggested for you'} className="text-xs text-slate-500 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1">
-                {results.map((tool) => (
-                  <CommandPrimitive.Item
-                    key={tool.id}
-                    value={tool.id}
-                    onSelect={() => choose(tool)}
-                    className="flex cursor-pointer flex-col items-start gap-0.5 rounded-md px-2 py-2 text-sm text-slate-900 aria-selected:bg-slate-100 dark:text-slate-100 dark:aria-selected:bg-slate-800"
-                  >
-                    <span className="font-medium">{tool.title}</span>
-                    <span className="text-xs text-slate-500 dark:text-slate-400">{tool.reason || tool.description}</span>
-                  </CommandPrimitive.Item>
-                ))}
+              <CommandPrimitive.Group
+                heading={query.trim() ? 'Tools' : 'Suggested for you'}
+                className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-400"
+              >
+                {results.map((tool) => {
+                  const Icon = TOOLS_BY_ID[tool.id]?.icon || DEFAULT_ICON;
+                  return (
+                    <CommandPrimitive.Item
+                      key={tool.id}
+                      value={tool.id}
+                      onSelect={() => choose(tool)}
+                      className="group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-slate-100 aria-selected:bg-blue-50 dark:aria-selected:bg-slate-800"
+                    >
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600 group-aria-selected:bg-blue-600 group-aria-selected:text-white dark:bg-slate-800 dark:text-slate-300">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium">{tool.title}</span>
+                        <span className="block truncate text-xs text-slate-500 dark:text-slate-400">{tool.reason || tool.description}</span>
+                      </span>
+                      <CornerDownLeft className="h-4 w-4 shrink-0 text-slate-400 opacity-0 group-aria-selected:opacity-100" />
+                    </CommandPrimitive.Item>
+                  );
+                })}
               </CommandPrimitive.Group>
             )}
           </CommandPrimitive.List>
+          <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-700 px-4 py-2 text-[11px] text-slate-400">
+            <span>↑ ↓ to move · Enter to open</span>
+            <span>{TOOLS.length} tools · learns from what you pick</span>
+          </div>
         </CommandPrimitive>
       </DialogContent>
     </Dialog>

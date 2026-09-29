@@ -75,6 +75,8 @@ TOOLS: Tuple[Tool, ...] = (
 )
 TOOLS_BY_ID = {t.id: t for t in TOOLS}
 TOOLS_BY_PATH = {t.path.lower(): t for t in TOOLS}
+# Other URLs the app uses for the same tools.
+TOOLS_BY_PATH["/unified-reporting"] = TOOLS_BY_ID["unified_reporting"]
 
 HALF_LIFE_DAYS = 14.0  # a use two weeks ago counts half as much as one today
 SESSION_GAP = timedelta(minutes=30)
@@ -231,6 +233,9 @@ def search(db: Session, email: str, query: str, limit: int = 8, now: Optional[da
             reason = "Popular for this search" if learned >= 0.2 and learned * 0.3 > text * 0.6 else None
             results.append((score, tool, reason))
     results.sort(key=lambda r: -r[0])
+    if results:  # leave out weak matches, e.g. tools that only share the word "files"
+        cutoff = results[0][0] * 0.6
+        results = [r for r in results if r[0] >= cutoff]
     return [_as_result(tool, score, reason) for score, tool, reason in results[:limit]]
 
 

@@ -4,7 +4,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart, ArrowRightLeft, Search } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart, ArrowRightLeft } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -279,7 +279,6 @@ export default function Layout({ children, currentPageName }) {
       <nav className="glass-surface-strong dark:bg-slate-900/95 dark:border-slate-800 sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
             <Link
               to={user && user.email ? createPageUrl('Dashboard') : '/pricing'}
               className="group rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -292,20 +291,6 @@ export default function Layout({ children, currentPageName }) {
                 logoUrl={brandPrefs.logoUrl}
               />
             </Link>
-
-            {user && user.email && (
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                className="ml-3 flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-                aria-label="Search tools"
-              >
-                <Search className="w-4 h-4" />
-                <span className="hidden md:inline">Search tools</span>
-                <kbd className="hidden lg:inline text-xs text-slate-400">Ctrl K</kbd>
-              </button>
-            )}
-            </div>
 
             <div className="hidden xl:flex items-center gap-1 [&>a>svg:first-child]:hidden [&>button>svg:first-child]:hidden 2xl:[&>a>svg:first-child]:block 2xl:[&>button>svg:first-child]:block">
               {/* Show menu items only when user is logged in */}

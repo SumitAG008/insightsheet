@@ -70,7 +70,7 @@ from app.database import (
     FeatureKey,
     InvoiceExtractionJob,
 )
-from app.utils.offload import run_coro, in_thread
+from app.utils.offload import release_memory, run_coro, in_thread
 from app.services.device_sessions import (
     DeviceLimitReached, active_sessions, describe as describe_session, max_active_devices, revoke_session, start_session,
 )
@@ -783,6 +783,25 @@ async def _limit_request_body_size(request: Request, call_next):
             content={"detail": f"Upload too large (limit {_MAX_REQUEST_BODY_BYTES // (1024 * 1024)}MB)"},
         )
     return await call_next(request)
+
+
+# Requests that load whole files into memory (conversions, PDF, ZIP, analysis, OCR, lakehouse uploads).
+_FILE_WORK_PREFIXES = ("/api/files/", "/api/convert/", "/api/pdf/", "/api/v1/convert/", "/api/lakehouse/", "/api/invoices/")
+
+
+@app.middleware("http")
+async def _release_memory_after_file_work(request: Request, call_next):
+    """After a file request has been answered (the download included), hand its memory back."""
+    response = await call_next(request)
+    if request.method == "POST" and request.url.path.startswith(_FILE_WORK_PREFIXES):
+        from starlette.background import BackgroundTasks
+
+        tasks = BackgroundTasks()
+        if response.background is not None:
+            tasks.tasks.append(response.background)
+        tasks.add_task(release_memory)
+        response.background = tasks
+    return response
 
 # CORS Configuration - SECURITY: Only HTTPS in production
 # Detect if we're in production (Railway/Vercel) or local development

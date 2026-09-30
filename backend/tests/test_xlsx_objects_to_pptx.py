@@ -286,3 +286,35 @@ def test_endpoint_design_options_and_validation():
         assert bad_colour.status_code == 400
     finally:
         main.app.dependency_overrides.clear()
+
+
+def test_large_workbooks_are_streamed_with_the_same_result(monkeypatch):
+    """Big exports are read row by row (read-only mode) so a conversion can't exhaust memory;
+    the deck must be the same as with the full load."""
+    from app.services import xlsx_objects_to_pptx as conv
+
+    data = open(FIXTURE, "rb").read()
+    _, full = convert_workbook_objects(data, title="Chart Essentials")
+    monkeypatch.setattr(conv, "STREAM_WORKBOOK_OVER", 0)
+    deck, streamed = convert_workbook_objects(data, title="Chart Essentials")
+    for key in ("tables", "charts", "new_chart_types", "pictures"):
+        assert streamed[key] == full[key], key
+    assert len(Presentation(io.BytesIO(deck)).slides) > 0
+
+
+def test_sheet_geometry_reads_widths_and_heights_without_loading_the_sheet():
+    from app.services import xlsx_objects_to_pptx as conv
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.column_dimensions["B"].width = 30
+    ws.row_dimensions[3].height = 40
+    for r in range(1, 2000):
+        ws.append([r, r * 2])
+    buf = io.BytesIO()
+    wb.save(buf)
+    book = conv._Workbook(buf.getvalue())
+    col_w, row_h = conv._sheet_geometry(book, "xl/worksheets/sheet1.xml")
+    assert col_w(1) == int(30 * 7 + 5) * conv.EMU_PER_PX
+    assert row_h(2) == int(40 * conv.EMU_PER_PT)
+    assert row_h(10) == int(15 * conv.EMU_PER_PT)

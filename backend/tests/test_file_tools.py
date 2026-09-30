@@ -188,3 +188,13 @@ def test_document_conversions(client):
         r = client.post(f"/api/convert/{endpoint}", files={"file": (name, body, "application/octet-stream")})
         assert r.status_code == 200, f"{endpoint}: {r.text}"
         assert r.content[:2] == b"PK", endpoint
+
+
+def test_memory_is_released_after_a_file_request(client, monkeypatch):
+    calls = []
+    monkeypatch.setattr(main, "release_memory", lambda: calls.append(1))
+    r = client.post("/api/files/excel-to-ppt", files={"file": ("data.csv", b"name,value\na,1\nb,2\n", "text/csv")})
+    assert r.status_code == 200
+    assert calls == [1]
+    client.get("/api/auth/devices")  # ordinary requests don't trigger it
+    assert calls == [1]

@@ -281,7 +281,7 @@ export default function SourcesView({
               <span key={d} className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                 {d} · {Object.values(m.views).filter((v) => v.dims.includes(d)).map((v) => v.sys).join(', ')}
               </span>
-            )) : <span className="text-sm text-slate-400">None yet. Add a second source, or align column names.</span>}
+            )) : <span className="text-sm text-slate-500 dark:text-slate-400">None yet. Add a second source, or align column names.</span>}
           </div>
         </div>
 

@@ -192,22 +192,28 @@ def _blocks(filled: List[List[bool]]) -> List[Tuple[int, int, int, int]]:
 
 
 def find_tables(ws, sheet_name: str, max_rows: int = 200) -> List[SheetTable]:
-    """Tables on an openpyxl worksheet (loaded with data_only=True, not read-only)."""
-    n_rows = min(ws.max_row or 0, MAX_SCAN_ROWS)
-    n_cols = min(ws.max_column or 0, MAX_SCAN_COLS)
+    """
+    Tables on an openpyxl worksheet loaded with data_only=True. Works in read-only (streaming) mode
+    too, used for large workbooks: only the first MAX_SCAN_ROWS rows are read, and hidden rows,
+    hidden columns and merged cells (not available in that mode) are not taken into account.
+    """
+    # Read-only sheets may not know their size; the scan then stops at the last row actually read.
+    n_rows = min(ws.max_row or MAX_SCAN_ROWS, MAX_SCAN_ROWS)
+    n_cols = min(ws.max_column or MAX_SCAN_COLS, MAX_SCAN_COLS)
     if n_rows == 0 or n_cols == 0:
         return []
-    hidden_rows = {i for i, d in ws.row_dimensions.items() if d.hidden}
+    hidden_rows = {i for i, d in getattr(ws, "row_dimensions", {}).items() if d.hidden}
     hidden_cols = set()
     from openpyxl.utils import column_index_from_string
 
-    for key, d in ws.column_dimensions.items():
+    for key, d in getattr(ws, "column_dimensions", {}).items():
         if d.hidden:
             lo = column_index_from_string(key)
             hi = d.max or lo
             hidden_cols.update(range(max(lo, d.min or lo), hi + 1))
     merged_into = {}
-    for mr in ws.merged_cells.ranges:
+    merged = getattr(ws, "merged_cells", None)
+    for mr in (merged.ranges if merged is not None else ()):
         for r in range(mr.min_row, mr.max_row + 1):
             for c in range(mr.min_col, mr.max_col + 1):
                 if (r, c) != (mr.min_row, mr.min_col):
@@ -217,10 +223,12 @@ def find_tables(ws, sheet_name: str, max_rows: int = 200) -> List[SheetTable]:
     filled = [[False] * n_cols for _ in range(n_rows)]
     for row in ws.iter_rows(min_row=1, max_row=n_rows, max_col=n_cols):
         for cell in row:
-            r, c = cell.row - 1, cell.column - 1
+            if cell.value is None or str(cell.value).strip() == "":
+                continue  # blank (in read-only mode a blank cell has no position)
             if cell.row in hidden_rows or cell.column in hidden_cols:
                 continue
-            if cell.value is not None and str(cell.value).strip() != "":
+            r, c = cell.row - 1, cell.column - 1
+            if r < n_rows and c < n_cols:
                 cells[r][c] = cell
                 filled[r][c] = True
     for (r, c), (tr, tc) in merged_into.items():  # a merged range counts as filled across its span

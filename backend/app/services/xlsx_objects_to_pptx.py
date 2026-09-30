@@ -167,22 +167,32 @@ def _sheet_geometry(wb: _Workbook, sheet_path: str):
     """Column widths (EMU) and row heights (EMU) of a worksheet, for sizing cell-anchored objects."""
     if sheet_path not in wb.names or "worksheets/" not in sheet_path:
         return (lambda c: 64 * EMU_PER_PX), (lambda r: 20 * EMU_PER_PX)
-    root = wb.xml(sheet_path)
-    fmt = root.find("main:sheetFormatPr", NS)
-    default_w = float(fmt.get("defaultColWidth") or 0) if fmt is not None else 0
-    base_w = float(fmt.get("baseColWidth") or 8) if fmt is not None else 8
-    default_w_px = int(default_w * 7 + 5) if default_w else int(base_w * 7 + 12)
-    default_h_pt = float(fmt.get("defaultRowHeight") or 15) if fmt is not None else 15
+    # Streamed: a large sheet parsed whole takes well over 1 GB of memory, and only the sheet
+    # format, column widths and custom row heights are needed here. Rows are dropped as read.
+    main = "{%s}" % NS["main"]
+    fmt_attrs: Dict[str, str] = {}
     widths: Dict[int, int] = {}
-    for col in root.findall("main:cols/main:col", NS):
-        w = float(col.get("width") or 0)
-        hidden = col.get("hidden") in ("1", "true")
-        for c in range(int(col.get("min")), int(col.get("max")) + 1):
-            widths[c - 1] = 0 if hidden else int(w * 7 + 5) * EMU_PER_PX
     heights: Dict[int, int] = {}
-    for row in root.iterfind("main:sheetData/main:row", NS):
-        if row.get("ht"):
-            heights[int(row.get("r")) - 1] = int(float(row.get("ht")) * EMU_PER_PT)
+    with wb.zip.open(sheet_path) as f:
+        for _, el in etree.iterparse(f, events=("end",), huge_tree=True):
+            tag = el.tag
+            if tag == main + "row":
+                if el.get("ht") and el.get("r"):
+                    heights[int(el.get("r")) - 1] = int(float(el.get("ht")) * EMU_PER_PT)
+                el.clear()
+                while el.getprevious() is not None:
+                    del el.getparent()[0]
+            elif tag == main + "sheetFormatPr":
+                fmt_attrs = dict(el.attrib)
+            elif tag == main + "col":
+                w = float(el.get("width") or 0)
+                hidden = el.get("hidden") in ("1", "true")
+                for c in range(int(el.get("min")), int(el.get("max")) + 1):
+                    widths[c - 1] = 0 if hidden else int(w * 7 + 5) * EMU_PER_PX
+    default_w = float(fmt_attrs.get("defaultColWidth") or 0)
+    base_w = float(fmt_attrs.get("baseColWidth") or 8)
+    default_w_px = int(default_w * 7 + 5) if default_w else int(base_w * 7 + 12)
+    default_h_pt = float(fmt_attrs.get("defaultRowHeight") or 15)
     return (lambda c: widths.get(c, default_w_px * EMU_PER_PX)), (lambda r: heights.get(r, int(default_h_pt * EMU_PER_PT)))
 
 
@@ -364,18 +374,24 @@ def _parse_ref(ref: str) -> Optional[Tuple[str, str]]:
     return sheet, rng.replace("$", "")
 
 
+# Above this size the workbook is streamed (read-only mode): loading everything at once takes
+# about 150x the file size in memory, enough to take the server down on a large export.
+STREAM_WORKBOOK_OVER = 3 * 1024 * 1024
+
+
 class _CellValues:
     """Cell values of the workbook (the last calculated results, not formulas), loaded on first use."""
 
     def __init__(self, data: bytes):
         self.data = data
         self._wb = None
+        self.streaming = len(data) > STREAM_WORKBOOK_OVER
 
     def workbook(self):
         if self._wb is None:
             import openpyxl
 
-            self._wb = openpyxl.load_workbook(io.BytesIO(self.data), data_only=True)
+            self._wb = openpyxl.load_workbook(io.BytesIO(self.data), data_only=True, read_only=self.streaming)
         return self._wb
 
     def grid(self, ref: str) -> Optional[List[list]]:
@@ -383,14 +399,20 @@ class _CellValues:
         parsed = _parse_ref(ref)
         if not parsed:
             return None
-        if self._wb is None:
-            import openpyxl
-
-            self._wb = openpyxl.load_workbook(io.BytesIO(self.data), data_only=True)
+        wb = self.workbook()
         sheet, rng = parsed
-        if sheet not in self._wb.sheetnames:
+        if sheet not in wb.sheetnames:
             return None
-        cells = self._wb[sheet][rng]
+        if self.streaming:
+            from openpyxl.utils import range_boundaries
+
+            try:
+                min_col, min_row, max_col, max_row = range_boundaries(rng)
+            except ValueError:
+                return None
+            rows = wb[sheet].iter_rows(min_row=min_row, max_row=max_row, min_col=min_col, max_col=max_col, values_only=True)
+            return [list(r) for r in rows]
+        cells = wb[sheet][rng]
         if not isinstance(cells, tuple):
             return [[cells.value]]
         if cells and not isinstance(cells[0], tuple):  # a single row or column comes back flat
@@ -398,23 +420,14 @@ class _CellValues:
         return [[c.value for c in row] for row in cells]
 
     def get(self, ref: str) -> Optional[list]:
-        parsed = _parse_ref(ref)
-        if not parsed:
+        grid = self.grid(ref)
+        if grid is None:
             return None
-        if self._wb is None:
-            import openpyxl
+        return [v for row in grid for v in row]
 
-            self._wb = openpyxl.load_workbook(io.BytesIO(self.data), data_only=True)
-        sheet, rng = parsed
-        if sheet not in self._wb.sheetnames:
-            return None
-        cells = self._wb[sheet][rng]
-        if not isinstance(cells, tuple):
-            return [cells.value]
-        flat = []
-        for row in cells:
-            flat.extend(c.value for c in (row if isinstance(row, tuple) else (row,)))
-        return flat
+    def close(self):
+        if self._wb is not None and self.streaming:
+            self._wb.close()  # read-only workbooks keep the archive open
 
 
 def _is_number(v) -> bool:

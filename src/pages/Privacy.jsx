@@ -34,16 +34,16 @@ export default function Privacy() {
             </div>
             <div className="space-y-3 text-slate-700">
               <p className="leading-relaxed">
-                <strong className="text-slate-900">Meldra</strong> is designed with privacy as the foundation. 
-                Unlike traditional web applications, we process ALL your data locally in your browser.
+                <strong className="text-slate-900">Meldra</strong> is designed with privacy as the foundation.
+                Spreadsheet analysis runs in your browser. Tools that need our server (such as conversions, OCR and PowerPoint) process your file in memory and discard it when the result is ready.
               </p>
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-2">
                 <p className="font-semibold text-emerald-900">✓ What this means for you:</p>
                 <ul className="list-disc list-inside space-y-1 text-emerald-800">
-                  <li>Your CSV files NEVER leave your device</li>
-                  <li>We cannot see, access, or store your data</li>
-                  <li>Data exists only in your browser's memory</li>
-                  <li>Close the tab = data is permanently deleted</li>
+                  <li>The contents of your files are never kept on our servers</li>
+                  <li>Data is saved only if you choose to store it in the Meldra lakehouse, and you can delete it at any time</li>
+                  <li>No advertising, and no third-party or cross-site tracking</li>
+                  <li>The account and usage data we do keep, and for how long, is listed below</li>
                 </ul>
               </div>
             </div>

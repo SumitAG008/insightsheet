@@ -45,6 +45,8 @@ EXPOSE 8000
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+# One thread per Tesseract run: parallel requests on a small server would otherwise fight for CPU.
+ENV OMP_THREAD_LIMIT=1
 
 # Run database initialization and start server
 # Up to 2 worker processes so one slow request never holds up everyone else. The count follows the

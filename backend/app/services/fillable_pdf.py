@@ -59,7 +59,9 @@ SUPPORTED_LABEL = "PDF, JPG, JPEG, PNG, WEBP, BMP, TIFF or GIF"
 DPI = 200  # page rendering for line/box detection and OCR
 PX = 72.0 / DPI  # one rendered pixel in PDF points
 MAX_FIELDS_PER_PAGE = 300
-_BLANK_GLYPHS = re.compile(r"^[_.…\-–—]{4,}$")
+_BLANK_GLYPHS = re.compile(r"^(?:_{3,}|[_.…\-–—]{4,})$")
+_BLANK_RUN = re.compile(r"_{3,}|[.…]{4,}")  # blanks typed inside a line: "dated______", "registered ____(hereinafter"
+_PLACEHOLDER = re.compile(r"^(insert|enter|name|address|date|add|specify|please|company|party|amount|●|•|\*|x+|_+)\b", re.I)
 _JUNK_WORD = re.compile(r"^[|\[\](){}=~_.,:;'`\"-]+$")
 
 
@@ -96,6 +98,8 @@ class Field:
     source: str = ""  # line, box, colon, dots, checkbox
     page: int = 0
     name: str = ""
+    value: str = ""  # pre-filled text (placeholders such as "[Insert name]")
+    cover: bool = False  # white background: the typed text replaces the printed placeholder
 
 
 @dataclass
@@ -179,7 +183,36 @@ def _digital_words(page: fitz.Page) -> Optional[List[Word]]:
     text = " ".join(w[4] for w in raw)
     if not text.strip() or _looks_garbled_digital_text(text):
         return None
-    return [Word(w[0], w[1], w[2], w[3], w[4]) for w in raw if str(w[4]).strip()]
+    if not _BLANK_RUN.search(text):
+        return [Word(w[0], w[1], w[2], w[3], w[4]) for w in raw if str(w[4]).strip()]
+    # Blanks are often typed straight against the words around them ("dated______",
+    # "______(hereinafter"): split words at underscore/dot runs using the real character positions.
+    words: List[Word] = []
+    for block in page.get_text("rawdict").get("blocks", []):
+        for line in block.get("lines", []):
+            for span in line.get("spans", []):
+                token: List[dict] = []
+
+                def flush():
+                    if token:
+                        t = "".join(c["c"] for c in token)
+                        if t.strip():
+                            words.append(Word(min(c["bbox"][0] for c in token), span["bbox"][1],
+                                              max(c["bbox"][2] for c in token), span["bbox"][3], t))
+                    token.clear()
+
+                chars = span.get("chars", [])
+                text_span = "".join(c["c"] for c in chars)
+                runs = [(m.start(), m.end()) for m in _BLANK_RUN.finditer(text_span)]
+                for i, ch in enumerate(chars):
+                    if ch["c"].isspace():
+                        flush()
+                        continue
+                    if any(i == a for a, _ in runs) or any(i == b for _, b in runs):
+                        flush()  # a blank run starts or ends here
+                    token.append(ch)
+                flush()
+    return words or [Word(w[0], w[1], w[2], w[3], w[4]) for w in raw if str(w[4]).strip()]
 
 
 def _ocr_words(page: fitz.Page, gray: np.ndarray, lang: str, fix=None) -> List[Word]:
@@ -497,7 +530,7 @@ def find_fields(g: PageGeometry) -> List[Field]:
     def words_in(r: fitz.Rect) -> List[Word]:
         return [w for w in words if r.contains(fitz.Point(w.cx, w.cy))]
 
-    def add(rect: fitz.Rect, kind: str, label: str, source: str) -> None:
+    def add(rect: fitz.Rect, kind: str, label: str, source: str, value: str = "", cover: bool = False) -> None:
         rect = fitz.Rect(rect)
         if rect.width < 6 or rect.height < 6:
             return
@@ -508,13 +541,13 @@ def find_fields(g: PageGeometry) -> List[Field]:
         for r in g.existing:
             if _overlap(r, rect) > 0.3:
                 return
-        if kind != "checkbox":
+        if kind != "checkbox" and not cover:
             for w in words:
                 wr = fitz.Rect(w.x0, w.y0, w.x1, w.y1)
                 i = wr & rect
                 if not i.is_empty and i.get_area() > 0.25 * wr.get_area():
                     return  # never cover printed text
-        fields.append(Field(rect, kind, _clean_label(label), source))
+        fields.append(Field(rect, kind, _clean_label(label), source, value=value, cover=cover))
 
     # 1. Empty boxes and table cells; a cell holding only a label gets the free space beside or below it.
     def cell_text(b: fitz.Rect) -> str:
@@ -577,9 +610,9 @@ def find_fields(g: PageGeometry) -> List[Field]:
 
     # 3. Typed blanks: "_____" or "......" written as text.
     for w in g.words:
-        if _BLANK_GLYPHS.match(w.text) and w.x1 - w.x0 >= min_w:
-            y1 = w.y1 + 1
-            add(fitz.Rect(w.x0, y1 - fh, w.x1, y1), "text", _label_left(words, w.x0, w.y0, w.y1, 3 * med_h), "dots")
+        if _BLANK_GLYPHS.match(w.text) and w.x1 - w.x0 >= 12:
+            # As tall as the text line: body text lines sit close together.
+            add(fitz.Rect(w.x0, w.y0 - 0.5, w.x1, w.y1 + 1), "text", _label_left(words, w.x0, w.y0, w.y1, 3 * med_h), "dots")
 
     # 4. "Label:" followed by empty space on the same line, up to the form's right margin.
     margin = max([w.x1 for w in g.words] + [r.x1 for r in g.hlines] + [b.x1 for b in g.boxes] + [0.0])
@@ -599,7 +632,27 @@ def find_fields(g: PageGeometry) -> List[Field]:
                 lab = _label_left(words, w.x1, w.y0, w.y1, 3 * med_h)
                 add(fitz.Rect(w.x1 + 4, w.y0 - pad, end, w.y1 + pad), "text", lab, "colon")
 
-    # 5. Check boxes.
+    # 5. Placeholders in brackets ("[Insert Name of Network Provider]"): a field over them, pre-filled
+    #    with the placeholder, so typing replaces it.
+    for line in _text_lines(words):
+        i = 0
+        while i < len(line):
+            if line[i].text.startswith("["):
+                j = i
+                while j < len(line) and j - i < 12 and not line[j].text.rstrip(".,;:").endswith("]"):
+                    j += 1
+                if j < len(line) and line[j].text.rstrip(".,;:").endswith("]"):
+                    group = line[i:j + 1]
+                    inner = " ".join(w.text for w in group).strip()
+                    inner = inner[1:inner.rfind("]")].strip()
+                    if inner and _PLACEHOLDER.match(inner):
+                        r = fitz.Rect(group[0].x0 - 1, min(w.y0 for w in group) - 1, group[-1].x1 + 1, max(w.y1 for w in group) + 1)
+                        add(r, "text", inner, "placeholder", value=" ".join(w.text for w in group).rstrip(".,;:"), cover=True)
+                    i = j + 1
+                    continue
+            i += 1
+
+    # 6. Check boxes.
     for c in checks:
         if any(_overlap(c, f.rect) > 0.3 for f in fields):
             continue
@@ -683,6 +736,9 @@ def make_fillable_pdf(data: bytes, filename: str = "", ocr_lang: Optional[str] =
                     wdg.field_type = fitz.PDF_WIDGET_TYPE_TEXT
                     wdg.text_font = "Helv"
                     wdg.text_color = (0, 0, 0.55)
+                    if f.cover:
+                        wdg.fill_color = (1, 1, 1)
+                        wdg.field_value = f.value
                     if f.kind == "multiline":
                         wdg.field_flags |= fitz.PDF_TX_FIELD_IS_MULTILINE
                         wdg.text_fontsize = min(11, max(8, f.rect.height / 4))
@@ -840,5 +896,129 @@ def extract_form_data(data: bytes, filename: str = "", ocr_lang: Optional[str] =
             "text": "\n\n".join(p["text"] for p in pages),
             "pages": pages,
         }
+    finally:
+        doc.close()
+
+
+# --------------------------------------------------------------------------- applying edits from the editor
+
+def _hex_color(value: Any, default=(0.0, 0.0, 0.0)) -> Tuple[float, float, float]:
+    m = re.fullmatch(r"#?([0-9a-fA-F]{6})", str(value or ""))
+    if not m:
+        return default
+    h = m.group(1)
+    return tuple(int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4))  # type: ignore[return-value]
+
+
+def _frac_rect(page: fitz.Page, item: Dict[str, Any]) -> fitz.Rect:
+    """Editor coordinates (0..1 of the page as displayed, top-left origin) -> page coordinates."""
+    def f(key: str, default: float = 0.0) -> float:
+        try:
+            return min(1.0, max(0.0, float(item.get(key, default))))
+        except (TypeError, ValueError):
+            return default
+
+    shown = page.rect  # as displayed (rotation applied)
+    x, y = f("x") * shown.width, f("y") * shown.height
+    r = fitz.Rect(x, y, x + f("w") * shown.width, y + f("h") * shown.height)
+    if page.rotation:
+        r = r * page.derotation_matrix
+        r.normalize()
+    return r
+
+
+def apply_edits(pdf_bytes: bytes, edits: Dict[str, Any], max_pages: int = 200) -> bytes:
+    """
+    Write the editor's changes into the PDF: values of form fields, text placed anywhere, white-out
+    boxes and tick/cross marks. With "flatten" the result is a plain PDF (what you see, nothing
+    editable); otherwise fields stay fillable.
+    """
+    doc = open_as_pdf(pdf_bytes, "document.pdf")
+    try:
+        if len(doc) > max_pages:
+            raise FillableError(f"This document has {len(doc)} pages; the limit is {max_pages}.")
+        values = edits.get("fields") or {}
+        if not isinstance(values, dict):
+            raise FillableError("Invalid edits.")
+        for page in doc:
+            for wdg in page.widgets() or []:
+                if wdg.field_name not in values:
+                    continue
+                val = values[wdg.field_name]
+                if wdg.field_type == fitz.PDF_WIDGET_TYPE_CHECKBOX:
+                    wdg.field_value = wdg.on_state() if val in (True, "true", "Yes", "yes", 1, "on") else "Off"
+                else:
+                    wdg.field_value = "" if val is None else str(val)[:5000]
+                wdg.update()
+
+        items = edits.get("items") or []
+        if not isinstance(items, list) or len(items) > 5000:
+            raise FillableError("Invalid edits.")
+        # White-out is a real redaction: the text and image pixels underneath are removed from the
+        # file, not just hidden (covered words must not be copyable or searchable afterwards).
+        redacted = set()
+        for item in items:
+            if isinstance(item, dict) and item.get("type") == "whiteout":
+                try:
+                    pno = int(item.get("page", 0))
+                except (TypeError, ValueError):
+                    continue
+                if 0 <= pno < len(doc):
+                    doc[pno].add_redact_annot(_frac_rect(doc[pno], item), fill=(1, 1, 1))
+                    redacted.add(pno)
+        for pno in redacted:
+            doc[pno].apply_redactions(images=fitz.PDF_REDACT_IMAGE_PIXELS, graphics=fitz.PDF_REDACT_LINE_ART_NONE)
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            try:
+                pno = int(item.get("page", 0))
+            except (TypeError, ValueError):
+                continue
+            if not 0 <= pno < len(doc):
+                continue
+            page = doc[pno]
+            kind = item.get("type")
+            r = _frac_rect(page, item)
+            if kind == "text":
+                text = str(item.get("text") or "")[:5000]
+                if not text.strip():
+                    continue
+                size = min(72.0, max(4.0, float(item.get("size") or 11)))
+                color = _hex_color(item.get("color"))
+                # Size the box to the text itself (the browser's font is a little narrower than the
+                # PDF's), so a line typed on one line stays on one line.
+                lines = text.split("\n")
+                try:
+                    need_w = max(fitz.get_text_length(ln, fontname="helv", fontsize=size) for ln in lines) + 4
+                except Exception:
+                    need_w = r.width
+                box = fitz.Rect(r.x0, r.y0, r.x0 + max(r.width, need_w, 20), r.y0 + max(r.height, len(lines) * size * 1.25 + 2))
+                try:
+                    text.encode("latin-1")
+                    left = page.insert_textbox(box, text, fontsize=size, fontname="helv", color=color,
+                                               rotate=page.rotation)
+                    if left < 0:  # did not fit: grow downwards rather than lose text
+                        box.y1 += -left + size
+                        page.insert_textbox(box, text, fontsize=size, fontname="helv", color=color, rotate=page.rotation)
+                except UnicodeEncodeError:
+                    # Hindi and other scripts: the HTML box picks a font that has the characters.
+                    css = f"* {{font-family: sans-serif; font-size: {size}px; color: rgb({','.join(str(int(c * 255)) for c in color)});}}"
+                    import html as _html
+                    page.insert_htmlbox(box, _html.escape(text).replace("\n", "<br>"), css=css, rotate=page.rotation)
+            elif kind in ("check", "cross"):
+                s = max(4.0, min(r.width or 12, r.height or 12))
+                x0, y0 = r.x0, r.y0
+                color = _hex_color(item.get("color"), (0, 0, 0.55))
+                if kind == "check":
+                    page.draw_polyline([fitz.Point(x0, y0 + s * 0.55), fitz.Point(x0 + s * 0.38, y0 + s * 0.9),
+                                        fitz.Point(x0 + s, y0 + s * 0.1)], color=color, width=max(1.0, s / 8))
+                else:
+                    page.draw_line(fitz.Point(x0, y0), fitz.Point(x0 + s, y0 + s), color=color, width=max(1.0, s / 8))
+                    page.draw_line(fitz.Point(x0 + s, y0), fitz.Point(x0, y0 + s), color=color, width=max(1.0, s / 8))
+
+        if edits.get("flatten"):
+            doc.bake(annots=True, widgets=True)
+        return doc.tobytes(garbage=3, deflate=True, encryption=fitz.PDF_ENCRYPT_NONE)
     finally:
         doc.close()

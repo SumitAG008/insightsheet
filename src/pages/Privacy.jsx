@@ -75,6 +75,7 @@ export default function Privacy() {
                   <li>Which pages and tools you use and the words you search for in Meldra (never file contents), used to improve your suggestions: deleted after 90 days.</li>
                   <li>Cookie consent choices: kept for 2 years as proof of consent.</li>
                   <li>Results of document extraction jobs: deleted when the job expires, within hours.</li>
+                  <li>Processing history: the type and size of each file you process (never its name or contents), deleted when you sign out or within 7 days.</li>
                 </ul>
               </div>
               <div>
@@ -100,26 +101,41 @@ export default function Privacy() {
             </div>
             <div className="space-y-3 text-slate-700">
               <p className="leading-relaxed">
-                When you use AI features (AI Assistant, Smart Formulas), we send minimal, anonymized data to our AI service:
+                AI features (AI Assistant, Smart Formulas, Unified Reporting, Migration mapping, invoice extraction) send
+                the text needed to answer to our AI provider, OpenAI: your question and, for features that read a file,
+                the relevant part of it (for example column names and sample rows).
               </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-                <p className="font-semibold text-blue-900">What gets sent:</p>
-                <ul className="list-disc list-inside space-y-1 text-blue-800">
-                  <li>Column names (headers only)</li>
-                  <li>Sample rows (first 5-10 rows, no sensitive data)</li>
-                  <li>Your query/question</li>
-                  <li>Statistical summaries (averages, counts)</li>
-                </ul>
-              </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
                 <p className="font-semibold text-amber-900">Important:</p>
                 <ul className="list-disc list-inside space-y-1 text-amber-800">
-                  <li>No personally identifiable information (PII) is sent</li>
+                  <li>Only AI features send data to OpenAI; file conversions and the filename cleaner do not</li>
+                  <li>OpenAI does not use data sent through its API to train its models</li>
+                  <li>OpenAI may keep requests for up to 30 days to detect abuse, then deletes them</li>
+                  <li>Avoid AI features for data you must not share with a service provider</li>
                   <li>Data is encrypted in transit</li>
-                  <li>AI provider does NOT store your data</li>
-                  <li>Requests are rate-limited for security</li>
                 </ul>
               </div>
+            </div>
+          </section>
+
+          {/* Service providers and backups */}
+          <section>
+            <h2 className="text-2xl font-bold text-slate-800 mb-3">Service Providers and Backups</h2>
+            <div className="space-y-3 text-slate-700">
+              <p className="leading-relaxed">We use these providers to run Meldra. Each processes data only to provide its service to us:</p>
+              <ul className="list-disc list-inside space-y-1 ml-4">
+                <li><strong>Railway:</strong> runs our server (files are processed in memory there and discarded)</li>
+                <li><strong>Neon:</strong> our database (account, billing and the records listed above)</li>
+                <li><strong>Vercel:</strong> serves the website</li>
+                <li><strong>Resend:</strong> sends sign-in codes and account e-mails</li>
+                <li><strong>OpenAI:</strong> AI features only, as described above</li>
+                <li><strong>OCR.space:</strong> only if enabled, to read text from an image our own OCR could not read</li>
+              </ul>
+              <p className="leading-relaxed">
+                <strong>Backups:</strong> account, billing, sign-in and consent records are backed up weekly in encrypted
+                form, and each backup is deleted after 90 days. Our database provider also keeps a short restore history.
+                Your files are never in a backup, because they are never stored.
+              </p>
             </div>
           </section>
 
@@ -192,7 +208,7 @@ export default function Privacy() {
               <ul className="list-disc list-inside space-y-2 ml-4">
                 <li><strong>Right to Access:</strong> Request a copy of your account data</li>
                 <li><strong>Right to Rectification:</strong> Correct inaccurate information</li>
-                <li><strong>Right to Erasure:</strong> Delete your account and all associated data</li>
+                <li><strong>Right to Erasure:</strong> Delete your account and all associated data yourself in Settings → Delete my account (payment records are kept only as long as tax law requires)</li>
                 <li><strong>Right to Data Portability:</strong> Export your data in machine-readable format</li>
                 <li><strong>Right to Object:</strong> Opt-out of certain data processing</li>
               </ul>

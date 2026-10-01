@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { User, Globe, KeyRound, Paintbrush, MonitorSmartphone, Upload } from 'lucide-react';
+import { User, Globe, KeyRound, Paintbrush, MonitorSmartphone, Upload, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +49,22 @@ export default function Settings() {
 
   const [devices, setDevices] = useState(null); // { limit, devices } signed-in devices
   const [devicesStatus, setDevicesStatus] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteWord, setDeleteWord] = useState('');
+  const [deleteStatus, setDeleteStatus] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    setDeleteStatus('');
+    try {
+      await backendApi.auth.deleteAccount(deletePassword);
+      window.location.href = '/';
+    } catch (e) {
+      setDeleteStatus(e?.message || 'Your account could not be deleted.');
+      setDeleting(false);
+    }
+  };
 
   const loadDevices = async () => {
     try {
@@ -374,6 +390,39 @@ export default function Settings() {
             {passwordStatus ? (
               <p className="text-sm text-slate-600 dark:text-slate-400">{passwordStatus}</p>
             ) : null}
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border-red-200 dark:border-red-900/60 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+              <Trash2 className="w-5 h-5" /> Delete my account
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              This permanently deletes your account, sign-in and device history, usage history, API keys and any data you
+              stored in Meldra. It cannot be undone. Payment records are kept for as long as tax law requires, without your
+              IP address or browser details.
+            </p>
+            <div className="grid md:grid-cols-2 gap-4 max-w-2xl">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Your password</label>
+                <Input type="password" autoComplete="current-password" value={deletePassword} onChange={(e) => setDeletePassword(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Type DELETE to confirm</label>
+                <Input value={deleteWord} onChange={(e) => setDeleteWord(e.target.value)} placeholder="DELETE" />
+              </div>
+            </div>
+            <Button
+              onClick={deleteAccount}
+              disabled={deleting || !deletePassword || deleteWord.trim().toUpperCase() !== 'DELETE'}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? 'Deleting…' : 'Delete my account permanently'}
+            </Button>
+            {deleteStatus ? <p className="text-sm text-red-700 dark:text-red-400">{deleteStatus}</p> : null}
           </CardContent>
         </Card>
       </div>

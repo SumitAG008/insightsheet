@@ -35,7 +35,7 @@ class ZipProcessorService:
                 for info in zip_ref.infolist():
                     # Check for ZIP bombs
                     if info.file_size > self.max_file_size:
-                        logger.warning(f"File too large: {info.filename}")
+                        logger.warning("ZIP entry too large")
                         return False
 
                     total_size += info.file_size
@@ -46,13 +46,13 @@ class ZipProcessorService:
                     # Check for directory traversal
                     parts = info.filename.replace('\\', '/').split('/')
                     if '..' in parts or info.filename.startswith(('/', '\\')):
-                        logger.warning(f"Suspicious path: {info.filename}")
+                        logger.warning("ZIP entry with an unsafe path")
                         return False
 
                     # Check for dangerous extensions
                     dangerous_exts = ['.exe', '.dll', '.bat', '.cmd', '.sh', '.ps1']
                     if any(info.filename.lower().endswith(ext) for ext in dangerous_exts):
-                        logger.warning(f"Dangerous file type: {info.filename}")
+                        logger.warning("ZIP entry with a blocked file type")
                         return False
 
             return True
@@ -209,7 +209,7 @@ class ZipProcessorService:
                         })
 
                     except Exception as e:
-                        logger.error(f"Error processing file {item.filename}: {str(e)}")
+                        logger.error(f"Error processing a ZIP entry: {type(e).__name__}")
                         continue
 
             # Create output ZIP

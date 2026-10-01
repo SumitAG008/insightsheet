@@ -178,6 +178,17 @@ export const backendApi = {
         'Could not sign that device out',
       ),
 
+    /** Delete this account and its data for good (password and the word DELETE required). */
+    deleteAccount: async (password) => {
+      const data = await jsonOrThrow(
+        await apiCall('/api/account/delete', { method: 'POST', body: { password, confirm: 'DELETE' } }),
+        'Could not delete your account',
+      );
+      clearAllAppSessionData();
+      setToken(null);
+      return data;
+    },
+
     me: async () => {
       const response = await apiCall('/api/auth/me');
       return response.json();

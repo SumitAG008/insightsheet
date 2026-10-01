@@ -76,8 +76,9 @@ from app.services.device_sessions import (
 )
 from app.utils.auth import (
     authenticate_user, create_access_token, get_current_user, get_current_admin_user,
-    get_password_hash, ACCESS_TOKEN_EXPIRE_MINUTES
+    get_password_hash, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
 )
+from app.services.account_erasure import erase_account
 from app.services.ai_service import (
     invoke_llm, generate_image, generate_formula, analyze_data, suggest_chart_type,
     generate_transform, explain_sql, explain_ai_error
@@ -142,6 +143,12 @@ from app.services.invoice_extraction_service import extract_invoice_structured, 
 
 from app.database import UserFeature, FeatureKey
 
+
+
+def _file_kind(name: Optional[str]) -> str:
+    """What processing history keeps about a file: its type (".xlsx"), never its name, which can be personal data."""
+    ext = os.path.splitext(name or "")[1].lower()
+    return ext if re.fullmatch(r"\.[a-z0-9]{1,8}", ext) else "file"
 
 
 def _ascii_safe_filename(name: str) -> str:
@@ -2624,6 +2631,41 @@ def logout(
         raise HTTPException(status_code=500, detail="Logout failed")
 
 
+class DeleteAccountRequest(BaseModel):
+    password: str
+    confirm: str  # must be "DELETE"
+
+
+@app.post("/api/account/delete")
+async def delete_my_account(
+    req: DeleteAccountRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete the signed-in account and all its data (right to erasure). Paid billing records are kept as the law requires."""
+    if (req.confirm or "").strip().upper() != "DELETE":
+        raise HTTPException(status_code=400, detail='Type DELETE to confirm.')
+    email = current_user["email"]
+    user = db.query(User).filter(User.email == email).first()
+    if not user or not verify_password(req.password or "", user.hashed_password):
+        raise HTTPException(status_code=403, detail="The password is not correct.")
+
+    lakehouse_tables = 0
+    try:
+        from app.services.lakehouse import config as lakehouse_config, store as lakehouse_store
+        if lakehouse_config.enabled():
+            tenant = str(current_user.get("organization_id") or email)
+            lakehouse_tables = await asyncio.to_thread(lakehouse_store.drop_all, tenant)
+    except Exception as e:
+        # Never leave stored data behind silently: stop, so the person can try again.
+        logger.error(f"Account deletion: lakehouse erase failed: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail="Your stored data could not be deleted. Nothing was removed; please try again.")
+
+    removed = erase_account(db, email)
+    logger.info("Account deleted on request")
+    return {"deleted": True, "lakehouse_tables": lakehouse_tables, "billing_records_kept": removed.get("billing_records_kept", 0)}
+
+
 def _session_history_ttl_minutes() -> int:
     """TTL for session-scoped FileProcessingHistory cleanup.
 
@@ -4432,13 +4474,13 @@ async def ocr_extract(
             processing_history = FileProcessingHistory(
                 user_email=current_user["email"],
                 processing_type="ocr_extract_pdf",
-                original_filename=file.filename,
+                original_filename=_file_kind(file.filename),
                 file_size_mb=file_size_mb,
                 status="success"
             )
             db.add(processing_history)
             db.commit()
-            logger.info(f"OCR extract PDF: {file.filename} by {current_user['email']}")
+            logger.info("OCR extract PDF finished")
 
             return {
                 "text": out.get("text"),
@@ -4457,7 +4499,7 @@ async def ocr_extract(
                 out = await extract_with_layout_ocrspace(
                     api_key, file_content, iw, ih, file.filename or "image.png", ocr_lang
                 )
-                logger.info(f"OCR extract via OCR.space: {file.filename}")
+                logger.info("OCR extract via OCR.space")
             except Exception as e:
                 ocr_space_error = f"{type(e).__name__}: {e}"
                 logger.warning("OCR.space failed, falling back to Tesseract: %s", ocr_space_error)
@@ -4478,13 +4520,13 @@ async def ocr_extract(
         processing_history = FileProcessingHistory(
             user_email=current_user["email"],
             processing_type="ocr_extract",
-            original_filename=file.filename,
+            original_filename=_file_kind(file.filename),
             file_size_mb=file_size_mb,
             status="success"
         )
         db.add(processing_history)
         db.commit()
-        logger.info(f"OCR extract: {file.filename} by {current_user['email']}")
+        logger.info("OCR extract finished")
 
         return {
             "text": out["text"],
@@ -4509,7 +4551,7 @@ async def ocr_extract(
         processing_history = FileProcessingHistory(
             user_email=current_user["email"],
             processing_type="ocr_extract",
-            original_filename=file.filename,
+            original_filename=_file_kind(file.filename),
             file_size_mb=file_size_mb if 'file_size_mb' in locals() else 0,
             status="failed",
             error_message=str(e)
@@ -4701,7 +4743,7 @@ async def developer_api_proxy(
                                 ),
                                 min(timeout_seconds or ocr_img_timeout, 45.0),
                             )
-                            logger.info(f"Developer OCR via OCR.space: {file.filename}")
+                            logger.info("Developer OCR via OCR.space")
                         except asyncio.TimeoutError:
                             ocr_space_error = "OCR.space timed out"
                             out = None
@@ -5307,14 +5349,14 @@ def excel_to_ppt(
         processing_history = FileProcessingHistory(
             user_email=current_user["email"],
             processing_type="excel_to_ppt",
-            original_filename=file.filename,
+            original_filename=_file_kind(file.filename),
             file_size_mb=file_size_mb,
             status="success",
         )
         db.add(processing_history)
         db.commit()
 
-        logger.info(f"Excel to PPT conversion: {file.filename} by {current_user['email']}")
+        logger.info("Excel to PPT conversion finished")
 
         base = _ascii_safe_filename(file.filename.replace(".xlsx", "").replace(".xls", "").replace(".csv", ""))
         ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")[:-3]
@@ -5336,7 +5378,7 @@ def excel_to_ppt(
         processing_history = FileProcessingHistory(
             user_email=current_user["email"],
             processing_type="excel_to_ppt",
-            original_filename=file.filename,
+            original_filename=_file_kind(file.filename),
             file_size_mb=file_size_mb if 'file_size_mb' in locals() else 0,
             status="failed",
             error_message=str(e),
@@ -5392,14 +5434,14 @@ def analyze_file(
         processing_history = FileProcessingHistory(
             user_email=current_user["email"],
             processing_type="file_analysis",
-            original_filename=file.filename,
+            original_filename=_file_kind(file.filename),
             file_size_mb=file_size_mb,
             status="success"
         )
         db.add(processing_history)
         db.commit()
 
-        logger.info(f"File analyzed: {file.filename} by {current_user['email']}")
+        logger.info("File analysis finished")
 
         return analysis_result
 
@@ -5688,7 +5730,7 @@ def universal_analyze(
         processing_history = FileProcessingHistory(
             user_email=current_user["email"],
             processing_type="universal_analyze",
-            original_filename=file.filename,
+            original_filename=_file_kind(file.filename),
             file_size_mb=file_size_mb,
             status=str(results.get("status") or "success"),
         )
@@ -5990,14 +6032,14 @@ def process_zip(
         processing_history = FileProcessingHistory(
             user_email=current_user["email"],
             processing_type="zip_cleaning",
-            original_filename=file.filename,
+            original_filename=_file_kind(file.filename),
             file_size_mb=file_size_mb,
             status="success"
         )
         db.add(processing_history)
         db.commit()
 
-        logger.info(f"ZIP processing: {file.filename} by {current_user['email']}")
+        logger.info("ZIP processing finished")
 
         # Generate filename: original_name_timestamp.zip (IMMEDIATE DOWNLOAD, NO STORAGE)
         original_name = _ascii_safe_filename(

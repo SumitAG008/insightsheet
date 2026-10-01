@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { UploadFile } from '@/api/integrations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileText, Download, Upload as UploadIcon, AlertCircle, Shield, Scissors, Copy, Plus } from 'lucide-react';
+import { FileText, Download, Upload as UploadIcon, AlertCircle, Shield, Scissors, Copy, Plus, PenLine } from 'lucide-react';
+import PdfEditTab from '@/components/pdf/PdfEditTab';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { backendApi } from '@/api/meldraClient';
 import { Document, Page, pdfjs } from 'react-pdf';
@@ -29,7 +30,7 @@ const authFetch = async (endpoint, options = {}) => {
 };
 
 export default function PDFEditor() {
-  const [activeTab, setActiveTab] = useState('merge'); // 'merge', 'split'
+  const [activeTab, setActiveTab] = useState('edit'); // 'edit', 'merge', 'split'
 
   // --- Merge State ---
   const [mergeFiles, setMergeFiles] = useState([]);
@@ -173,12 +174,19 @@ export default function PDFEditor() {
             PDF Tools & Editor
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Fill forms, merge multiple PDFs, or split documents
+            Fill and edit any PDF or photo of a form, merge PDFs, or split documents
           </p>
         </div>
 
         {/* Tabs */}
         <div className="flex justify-center mb-8 gap-4">
+          <Button
+            variant={activeTab === 'edit' ? 'default' : 'outline'}
+            onClick={() => setActiveTab('edit')}
+            className={activeTab === 'edit' ? 'bg-purple-600 hover:bg-purple-700' : ''}
+          >
+            <PenLine className="w-4 h-4 mr-2" /> Edit & Fill
+          </Button>
           <Button 
             variant={activeTab === 'merge' ? 'default' : 'outline'}
             onClick={() => setActiveTab('merge')}
@@ -203,6 +211,12 @@ export default function PDFEditor() {
             We never store your files on our servers.
           </AlertDescription>
         </Alert>
+
+        {activeTab === 'edit' && (
+          <div className="max-w-6xl mx-auto mb-8">
+            <PdfEditTab />
+          </div>
+        )}
 
         {/* Tab Contents */}
         <div className="max-w-4xl mx-auto">

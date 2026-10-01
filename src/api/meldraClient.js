@@ -825,6 +825,19 @@ export const backendApi = {
       };
     },
 
+    /** The PDF editor's download: field values, added text, white-out and marks written into the PDF. */
+    pdfApplyEdits: async (pdfBlob, edits) => {
+      const formData = new FormData();
+      formData.append('file', pdfBlob, 'document.pdf');
+      formData.append('edits', JSON.stringify(edits));
+      const response = await apiCall('/api/files/pdf-apply-edits', { method: 'POST', body: formData, timeoutMs: 300000 });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `The PDF could not be saved (${response.status}).`);
+      }
+      return response.blob();
+    },
+
     /** Label/value pairs and text from a form, statement or letter (PDF or image). */
     extractFormData: async (file, ocrLang) => {
       const formData = new FormData();

@@ -192,3 +192,74 @@ def test_ocr_table_detection_finishes_on_forms_with_tables():
     t.join(5)
     assert not t.is_alive(), "table detection did not finish"
     assert result["tables"] and len(result["tables"][0]["rows"]) == 3
+
+
+def _contract_pdf() -> bytes:
+    """Blanks typed inside sentences and a bracket placeholder, as in real agreements."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=A4)
+    W, H = A4
+    c.setFont("Helvetica", 9)
+    c.drawString(70, H - 130, 'This Statement of Work is dated as of ______ and is part of the Master Services')
+    c.drawString(70, H - 142, 'Agreement dated______ ("Master Services Agreement")')
+    c.drawString(70, H - 222, 'registered ________________(hereinafter referred to as "Volo Health")')
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(70, H - 260, "SIGNED FOR AND ON BEHALF OF [Insert Name of Network Provider]")
+    c.drawString(70, H - 300, "BY AND BETWEEN")
+    c.save()
+    return buf.getvalue()
+
+
+def test_blanks_inside_sentences_and_placeholders_become_fields():
+    pdf, report = make_fillable_pdf(_contract_pdf(), "contract.pdf")
+    labels = {f["label"] for f in report["field_list"]}
+    assert {"Agreement dated", "registered", "Insert Name of Network Provider"} <= labels
+    assert any(lab.endswith("dated as of") for lab in labels)
+    widgets = {w.field_name: w for w in fitz.open(stream=pdf, filetype="pdf")[0].widgets()}
+    # The placeholder field starts with the placeholder text, so typing replaces it.
+    assert widgets["Insert_Name_of_Network_Provider"].field_value == "[Insert Name of Network Provider]"
+
+
+def test_editor_edits_are_written_into_the_pdf():
+    from app.services.fillable_pdf import apply_edits
+
+    pdf, _ = make_fillable_pdf(_contract_pdf(), "contract.pdf")
+    page = fitz.open(stream=pdf, filetype="pdf")[0]
+    heading = page.search_for("BY AND BETWEEN")[0]
+    W, H = page.rect.width, page.rect.height
+    edits = {
+        "fields": {"registered": "14 MG Road, Pune", "Insert_Name_of_Network_Provider": "Apollo Clinics Pvt Ltd"},
+        "items": [
+            {"type": "whiteout", "page": 0, "x": (heading.x0 - 1) / W, "y": (heading.y0 - 1) / H,
+             "w": (heading.width + 2) / W, "h": (heading.height + 2) / H},
+            {"type": "text", "page": 0, "x": heading.x0 / W, "y": heading.y0 / H, "w": 0.05, "h": 0.01,
+             "text": "BETWEEN THE PARTIES BELOW", "size": 9, "color": "#cc0000"},
+            {"type": "text", "page": 0, "x": 0.1, "y": 0.6, "w": 0.3, "h": 0.03, "text": "नमस्ते", "size": 12},
+            {"type": "check", "page": 0, "x": 0.5, "y": 0.5, "w": 0.02, "h": 0.015},
+            {"type": "text", "page": 9, "x": 0.1, "y": 0.1, "text": "ignored: no such page"},
+        ],
+    }
+    out = fitz.open(stream=apply_edits(pdf, edits), filetype="pdf")
+    text = out[0].get_text()
+    assert "BY AND BETWEEN" not in text  # white-out removes the covered words from the file
+    assert "BETWEEN THE PARTIES BELOW" in text  # typed on one line stays on one line
+    values = {w.field_name: w.field_value for w in out[0].widgets()}
+    assert values["registered"] == "14 MG Road, Pune"
+    assert values["Insert_Name_of_Network_Provider"] == "Apollo Clinics Pvt Ltd"
+
+    locked = fitz.open(stream=apply_edits(pdf, {**edits, "flatten": True}), filetype="pdf")
+    assert not list(locked[0].widgets()) and "14 MG Road, Pune" in locked[0].get_text()
+
+
+def test_editor_download_endpoint(client):
+    import json as _json
+
+    pdf, _ = make_fillable_pdf(_contract_pdf(), "contract.pdf")
+    r = client.post("/api/files/pdf-apply-edits", files={"file": ("doc.pdf", pdf, "application/pdf")},
+                    data={"edits": _json.dumps({"fields": {"registered": "Pune"}, "items": []})})
+    assert r.status_code == 200 and r.content[:5] == b"%PDF-"
+    assert client.post("/api/files/pdf-apply-edits", files={"file": ("doc.pdf", pdf, "application/pdf")},
+                       data={"edits": "{not json"}).status_code == 400

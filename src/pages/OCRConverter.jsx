@@ -1,5 +1,6 @@
 // pages/OCRConverter.jsx - Fillable PDF from any form (PDF, scan or photo), form data extraction, and OCR to DOC/PDF
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { maxUploadMb, uploadLimitLabel } from '@/lib/uploadLimits';
 import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
@@ -372,6 +373,7 @@ export default function OCRConverter() {
                   {fillResult.scannedPages ? ` (${fillResult.scannedPages} scanned, now also searchable)` : ''}.
                   Open it in Edge, Chrome or Adobe Reader, click a blank and type. Need text somewhere else? Use your reader&apos;s &quot;Add text&quot; tool.
                   {fillResult.fields + fillResult.checkboxes === 0 && ' No blanks were found: use “Add text” in your PDF reader to type anywhere on the page.'}
+                  {' '}<Link to="/pdfeditor" className="underline font-semibold text-emerald-300">Or fill and edit it here in Meldra’s PDF Editor.</Link>
                 </AlertDescription>
               </Alert>
             )}

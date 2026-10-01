@@ -96,7 +96,7 @@ from app.services.ocr_service import (
     extract_with_layout_ocrspace,
     pdf_from_image,
 )
-from app.services.fillable_pdf import FillableError, SUPPORTED_LABEL, extract_form_data, make_fillable_pdf
+from app.services.fillable_pdf import FillableError, SUPPORTED_LABEL, apply_edits, extract_form_data, make_fillable_pdf
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
 from app.services.universal_excel_processor import UniversalExcelProcessor
@@ -4431,6 +4431,34 @@ async def make_fillable(
         "Access-Control-Expose-Headers": "X-Fillable-Fields, X-Fillable-Checkboxes, X-Fillable-Pages, X-Fillable-Scanned-Pages, Content-Disposition",
     }
     return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf", headers=headers)
+
+
+@app.post("/api/files/pdf-apply-edits")
+async def pdf_apply_edits(
+    file: UploadFile = File(...),
+    edits: str = Form(...),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    The PDF editor's Download: fill form fields, place text anywhere, white-out and tick marks, and
+    return the finished PDF ("flatten" makes it non-editable). Nothing is stored.
+    """
+    try:
+        parsed = json.loads(edits or "{}")
+        if not isinstance(parsed, dict):
+            raise ValueError
+    except ValueError:
+        raise HTTPException(status_code=400, detail="The edits could not be read.")
+    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    data = await _read_form_upload(file, subscription)
+    pdf = await _run_form_tool(apply_edits, data, parsed)
+    db.add(FileProcessingHistory(user_email=current_user["email"], processing_type="pdf_edit",
+                                 original_filename=_file_kind(file.filename), file_size_mb=len(data) / (1024 * 1024),
+                                 status="success"))
+    db.commit()
+    return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf",
+                             headers={"Content-Disposition": 'attachment; filename="edited.pdf"'})
 
 
 @app.post("/api/files/extract-form-data")

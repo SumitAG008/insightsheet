@@ -1,5 +1,6 @@
 // pages/OCRConverter.jsx - OCR to DOC & OCR to PDF: extract text from images, edit, save, then download
 import React, { useState, useEffect } from 'react';
+import { maxUploadMb, uploadLimitLabel } from '@/lib/uploadLimits';
 import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -59,7 +60,7 @@ export default function OCRConverter() {
     }
   };
 
-  const maxSizeMB = (subscription && subscription?.plan === 'premium') ? 500 : 10;
+  const maxSizeMB = maxUploadMb(subscription);
 
   const handleFileChange = (e) => {
     const f = e.target.files?.[0];
@@ -207,7 +208,7 @@ export default function OCRConverter() {
           <Lock className={`h-5 w-5 ${subscription?.plan === 'premium' ? 'text-emerald-400' : 'text-amber-400'}`} />
           <AlertDescription className="text-slate-900 dark:text-slate-100">
             <strong className="text-slate-900 dark:text-white font-bold">
-              {subscription?.plan === 'premium' ? 'Premium: Up to 500MB' : `File limit: ${maxSizeMB}MB`}
+              {!Number.isFinite(maxSizeMB) ? 'No file size limit' : subscription?.plan === 'premium' ? `Premium: Up to ${maxSizeMB}MB` : `File limit: ${maxSizeMB}MB`}
             </strong>
             <br />
             <span className="text-sm text-slate-900 dark:text-slate-200 font-bold">
@@ -232,7 +233,7 @@ export default function OCRConverter() {
               </div>
               <h3 className="text-2xl font-bold text-white mb-2">Upload Image / PDF</h3>
               <p className="text-slate-200 font-semibold mb-2">Scans, photos, forms, screenshots</p>
-              <p className="text-slate-300 font-medium text-sm">Max {maxSizeMB}MB</p>
+              <p className="text-slate-300 font-medium text-sm">Max {uploadLimitLabel(maxSizeMB)}</p>
             </label>
           </div>
         )}

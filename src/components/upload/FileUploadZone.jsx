@@ -4,6 +4,7 @@ import { Upload, FileSpreadsheet, Loader2, CheckCircle, Info, AlertCircle } from
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { meldraAi } from '@/api/meldraClient';
 import { useI18n } from '@/lib/i18n';
+import { maxUploadMb, uploadLimitLabel } from '@/lib/uploadLimits';
 
 export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFormats }) {
   const { t } = useI18n();
@@ -367,7 +368,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
 
       // Check file size limit
       const fileSizeMB = file.size / (1024 * 1024);
-      const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
+      const maxSize = maxUploadMb(subscription);
       
       if (fileSizeMB > maxSize) {
         throw new Error(t('upload_err_file_size_exceeds_limit', {
@@ -449,7 +450,8 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
     setIsDragging(false);
   }, []);
 
-  const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
+  const maxSizeLimit = maxUploadMb(subscription);
+  const maxSize = Number.isFinite(maxSizeLimit) ? maxSizeLimit : '∞'; // for display
 
   return (
     <div>

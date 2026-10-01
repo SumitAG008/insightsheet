@@ -1,5 +1,6 @@
 // pages/FileToPPT.jsx - Advanced Excel to PowerPoint converter (browser-based) with file size limits
 import React, { useState, useEffect } from 'react';
+import { maxUploadMb, uploadLimitLabel } from '@/lib/uploadLimits';
 import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -119,7 +120,7 @@ export default function FileToPPT() {
 
     // ENFORCE FILE SIZE LIMIT
     const fileSizeMB = selectedFile.size / (1024 * 1024);
-    const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
+    const maxSize = maxUploadMb(subscription);
 
     if (fileSizeMB > maxSize) {
       setError(`File size (${fileSizeMB.toFixed(1)}MB) exceeds your ${maxSize}MB limit. ${maxSize === 10 ? 'Upgrade to Premium for files up to 500MB!' : ''}`);
@@ -138,7 +139,7 @@ export default function FileToPPT() {
 
     // DOUBLE CHECK FILE SIZE BEFORE CONVERSION
     const fileSizeMB = file.size / (1024 * 1024);
-    const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
+    const maxSize = maxUploadMb(subscription);
 
     if (fileSizeMB > maxSize) {
       setError(`File size (${fileSizeMB.toFixed(1)}MB) exceeds your ${maxSize}MB limit. Please upgrade to Premium.`);
@@ -319,7 +320,7 @@ export default function FileToPPT() {
     if (fileInput) fileInput.value = '';
   };
 
-  const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
+  const maxSize = maxUploadMb(subscription);
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 py-12">
@@ -363,7 +364,7 @@ export default function FileToPPT() {
           <Lock className={`h-5 w-5 ${subscription?.plan === 'premium' ? 'text-emerald-400' : 'text-amber-400'}`} />
           <AlertDescription className="text-slate-900 dark:text-slate-100">
             <strong className="text-slate-900 dark:text-white font-bold">
-              {subscription?.plan === 'premium' ? '✨ Premium: Up to 500MB files' : `⚠️ File Size Limit: ${maxSize}MB (Free Plan)`}
+              {!Number.isFinite(maxSize) ? '✨ No file size limit' : subscription?.plan === 'premium' ? `✨ Premium: Up to ${maxSize}MB files` : `⚠️ File Size Limit: ${maxSize}MB (Free Plan)`}
             </strong>
             <br />
             <span className="text-sm text-slate-900 dark:text-slate-200 font-bold">
@@ -413,7 +414,7 @@ export default function FileToPPT() {
                   Click to select file or drag & drop
                 </p>
                 <p className="text-slate-300 font-medium text-base mb-4">
-                  Max {maxSize}MB {subscription?.plan !== 'premium' && '(Free Plan)'}
+                  Max {uploadLimitLabel(maxSize)} {subscription?.plan !== 'premium' && '(Free Plan)'}
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
                   <Badge variant="outline" className="border-blue-400 text-blue-300 font-semibold">

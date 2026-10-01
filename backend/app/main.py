@@ -446,13 +446,38 @@ def _first_day_next_day_utc(dt: datetime) -> datetime:
     return base + timedelta(days=1)
 
 
+# No practical limit (used when UPLOAD_LIMIT_MB=off); large enough that no upload reaches it.
+NO_UPLOAD_LIMIT_MB = 1_000_000
+
+
+def _upload_limit_override_mb() -> Optional[int]:
+    """
+    UPLOAD_LIMIT_MB lets the operator change the per-file limit without a code change:
+    unset = plan limits, "off" (or 0) = no limit (e.g. for load testing), a number = that limit for everyone.
+    """
+    raw = (os.getenv("UPLOAD_LIMIT_MB") or "").strip().lower()
+    if not raw:
+        return None
+    if raw in ("off", "none", "unlimited", "0"):
+        return NO_UPLOAD_LIMIT_MB
+    return int(raw) if raw.isdigit() else None
+
+
+def _upload_limits_off() -> bool:
+    return _upload_limit_override_mb() == NO_UPLOAD_LIMIT_MB
+
+
 def _plan_file_size_mb(subscription: Subscription) -> int:
+    """Largest single file this subscription may upload, in MB (one rule for every tool)."""
+    override = _upload_limit_override_mb()
+    if override is not None:
+        return override
+    return _plan_default_file_size_mb(subscription)
+
+
+def _plan_default_file_size_mb(subscription) -> int:
     plan = (getattr(subscription, "plan", None) or "free").strip().lower()
-    if plan == "premium_yearly":
-        return 500
-    if plan in ("premium", "premium_quarterly"):
-        return 200
-    return 10
+    return 500 if plan.startswith("premium") else 10
 
 
 def _plan_ai_limit(subscription: Subscription) -> int:
@@ -474,7 +499,8 @@ def _plan_transactions_limit(subscription: Subscription) -> int:
 
 
 def _plan_upload_bytes_limit(subscription: Subscription) -> int:
-    return int(_plan_file_size_mb(subscription) * 1024 * 1024)
+    # Stored on the subscription, so always the plan's own figure; UPLOAD_LIMIT_MB is applied at request time.
+    return int(_plan_default_file_size_mb(subscription) * 1024 * 1024)
 
 
 def _ensure_subscription_monthly_resets(subscription: Subscription, db: Session) -> None:
@@ -668,6 +694,8 @@ def _consume_ai_quota(db: Session, subscription: Subscription, *args) -> None:
 def _enforce_upload_quota(subscription: Subscription, bytes_to_add: int) -> None:
     if (subscription.status or "").lower() != "active":
         raise HTTPException(status_code=403, detail="Subscription inactive")
+    if _upload_limits_off():
+        return
     limit = int(getattr(subscription, "workflow_runs_limit", 0) or 0)
     used = int(getattr(subscription, "workflow_runs_used", 0) or 0)
     add = int(bytes_to_add or 0)
@@ -777,10 +805,14 @@ async def _security_headers(request: Request, call_next):
 async def _limit_request_body_size(request: Request, call_next):
     """Turn away uploads above the largest plan limit before the server spends time and disk on them."""
     declared = request.headers.get("content-length")
-    if declared and declared.isdigit() and int(declared) > _MAX_REQUEST_BODY_BYTES:
+    if _upload_limits_off():
+        return await call_next(request)
+    override = _upload_limit_override_mb()
+    max_body = max(_MAX_REQUEST_BODY_BYTES, (override + 20) * 1024 * 1024) if override else _MAX_REQUEST_BODY_BYTES
+    if declared and declared.isdigit() and int(declared) > max_body:
         return JSONResponse(
             status_code=413,
-            content={"detail": f"Upload too large (limit {_MAX_REQUEST_BODY_BYTES // (1024 * 1024)}MB)"},
+            content={"detail": f"Upload too large (limit {max_body // (1024 * 1024)}MB)"},
         )
     return await call_next(request)
 
@@ -4342,7 +4374,7 @@ async def ocr_extract(
         subscription = db.query(Subscription).filter(
             Subscription.user_email == current_user["email"]
         ).first()
-        max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_size_bytes = max_size_mb * 1024 * 1024
         _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
@@ -5064,8 +5096,7 @@ def developer_generate_pl_with_file(
 
         raw = file.file.read()
 
-        plan = (getattr(key, "plan", "") or "").strip().lower()
-        max_size_mb = 500 if plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(key)  # the API key carries its plan
         max_bytes = max_size_mb * 1024 * 1024
         if len(raw) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
@@ -5092,7 +5123,7 @@ def developer_generate_pl_with_file(
             llm_assist_headers_only=bool(llm_assist_headers_only),
         ))
 
-        if should_apply_watermark(getattr(subscription, "plan", None)):
+        if should_apply_watermark(getattr(key, "plan", None)):
             excel_data = watermark_xlsx_bytes(excel_data)
         response_size = len(excel_data) if excel_data is not None else None
 
@@ -5215,7 +5246,7 @@ def excel_to_ppt(
         _enforce_conversion_quota(db, current_user["email"], "excel_to_ppt", subscription)
 
         # Check file size based on subscription
-        max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_size_bytes = max_size_mb * 1024 * 1024
         _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
@@ -5332,7 +5363,7 @@ def analyze_file(
             Subscription.user_email == current_user["email"]
         ).first()
 
-        max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_size_bytes = max_size_mb * 1024 * 1024
         _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
@@ -5914,7 +5945,7 @@ def process_zip(
 
         _enforce_conversion_quota(db, current_user["email"], "zip_cleaning", subscription)
 
-        max_size_mb = 500 if subscription and subscription.plan == "premium" else 10
+        max_size_mb = _plan_file_size_mb(subscription)
         max_size_bytes = max_size_mb * 1024 * 1024
         _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
@@ -6020,6 +6051,8 @@ def get_my_subscription(
         "conversions_used": subscription.conversions_used,
         "conversions_limit": subscription.conversions_limit,
         "conversions_reset_at": subscription.conversions_reset_at.isoformat() if subscription.conversions_reset_at else None,
+        # Largest single file in MB; null = no limit. The website uses this for its checks.
+        "max_upload_mb": None if _upload_limits_off() else _plan_file_size_mb(subscription),
         "payment_status": subscription.payment_status,
         "trial_start_date": subscription.trial_start_date,
         "trial_end_date": subscription.trial_end_date,

@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import NavigationWarningModal from '@/components/common/NavigationWarningModal';
 import { cleanName, planRenames } from '@/lib/filenameCleaning';
 import { readArchive, writeRenamedArchive } from '@/lib/zipRename';
+import { maxUploadMb, uploadLimitLabel } from '@/lib/uploadLimits';
 
 export default function FilenameCleaner() {
   const navigate = useNavigate();
@@ -127,7 +128,7 @@ export default function FilenameCleaner() {
 
     // ENFORCE FILE SIZE LIMIT
     const fileSizeMB = file.size / (1024 * 1024);
-    const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
+    const maxSize = maxUploadMb(subscription);
     
     if (fileSizeMB > maxSize) {
       alert(`File size (${fileSizeMB.toFixed(1)}MB) exceeds your ${maxSize}MB limit.\n\n${maxSize === 10 ? 'Upgrade to Premium for files up to 500MB!' : ''}`);
@@ -256,7 +257,7 @@ export default function FilenameCleaner() {
     setOptions(prev => ({ ...prev, ...preset.config }));
   };
 
-  const maxSize = (subscription && subscription.plan === 'premium') ? 500 : 10;
+  const maxSize = maxUploadMb(subscription);
 
   return (
     <div className="min-h-screen p-4 md:p-6" style={{ background: 'linear-gradient(to bottom right, #0A1F44, #0F2A5A, #0A1F44)' }}>
@@ -281,7 +282,7 @@ export default function FilenameCleaner() {
           <Lock className={`h-5 w-5 ${subscription?.plan === 'premium' ? 'text-emerald-400' : 'text-amber-400'}`} />
           <AlertDescription className="text-slate-300">
             <strong className={subscription?.plan === 'premium' ? 'text-emerald-300' : 'text-amber-300'}>
-              {subscription?.plan === 'premium' ? '✨ Premium: Up to 500MB ZIP files' : `⚠️ File Size Limit: ${maxSize}MB (Free Plan)`}
+              {!Number.isFinite(maxSize) ? '✨ No file size limit' : subscription?.plan === 'premium' ? `✨ Premium: Up to ${maxSize}MB ZIP files` : `⚠️ File Size Limit: ${maxSize}MB (Free Plan)`}
             </strong>
             <br />
             <span className="text-sm">

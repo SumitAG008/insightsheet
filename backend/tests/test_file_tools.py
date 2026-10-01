@@ -198,3 +198,22 @@ def test_memory_is_released_after_a_file_request(client, monkeypatch):
     assert calls == [1]
     client.get("/api/auth/devices")  # ordinary requests don't trigger it
     assert calls == [1]
+
+
+def test_upload_limit_switch(client, monkeypatch):
+    # Plan limits by default (a new account is on the free plan).
+    monkeypatch.delenv("UPLOAD_LIMIT_MB", raising=False)
+    assert client.get("/api/subscriptions/me").json()["max_upload_mb"] == 10
+
+    # A number applies to everyone: a 2 MB ZIP is refused at 1 MB.
+    monkeypatch.setenv("UPLOAD_LIMIT_MB", "1")
+    assert client.get("/api/subscriptions/me").json()["max_upload_mb"] == 1
+    big = _zip({f"f{i}.bin": secrets.token_bytes(1024) for i in range(2100)})
+    r = client.post("/api/files/process-zip", files={"file": ("big.zip", big, "application/zip")})
+    assert r.status_code == 413
+
+    # "off" removes the limit (for load testing) and the website is told there is none.
+    monkeypatch.setenv("UPLOAD_LIMIT_MB", "off")
+    assert client.get("/api/subscriptions/me").json()["max_upload_mb"] is None
+    r = client.post("/api/files/process-zip", files={"file": ("big.zip", big, "application/zip")})
+    assert r.status_code == 200, r.text

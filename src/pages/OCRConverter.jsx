@@ -1,4 +1,4 @@
-// pages/OCRConverter.jsx - OCR to DOC & OCR to PDF: extract text from images, edit, save, then download
+// pages/OCRConverter.jsx - Fillable PDF from any form (PDF, scan or photo), form data extraction, and OCR to DOC/PDF
 import React, { useState, useEffect } from 'react';
 import { maxUploadMb, uploadLimitLabel } from '@/lib/uploadLimits';
 import { backendApi } from '@/api/meldraClient';
@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { generateDownloadFilename, downloadBlob } from '@/utils/fileNaming';
 import {
   ScanLine, FileText, Upload, Loader2, CheckCircle, AlertCircle,
-  Save, Image as ImageIcon, FileType, Lock,
+  Save, Image as ImageIcon, FileType, Lock, PenLine, Table2, Download, FileCheck2,
 } from 'lucide-react';
 
 const IMAGE_ACCEPT = '.jpg,.jpeg,.png,.webp,.bmp,.tiff,.tif,.gif,.pdf';
@@ -36,6 +36,9 @@ export default function OCRConverter() {
   const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(null); // 'fill' | 'data' | null
+  const [fillResult, setFillResult] = useState(null); // { fields, checkboxes, pages, scannedPages }
+  const [formData, setFormData] = useState(null); // { fields, text, page_count }
 
   useEffect(() => {
     loadUserAndSubscription();
@@ -79,6 +82,8 @@ export default function OCRConverter() {
       return;
     }
     setFile(f);
+    setFillResult(null);
+    setFormData(null);
     setError('');
     setText('');
     setLayout(null);
@@ -107,6 +112,49 @@ export default function OCRConverter() {
     } finally {
       setExtracting(false);
     }
+  };
+
+  const baseName = () => (file?.name || 'form').replace(/\.[^/.]+$/, '') || 'form';
+
+  const handleMakeFillable = async () => {
+    if (!file) return;
+    setBusy('fill');
+    setError('');
+    setFillResult(null);
+    try {
+      const res = await backendApi.files.makeFillable(file, ocrLang);
+      downloadBlob(res.blob, `${baseName()}_fillable.pdf`);
+      setFillResult(res);
+    } catch (err) {
+      setError(err.message || 'Could not make this form fillable.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleReadData = async () => {
+    if (!file) return;
+    setBusy('data');
+    setError('');
+    setFormData(null);
+    try {
+      setFormData(await backendApi.files.extractFormData(file, ocrLang));
+    } catch (err) {
+      setError(err.message || 'Could not read this document.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const downloadFormData = (kind) => {
+    if (!formData) return;
+    if (kind === 'json') {
+      downloadBlob(new Blob([JSON.stringify(formData, null, 2)], { type: 'application/json' }), `${baseName()}_data.json`);
+      return;
+    }
+    const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const rows = [['Page', 'Label', 'Value'], ...formData.fields.map((f) => [f.page, f.label, f.value])];
+    downloadBlob(new Blob([rows.map((r) => r.map(q).join(',')).join('\n')], { type: 'text/csv' }), `${baseName()}_data.csv`);
   };
 
   const handleSave = () => {
@@ -160,6 +208,8 @@ export default function OCRConverter() {
 
   const handleReset = () => {
     setFile(null);
+    setFillResult(null);
+    setFormData(null);
     setText('');
     setLayout(null);
     setImageWidth(null);
@@ -183,10 +233,10 @@ export default function OCRConverter() {
             </div>
           </div>
           <h1 className="text-5xl font-bold text-slate-900 dark:text-white mb-4">
-            OCR to DOC & OCR to PDF
+            Fillable PDF & Form Reader
           </h1>
           <p className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-4">
-            Extract text from any image, edit it, save, and download as editable Word or PDF
+            Turn any locked PDF, scan or photo of a form into a PDF you can type into, print once and sign, or read the data out of it
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Badge className="bg-[#065f46] text-white border border-[#065f46] font-bold">
@@ -212,7 +262,8 @@ export default function OCRConverter() {
             </strong>
             <br />
             <span className="text-sm text-slate-900 dark:text-slate-200 font-bold">
-              JPG, PNG, WebP, BMP, TIFF, GIF, PDF supported. <strong>Layout</strong> (default): DOC/PDF match the original format and alignment so you can fill, sign, and send. <strong>Form</strong>: flow structure.
+              Upload a PDF (also locked or scanned) or an image: JPG, JPEG, PNG, WebP, BMP, TIFF, GIF. Up to 25 pages.
+              For photos: flat page, good light, whole form in view.
             </span>
           </AlertDescription>
         </Alert>
@@ -271,13 +322,88 @@ export default function OCRConverter() {
                 <AlertDescription className="text-red-300">{error}</AlertDescription>
               </Alert>
             )}
-            <Button
-              onClick={handleRunOCR}
-              disabled={extracting}
-              className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-bold py-3"
-            >
-              {extracting ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Extracting text…</> : <><ScanLine className="w-5 h-5 mr-2" /> Run OCR</>}
-            </Button>
+            <div className="grid gap-3 md:grid-cols-3">
+              <button
+                type="button"
+                onClick={handleMakeFillable}
+                disabled={!!busy || extracting}
+                className="text-left rounded-xl border-2 border-emerald-500 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 p-4 text-white"
+              >
+                <div className="flex items-center gap-2 font-bold text-base mb-1">
+                  {busy === 'fill' ? <Loader2 className="w-5 h-5 animate-spin" /> : <PenLine className="w-5 h-5" />}
+                  Make fillable PDF
+                </div>
+                <p className="text-sm text-emerald-50">Same look as the original, with boxes to type into and tick. Fill on screen, print once, sign.</p>
+              </button>
+              <button
+                type="button"
+                onClick={handleReadData}
+                disabled={!!busy || extracting}
+                className="text-left rounded-xl border border-slate-600 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 p-4 text-white"
+              >
+                <div className="flex items-center gap-2 font-bold text-base mb-1">
+                  {busy === 'data' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Table2 className="w-5 h-5" />}
+                  Read form data
+                </div>
+                <p className="text-sm text-slate-300">Pull the filled-in values (name, policy number, ticks...) as a table, CSV or JSON.</p>
+              </button>
+              <button
+                type="button"
+                onClick={handleRunOCR}
+                disabled={!!busy || extracting}
+                className="text-left rounded-xl border border-slate-600 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 p-4 text-white"
+              >
+                <div className="flex items-center gap-2 font-bold text-base mb-1">
+                  {extracting ? <Loader2 className="w-5 h-5 animate-spin" /> : <ScanLine className="w-5 h-5" />}
+                  Extract & edit text
+                </div>
+                <p className="text-sm text-slate-300">Get the text, correct it, and download as Word or PDF.</p>
+              </button>
+            </div>
+            {busy && (
+              <p className="mt-3 text-sm text-slate-300">Reading the document… scans and photos take a few seconds per page.</p>
+            )}
+            {fillResult && (
+              <Alert className="mt-4 bg-emerald-500/10 border-emerald-500/30">
+                <FileCheck2 className="h-4 w-4 text-emerald-400" />
+                <AlertDescription className="text-slate-100">
+                  <strong>Downloaded {baseName()}_fillable.pdf</strong>: {fillResult.fields} text boxes and {fillResult.checkboxes} tick boxes
+                  on {fillResult.pages} page{fillResult.pages === 1 ? '' : 's'}
+                  {fillResult.scannedPages ? ` (${fillResult.scannedPages} scanned, now also searchable)` : ''}.
+                  Open it in Edge, Chrome or Adobe Reader, click a blank and type. Need text somewhere else? Use your reader&apos;s &quot;Add text&quot; tool.
+                  {fillResult.fields + fillResult.checkboxes === 0 && ' No blanks were found: use “Add text” in your PDF reader to type anywhere on the page.'}
+                </AlertDescription>
+              </Alert>
+            )}
+            {formData && (
+              <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950/60 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <p className="text-white font-semibold">{formData.fields.length} values found on {formData.page_count} page{formData.page_count === 1 ? '' : 's'}</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => downloadFormData('csv')}><Download className="w-4 h-4 mr-1" /> CSV</Button>
+                    <Button size="sm" variant="outline" onClick={() => downloadFormData('json')}><Download className="w-4 h-4 mr-1" /> JSON</Button>
+                  </div>
+                </div>
+                {formData.fields.length ? (
+                  <div className="max-h-80 overflow-auto">
+                    <table className="w-full text-sm">
+                      <thead><tr className="text-left text-slate-300"><th className="py-1 pr-3">Label</th><th className="py-1 pr-3">Value</th><th className="py-1">Page</th></tr></thead>
+                      <tbody>
+                        {formData.fields.map((f, i) => (
+                          <tr key={i} className="border-t border-slate-800 text-slate-100 align-top">
+                            <td className="py-1 pr-3 font-medium">{f.label}</td>
+                            <td className="py-1 pr-3 whitespace-pre-wrap">{f.value}</td>
+                            <td className="py-1 text-slate-400">{f.page}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-slate-300 text-sm">No label/value pairs were recognised. The full text is in the JSON download.</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -358,23 +484,12 @@ export default function OCRConverter() {
 
         <div className="mt-12 bg-slate-900/80 backdrop-blur-xl rounded-xl p-6 border border-slate-700/50">
           <h3 className="text-lg font-bold text-white mb-4">How it works</h3>
-          <div className="space-y-3 text-sm">
-            <div className="flex gap-3">
-              <span className="font-bold text-blue-400">1</span>
-              <div className="text-slate-200 font-bold"><strong className="text-white">Upload</strong> — Any image: scan, photo, form, screenshot (JPG, PNG, WebP, BMP, TIFF, GIF).</div>
-            </div>
-            <div className="flex gap-3">
-              <span className="font-bold text-blue-400">2</span>
-              <div className="text-slate-200 font-bold"><strong className="text-white">Run OCR</strong> — Extract text. You can edit and fill in the content.</div>
-            </div>
-            <div className="flex gap-3">
-              <span className="font-bold text-blue-400">3</span>
-              <div className="text-slate-200 font-bold"><strong className="text-white">Save</strong> — Saves your edits in this browser session.</div>
-            </div>
-            <div className="flex gap-3">
-              <span className="font-bold text-blue-400">4</span>
-              <div className="text-slate-200 font-bold"><strong className="text-white">Download</strong> — Export as editable Word (.docx) or searchable PDF.</div>
-            </div>
+          <div className="space-y-3 text-sm text-slate-200">
+            <p><strong className="text-white">1. Upload</strong> the form: a PDF you can&apos;t type into (locked or scanned), or a photo or scan (JPG, JPEG, PNG, WebP, BMP, TIFF, GIF).</p>
+            <p><strong className="text-white">2. Make fillable PDF</strong>: Meldra finds the blanks (lines, empty boxes and table cells, &quot;Label:&quot; gaps, tick boxes) and adds boxes you can type into. The page keeps its original look, so hospitals, insurers and banks accept it.</p>
+            <p><strong className="text-white">3. Fill, print once, sign.</strong> Any PDF reader works (Edge, Chrome, Adobe Reader, Preview). Your typed answers can be saved and edited again later.</p>
+            <p><strong className="text-white">Read form data</strong> pulls the values out of a filled form, statement or letter, for spreadsheets or other systems. Developers: the same tools are in the Meldra API.</p>
+            <p className="text-slate-400">Your file is processed in memory and never stored.</p>
           </div>
         </div>
       </div>

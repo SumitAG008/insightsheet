@@ -468,10 +468,11 @@ def _detect_tables_from_words(
                 while len(r) < max_cols:
                     r.append("")
             # Replace OCR garbage in header row (e.g. "a", "a =" from misread table borders)
-            for j, c in enumerate(table_rows[0]):
+            # (col, not j: j is the row cursor; reusing it sent i backwards and looped forever)
+            for col, c in enumerate(table_rows[0]):
                 cs = (c or "").strip()
                 if len(cs) <= 3 and re.match(r'^[a-zA-Z]\s*=?\s*$', cs):
-                    table_rows[0][j] = "—"
+                    table_rows[0][col] = "—"
             # Bbox from first/last words
             all_ws = []
             for k in table_keys:
@@ -490,7 +491,7 @@ def _detect_tables_from_words(
                 "width": max(1, right - left),
                 "height": max(1, bottom - top),
             })
-            i = j
+            i = max(j, i + 1)
         else:
             i += 1
 

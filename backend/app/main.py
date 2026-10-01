@@ -20,7 +20,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from typing import List
 from app.services.pdf_ops_service import merge_pdfs, split_pdf
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 from datetime import timedelta, datetime
 import hashlib
 import uuid
@@ -96,6 +96,7 @@ from app.services.ocr_service import (
     extract_with_layout_ocrspace,
     pdf_from_image,
 )
+from app.services.fillable_pdf import FillableError, SUPPORTED_LABEL, extract_form_data, make_fillable_pdf
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
 from app.services.universal_excel_processor import UniversalExcelProcessor
@@ -825,7 +826,7 @@ async def _limit_request_body_size(request: Request, call_next):
 
 
 # Requests that load whole files into memory (conversions, PDF, ZIP, analysis, OCR, lakehouse uploads).
-_FILE_WORK_PREFIXES = ("/api/files/", "/api/convert/", "/api/pdf/", "/api/v1/convert/", "/api/lakehouse/", "/api/invoices/")
+_FILE_WORK_PREFIXES = ("/api/files/", "/api/convert/", "/api/pdf/", "/api/v1/convert/", "/api/lakehouse/", "/api/invoices/", "/api/developer/files/")
 
 
 @app.middleware("http")
@@ -4378,6 +4379,79 @@ async def explain_sql_endpoint(
 # FILE PROCESSING ENDPOINTS
 # ============================================================================
 
+FILLABLE_MAX_PAGES = _env_int("FILLABLE_MAX_PAGES", 25)
+FILLABLE_TIMEOUT_SECONDS = _env_int("FILLABLE_TIMEOUT_SECONDS", 240)
+
+
+async def _read_form_upload(file: UploadFile, subscription) -> bytes:
+    max_size_mb = _plan_file_size_mb(subscription)
+    _reject_oversized_upload(file, max_size_mb * 1024 * 1024, max_size_mb)
+    data = await file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail=f"The file is empty. Upload a {SUPPORTED_LABEL} file.")
+    return data
+
+
+async def _run_form_tool(fn, *args):
+    try:
+        return await asyncio.wait_for(asyncio.to_thread(fn, *args), FILLABLE_TIMEOUT_SECONDS)
+    except FillableError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=503, detail="This document is taking too long. Try fewer pages or a clearer scan.")
+
+
+@app.post("/api/files/make-fillable")
+async def make_fillable(
+    file: UploadFile = File(...),
+    ocr_lang: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    A non-editable PDF, scan or photo of a form -> the same-looking PDF with fill-in fields
+    (text boxes on blanks, lines and empty cells; tick boxes on check boxes). Scanned pages also get a
+    searchable text layer. Nothing is stored.
+    """
+    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    _enforce_conversion_quota(db, current_user["email"], "make_fillable", subscription)
+    data = await _read_form_upload(file, subscription)
+    pdf, report = await _run_form_tool(make_fillable_pdf, data, file.filename or "", ocr_lang, FILLABLE_MAX_PAGES)
+    db.add(FileProcessingHistory(user_email=current_user["email"], processing_type="make_fillable",
+                                 original_filename=_file_kind(file.filename), file_size_mb=len(data) / (1024 * 1024),
+                                 status="success"))
+    db.commit()
+    base = _ascii_safe_filename(os.path.splitext(file.filename or "form")[0] or "form")
+    headers = {
+        "Content-Disposition": f'attachment; filename="{base}_fillable.pdf"',
+        "X-Fillable-Fields": str(report["fields"]),
+        "X-Fillable-Checkboxes": str(report["checkboxes"]),
+        "X-Fillable-Pages": str(report["pages"]),
+        "X-Fillable-Scanned-Pages": str(report["scanned_pages"]),
+        "Access-Control-Expose-Headers": "X-Fillable-Fields, X-Fillable-Checkboxes, X-Fillable-Pages, X-Fillable-Scanned-Pages, Content-Disposition",
+    }
+    return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf", headers=headers)
+
+
+@app.post("/api/files/extract-form-data")
+async def extract_form_data_route(
+    file: UploadFile = File(...),
+    ocr_lang: Optional[str] = Form(None),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Label/value pairs and full text from a form, statement or letter (PDF or image). Nothing is stored."""
+    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    _enforce_conversion_quota(db, current_user["email"], "extract_form_data", subscription)
+    data = await _read_form_upload(file, subscription)
+    result = await _run_form_tool(extract_form_data, data, file.filename or "", ocr_lang, FILLABLE_MAX_PAGES)
+    db.add(FileProcessingHistory(user_email=current_user["email"], processing_type="extract_form_data",
+                                 original_filename=_file_kind(file.filename), file_size_mb=len(data) / (1024 * 1024),
+                                 status="success"))
+    db.commit()
+    return result
+
+
 class OCRExportRequest(BaseModel):
     """Request body for OCR export: text -> DOC or PDF. Generic for any form or document image."""
     text: str
@@ -4394,6 +4468,60 @@ class OCRExportRequest(BaseModel):
     # Exact copy: use original image as full PDF page (looks exactly like input). PDF only.
     preserve_image: Optional[bool] = False
     image_base64: Optional[str] = None  # required when preserve_image=True
+
+
+@app.post("/api/files/ocr-export")
+async def ocr_export(
+    req: OCRExportRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Edited OCR text -> Word (.docx) or PDF. Layout mode keeps the original positions; "exact copy"
+    (PDF + preserve_image) returns the original page itself as a fillable PDF. Nothing is stored.
+    """
+    fmt = (req.format or "").strip().lower()
+    if fmt not in ("doc", "docx", "pdf"):
+        raise HTTPException(status_code=400, detail="format must be doc or pdf")
+    title = (req.title or "OCR Document").strip()[:120] or "OCR Document"
+    svc = OCRService()
+    layout_mode = (req.mode or "").lower() == "layout"
+
+    def build() -> Tuple[bytes, str]:
+        if fmt == "pdf" and req.preserve_image and req.image_base64:
+            try:
+                original = base64.b64decode(req.image_base64, validate=False)
+            except Exception:
+                raise HTTPException(status_code=400, detail="The original file could not be read")
+            pdf, _ = make_fillable_pdf(original, "original", None, FILLABLE_MAX_PAGES)
+            return pdf, "application/pdf"
+        if fmt == "pdf":
+            if layout_mode and req.pages:
+                return svc.text_to_pdf_layout_pages(req.pages, title=title), "application/pdf"
+            if layout_mode and req.layout and req.image_width and req.image_height:
+                return svc.text_to_pdf_layout(req.layout, req.image_width, req.image_height, title=title, tables=req.tables), "application/pdf"
+            return svc.text_to_pdf(req.text or "", title=title), "application/pdf"
+        docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        if layout_mode and req.pages:
+            return svc.text_to_docx_layout_pages(req.pages, title=title), docx
+        if layout_mode and req.layout and req.image_width and req.image_height:
+            return svc.text_to_docx_layout(req.layout, req.image_width, req.image_height, title=title, tables=req.tables), docx
+        return svc.text_to_docx(req.text or "", title=title), docx
+
+    try:
+        content, media = await asyncio.wait_for(asyncio.to_thread(build), FILLABLE_TIMEOUT_SECONDS)
+    except HTTPException:
+        raise
+    except FillableError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=503, detail="Creating the file took too long. Try fewer pages.")
+    except Exception as e:
+        logger.error(f"OCR export failed: {type(e).__name__}")
+        raise HTTPException(status_code=500, detail="The file could not be created. Please try again.")
+    ext = ".pdf" if fmt == "pdf" else ".docx"
+    name = _ascii_safe_filename(title) + ext
+    return StreamingResponse(io.BytesIO(content), media_type=media, headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @app.post("/api/files/ocr-extract")
@@ -4866,6 +4994,66 @@ async def developer_api_proxy(
             status_code=500,
             detail=f"Developer API proxy failed (request_id={request_id})",
         )
+
+
+async def _developer_form_tool(request: Request, api_key: str, file: UploadFile, endpoint: str, fn, ocr_lang, db: Session):
+    """Shared API-key check, size limit and usage metering for the form tools."""
+    key = get_api_key_by_header((api_key or "").strip(), db) if (api_key or "").strip() else None
+    if not key:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    if not key.is_active:
+        raise HTTPException(status_code=403, detail="API key is inactive")
+    max_mb = _plan_file_size_mb(key)
+    _reject_oversized_upload(file, max_mb * 1024 * 1024, max_mb)
+    data = await file.read()
+    started = time.time()
+    status_code, result, size = 200, None, None
+    try:
+        result = await _run_form_tool(fn, data, file.filename or "", ocr_lang, FILLABLE_MAX_PAGES)
+        size = len(result[0]) if isinstance(result, tuple) else None
+        return result
+    except HTTPException as e:
+        status_code = e.status_code
+        raise
+    except Exception:
+        status_code = 500
+        raise HTTPException(status_code=500, detail="The document could not be processed")
+    finally:
+        try:
+            track_api_usage(db=db, api_key=key, endpoint=endpoint, method="POST", status_code=status_code,
+                            request_size_bytes=len(data), response_size_bytes=size,
+                            processing_time_ms=int((time.time() - started) * 1000),
+                            ip_address=getattr(getattr(request, "client", None), "host", None),
+                            user_agent=request.headers.get("user-agent"))
+        except Exception:
+            pass
+
+
+@app.post("/api/developer/files/extract-form-data")
+async def developer_extract_form_data(
+    request: Request,
+    api_key: str = Form(...),
+    file: UploadFile = File(...),
+    ocr_lang: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    """API: label/value pairs and text from a form, statement or letter (PDF or image), as JSON."""
+    return await _developer_form_tool(request, api_key, file, "/v1/forms/extract", extract_form_data, ocr_lang, db)
+
+
+@app.post("/api/developer/files/make-fillable")
+async def developer_make_fillable(
+    request: Request,
+    api_key: str = Form(...),
+    file: UploadFile = File(...),
+    ocr_lang: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+):
+    """API: a non-editable PDF or image of a form -> the same PDF with fill-in fields."""
+    pdf, report = await _developer_form_tool(request, api_key, file, "/v1/forms/make-fillable", make_fillable_pdf, ocr_lang, db)
+    headers = {"Content-Disposition": 'attachment; filename="fillable.pdf"', "X-Fillable-Fields": str(report["fields"]),
+               "X-Fillable-Checkboxes": str(report["checkboxes"])}
+    return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf", headers=headers)
 
 
 @app.post("/api/developer/files/excel-ops/execute")

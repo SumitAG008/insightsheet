@@ -805,6 +805,39 @@ export const backendApi = {
       return response.blob();
     },
 
+    /** A non-editable PDF / scan / photo of a form -> the same PDF with fill-in fields. */
+    makeFillable: async (file, ocrLang) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (ocrLang) formData.append('ocr_lang', ocrLang);
+      const response = await apiCall('/api/files/make-fillable', { method: 'POST', body: formData, timeoutMs: 300000 });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Could not make this form fillable (${response.status}).`);
+      }
+      const num = (h) => Number(response.headers.get(h) || 0);
+      return {
+        blob: await response.blob(),
+        fields: num('X-Fillable-Fields'),
+        checkboxes: num('X-Fillable-Checkboxes'),
+        pages: num('X-Fillable-Pages'),
+        scannedPages: num('X-Fillable-Scanned-Pages'),
+      };
+    },
+
+    /** Label/value pairs and text from a form, statement or letter (PDF or image). */
+    extractFormData: async (file, ocrLang) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (ocrLang) formData.append('ocr_lang', ocrLang);
+      const response = await apiCall('/api/files/extract-form-data', { method: 'POST', body: formData, timeoutMs: 300000 });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Could not read this document (${response.status}).`);
+      }
+      return response.json();
+    },
+
     generatePL: async (prompt, context = {}) => {
       const response = await apiCall('/api/files/generate-pl', {
         method: 'POST',

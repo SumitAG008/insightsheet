@@ -70,6 +70,7 @@ For one customer only, put the agreed figures on their licence instead (section 
 | Requests per minute | `_server_guard` middleware, every `/api/` request. Signed-in users by plan; signed-out requests by IP (`GUARD_ANON_REQUESTS_PER_MINUTE`, default 300, because a campus can share one IP). | 429 + `Retry-After`. |
 | Files at the same time | `_server_guard` middleware, file-processing `POST`s (`_HEAVY_JOB_PREFIXES`). A second file waits up to `GUARD_QUEUE_WAIT_SECONDS` for the first to finish. | Short wait; after 25 s, 429 "wait for your other file to finish". |
 | Heavy jobs per server | Same middleware: at most `GUARD_HEAVY_JOBS_PER_PROCESS` (default 2) per worker process. Extra jobs queue up to 25 s. | Short wait; after 25 s, 503 + `Retry-After`, which the website retries automatically up to 3 times. |
+| Web data (Playwright) | `_playwright_preflight()` and `_with_playwright_slot()` in `main.py`: paid plans and organisation licences only, one job at a time per person, each run counts as a conversion, at most `PLAYWRIGHT_MAX_CONCURRENT` (default 1) browsers per server process; later jobs wait as "queued". | 403 on Free; 429 "you already have a web data job running". |
 | Request body | `_limit_request_body_size` middleware (`MAX_REQUEST_BODY_MB`, default 520). | 413 before the upload is read. |
 | Devices | Two signed-in devices per account (`device_sessions.py`). | Choose a device to sign out. |
 

@@ -15,6 +15,8 @@ data:
   GUARD_ANON_REQUESTS_PER_MINUTE: "300"
   # Seconds files already processing get to finish when a server stops.
   GRACEFUL_SHUTDOWN_SECONDS: "90"
+  # Chromium browsers for web data jobs running at once per worker process.
+  PLAYWRIGHT_MAX_CONCURRENT: "1"
   # Server-wide OCR caps (plans can only lower these).
   OCR_MAX_PAGES_DEFAULT: "25"
   OCR_TIMEOUT_PDF_SECONDS: "180"

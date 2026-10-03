@@ -1150,6 +1150,37 @@ def _start_playwright_sweeper_thread() -> None:
 _start_playwright_sweeper_thread()
 
 
+# Each web data job starts a Chromium browser (~300-500 MB). At most PLAYWRIGHT_MAX_CONCURRENT run at once
+# per server process; later jobs stay "queued" until a browser slot frees up.
+_PLAYWRIGHT_SLOTS = threading.BoundedSemaphore(max(1, _env_int("PLAYWRIGHT_MAX_CONCURRENT", 1)))
+_PLAYWRIGHT_ACTIVE_WINDOW = timedelta(minutes=15)  # a job stuck longer than this (e.g. a crashed server) stops counting
+
+
+def _with_playwright_slot(fn, job_id: str) -> None:
+    with _PLAYWRIGHT_SLOTS:
+        try:
+            fn(job_id)
+        finally:
+            release_memory()
+
+
+def _playwright_preflight(db: Session, user_email: str) -> Subscription:
+    """Paid plan (own or organisation), one web data job at a time, and each run counts as a conversion."""
+    subscription = _get_or_create_subscription(db, user_email)
+    _enforce_playwright_entitlement(subscription)
+    recent = datetime.utcnow() - _PLAYWRIGHT_ACTIVE_WINDOW
+    active = (
+        db.query(PlaywrightJob)
+        .filter(PlaywrightJob.user_email == user_email, PlaywrightJob.status.in_(("queued", "running")),
+                PlaywrightJob.updated_date >= recent)
+        .count()
+    )
+    if active:
+        raise HTTPException(status_code=429, detail="You already have a web data job running. Wait for it to finish, then start the next one.")
+    _enforce_conversion_quota(db, user_email, "web_data", subscription)
+    return subscription
+
+
 def _enforce_playwright_entitlement(subscription: Optional[Subscription]) -> None:
     allow_free = (os.getenv("PLAYWRIGHT_CONNECTORS_ALLOW_FREE", "").strip().lower() in ("1", "true", "yes"))
     if allow_free:
@@ -1619,8 +1650,7 @@ async def run_playwright_books_connector(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
-    _enforce_playwright_entitlement(subscription)
+    _playwright_preflight(db, current_user["email"])
 
     job_id = _create_playwright_job_id()
     now = datetime.utcnow()
@@ -1636,7 +1666,7 @@ async def run_playwright_books_connector(
     db.commit()
 
     loop = asyncio.get_running_loop()
-    loop.run_in_executor(None, _run_books_to_scrape_job, job_id)
+    loop.run_in_executor(None, _with_playwright_slot, _run_books_to_scrape_job, job_id)
     return {"job_id": job_id}
 
 
@@ -1646,8 +1676,7 @@ async def run_playwright_webscraper_ecommerce_connector(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
-    _enforce_playwright_entitlement(subscription)
+    _playwright_preflight(db, current_user["email"])
 
     start_url = (payload.start_url or "https://webscraper.io/test-sites/e-commerce/static").strip()
     _validate_public_http_url(start_url)
@@ -1666,7 +1695,7 @@ async def run_playwright_webscraper_ecommerce_connector(
     db.commit()
 
     loop = asyncio.get_running_loop()
-    loop.run_in_executor(None, _run_webscraper_ecommerce_job, job_id)
+    loop.run_in_executor(None, _with_playwright_slot, _run_webscraper_ecommerce_job, job_id)
     return {"job_id": job_id}
 
 
@@ -1676,8 +1705,7 @@ async def run_playwright_custom_url_connector(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
-    _enforce_playwright_entitlement(subscription)
+    _playwright_preflight(db, current_user["email"])
 
     safe_url = _validate_public_http_url(payload.url)
 
@@ -1703,7 +1731,7 @@ async def run_playwright_custom_url_connector(
     db.commit()
 
     loop = asyncio.get_running_loop()
-    loop.run_in_executor(None, _run_custom_url_job, job_id)
+    loop.run_in_executor(None, _with_playwright_slot, _run_custom_url_job, job_id)
     return {"job_id": job_id}
 
 

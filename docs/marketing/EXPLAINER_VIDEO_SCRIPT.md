@@ -41,7 +41,7 @@
 ### **0:45 - 0:60 | Features & Call to Action (CTA)**
 * **Visual:** Quick cuts of **meldra** core intelligent services: Playwright URL web scraper, platform-agnostic AI Unified Reporting, and Universal System Migration.
 * **Voiceover:**  
-  *"Whether you’re managing monthly P&L decks, ESG sustainability metrics, or system migrations, meldra does the heavy lifting so you can focus on strategy."*
+  *"Whether you’re managing monthly P&L decks, reconciliations, or system migrations, meldra does the heavy lifting so you can focus on strategy."*
 * **Visual:** Final screen displaying the official **meldra** platform URL `meldra.ai` with prominent logo.
 * **Voiceover:**  
   *"Take your weekends back. Try meldra today at meldra.ai."*

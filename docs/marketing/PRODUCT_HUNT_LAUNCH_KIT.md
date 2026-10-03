@@ -22,7 +22,7 @@ InsightSheet turns raw Excel, CSV & financial data into board-ready PowerPoint p
 >
 > I'm Sumit, creator of **InsightSheet (by Meldra AI)**.
 >
-> As someone who spent years building enterprise analytics and working with financial data, I noticed a constant pain point across finance teams, ESG analysts, and management consultants:
+> As someone who spent years building enterprise analytics and working with financial data, I noticed a constant pain point across finance teams, analysts and management consultants:
 >
 > **Every month, hours are wasted copying data from messy spreadsheets into executive PowerPoint decks.**
 >
@@ -36,7 +36,7 @@ InsightSheet turns raw Excel, CSV & financial data into board-ready PowerPoint p
 > - **Zero AI Training:** Your numbers are never stored, logged, or used to train any public AI model.
 > - **Fast & Board-Ready:** Transform 10,000+ row datasets into styled slide decks, interactive charts, and KPI executive summaries in under 5 seconds.
 >
-> Whether you are preparing monthly P&L decks, ESG sustainability metrics, or client audit presentations, InsightSheet handles the heavy lifting while giving your legal team 100% peace of mind.
+> Whether you are preparing monthly P&L decks, reconciliations, or client audit presentations, InsightSheet handles the heavy lifting while giving your legal team 100% peace of mind.
 >
 > 🎁 **Special Product Hunt Offer:** We are giving all Product Hunt users **30 Days of Free Premium Access** with unlimited slide generation!
 >

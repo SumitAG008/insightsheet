@@ -1,4 +1,4 @@
-// Terms of Service. Changes: update TERMS_VERSION/TERMS_DATE and docs/legal/TERMS_OF_SERVICE.md together.
+// Terms of Service. When the text changes, update TERMS_VERSION and TERMS_DATE, and tell paid customers 30 days ahead (section 13).
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Scale } from 'lucide-react';

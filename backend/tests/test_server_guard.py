@@ -99,3 +99,73 @@ def test_middleware_rate_limits_signed_in_users_by_plan(monkeypatch):
     assert r.status_code == 429 and int(r.headers["Retry-After"]) >= 1 and r.json()["code"] == "rate_limited"
     # Health checks and the website itself are never rate limited.
     assert c.get("/health").status_code == 200
+
+
+class _FakeRedis:
+    """Just the Redis commands the guard uses, so the shared-limits path is tested without a server."""
+
+    def __init__(self):
+        self.data = {}
+
+    def incr(self, k):
+        self.data[k] = int(self.data.get(k, 0)) + 1
+        return self.data[k]
+
+    def decr(self, k):
+        self.data[k] = int(self.data.get(k, 0)) - 1
+        return self.data[k]
+
+    def expire(self, k, seconds):
+        return True
+
+    def get(self, k):
+        return self.data.get(k)
+
+    def set(self, k, v, ex=None):
+        self.data[k] = v
+
+    def pipeline(self):
+        outer = self
+
+        class _Pipe:
+            def __init__(self):
+                self.ops = []
+
+            def incr(self, k):
+                self.ops.append(lambda: outer.incr(k))
+
+            def expire(self, k, s):
+                self.ops.append(lambda: outer.expire(k, s))
+
+            def execute(self):
+                return [op() for op in self.ops]
+
+        return _Pipe()
+
+
+def test_redis_store_shares_limits_between_servers(monkeypatch):
+    shared = _FakeRedis()
+    server_a, server_b = server_guard._RedisStore(shared), server_guard._RedisStore(shared)
+    # Two servers, one user, a limit of one file at a time: the second server must refuse.
+    assert server_a.try_acquire("user:a", 1) is True
+    assert server_b.try_acquire("user:a", 1) is False
+    server_a.release("user:a")
+    assert server_b.try_acquire("user:a", 1) is True
+    # Requests per minute are counted across servers too.
+    assert server_a.hit("user:a", 60.0, 120.0) == 1
+    assert server_b.hit("user:a", 60.0, 121.0) == 2
+
+
+def test_redis_outage_falls_back_to_local_counters():
+    class _Down:
+        def __getattr__(self, name):
+            def fail(*a, **k):
+                raise ConnectionError("redis down")
+            return fail
+
+    store = server_guard._RedisStore(_Down())
+    assert store.hit("user:a", 60.0, 10.0) == 1  # still counts, locally
+    assert store.try_acquire("user:a", 1) is True
+    assert store.try_acquire("user:a", 1) is False
+    store.release("user:a")
+    assert store.try_acquire("user:a", 1) is True

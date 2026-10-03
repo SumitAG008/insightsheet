@@ -1,0 +1,128 @@
+# Selling Meldra to organisations
+
+How to price, record, track and report on deals with universities, hospitals, insurers,
+manufacturers and other companies. The technical side (limits, enforcement, servers) is in
+`docs/PLAN_LIMITS_AND_CAPACITY.md`.
+
+## 1. What an organisation buys
+
+An **annual licence**: a number of seats for a fixed term, on the Team or Business plan, with:
+
+- an admin page for their IT team (add and remove people, roles, usage per person, CSV export,
+  change history);
+- optional sign-up by email domain (everyone `@uni.ac.uk` gets a seat while seats remain);
+- invoice and purchase-order billing, with GST/VAT;
+- custom limits where agreed (e.g. 8,000 conversions a month per person);
+- a data processing agreement, and the Terms of Service at `/terms`;
+- a 14-day grace period after the end date, so nobody is cut off while the renewal is processed.
+
+Coming after launch: single sign-on (Google/Microsoft), a full audit log, and multi-document
+summaries with citations.
+
+## 2. Deal terms (suggested starting points)
+
+| Term | Suggestion |
+|---|---|
+| Base price | Team list price £15 / ₹999 per user per month, billed yearly: **£150 / ₹9,999 per seat per year** (about two months free versus monthly) |
+| Volume discount | 10–49 seats 15% · 50–199 seats 25% · 200+ seats 35% |
+| Academic discount | Further 20% for universities and colleges (not stacked above 45% total) |
+| Site licence | Flat yearly fee by size band instead of seats, e.g. £8k / £15k / £25k; unlimited seats from the domain, fair use applies |
+| Paid pilot | 60–90 days, 10–25 seats, small fee credited to year 1 if they sign; 2–3 written success measures (e.g. "hours saved on monthly reconciliation") |
+| Multi-year | 5–10% off for a 2–3 year price lock, invoiced yearly |
+| Minimum contract | e.g. £3,000 / ₹2.5 lakh a year, so support cost doesn't exceed the deal |
+| Payment | Annual in advance, 30 days from invoice, against a PO |
+| Over the limit | Warn at 80% and 100%; offer a top-up or seat increase; never block a paying institution mid-term (the 14-day grace and per-licence custom limits are how) |
+| Seats added mid-term | Pro rata to the end date |
+| Add-ons | AI question packs, OCR page packs, priority support / SLA (Business), onboarding and training days, custom connectors (day rate) |
+
+**Example.** A university business school, 120 seats: 120 × £150 = £18,000; 25% volume and 20%
+academic gives £18,000 × 0.75 × 0.80 = **£10,800 a year**. Two-year lock at 5% off: £10,260 a year.
+
+**Where institutions buy.** India: **GeM** (Government e-Marketplace) for public universities and
+hospitals, which needs company registration and usually DPIIT recognition. UK: **G-Cloud**
+(Digital Marketplace) for the NHS and public bodies, and **Jisc** for universities. UK public buyers
+usually ask for **Cyber Essentials** (about £300); get it early. ISO 27001 can come later.
+
+## 3. Sector packs
+
+The same product, with a landing section, starter templates and features switched on per sector
+(the licence's `pack` field records which).
+
+| Pack | Pitch | Tools it uses |
+|---|---|---|
+| University | Research and admin: summarise papers, thesis PDFs to Excel, OCR of scanned archives, department reporting | OCR, PDF tools, AI assistant, Excel to PPT, unified reporting |
+| Hospital (finance & admin) | Supplier invoices to data, reconciliation, monthly reporting | Invoice extraction, reconciliation, unified reporting, P&L builder |
+| Insurance | Claims documents and forms to data, bordereaux reconciliation | OCR, fillable PDFs, form reader, reconciliation |
+| Manufacturing / operations | Plant and inventory reports, reconciliation, board packs, system migrations | Reconciliation, P&L builder, Excel to PPT, migration, database connectors |
+
+**Hospitals:** sell to finance, procurement and HR first. Patient-identifiable data is excluded by
+the Terms (section 7) until there is a signed agreement covering it, plus NHS DSPT (UK) or DPDP
+Act consent handling (India).
+
+## 4. Recording a deal in Meldra
+
+On the website, signed in as Meldra admin: **Licences** (`/adminlicenses`).
+
+1. **New customer**: name, sector, country, email domain (if they want auto-join), their IT admin's
+   email (becomes the organisation's owner), billing email, GSTIN/VAT number, and the CRM reference.
+2. Open the customer → **Record a licence**: plan, pack, seats, start/end, status (`pilot` or
+   `active`), contract value for the whole term before tax, currency, billing period, PO number,
+   invoice number and status, and any custom limits.
+3. When the invoice is paid: **Mark paid**.
+4. Renewal: record a new licence starting the day after the old one ends. Members keep their seats.
+5. Non-payment: set the licence status to `suspended`; members fall back to their own plans at once.
+
+The customer's admin then manages their own people at `/organization`.
+
+## 5. Tracking customers and deals (CRM)
+
+Use **HubSpot CRM (free)** or **Zoho CRM** (pairs with Zoho Books for GST). Don't build a CRM.
+
+Pipeline stages: **Lead → Discovery call → Demo → Pilot → Proposal → Security/procurement review →
+Won / Lost** (record the reason).
+
+Fields on each deal: organisation, sector, seats, annual contract value, probability, decision maker,
+budget holder, next step and date, expected close date, and the Meldra organisation id. Put the
+CRM's deal id in the customer's **CRM reference** in Meldra so the two connect.
+
+Weekly, from Meldra's **Licences** page:
+
+- **Renewals in the next 90 days**: start renewal conversations at 90 days, send the quote at 60.
+- **Seat use under 50%** (shown in amber): a renewal risk; offer training before the renewal.
+- **Seat use over 90%**: an upsell; offer more seats.
+- **Invoiced but unpaid**: chase anything past 30 days.
+
+## 6. Financial reports
+
+**Accounting**: Zoho Books (India, GST) or Xero (UK, VAT), with a CA or accountant for filings.
+Card payments (Stripe, when live) and enterprise invoices both go into it. Keep a separate company
+bank account from day one.
+
+**Monthly one-page report** (for the founders, later for investors):
+
+| Section | Figures | Source |
+|---|---|---|
+| Revenue | ARR and MRR (ARR ÷ 12); new, expansion and lost ARR this month; net revenue retention | Meldra Licences report (`arr_by_currency`) + Stripe |
+| Bookings vs billing vs revenue | Signed this month · invoiced · earned. A £12,000 annual deal is **booked** once, **invoiced** once, and **earned** £1,000 a month; the unearned part is **deferred revenue** | Licences report + accounting |
+| Cash | Bank balance, money in, money out, monthly burn, months of runway | Accounting |
+| Receivables | Invoiced but unpaid, and how old | Licences report (`unpaid_by_currency`) |
+| Customers | Paying customers, pilots, seats sold vs used | Licences report |
+| Costs per customer | Hosting, AI and OCR cost ÷ active seats → gross margin | Cloud and OpenAI bills ÷ usage counts per organisation (`/api/org/usage.csv` per customer) |
+| Pipeline | Weighted pipeline (value × probability), win rate by sector, average sales cycle | CRM |
+
+Export the customer list with **Export CSV** on the Licences page
+(`/api/admin/licenses/report.csv`) and paste it into the monthly sheet.
+
+**Annual value** in Meldra is the contract value spread over a year: a 2-year contract of £20,000
+counts as £10,000 of ARR. Pilots are listed but are not counted in ARR.
+
+## 7. Before the first enterprise contract
+
+- [ ] Company registered; contracting entity name on invoices and order forms
+- [ ] Order form template (customer, seats, term, price, limits, PO, governing law)
+- [ ] Data processing agreement (DPA), linked from the Terms
+- [ ] Security questionnaire answers (from `docs/DATA_PROTECTION.md` and `docs/CONNECTOR_SECURITY.md`)
+- [ ] Cyber Essentials (UK public sector)
+- [ ] Lawyer review of `/terms`, especially governing law: the Terms say England and Wales; an
+      Indian company selling to Indian institutions may want Indian law and courts instead
+- [ ] GeM / G-Cloud registration when targeting public institutions

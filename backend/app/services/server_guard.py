@@ -115,44 +115,70 @@ class _MemoryStore:
 
 
 class _RedisStore:
-    """Fixed one-minute windows and job counters in Redis, shared by every server."""
+    """
+    Fixed one-minute windows and job counters in Redis, shared by every server. If Redis stops
+    answering, each call falls back to this process's own counters, so the site keeps serving.
+    """
 
     JOB_TTL_SECONDS = 15 * 60  # a crashed server's job slots free themselves after this
 
     def __init__(self, client) -> None:
         self._r = client
+        self._local = _MemoryStore()
+        self._warned = False
+
+    def _fallback(self, e: Exception) -> None:
+        if not self._warned:
+            logger.warning("server_guard: Redis error (%s); using in-process limits until it recovers", type(e).__name__)
+            self._warned = True
 
     def hit(self, key: str, window: float, now: float) -> int:
-        bucket = int(now // window)
-        k = f"meldra:rl:{key}:{bucket}"
-        pipe = self._r.pipeline()
-        pipe.incr(k)
-        pipe.expire(k, int(window) + 5)
-        count, _ = pipe.execute()
-        return int(count)
+        try:
+            k = f"meldra:rl:{key}:{int(now // window)}"
+            pipe = self._r.pipeline()
+            pipe.incr(k)
+            pipe.expire(k, int(window) + 5)
+            count, _ = pipe.execute()
+            self._warned = False
+            return int(count)
+        except Exception as e:
+            self._fallback(e)
+            return self._local.hit(key, window, now)
 
     def oldest_hit(self, key: str) -> Optional[float]:
-        return None
+        return self._local.oldest_hit(key)
 
     def try_acquire(self, key: str, limit: int) -> bool:
-        k = f"meldra:jobs:{key}"
-        n = int(self._r.incr(k))
-        self._r.expire(k, self.JOB_TTL_SECONDS)
-        if n > limit:
-            self._r.decr(k)
-            return False
-        return True
+        try:
+            k = f"meldra:jobs:{key}"
+            n = int(self._r.incr(k))
+            self._r.expire(k, self.JOB_TTL_SECONDS)
+            if n > limit:
+                self._r.decr(k)
+                return False
+            return True
+        except Exception as e:
+            self._fallback(e)
+            return self._local.try_acquire(f"local:{key}", limit)
 
     def release(self, key: str) -> None:
-        k = f"meldra:jobs:{key}"
-        if int(self._r.decr(k)) < 0:
-            self._r.set(k, 0, ex=self.JOB_TTL_SECONDS)
+        try:
+            k = f"meldra:jobs:{key}"
+            if int(self._r.decr(k)) < 0:
+                self._r.set(k, 0, ex=self.JOB_TTL_SECONDS)
+        except Exception as e:
+            self._fallback(e)
+        self._local.release(f"local:{key}")
 
     def active(self, key: str) -> int:
-        return int(self._r.get(f"meldra:jobs:{key}") or 0)
+        try:
+            return int(self._r.get(f"meldra:jobs:{key}") or 0)
+        except Exception as e:
+            self._fallback(e)
+            return self._local.active(f"local:{key}")
 
     def reset(self) -> None:
-        pass
+        self._local.reset()
 
 
 def _make_store():

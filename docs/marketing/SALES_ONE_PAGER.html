@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>InsightSheet by Meldra AI - Product One-Pager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(18, 26, 44, 0.75);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --primary: #3b82f6;
+      --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      --accent: #10b981;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 40px 20px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 48px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 32px;
+    }
+
+    .logo-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-badge {
+      width: 44px;
+      height: 44px;
+      background: var(--primary-gradient);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      color: white;
+    }
+
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-title span {
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .badge-tag {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* Hero Section */
+    .hero {
+      margin-bottom: 36px;
+    }
+
+    .hero-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      line-height: 1.25;
+      margin-bottom: 16px;
+    }
+
+    .hero-subtitle {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 780px;
+    }
+
+    /* Key Benefits Grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 36px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 24px;
+    }
+
+    .card-icon {
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* Architecture / Privacy Box */
+    .privacy-banner {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 16px;
+      padding: 28px;
+      margin-bottom: 36px;
+    }
+
+    .privacy-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .privacy-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+      color: #60a5fa;
+    }
+
+    .privacy-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      list-style: none;
+    }
+
+    .privacy-item {
+      font-size: 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .check-icon {
+      color: var(--accent);
+      font-weight: bold;
+    }
+
+    /* Workflow Horizontal Bar */
+    .workflow {
+      margin-bottom: 36px;
+    }
+
+    .section-label {
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .steps-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .step-item {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      background: var(--primary-gradient);
+      border-radius: 50%;
+      margin: 0 auto 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    .step-text {
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    /* Footer CTA */
+    .footer-cta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--primary-gradient);
+      border-radius: 16px;
+      padding: 24px 32px;
+    }
+
+    .cta-text h3 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .cta-text p {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .cta-btn {
+      background: white;
+      color: #1e293b;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-weight: 700;
+      text-decoration: none;
+      font-size: 14px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    @media print {
+      body { background: white; color: #111; padding: 0; }
+      .page-container { border: none; box-shadow: none; background: white; color: #111; }
+      .card, .step-item { background: #f8fafc; border: 1px solid #e2e8f0; color: #111; }
+      .card-desc, .hero-subtitle { color: #475569; }
+      .privacy-banner { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; }
+      .privacy-title { color: #1d4ed8; }
+      .cta-btn { background: #1d4ed8; color: white; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="page-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo-area">
+        <div class="logo-badge">M</div>
+        <div class="brand-title">InsightSheet <span>by Meldra</span></div>
+      </div>
+      <div class="badge-tag">🔒 Zero Data Storage Architecture</div>
+    </header>
+
+    <!-- Hero -->
+    <section class="hero">
+      <h1 class="hero-title">Transform Messy Excel Data into Board-Ready PowerPoint Decks in 5 Seconds</h1>
+      <p class="hero-subtitle">Automate your monthly P&L decks, financial reporting, and ESG slide presentations without risking client confidentiality. Purpose-built for Finance, Audit, and Advisory teams.</p>
+    </section>
+
+    <!-- 3 Key Features -->
+    <section class="grid">
+      <div class="card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Instant Conversion</div>
+        <div class="card-desc">Converts raw 10,000+ row spreadsheets into 10-slide executive PowerPoint decks with charts and KPI summaries in under 5 seconds.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🔒</div>
+        <div class="card-title">100% Ephemeral Privacy</div>
+        <div class="card-desc">Zero files saved to disk. Files are processed strictly in server RAM and permanently deleted immediately after generation.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-icon">🎯</div>
+        <div class="card-title">Unified Multi-Source</div>
+        <div class="card-desc">Integrates data seamlessly across Workday, SuccessFactors, SQL databases, CSVs, and Excel files into one reporting engine.</div>
+      </div>
+    </section>
+
+    <!-- Privacy Banner -->
+    <section class="privacy-banner">
+      <div class="privacy-header">
+        <span style="font-size:22px;">🛡️</span>
+        <h2 class="privacy-title">The Enterprise Zero Storage Guarantee</h2>
+      </div>
+      <ul class="privacy-list">
+        <li class="privacy-item"><span class="check-icon">✓</span> <strong>No Saved Documents:</strong> Uploaded spreadsheets never touch persistent disk storage.</li>
+        <li class="privacy-item"><span class="check-icon">✓</span> <strong>No AI Model Training:</strong> Financial numbers are never logged or used to train public LLMs.</li>
+        <li class="privacy-item"><span class="check-icon">✓</span> <strong>CISO & Legal Approved:</strong> Built to meet strict GDPR, SOC2-readiness, and CPA compliance standards.</li>
+        <li class="privacy-item"><span class="check-icon">✓</span> <strong>Automatic Inactivity Purge:</strong> Inactive free account metadata automatically wiped after 30 days.</li>
+      </ul>
+    </section>
+
+    <!-- Workflow -->
+    <section class="workflow">
+      <div class="section-label">How It Works</div>
+      <div class="steps-container">
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <div class="step-text">Upload raw Excel / CSV file</div>
+        </div>
+        <div style="color:var(--text-muted); font-size:18px;">➔</div>
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <div class="step-text">AI analyzes & styles deck in RAM</div>
+        </div>
+        <div style="color:var(--text-muted); font-size:18px;">➔</div>
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <div class="step-text">Download native .PPTX deck</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA Footer -->
+    <footer class="footer-cta">
+      <div class="cta-text">
+        <h3>Claim Your 30-Day Free Team License Trial</h3>
+        <p>Enable your advisory & accounting team with 5 seats and unlimited presentation generation.</p>
+      </div>
+      <a href="https://meldra.ai" class="cta-btn">Start Free Trial ➔</a>
+    </footer>
+  </div>
+
+</body>
+</html>

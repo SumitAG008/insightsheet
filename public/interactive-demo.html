@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>meldra · Data Made Simple - Live Interactive Platform Showcase</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #020617; color: #f8fafc; font-family: 'Inter', sans-serif; }
+    .glass-nav { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(51, 65, 85, 0.6); }
+    .glass-card { background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(51, 65, 85, 0.8); backdrop-filter: blur(12px); }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-50 antialiased selection:bg-blue-500 selection:text-white">
+
+  <!-- OFFICIAL MELDRA PLATFORM NAVBAR -->
+  <nav class="glass-nav sticky top-0 z-50">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- OFFICIAL MELDRA LOGO -->
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 shadow-sm flex items-center justify-center overflow-hidden p-0.5">
+            <img src="/meldra.png" alt="meldra" class="w-full h-full object-cover" onError="this.style.display='none'; this.nextElementSibling.style.display='flex';" />
+            <div class="hidden w-full h-full bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg items-center justify-center text-white font-bold text-lg font-display">m</div>
+          </div>
+          <div>
+            <span class="text-2xl font-bold font-display tracking-tight text-white leading-none block">meldra</span>
+            <span class="text-[10px] font-extrabold tracking-widest text-slate-400 uppercase block mt-0.5">DATA MADE SIMPLE</span>
+          </div>
+        </div>
+
+        <!-- ACTUAL PLATFORM MENU NAVIGATION -->
+        <div class="hidden xl:flex items-center gap-1 text-sm font-medium text-slate-300">
+          <button class="px-3 py-2 rounded-lg bg-blue-600 text-white font-semibold flex items-center gap-2 shadow-lg shadow-blue-500/20">
+            <span>📊 Overview & Demo</span>
+          </button>
+          <button class="px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition" onclick="switchDemoTab(1)">
+            <span>⚡ Excel to PPT (5s)</span>
+          </button>
+          <button class="px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition" onclick="switchDemoTab(2)">
+            <span>🌐 Web URL Scraper</span>
+          </button>
+          <button class="px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition" onclick="switchDemoTab(3)">
+            <span>🔗 AI Unified Reporting</span>
+          </button>
+          <button class="px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition" onclick="switchDemoTab(4)">
+            <span>🔄 System Migration</span>
+          </button>
+        </div>
+
+        <!-- SECURITY TRUST BADGE -->
+        <div class="flex items-center gap-3">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            🔒 Zero File Storage Privacy
+          </span>
+          <a href="/login" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition shadow-md">Sign In</a>
+        </div>
+
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN SHOWCASE CONTAINER -->
+  <main class="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <!-- HERO SHOWCASE BANNER -->
+    <div class="glass-card rounded-2xl p-8 mb-8 relative overflow-hidden">
+      <div class="absolute -right-20 -top-20 w-80 h-80 bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="max-w-3xl">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-4">
+          ✨ Official Meldra AI Platform Interactive Showcase
+        </div>
+        <h1 class="text-3xl sm:text-4xl font-extrabold font-display tracking-tight text-white mb-3">
+          The Privacy-First Autonomous AI Platform for Enterprise Data
+        </h1>
+        <p class="text-slate-300 text-base leading-relaxed">
+          Experience the actual <span class="text-blue-400 font-semibold">meldra</span> platform in action. Test 5-second Excel to PPT deck generation, live web scraping into slides, platform-agnostic AI reporting, and system migration cutovers.
+        </p>
+      </div>
+    </div>
+
+    <!-- USECASE TABS SELECTOR -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <button id="btn-usecase-1" onclick="switchDemoTab(1)" class="glass-card p-5 rounded-xl text-left border-blue-500/60 bg-blue-500/10 transition-all hover:scale-[1.02]">
+        <div class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Usecase 1</div>
+        <div class="font-bold text-white text-base">📊 Excel to PPT Deck (5s)</div>
+        <div class="text-xs text-slate-400 mt-1">Converts raw 10k row spreadsheets to slides in RAM</div>
+      </button>
+
+      <button id="btn-usecase-2" onclick="switchDemoTab(2)" class="glass-card p-5 rounded-xl text-left hover:border-blue-500/40 transition-all hover:scale-[1.02]">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Usecase 2</div>
+        <div class="font-bold text-white text-base">🌐 Web URL Scraper</div>
+        <div class="text-xs text-slate-400 mt-1">Scrapes web HTML tables into slides ephemerally</div>
+      </button>
+
+      <button id="btn-usecase-3" onclick="switchDemoTab(3)" class="glass-card p-5 rounded-xl text-left hover:border-blue-500/40 transition-all hover:scale-[1.02]">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Usecase 3</div>
+        <div class="font-bold text-white text-base">🔗 AI Unified Reporting</div>
+        <div class="text-xs text-slate-400 mt-1">Platform-agnostic Natural Language SQL & ML</div>
+      </button>
+
+      <button id="btn-usecase-4" onclick="switchDemoTab(4)" class="glass-card p-5 rounded-xl text-left hover:border-blue-500/40 transition-all hover:scale-[1.02]">
+        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Usecase 4</div>
+        <div class="font-bold text-white text-base">🔄 Universal System Migration</div>
+        <div class="text-xs text-slate-400 mt-1">AI schema mapping & cutover package export</div>
+      </button>
+    </div>
+
+    <!-- LIVE DEMO INTERFACE VIEWPORT -->
+    <div class="glass-card rounded-2xl p-8 min-h-[500px]">
+
+      <!-- TAB 1: EXCEL TO PPT -->
+      <div id="tab-1" class="space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h2 class="text-xl font-bold text-white font-display">FileToPPT: 5-Second Executive Slide Generator</h2>
+            <p class="text-sm text-slate-400 mt-0.5">Drag & drop raw financial exports to generate board-ready PowerPoint decks in RAM.</p>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold">100% In-Memory RAM Execution</span>
+        </div>
+
+        <div class="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-10 text-center bg-slate-900/40 cursor-pointer transition" onclick="runSimulatedPPT()">
+          <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-blue-600/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-3xl">📊</div>
+          <h3 class="text-lg font-bold text-white mb-1">Click to load sample file: <span class="text-blue-400">P_and_L_Q4_2025_Financials.xlsx</span></h3>
+          <p class="text-xs text-slate-400">15,400 Rows • 4.2 MB • Income Statement, Margins & Regional Metrics</p>
+          <button class="mt-5 px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-blue-500/25 hover:opacity-90 transition">🚀 Generate PowerPoint Presentation (5s)</button>
+        </div>
+
+        <!-- Simulated Loading -->
+        <div id="loader-1" class="hidden text-center py-6">
+          <p id="loader-text-1" class="text-sm font-semibold text-blue-400 mb-2">Parsing Excel sheets in server RAM...</p>
+          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div id="bar-1" class="h-full bg-gradient-to-r from-blue-500 to-emerald-400 w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+
+        <!-- Generated Slides Output -->
+        <div id="output-1" class="hidden space-y-4 pt-4">
+          <div class="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-4">
+            <div class="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+              <span>✅ 10-Slide Executive Deck Generated in 4.8 Seconds!</span>
+            </div>
+            <button class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow">Download .PPTX Deck</button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 aspect-video flex flex-col justify-between">
+              <span class="text-xs font-bold text-blue-400">Slide 1: Q4 P&L Overview</span>
+              <div class="h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg opacity-80"></div>
+              <span class="text-[11px] text-slate-400">Revenue: $14.2M (+24% YoY)</span>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 aspect-video flex flex-col justify-between">
+              <span class="text-xs font-bold text-blue-400">Slide 2: Gross Margin Variance</span>
+              <div class="h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg opacity-80"></div>
+              <span class="text-[11px] text-slate-400">Gross Margin: 64.2%</span>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 aspect-video flex flex-col justify-between">
+              <span class="text-xs font-bold text-blue-400">Slide 3: Regional Breakdown</span>
+              <div class="h-16 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-lg opacity-80"></div>
+              <span class="text-[11px] text-slate-400">Top Market: North America</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: WEB URL SCRAPER -->
+      <div id="tab-2" class="hidden space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h2 class="text-xl font-bold text-white font-display">Playwright URL Scraper to Presentation</h2>
+            <p class="text-sm text-slate-400 mt-0.5">Scrape public web disclosures and tables into PowerPoint decks without file downloads.</p>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold">Playwright Headless Execution</span>
+        </div>
+
+        <div class="flex gap-3">
+          <input type="text" value="https://finance.yahoo.com/quote/AAPL/financials" class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500" />
+          <button class="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-md transition" onclick="runSimulatedScrape()">🌐 Scrape & Generate Slides</button>
+        </div>
+
+        <div id="loader-2" class="hidden text-center py-6">
+          <p id="loader-text-2" class="text-sm font-semibold text-blue-400 mb-2">Launching Playwright Headless Chromium in RAM...</p>
+          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div id="bar-2" class="h-full bg-gradient-to-r from-blue-500 to-emerald-400 w-0 transition-all duration-300"></div>
+          </div>
+        </div>
+
+        <div id="output-2" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <h3 class="text-sm font-bold text-emerald-400">✅ Web Data Extracted & Presentation Built in RAM!</h3>
+          <p class="text-xs text-slate-300"><strong>Source Webpage:</strong> Apple Inc. (AAPL) Financial Disclosure</p>
+          <p class="text-xs text-slate-300"><strong>Extracted Data:</strong> Income Statement, Balance Sheet Highlights, Operating Cash Flow</p>
+          <p class="text-xs text-slate-400 italic">0 bytes stored to disk. Extracted web tables evaporated post-generation.</p>
+        </div>
+      </div>
+
+      <!-- TAB 3: UNIFIED REPORTING -->
+      <div id="tab-3" class="hidden space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h2 class="text-xl font-bold text-white font-display">AI/ML Unified Reporting Engine</h2>
+            <p class="text-sm text-slate-400 mt-0.5">Platform-agnostic reporting across any system with Natural Language SQL & Predictive ML.</p>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-semibold">Natural Language SQL + Predictive ML</span>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between text-xs text-slate-400">
+            <span>Ask across connected databases, APIs & spreadsheets:</span>
+            <span class="text-emerald-400 font-bold">4 Active Data Sources</span>
+          </div>
+          <div class="flex gap-2">
+            <input type="text" value="Forecast Q1 headcount cost vs revenue growth next 12 months" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none" />
+            <button class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-md" onclick="document.getElementById('output-3').style.display='block'">🤖 Run AI Query</button>
+          </div>
+        </div>
+
+        <div id="output-3" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <h3 class="text-sm font-bold text-indigo-400">🔮 AI Predictive ML Forecast Result</h3>
+          <p class="text-xs text-slate-300"><strong>Forecasted Revenue Growth:</strong> +18.4% over next 4 quarters (Polynomial Model)</p>
+          <p class="text-xs text-slate-300"><strong>AI Insight Narrative:</strong> Q1 Headcount expansion in EMEA exhibits a 0.84 correlation with pipeline growth.</p>
+        </div>
+      </div>
+
+      <!-- TAB 4: MIGRATION -->
+      <div id="tab-4" class="hidden space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div>
+            <h2 class="text-xl font-bold text-white font-display">Universal System Migration Engine</h2>
+            <p class="text-sm text-slate-400 mt-0.5">Automated source-to-target schema mapping, date cleansing, and cutover package generation.</p>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold">Universal Source ➔ Target Schema</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 text-center">
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl"><div class="text-blue-400 font-bold text-sm">1. Extract</div><div class="text-xs text-slate-400">Upload Source Extract</div></div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl"><div class="text-blue-400 font-bold text-sm">2. AI Map</div><div class="text-xs text-slate-400">Auto Field Match</div></div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl"><div class="text-blue-400 font-bold text-sm">3. Cleanse</div><div class="text-xs text-slate-400">Dates & IBAN Check</div></div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl"><div class="text-emerald-400 font-bold text-sm">4. Cutover</div><div class="text-xs text-slate-400">Export ZIP Package</div></div>
+        </div>
+
+        <button class="w-full py-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-md" onclick="document.getElementById('output-4').style.display='block'">⚡ Execute AI Migration & Package Export</button>
+
+        <div id="output-4" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <h3 class="text-sm font-bold text-emerald-400">✅ Cutover Migration Package Ready for Target Upload!</h3>
+          <p class="text-xs text-slate-400 mt-1">Generated 6 load-sequenced CSVs with validated picklists and cleansed ISO date formats.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- BRANDING FOOTER -->
+    <footer class="mt-12 text-center text-xs text-slate-500 border-t border-slate-900 pt-6">
+      <p>© 2026 Meldra AI. All rights reserved. <span class="text-slate-400">meldra · DATA MADE SIMPLE</span></p>
+    </footer>
+
+  </main>
+
+  <script>
+    function switchDemoTab(num) {
+      for (let i = 1; i <= 4; i++) {
+        document.getElementById(`tab-${i}`).classList.add('hidden');
+        document.getElementById(`btn-usecase-${i}`).classList.remove('border-blue-500/60', 'bg-blue-500/10');
+      }
+      document.getElementById(`tab-${num}`).classList.remove('hidden');
+      document.getElementById(`btn-usecase-${num}`).classList.add('border-blue-500/60', 'bg-blue-500/10');
+    }
+
+    function runSimulatedPPT() {
+      const loader = document.getElementById('loader-1');
+      const bar = document.getElementById('bar-1');
+      const text = document.getElementById('loader-text-1');
+      const out = document.getElementById('output-1');
+
+      loader.classList.remove('hidden');
+      out.classList.add('hidden');
+      bar.style.width = '0%';
+
+      let p = 0;
+      const t = setInterval(() => {
+        p += 25;
+        bar.style.width = p + '%';
+        if (p === 50) text.innerText = 'AI designing color palettes & charts in RAM...';
+        if (p >= 100) {
+          clearInterval(t);
+          loader.classList.add('hidden');
+          out.classList.remove('hidden');
+        }
+      }, 300);
+    }
+
+    function runSimulatedScrape() {
+      const loader = document.getElementById('loader-2');
+      const bar = document.getElementById('bar-2');
+      const out = document.getElementById('output-2');
+
+      loader.classList.remove('hidden');
+      out.classList.add('hidden');
+      bar.style.width = '0%';
+
+      let p = 0;
+      const t = setInterval(() => {
+        p += 33;
+        bar.style.width = p + '%';
+        if (p >= 100) {
+          clearInterval(t);
+          loader.classList.add('hidden');
+          out.classList.remove('hidden');
+        }
+      }, 350);
+    }
+  </script>
+</body>
+</html>

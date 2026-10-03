@@ -290,9 +290,9 @@ export default function Migration() {
     <div className="mx-auto w-full max-w-[1440px] px-4 pb-10 pt-6 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight">Next-Gen Migration</h1>
+          <h1 className="m-0 text-2xl font-semibold tracking-tight">Universal System Migration Engine</h1>
           <p className="mt-1 text-sm text-slate-500">
-            <strong className="text-slate-700 dark:text-slate-200">Workday</strong> <ArrowRight className="inline h-3.5 w-3.5" /> <strong className="text-slate-700 dark:text-slate-200">SAP SuccessFactors Employee Central</strong> · Core HR, pay history, payroll and cost centers · runs in your browser, employee data never leaves it
+            <strong className="text-slate-700 dark:text-slate-200">Any Source System Extract</strong> <ArrowRight className="inline h-3.5 w-3.5" /> <strong className="text-slate-700 dark:text-slate-200">Target System Schema</strong> · AI Schema Mapping, Automated Transformation, Date/IBAN Cleansing & Cutover Excel Package · Runs 100% in browser RAM
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -341,23 +341,25 @@ export default function Migration() {
             >
               <input ref={fileInput} type="file" multiple accept=".csv,.tsv,.xlsx,.xls" className="hidden" onChange={(e) => { onFiles([...e.target.files]); e.target.value = ''; }} />
               {busy === 'upload' ? <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" /> : <Upload className="mx-auto h-8 w-8 text-blue-600" />}
-              <h2 className="mt-3 text-xl font-semibold">Drop your Workday extract</h2>
+              <h2 className="mt-3 text-xl font-semibold">Drop your Source System Extract</h2>
               <p className="mx-auto mt-1 max-w-lg text-sm text-slate-500">
-                Your Excel workbook exactly as exported — any number of tabs: workers, job and pay history, bonuses, bank details, payroll balances, retirees, pension, dependents, terminations, legal entities, cost centers and other org lists. Tab and column names don’t need to match anything. CSV files work too.
+                Upload your raw data extract spreadsheet (Excel or CSVs) from any legacy HR, ERP, CRM, Finance, or Database system. AI automatically recognizes tabs, maps target fields, cleanses dates/IDs, and formats the output for cutover.
               </p>
               <Button className="mt-5" onClick={() => fileInput.current?.click()} disabled={busy === 'upload'}>Choose files</Button>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
-                <Button variant="outline" onClick={loadSample}><Sparkles className="mr-2 h-4 w-4" />Try a sample Workday extract</Button>
-                <Button variant="ghost" onClick={downloadWorkdaySampleXlsx}><Download className="mr-2 h-4 w-4" />Download the sample as Excel</Button>
+                <Button variant="outline" onClick={loadSample}><Sparkles className="mr-2 h-4 w-4" />Try a sample system extract</Button>
+                <Button variant="ghost" onClick={downloadWorkdaySampleXlsx}><Download className="mr-2 h-4 w-4" />Download sample as Excel</Button>
               </div>
             </div>
             <div className={card}>
-              <h3 className="m-0 text-[15px] font-semibold">How it works</h3>
+              <h3 className="m-0 text-[15px] font-semibold">How Migration Works</h3>
               <ol className="mt-3 space-y-3 text-sm">
-                <li><strong>1. Map.</strong> Every column is matched to a SuccessFactors field by name, synonyms and its values (<code>Legal_First_Name</code>, <code>Given_Name</code> → first name). Tabs are joined on the employee ID, with no VLOOKUPs.</li>
-                <li><strong>2. Resolve.</strong> Legal entities, departments, locations and jobs are built first, including any referenced but missing, then people, jobs, contact details, pay and terminations.</li>
-                <li><strong>History.</strong> Every job and pay record is kept per employee. Job records are classified as hire, job change, transfer or data change, and each pay date keeps all its components.</li>
-                <li><strong>3. Cleanse.</strong> Dates, genders, countries, FTEs and picklists are converted to the target’s rules, and every change is logged. IBANs are checksum-validated. A pre-flight check lists what SuccessFactors would reject, and a reconciliation proves pay, bonus and balance totals match the source to the cent.</li>
+                <li><strong>1. AI Mapping.</strong> AI matches source extract columns to the target schema (e.g. <code>Given_Name</code> → <code>firstName</code>) without complex manual VLOOKUPs.</li>
+                <li><strong>2. Auto-Resolution.</strong> Automatically builds reference structures (org objects, job codes, cost centers, employee records) and joins relational data.</li>
+                <li><strong>3. Data Cleansing & Validation.</strong> Converts date formats, picklists, and IBANs while running pre-flight checks against target system validation rules.</li>
+                <li><strong>4. Package Export.</strong> Generates a zip of load-sequenced CSVs or cutover Excel workbooks ready for target system upload.</li>
+              </ol>
+            </div>
                 <li><strong>4. Export.</strong> A ZIP of numbered CSVs in load order, with a README and reports.</li>
               </ol>
             </div>

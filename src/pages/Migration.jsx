@@ -360,9 +360,6 @@ export default function Migration() {
                 <li><strong>4. Package Export.</strong> Generates a zip of load-sequenced CSVs or cutover Excel workbooks ready for target system upload.</li>
               </ol>
             </div>
-                <li><strong>4. Export.</strong> A ZIP of numbered CSVs in load order, with a README and reports.</li>
-              </ol>
-            </div>
             {sheets.length > 0 && (
               <div className={`${card} lg:col-span-2`}>
                 <h3 className="m-0 text-[15px] font-semibold">Loaded tabs</h3>

@@ -215,6 +215,7 @@ Guidelines:
               Describe your database schema
             </Label>
             <Textarea
+              data-meldra-prompt
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Example: Create a database for a social media app with users, posts, comments, and likes. Users can follow each other and posts can have multiple tags..."

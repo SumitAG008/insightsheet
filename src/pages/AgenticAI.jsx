@@ -616,6 +616,7 @@ Create a clear, business-ready summary.`;
           </h2>
 
           <Textarea
+            data-meldra-prompt
             placeholder={t('agentic_ai_task_placeholder')}
             value={task}
             onChange={(e) => setTask(e.target.value)}

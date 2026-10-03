@@ -4,7 +4,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart, ArrowRightLeft } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart, ArrowRightLeft, Globe } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,7 @@ import LogoutWarningModal from '@/components/common/LogoutWarningModal';
 import { clearAllAppSessionData } from '@/utils/clearAppData';
 import CookieConsent from '@/components/CookieConsent';
 import ToolSearch, { useToolSearchShortcut } from '@/components/assist/ToolSearch';
+import HandoffRunner from '@/components/assist/HandoffRunner';
 import SupportChatWidget from '@/components/SupportChatWidget';
 import OnboardingAssistantModal from '@/components/onboarding/OnboardingAssistantModal';
 import { applyPreferences, applyPrimaryColor, applyTheme, getUserPreferences } from '@/lib/userPreferences';
@@ -435,7 +436,7 @@ export default function Layout({ children, currentPageName }) {
                       <button
                         type="button"
                         className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                          [createPageUrl('DataModelCreator'), createPageUrl('DatabaseConnection')].some(p => isActive(p))
+                          [createPageUrl('DataModelCreator'), createPageUrl('DatabaseConnection'), createPageUrl('PlaywrightConnector')].some(p => isActive(p))
                             ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
                             : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
                         }`}
@@ -457,6 +458,12 @@ export default function Layout({ children, currentPageName }) {
                         <Link to={createPageUrl('DatabaseConnection')} className="flex items-center gap-2 cursor-pointer">
                           <Plug className="w-4 h-4" />
                           {t('nav_db_connect')}
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={createPageUrl('PlaywrightConnector')} className="flex items-center gap-2 cursor-pointer">
+                          <Globe className="w-4 h-4" />
+                          {t('nav_web_data')}
                         </Link>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -715,6 +722,9 @@ export default function Layout({ children, currentPageName }) {
                   <Link to={createPageUrl('DatabaseConnection')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('DatabaseConnection')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <Plug className="w-4 h-4" /> <span>{t('nav_db_connect')}</span>
                   </Link>
+                  <Link to={createPageUrl('PlaywrightConnector')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('PlaywrightConnector')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                    <Globe className="w-4 h-4" /> <span>{t('nav_web_data')}</span>
+                  </Link>
 
                   <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_file_conversion')}</p>
                   <Link to={createPageUrl('FileToPPT')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FileToPPT')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
@@ -881,6 +891,7 @@ export default function Layout({ children, currentPageName }) {
       />
 
       {user && user.email && <ToolSearch open={searchOpen} onOpenChange={setSearchOpen} />}
+      {user && user.email && <HandoffRunner />}
 
       {/* Cookie consent — main app; tracks accept/reject for compliance */}
       <CookieConsent privacyUrl={createPageUrl('Privacy')} />

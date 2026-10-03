@@ -349,6 +349,8 @@ export const backendApi = {
   assist: {
     search: async (q) => jsonOrThrow(await apiCall(`/api/assist/search?q=${encodeURIComponent(q)}`), 'Search failed'),
     suggestions: async () => jsonOrThrow(await apiCall('/api/assist/suggestions'), 'Could not load suggestions'),
+    plan: async ({ request, files = [], page }) =>
+      jsonOrThrow(await apiCall('/api/assist/plan', { method: 'POST', body: { request, files, page }, timeoutMs: 45000 }), 'Ask Meldra is unavailable right now'),
     choose: async (q, toolId) =>
       jsonOrThrow(await apiCall('/api/assist/search/choose', { method: 'POST', body: { q, tool_id: toolId } }), 'Could not save choice'),
   },

@@ -6532,6 +6532,35 @@ def assist_search_choose(payload: SearchChoiceIn, current_user: dict = Depends(g
     return {"ok": True}
 
 
+class AssistPlanFile(BaseModel):
+    name: str = Field("", max_length=200)
+    type: str = Field("", max_length=40)
+    headers: List[str] = Field(default_factory=list, max_length=60)
+
+
+class AssistPlanIn(BaseModel):
+    request: str = Field(..., min_length=1, max_length=1000)
+    files: List[AssistPlanFile] = Field(default_factory=list, max_length=10)
+    page: Optional[str] = Field(None, max_length=120)
+
+
+@app.post("/api/assist/plan")
+async def assist_plan(payload: AssistPlanIn, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Ask Meldra: turn a plain-words request into a plan of Meldra tools (file names and headers only, never contents)."""
+    from app.services.meldra_engine import fallback_plan, plan_request
+    from app.services.personalization import search
+
+    files = [f.model_dump() if hasattr(f, "model_dump") else f.dict() for f in payload.files]
+    try:
+        plan = await plan_request(payload.request, files, payload.page)
+    except Exception as e:
+        logger.warning(f"Ask Meldra planner unavailable, using search: {explain_ai_error(e)}")
+        plan = fallback_plan(payload.request, search(db, current_user["email"], payload.request, limit=3), len(files))
+    db.add(UserActivity(user_email=current_user["email"], activity_type="ask_meldra"))
+    db.commit()
+    return plan
+
+
 @app.get("/api/assist/suggestions")
 def assist_suggestions(
     limit: int = Query(6, ge=1, le=12),

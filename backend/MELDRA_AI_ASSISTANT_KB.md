@@ -339,3 +339,10 @@ To reduce hallucinations:
 ### v0.1 — 2026-02-02
 
 - Initial KB created for AI assistant: API keys, onboarding, limits, endpoints, troubleshooting.
+
+## Ask Meldra (one prompt for every tool)
+- Where: the "What do you want to get done?" box on the Dashboard, or press Ctrl/⌘ + K on any page and type the task as a sentence.
+- How: describe the task in your own words and attach files if you have them. Meldra plans which tools to use (sometimes two in a row, e.g. Invoice Extractor then Reconciliation), puts your files into each tool and fills in its instruction box. You review and press the tool's own button; nothing runs by itself.
+- If the request is unclear, Meldra asks one question back. Questions about Meldra itself get a short answer.
+- Privacy: the planner sees your words, file names and spreadsheet column headings only, never file contents.
+- If the AI is unavailable, Ask Meldra still opens the best-matching tool from search.

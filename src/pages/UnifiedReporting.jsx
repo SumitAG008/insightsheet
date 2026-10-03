@@ -615,6 +615,7 @@ export default function UnifiedReporting() {
               key={k}
               type="button"
               onClick={() => setView(k)}
+              data-meldra-prompt-tab={k === 'ask' ? '' : undefined}
               aria-current={view === k ? 'page' : undefined}
               className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${view === k ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'}`}
             >
@@ -795,6 +796,7 @@ export default function UnifiedReporting() {
                   <label htmlFor="ur-q" className="sr-only">{mode === 'report' ? 'Describe the report you need' : 'Ask a question about your data'}</label>
                   <textarea
                     id="ur-q"
+                    data-meldra-prompt
                     ref={inputRef}
                     rows={1}
                     value={draft}

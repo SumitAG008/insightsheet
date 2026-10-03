@@ -124,6 +124,10 @@ from app.services.document_converter_service import (
 from app.services.compliance_ai_service import ComplianceAIService
 from app.services.predictive_ml_service import PredictiveMLService
 from app.services.excel_ops_service import ExcelOpsService
+from app.services.plan_limits import UNLIMITED, Entitlements, describe_limits, normalize_plan, personal_entitlements
+from app.services.organizations import resolve_entitlements, try_domain_auto_join
+from app.services.file_limits import check_file, count_pdf_pages, ocr_page_cap
+from app.services import server_guard
 from app.services.xlsx_chart_service import XlsxChartService
 from app.services.watermark_service import (
     should_apply_watermark,
@@ -475,6 +479,19 @@ def _upload_limits_off() -> bool:
     return _upload_limit_override_mb() == NO_UPLOAD_LIMIT_MB
 
 
+def _entitlements_for(subscription) -> Entitlements:
+    """The limits that apply to this subscription (or API key): organisation licence or own plan."""
+    ent = getattr(subscription, "_entitlements", None)
+    if ent is not None:
+        return ent
+    return personal_entitlements(getattr(subscription, "plan", None))
+
+
+def _is_paid(subscription) -> bool:
+    """On any paid plan, their own or their organisation's licence."""
+    return _entitlements_for(subscription).plan != "free"
+
+
 def _plan_file_size_mb(subscription: Subscription) -> int:
     """Largest single file this subscription may upload, in MB (one rule for every tool)."""
     override = _upload_limit_override_mb()
@@ -484,40 +501,44 @@ def _plan_file_size_mb(subscription: Subscription) -> int:
 
 
 def _plan_default_file_size_mb(subscription) -> int:
-    plan = (getattr(subscription, "plan", None) or "free").strip().lower()
-    return 500 if plan.startswith("premium") else 10
+    mb = _entitlements_for(subscription).get("file_size_mb")
+    return NO_UPLOAD_LIMIT_MB if mb < 0 else mb
 
 
 def _plan_ai_limit(subscription: Subscription) -> int:
-    plan = (getattr(subscription, "plan", None) or "free").strip().lower()
-    if plan == "premium_yearly":
-        return 400
-    if plan in ("premium", "premium_quarterly"):
-        return 300
-    return 2
+    return _entitlements_for(subscription).get("ai_queries_per_month")
 
 
 def _plan_transactions_limit(subscription: Subscription) -> int:
-    plan = (getattr(subscription, "plan", None) or "free").strip().lower()
-    if plan == "premium_yearly":
-        return 400
-    if plan in ("premium", "premium_quarterly"):
-        return 200
-    return 20
+    return _entitlements_for(subscription).get("conversions_per_month")
 
 
 def _plan_upload_bytes_limit(subscription: Subscription) -> int:
-    # Stored on the subscription, so always the plan's own figure; UPLOAD_LIMIT_MB is applied at request time.
-    return int(_plan_default_file_size_mb(subscription) * 1024 * 1024)
+    # Monthly upload allowance (stored in workflow_runs_limit); -1 = unlimited.
+    mb = _entitlements_for(subscription).get("monthly_upload_mb")
+    return -1 if mb < 0 else int(mb * 1024 * 1024)
+
+
+def _file_limits_for(subscription) -> Dict[str, int]:
+    """Per-file limits for this subscription, with the operator's UPLOAD_LIMIT_MB override applied."""
+    limits = dict(_entitlements_for(subscription).limits)
+    if _upload_limits_off():
+        limits["file_size_mb"] = UNLIMITED
+    else:
+        limits["file_size_mb"] = _plan_file_size_mb(subscription)
+    return limits
+
+
+def _check_upload_file(subscription, content: bytes, filename: Optional[str] = "") -> None:
+    """Turn away one file over the plan's size, row or page limit before any heavy work (413)."""
+    check_file(_file_limits_for(subscription), content, filename or "", f"the {_entitlements_for(subscription).plan_name} plan")
 
 
 def _ensure_subscription_monthly_resets(subscription: Subscription, db: Session) -> None:
     now = datetime.utcnow()
 
-    # Free plan: AI quota resets daily (2 questions/day).
-    # Premium plans: AI quota resets monthly.
-    plan = (getattr(subscription, "plan", None) or "free").strip().lower()
-    ai_reset_fn = _first_day_next_day_utc if plan == "free" else _first_day_next_month_utc
+    # Every plan's AI allowance is monthly (docs/PLAN_LIMITS_AND_CAPACITY.md).
+    ai_reset_fn = _first_day_next_month_utc
 
     if subscription.ai_queries_reset_at is None:
         subscription.ai_queries_reset_at = ai_reset_fn(now)
@@ -544,9 +565,19 @@ def _ensure_subscription_monthly_resets(subscription: Subscription, db: Session)
     db.commit()
 
 
+def _attach_entitlements(db: Session, subscription: Subscription, user_email: str) -> None:
+    try:
+        subscription._entitlements = resolve_entitlements(db, user_email, subscription.plan)
+    except Exception as e:  # a lookup problem must never block the user; fall back to their own plan
+        logger.warning(f"Entitlements lookup failed: {type(e).__name__}")
+        subscription._entitlements = personal_entitlements(subscription.plan)
+
+
 def _get_or_create_subscription(db: Session, user_email: str) -> Subscription:
     subscription = db.query(Subscription).filter(Subscription.user_email == user_email).first()
     if subscription:
+        # Organisation licence or own plan; every limit check below reads from this.
+        _attach_entitlements(db, subscription, user_email)
         # Normalize plan entitlements on read (keeps UI + enforcement consistent)
         try:
             subscription.ai_queries_limit = int(_plan_ai_limit(subscription))
@@ -565,19 +596,21 @@ def _get_or_create_subscription(db: Session, user_email: str) -> Subscription:
         db.commit()
         return subscription
 
+    new_sub = Subscription(plan="free")
+    _attach_entitlements(db, new_sub, user_email)
     subscription = Subscription(
         user_email=user_email,
         plan="free",
         status="active",
         # ai_queries_* is treated as AI questions/tokens meter.
-        ai_queries_limit=int(_plan_ai_limit(Subscription(plan="free"))),
+        ai_queries_limit=int(_plan_ai_limit(new_sub)),
         ai_queries_used=0,
         payment_status="unpaid",
         # workflow_runs_* is treated as upload-bytes meter.
-        workflow_runs_limit=int(_plan_upload_bytes_limit(Subscription(plan="free"))),
+        workflow_runs_limit=int(_plan_upload_bytes_limit(new_sub)),
         workflow_runs_used=0,
         # conversions_* is treated as monthly transactions meter.
-        conversions_limit=int(_plan_transactions_limit(Subscription(plan="free"))),
+        conversions_limit=int(_plan_transactions_limit(new_sub)),
         conversions_used=0,
     )
 
@@ -592,6 +625,7 @@ def _get_or_create_subscription(db: Session, user_email: str) -> Subscription:
     db.add(subscription)
     db.commit()
     db.refresh(subscription)
+    subscription._entitlements = new_sub._entitlements
     _ensure_subscription_monthly_resets(subscription, db)
     _apply_admin_entitlements(subscription, user_email)
     db.commit()
@@ -681,22 +715,14 @@ def _enforce_ai_quota(subscription: Subscription) -> None:
         raise HTTPException(status_code=403, detail="Subscription inactive")
     if subscription.ai_queries_limit is not None and subscription.ai_queries_limit >= 0:
         if (subscription.ai_queries_used or 0) >= subscription.ai_queries_limit:
-            raise HTTPException(status_code=429, detail="AI token limit reached. Upgrade to increase limits.")
+            raise HTTPException(status_code=429, detail=f"You have used all {subscription.ai_queries_limit} AI questions for this month. They reset on the 1st, or upgrade for more.")
 
 
 def _consume_ai_quota(db: Session, subscription: Subscription, *args) -> None:
-    if len(args) == 1:
-        tokens_used = args[0]
-    elif len(args) >= 3:
-        tokens_used = args[2]
-    else:
-        tokens_used = 0
-    if subscription.ai_queries_limit is not None and subscription.ai_queries_limit >= 0:
-        inc = int(tokens_used or 0)
-        if inc < 0:
-            inc = 0
-        subscription.ai_queries_used = int(subscription.ai_queries_used or 0) + inc
-        db.commit()
+    # Call styles: (db, sub, tokens) or (db, sub, email, request_id, tokens). The allowance counts
+    # AI questions (one per call), which is what the plans and the website show; tokens are ignored.
+    subscription.ai_queries_used = int(subscription.ai_queries_used or 0) + 1
+    db.commit()
 
 
 def _enforce_upload_quota(subscription: Subscription, bytes_to_add: int) -> None:
@@ -738,7 +764,7 @@ def _enforce_transactions_quota(subscription: Subscription) -> None:
     limit = int(getattr(subscription, "conversions_limit", 0) or 0)
     used = int(getattr(subscription, "conversions_used", 0) or 0)
     if limit >= 0 and used >= limit:
-        raise HTTPException(status_code=429, detail="Transaction limit reached. Upgrade to increase limits.")
+        raise HTTPException(status_code=429, detail=f"You have used all {limit} conversions for this month. They reset on the 1st, or upgrade for more.")
 
 
 def _consume_transaction(db: Session, subscription: Subscription, *args) -> None:
@@ -766,6 +792,11 @@ def _apply_admin_entitlements(subscription: Subscription, user_email: str) -> No
     subscription.ai_queries_limit = -1
     subscription.workflow_runs_limit = -1
     subscription.conversions_limit = -1
+    # The operator's own account: highest per-file limits, no monthly counts.
+    ent = personal_entitlements("business")
+    for key in ("conversions_per_month", "ai_queries_per_month", "monthly_upload_mb", "requests_per_minute"):
+        ent.limits[key] = UNLIMITED
+    subscription._entitlements = ent
 
 
 def _estimate_tokens_from_text(text: str) -> int:
@@ -843,6 +874,74 @@ async def _release_memory_after_file_work(request: Request, call_next):
         response.background = tasks
     return response
 
+# File jobs that hold a lot of memory or CPU: limited per user and per server (app/services/server_guard.py).
+_HEAVY_JOB_PREFIXES = _FILE_WORK_PREFIXES + (
+    "/api/support/chat-with-file",
+    "/api/integrations/llm/invoke-with-file",
+    "/api/ai/explain-sql",
+    "/api/developer/proxy",
+)
+
+
+def _guard_limits_for_email(email: str) -> Dict[str, int]:
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        sub = _get_or_create_subscription(db, email)
+        _apply_admin_entitlements(sub, email)
+        return dict(_entitlements_for(sub).limits)
+    finally:
+        db.close()
+
+
+def _guard_identity(request: Request) -> Tuple[str, Optional[str]]:
+    """("user:<email>", email) for a signed-in request, ("ip:<address>", None) otherwise."""
+    auth = request.headers.get("authorization") or ""
+    if auth.lower().startswith("bearer "):
+        try:
+            from app.utils.auth import decode_token
+
+            email = (decode_token(auth[7:].strip()).get("sub") or "").strip().lower()
+            if email:
+                return f"user:{email}", email
+        except Exception:
+            pass
+    api_key = request.headers.get("x-api-key") or ""
+    if api_key:
+        return "key:" + hashlib.sha256(api_key.encode()).hexdigest()[:24], None
+    return f"ip:{_get_client_ip(request) or 'unknown'}", None
+
+
+@app.middleware("http")
+async def _server_guard(request: Request, call_next):
+    """Requests per minute per user, files processing at once per user, and heavy jobs per server."""
+    path = request.url.path
+    if not server_guard.guard_enabled() or request.method == "OPTIONS" or not path.startswith("/api/"):
+        return await call_next(request)
+    identity, email = _guard_identity(request)
+    limits: Dict[str, int] = {}
+    if email:
+        try:
+            limits = await asyncio.to_thread(server_guard.cached_limits, email, _guard_limits_for_email)
+        except Exception:
+            limits = personal_entitlements("free").limits
+    try:
+        per_minute = limits.get("requests_per_minute", 0) if email else server_guard.anonymous_requests_per_minute()
+        server_guard.check_rate(identity, per_minute)
+        if request.method == "POST" and path.startswith(_HEAVY_JOB_PREFIXES):
+            concurrent = limits.get("concurrent_jobs", 1) if email else 1
+            async with server_guard.HeavyJob(identity, concurrent):
+                return await call_next(request)
+        return await call_next(request)
+    except server_guard.GuardRejection as rej:
+        return JSONResponse(
+            status_code=rej.status_code,
+            content={"detail": rej.detail, "code": "server_busy" if rej.status_code == 503 else "rate_limited"},
+            headers={"Retry-After": str(rej.retry_after)},
+        )
+
+
 # CORS Configuration - SECURITY: Only HTTPS in production
 # Detect if we're in production (Railway/Vercel) or local development
 ENVIRONMENT = os.getenv("ENVIRONMENT", "production").lower()
@@ -899,6 +998,10 @@ app.add_middleware(
 # Meldra lakehouse (Apache Iceberg tables via Apache Polaris, Arrow + DuckDB queries)
 from app.routes.lakehouse import router as lakehouse_router  # noqa: E402
 app.include_router(lakehouse_router)
+
+# Organisations, seats and licences (enterprise and university deals)
+from app.routes.organizations import router as organizations_router  # noqa: E402
+app.include_router(organizations_router)
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -1051,8 +1154,8 @@ def _enforce_playwright_entitlement(subscription: Optional[Subscription]) -> Non
     allow_free = (os.getenv("PLAYWRIGHT_CONNECTORS_ALLOW_FREE", "").strip().lower() in ("1", "true", "yes"))
     if allow_free:
         return
-    if not subscription or (subscription.plan or "").lower() != "premium":
-        raise HTTPException(status_code=403, detail="Playwright web connectors are available on Premium plans only")
+    if not subscription or not _is_paid(subscription):
+        raise HTTPException(status_code=403, detail="Playwright web connectors are available on paid plans only")
 
 
 def _create_playwright_job_id() -> str:
@@ -3046,6 +3149,7 @@ def convert_document(
     max_bytes = max_size_mb * 1024 * 1024
 
     raw = file.file.read()
+    _check_upload_file(subscription, raw, file.filename)
     if len(raw) > max_bytes:
         raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -3097,7 +3201,7 @@ def convert_document(
     else:
         raise HTTPException(status_code=404, detail="Unknown conversion")
 
-    if should_apply_watermark(getattr(subscription, "plan", None)):
+    if should_apply_watermark(_entitlements_for(subscription).plan):
         if out_ext == ".pdf":
             data = watermark_pdf_bytes(data)
         elif out_ext == ".pptx":
@@ -3129,7 +3233,7 @@ def get_suggestions(
     """
 
     subscription = _get_or_create_subscription(db, current_user["email"])
-    plan = (getattr(subscription, "plan", "free") or "free").strip().lower()
+    plan = "premium" if subscription is not None and _is_paid(subscription) else "free"
     page_norm = (page or "").strip().lower()
     has_data_norm = bool(int(has_data)) if has_data is not None else None
     tab_norm = (tab or "").strip().lower()
@@ -3366,6 +3470,7 @@ def support_chat_with_file(
     max_size_mb = _plan_file_size_mb(subscription)
     max_bytes = max_size_mb * 1024 * 1024
     content = file.file.read()
+    _check_upload_file(subscription, content, file.filename)
     if len(content) > max_bytes:
         raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -4060,6 +4165,7 @@ def invoke_llm_with_file_endpoint(
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = file.file.read()
+        _check_upload_file(subscription, content, file.filename)
         if len(content) > max_bytes:
             raise HTTPException(
                 status_code=413,
@@ -4134,11 +4240,9 @@ async def generate_image_endpoint(
     """Generate image using DALL-E"""
     try:
         # Check subscription
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
+        subscription = _get_or_create_subscription(db, current_user["email"])
 
-        if subscription.plan != "premium":
+        if not _is_paid(subscription):
             raise HTTPException(
                 status_code=403,
                 detail="Image generation is a Premium feature"
@@ -4409,6 +4513,7 @@ async def _read_form_upload(file: UploadFile, subscription) -> bytes:
     max_size_mb = _plan_file_size_mb(subscription)
     _reject_oversized_upload(file, max_size_mb * 1024 * 1024, max_size_mb)
     data = await file.read()
+    _check_upload_file(subscription, data, file.filename)
     if not data:
         raise HTTPException(status_code=400, detail=f"The file is empty. Upload a {SUPPORTED_LABEL} file.")
     return data
@@ -4435,7 +4540,7 @@ async def make_fillable(
     (text boxes on blanks, lines and empty cells; tick boxes on check boxes). Scanned pages also get a
     searchable text layer. Nothing is stored.
     """
-    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    subscription = _get_or_create_subscription(db, current_user["email"])
     _enforce_conversion_quota(db, current_user["email"], "make_fillable", subscription)
     data = await _read_form_upload(file, subscription)
     pdf, report = await _run_form_tool(make_fillable_pdf, data, file.filename or "", ocr_lang, FILLABLE_MAX_PAGES)
@@ -4472,7 +4577,7 @@ async def pdf_apply_edits(
             raise ValueError
     except ValueError:
         raise HTTPException(status_code=400, detail="The edits could not be read.")
-    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    subscription = _get_or_create_subscription(db, current_user["email"])
     data = await _read_form_upload(file, subscription)
     pdf = await _run_form_tool(apply_edits, data, parsed)
     db.add(FileProcessingHistory(user_email=current_user["email"], processing_type="pdf_edit",
@@ -4491,7 +4596,7 @@ async def extract_form_data_route(
     db: Session = Depends(get_db),
 ):
     """Label/value pairs and full text from a form, statement or letter (PDF or image). Nothing is stored."""
-    subscription = db.query(Subscription).filter(Subscription.user_email == current_user["email"]).first()
+    subscription = _get_or_create_subscription(db, current_user["email"])
     _enforce_conversion_quota(db, current_user["email"], "extract_form_data", subscription)
     data = await _read_form_upload(file, subscription)
     result = await _run_form_tool(extract_form_data, data, file.filename or "", ocr_lang, FILLABLE_MAX_PAGES)
@@ -4591,14 +4696,13 @@ async def ocr_extract(
     """
     ocr_space_error = None
     try:
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
+        subscription = _get_or_create_subscription(db, current_user["email"])
         max_size_mb = _plan_file_size_mb(subscription)
         max_size_bytes = max_size_mb * 1024 * 1024
         _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
         file_content = await file.read()
+        _check_upload_file(subscription, file_content, file.filename)
         file_size_mb = len(file_content) / (1024 * 1024)
         if len(file_content) > max_size_bytes:
             raise HTTPException(
@@ -4643,7 +4747,7 @@ async def ocr_extract(
             ocr = OCRService()
             try:
                 out = await asyncio.wait_for(
-                    asyncio.to_thread(ocr.extract_pdf_with_layout, file_content, max_pages or ocr_default_max_pages, ocr_lang),
+                    asyncio.to_thread(ocr.extract_pdf_with_layout, file_content, ocr_page_cap(_file_limits_for(subscription), max_pages, ocr_default_max_pages), ocr_lang),
                     timeout_seconds or ocr_pdf_timeout,
                 )
             except asyncio.TimeoutError:
@@ -4778,6 +4882,7 @@ async def developer_api_proxy(
 
     started = time.time()
     raw = await file.read()
+    _check_upload_file(key, raw, file.filename)
     status_code = 200
     response_size = None
 
@@ -4883,7 +4988,7 @@ async def developer_api_proxy(
             if ext in OCRService.ALLOWED_PDF_EXTENSIONS:
                 try:
                     out = await asyncio.wait_for(
-                        asyncio.to_thread(ocr.extract_pdf_with_layout, raw, max_pages or ocr_default_max_pages, lang),
+                        asyncio.to_thread(ocr.extract_pdf_with_layout, raw, ocr_page_cap(_file_limits_for(key), max_pages, ocr_default_max_pages), lang),
                         timeout_seconds or ocr_pdf_timeout,
                     )
                 except asyncio.TimeoutError:
@@ -5056,6 +5161,7 @@ async def _developer_form_tool(request: Request, api_key: str, file: UploadFile,
     max_mb = _plan_file_size_mb(key)
     _reject_oversized_upload(file, max_mb * 1024 * 1024, max_mb)
     data = await file.read()
+    _check_upload_file(key, data, file.filename)
     started = time.time()
     status_code, result, size = 200, None, None
     try:
@@ -5134,6 +5240,7 @@ def developer_excel_ops_execute(
 
     started = time.time()
     raw = file.file.read()
+    _check_upload_file(key, raw, file.filename)
     status_code = 200
     response_size = None
 
@@ -5252,6 +5359,7 @@ def developer_excel_ops_charts(
 
     started = time.time()
     raw = file.file.read()
+    _check_upload_file(key, raw, file.filename)
     status_code = 200
     response_size = None
 
@@ -5375,6 +5483,7 @@ def developer_generate_pl_with_file(
             raise HTTPException(status_code=400, detail="Prompt is required")
 
         raw = file.file.read()
+        _check_upload_file(key, raw, file.filename)
 
         max_size_mb = _plan_file_size_mb(key)  # the API key carries its plan
         max_bytes = max_size_mb * 1024 * 1024
@@ -5403,7 +5512,7 @@ def developer_generate_pl_with_file(
             llm_assist_headers_only=bool(llm_assist_headers_only),
         ))
 
-        if should_apply_watermark(getattr(key, "plan", None)):
+        if should_apply_watermark(_entitlements_for(key).plan):
             excel_data = watermark_xlsx_bytes(excel_data)
         response_size = len(excel_data) if excel_data is not None else None
 
@@ -5520,9 +5629,7 @@ def excel_to_ppt(
         logo=logo_png,
     )
     try:
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
+        subscription = _get_or_create_subscription(db, current_user["email"])
         _enforce_conversion_quota(db, current_user["email"], "excel_to_ppt", subscription)
 
         # Check file size based on subscription
@@ -5532,6 +5639,7 @@ def excel_to_ppt(
 
         # Read file size
         file_content = file.file.read()
+        _check_upload_file(subscription, file_content, file.filename)
         file_size_mb = len(file_content) / (1024 * 1024)
 
         if len(file_content) > max_size_bytes:
@@ -5580,7 +5688,7 @@ def excel_to_ppt(
                     last_modified_by=gen_name,
                 ))
 
-        if should_apply_watermark(getattr(subscription, "plan", None)):
+        if should_apply_watermark(_entitlements_for(subscription).plan):
             ppt_data = watermark_pptx_bytes(ppt_data)
 
         # Log processing history (NO file content)
@@ -5639,9 +5747,7 @@ def analyze_file(
     """
     try:
         # Check file size based on subscription
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
+        subscription = _get_or_create_subscription(db, current_user["email"])
 
         max_size_mb = _plan_file_size_mb(subscription)
         max_size_bytes = max_size_mb * 1024 * 1024
@@ -5649,6 +5755,7 @@ def analyze_file(
 
         # Read file content
         file_content = file.file.read()
+        _check_upload_file(subscription, file_content, file.filename)
         file_size_mb = len(file_content) / (1024 * 1024)
 
         if len(file_content) > max_size_bytes:
@@ -5720,7 +5827,7 @@ async def generate_pl(
             context
         ))
 
-        if should_apply_watermark(getattr(subscription, "plan", None)):
+        if should_apply_watermark(_entitlements_for(subscription).plan):
             excel_data = watermark_xlsx_bytes(excel_data)
 
         _consume_ai_quota(db, subscription, current_user["email"], request_id, _estimate_tokens_from_text(prompt))
@@ -5775,6 +5882,7 @@ def generate_pl_with_file(
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = file.file.read()
+        _check_upload_file(subscription, content, file.filename)
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -5833,6 +5941,7 @@ def pl_extraction_preview(
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = file.file.read()
+        _check_upload_file(subscription, content, file.filename)
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -5876,6 +5985,7 @@ def universal_analyze(
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = file.file.read()
+        _check_upload_file(subscription, content, file.filename)
         file_size_mb = len(content) / (1024 * 1024)
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size ({file_size_mb:.1f}MB) exceeds {max_size_mb}MB limit")
@@ -5903,7 +6013,7 @@ def universal_analyze(
 
         # Option A+ (premium-only): attempt server-side recalculation if strict mode blocks.
         if recalculate and (results.get("status") == "blocked"):
-            if subscription.plan != "premium":
+            if not _is_paid(subscription):
                 results["recalculation"]["attempted"] = False
                 results["recalculation"]["message"] = "Server-side recalculation is available on Premium plan"
             else:
@@ -6008,6 +6118,7 @@ def standardize_preview(
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = file.file.read()
+        _check_upload_file(subscription, content, file.filename)
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -6048,6 +6159,7 @@ def standardize_download(
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         content = file.file.read()
+        _check_upload_file(subscription, content, file.filename)
         if len(content) > max_bytes:
             raise HTTPException(status_code=413, detail=f"File size exceeds {max_size_mb}MB limit")
 
@@ -6108,7 +6220,9 @@ def reconcile_preview(
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         left = left_file.file.read()
+        _check_upload_file(subscription, left, left_file.filename)
         right = right_file.file.read()
+        _check_upload_file(subscription, right, right_file.filename)
         if len(left) > max_bytes or len(right) > max_bytes:
             raise HTTPException(status_code=413, detail=f"Each file must be <= {max_size_mb}MB")
 
@@ -6156,7 +6270,9 @@ def reconcile_download(
         max_size_mb = _plan_file_size_mb(subscription)
         max_bytes = max_size_mb * 1024 * 1024
         left = left_file.file.read()
+        _check_upload_file(subscription, left, left_file.filename)
         right = right_file.file.read()
+        _check_upload_file(subscription, right, right_file.filename)
         if len(left) > max_bytes or len(right) > max_bytes:
             raise HTTPException(status_code=413, detail=f"Each file must be <= {max_size_mb}MB")
 
@@ -6219,9 +6335,7 @@ def process_zip(
         import json
 
         # Check file size
-        subscription = db.query(Subscription).filter(
-            Subscription.user_email == current_user["email"]
-        ).first()
+        subscription = _get_or_create_subscription(db, current_user["email"])
 
         _enforce_conversion_quota(db, current_user["email"], "zip_cleaning", subscription)
 
@@ -6230,6 +6344,7 @@ def process_zip(
         _reject_oversized_upload(file, max_size_bytes, max_size_mb)
 
         file_content = file.file.read()
+        _check_upload_file(subscription, file_content, file.filename)
         file_size_mb = len(file_content) / (1024 * 1024)
 
         if len(file_content) > max_size_bytes:
@@ -6311,15 +6426,46 @@ def get_my_subscription(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get current user's subscription"""
+    """Get current user's subscription, every limit that applies and what is left this month."""
+    try:  # someone from a customer's email domain gets a seat on first visit, when seats remain
+        if try_domain_auto_join(db, current_user["email"]):
+            server_guard.forget_limits(current_user["email"])
+    except Exception as e:
+        db.rollback()
+        logger.warning(f"Domain auto-join failed: {type(e).__name__}")
     subscription = _get_or_create_subscription(db, current_user["email"])
     _apply_admin_entitlements(subscription, current_user["email"])
     db.commit()
+    ent = _entitlements_for(subscription)
+
+    def _left(limit, used):
+        return None if limit is None or limit < 0 else max(0, int(limit) - int(used or 0))
+
+    allowance = {
+        "conversions": {"used": subscription.conversions_used or 0, "limit": subscription.conversions_limit,
+                        "remaining": _left(subscription.conversions_limit, subscription.conversions_used),
+                        "resets_at": subscription.conversions_reset_at.isoformat() if subscription.conversions_reset_at else None},
+        "ai_queries": {"used": subscription.ai_queries_used or 0, "limit": subscription.ai_queries_limit,
+                       "remaining": _left(subscription.ai_queries_limit, subscription.ai_queries_used),
+                       "resets_at": subscription.ai_queries_reset_at.isoformat() if subscription.ai_queries_reset_at else None},
+        "upload_mb": {"used": round((subscription.workflow_runs_used or 0) / (1024 * 1024), 1),
+                      "limit": None if (subscription.workflow_runs_limit or 0) < 0 else round((subscription.workflow_runs_limit or 0) / (1024 * 1024)),
+                      "remaining": None if (subscription.workflow_runs_limit or 0) < 0 else round(max(0, (subscription.workflow_runs_limit or 0) - (subscription.workflow_runs_used or 0)) / (1024 * 1024), 1),
+                      "resets_at": subscription.workflow_runs_reset_at.isoformat() if subscription.workflow_runs_reset_at else None},
+    }
 
     return {
+        "plan_key": ent.plan,
+        "plan_name": ent.plan_name,
+        "limits_source": ent.source,
+        "organization": ent.organization,
+        "limits": _file_limits_for(subscription),
+        "limit_labels": describe_limits()["keys"],
+        "allowance": allowance,
         "id": subscription.id,
         "user_email": subscription.user_email,
-        "plan": subscription.plan,
+        # The website's paid-feature checks look for "premium"; plan_key/plan_name say which plan it is.
+        "plan": "free" if ent.plan == "free" else "premium",
         "status": subscription.status,
         "ai_queries_used": subscription.ai_queries_used,
         "ai_queries_limit": subscription.ai_queries_limit,
@@ -6340,6 +6486,18 @@ def get_my_subscription(
     }
 
 
+@app.get("/api/plans/limits")
+def get_plan_limits():
+    """Every plan's limits (public): the pricing page and the docs read from this one table."""
+    return describe_limits()
+
+
+@app.get("/api/server/load")
+def get_server_load(current_user: dict = Depends(get_current_admin_user)):
+    """Admin only: heavy jobs running on this server process right now."""
+    return {**server_guard.server_load(), "queue_wait_seconds": server_guard.queue_wait_seconds()}
+
+
 @app.post("/api/subscriptions/upgrade")
 def upgrade_subscription(current_user: dict = Depends(get_current_user)):
     """
@@ -6354,7 +6512,7 @@ def upgrade_subscription(current_user: dict = Depends(get_current_user)):
 
 class AdminSetPlanRequest(BaseModel):
     user_email: EmailStr
-    plan: str = Field(..., pattern="^(free|premium)$")
+    plan: str = Field(..., pattern="^(free|premium|pro|team|business)$")
     payment_status: Optional[str] = Field("paid", max_length=50)
 
 
@@ -6376,8 +6534,8 @@ def admin_set_plan(
         db.flush()
 
     prev_plan, prev_status = subscription.plan, subscription.status
-    if payload.plan == "premium":
-        subscription.plan = "premium"
+    if payload.plan != "free":
+        subscription.plan = payload.plan  # "premium" (older name) and "pro" are the same plan
         subscription.status = "active"
         subscription.ai_queries_limit = -1  # Unlimited
         subscription.payment_status = payload.payment_status or "paid"
@@ -6404,6 +6562,7 @@ def admin_set_plan(
     except Exception:
         db.rollback()
 
+    server_guard.forget_limits(email)
     return {"user_email": email, "plan": subscription.plan, "status": subscription.status}
 
 
@@ -7239,16 +7398,32 @@ def api_merge_pdfs(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    subscription = _get_or_create_subscription(db, current_user["email"])
+    limits = _file_limits_for(subscription)
+    max_files = 50
+    if len(files) > max_files:
+        raise HTTPException(status_code=413, detail=f"Merge at most {max_files} PDFs at a time.")
     try:
         pdf_bytes_list = []
+        total_pages = 0
         for file in files:
             content = file.file.read()
+            _check_upload_file(subscription, content, file.filename)
+            total_pages += count_pdf_pages(content) or 0
             pdf_bytes_list.append(content)
-        
+        page_limit = limits.get("pdf_pages", UNLIMITED)
+        if page_limit >= 0 and total_pages > page_limit:
+            raise HTTPException(
+                status_code=413,
+                detail=f"The merged PDF would have {total_pages:,} pages; your plan allows {page_limit:,} per file.",
+            )
+
         merged_bytes = merge_pdfs(pdf_bytes_list)
         return Response(content=merged_bytes, media_type="application/pdf", headers={
             "Content-Disposition": 'attachment; filename="merged.pdf"'
         })
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error merging PDFs: {str(e)}", exc_info=True)
         raise HTTPException(status_code=400, detail=f"Failed to merge PDFs: {str(e)}")
@@ -7260,8 +7435,10 @@ def api_split_pdf(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    subscription = _get_or_create_subscription(db, current_user["email"])
+    content = file.file.read()
+    _check_upload_file(subscription, content, file.filename)
     try:
-        content = file.file.read()
         split_bytes = split_pdf(content, page_ranges)
         return Response(content=split_bytes, media_type="application/pdf", headers={
             "Content-Disposition": 'attachment; filename="split.pdf"'

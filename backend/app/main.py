@@ -85,7 +85,7 @@ from app.services.ai_service import (
 )
 from app.services.unified_reporting_service import build_report, plan_report, write_insight
 from app.services.api_connector_service import ConnectorError, allow_call, egress_info, fetch_records, public_presets, safe_summary
-from app.services.migration_service import suggest_mapping
+from app.services.migration_service import suggest_mapping, suggest_values
 import zipfile
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
@@ -2037,6 +2037,11 @@ class MigrationMappingRequest(BaseModel):
     source_system: str = Field("Workday", max_length=60)
     sheets: List[Dict[str, Any]] = Field(..., max_length=40)
     concepts: List[Dict[str, Any]] = Field(..., max_length=150)
+
+
+class MigrationValuesRequest(BaseModel):
+    source_system: str = Field("Workday", max_length=60)
+    groups: List[Dict[str, Any]] = Field(..., max_length=12)
 
 
 class UnifiedInsightRequest(BaseModel):
@@ -4354,6 +4359,23 @@ async def migration_suggest_mapping_endpoint(
         raise HTTPException(status_code=502, detail=f"The mapping assistant is unavailable: {explain_ai_error(e)}.")
 
 
+@app.post("/api/migration/suggest-values")
+async def migration_suggest_values_endpoint(
+    request: MigrationValuesRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Translate distinct picklist values to target codes (labels only, no employee IDs or counts)."""
+    try:
+        out = await suggest_values(request.groups, request.source_system)
+        db.add(UserActivity(user_email=current_user["email"], activity_type="migration_values"))
+        db.commit()
+        return out
+    except Exception as e:
+        logger.error(f"Migration value translation error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"The value assistant is unavailable: {explain_ai_error(e)}.")
+
+
 @app.post("/api/ai/explain-sql")
 async def explain_sql_endpoint(
     request: ExplainSqlRequest,
@@ -6508,6 +6530,35 @@ def assist_search_choose(payload: SearchChoiceIn, current_user: dict = Depends(g
     if not record_search_choice(db, current_user["email"], payload.q, payload.tool_id):
         raise HTTPException(status_code=400, detail="Unknown tool")
     return {"ok": True}
+
+
+class AssistPlanFile(BaseModel):
+    name: str = Field("", max_length=200)
+    type: str = Field("", max_length=40)
+    headers: List[str] = Field(default_factory=list, max_length=60)
+
+
+class AssistPlanIn(BaseModel):
+    request: str = Field(..., min_length=1, max_length=1000)
+    files: List[AssistPlanFile] = Field(default_factory=list, max_length=10)
+    page: Optional[str] = Field(None, max_length=120)
+
+
+@app.post("/api/assist/plan")
+async def assist_plan(payload: AssistPlanIn, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Ask Meldra: turn a plain-words request into a plan of Meldra tools (file names and headers only, never contents)."""
+    from app.services.meldra_engine import fallback_plan, plan_request
+    from app.services.personalization import search
+
+    files = [f.model_dump() if hasattr(f, "model_dump") else f.dict() for f in payload.files]
+    try:
+        plan = await plan_request(payload.request, files, payload.page)
+    except Exception as e:
+        logger.warning(f"Ask Meldra planner unavailable, using search: {explain_ai_error(e)}")
+        plan = fallback_plan(payload.request, search(db, current_user["email"], payload.request, limit=3), len(files))
+    db.add(UserActivity(user_email=current_user["email"], activity_type="ask_meldra"))
+    db.commit()
+    return plan
 
 
 @app.get("/api/assist/suggestions")

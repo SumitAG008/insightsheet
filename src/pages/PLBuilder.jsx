@@ -195,6 +195,7 @@ export default function PLBuilder() {
           <div>
             <Label htmlFor="prompt">{t('pl_builder_prompt_label')}</Label>
             <Textarea
+              data-meldra-prompt
               id="prompt"
               placeholder={t('pl_builder_prompt_placeholder')}
               value={prompt}

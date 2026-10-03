@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { peekHandoff } from '@/lib/meldra/handoff';
 
 function getApiBase() {
   if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) return import.meta.env.VITE_API_URL;
@@ -19,7 +20,8 @@ function getToken() {
 
 export default function PlaywrightConnector() {
   const apiBase = useMemo(() => getApiBase(), []);
-  const [connector, setConnector] = useState('books');
+  // Ask Meldra hands over a website URL: start on the custom-URL connector so it can be filled in.
+  const [connector, setConnector] = useState(() => (/^https?:\/\//i.test(peekHandoff('/PlaywrightConnector')?.instruction || '') ? 'custom' : 'books'));
   const [maxPages, setMaxPages] = useState('2');
   const [timeoutMs, setTimeoutMs] = useState('25000');
   const [startUrl, setStartUrl] = useState('https://webscraper.io/test-sites/e-commerce/static');
@@ -236,7 +238,7 @@ export default function PlaywrightConnector() {
           <div className="mt-4 grid grid-cols-1 gap-4">
             <div>
               <label className="text-sm font-medium">URL (required)</label>
-              <Input value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} placeholder="https://..." />
+              <Input data-meldra-prompt value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} placeholder="https://..." />
             </div>
             <div>
               <label className="text-sm font-medium">Item selector (required)</label>

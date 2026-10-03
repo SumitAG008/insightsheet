@@ -37,3 +37,32 @@ def test_explain_ai_error_is_safe_and_specific(monkeypatch):
     assert assistant_model() == "gpt-4o-mini"
     monkeypatch.setenv("AI_ASSISTANT_MODEL", "gpt-4.1-mini")
     assert assistant_model() == "gpt-4.1-mini"
+
+
+from app.services.migration_service import build_values_prompt, filter_value_suggestions
+
+GROUPS = [
+    {"type": "marital", "label": "Marital status", "allowed_codes": ["S", "M", "D"], "values": ["Wed", "Never wed"]},
+    {"type": "reason", "label": "Termination reason", "allowed_codes": [], "values": ["Resigned - better offer", "Voluntary resignation"]},
+]
+
+
+def test_values_prompt_constrains_fixed_lists_and_lists_values():
+    prompt = build_values_prompt(GROUPS, "Oracle HCM")
+    assert 'choose ONLY from ["S", "M", "D"]' in prompt
+    assert '"Resigned - better offer"' in prompt
+    assert "Oracle HCM extract" in prompt
+
+
+def test_value_suggestions_are_validated():
+    kept = filter_value_suggestions(GROUPS, [
+        {"type": "marital", "value": "Wed", "code": "M"},
+        {"type": "marital", "value": "Never wed", "code": "SINGLE"},  # not an allowed code
+        {"type": "marital", "value": "Made up", "code": "S"},  # value we never sent
+        {"type": "reason", "value": "Voluntary resignation", "code": "resign voluntary!"},
+        {"type": "unknown", "value": "x", "code": "X"},
+    ])
+    assert kept == [
+        {"type": "marital", "value": "Wed", "code": "M", "confidence": None},
+        {"type": "reason", "value": "Voluntary resignation", "code": "RESIGN_VOLUNTARY", "confidence": None},
+    ]

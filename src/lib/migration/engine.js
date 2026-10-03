@@ -1046,7 +1046,7 @@ const PASS_THROUGH = new Set(['reason', 'paycomp', 'wagetype', 'paymethod']);
  * Every distinct source value of each picklist-like concept, with the code it
  * will become (user override, else suggestion) so the user can review them.
  */
-export function picklistValues(sheets, mapping, picklists = {}) {
+export function picklistValues(sheets, mapping, picklists = {}, aiMarks = {}) {
   const out = {};
   for (const sheet of sheets) {
     for (const [col, x] of Object.entries(mapping[sheet.id] || {})) {
@@ -1066,6 +1066,23 @@ export function picklistValues(sheets, mapping, picklists = {}) {
   return Object.fromEntries(Object.entries(out).map(([type, m]) => [type, [...m.entries()].map(([key, v]) => {
     const override = picklists[type]?.[key];
     const suggested = PASS_THROUGH.has(type) ? v.raw : suggestCode(type, v.raw);
-    return { key, raw: v.raw, count: v.count, code: override ?? suggested ?? '', source: override !== undefined ? 'you' : suggested ? 'suggested' : 'missing' };
+    const source = override !== undefined ? (aiMarks[type]?.[key] ? 'ai' : 'you') : suggested ? 'suggested' : 'missing';
+    return { key, raw: v.raw, count: v.count, code: override ?? suggested ?? '', source };
   }).sort((a, b) => b.count - a.count)]));
+}
+
+/**
+ * What to ask the AI to translate: per type, the values the dictionary could
+ * not place (fixed lists) or that are only copied through (open lists). Values
+ * you set yourself are left out. Labels only: no counts, IDs or other columns.
+ */
+export function valueGroups(picklistRows) {
+  const groups = [];
+  for (const [type, rows] of Object.entries(picklistRows)) {
+    const open = PASS_THROUGH.has(type);
+    const values = rows.filter((r) => (open ? r.source === 'suggested' : r.source === 'missing')).map((r) => r.raw);
+    if (!values.length) continue;
+    groups.push({ type, label: PICKLISTS[type]?.label || type, allowed_codes: open ? [] : (PICKLISTS[type]?.codes || []).map((c) => c.code), values: values.slice(0, 150) });
+  }
+  return groups;
 }

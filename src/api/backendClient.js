@@ -349,6 +349,8 @@ export const backendApi = {
   assist: {
     search: async (q) => jsonOrThrow(await apiCall(`/api/assist/search?q=${encodeURIComponent(q)}`), 'Search failed'),
     suggestions: async () => jsonOrThrow(await apiCall('/api/assist/suggestions'), 'Could not load suggestions'),
+    plan: async ({ request, files = [], page }) =>
+      jsonOrThrow(await apiCall('/api/assist/plan', { method: 'POST', body: { request, files, page }, timeoutMs: 45000 }), 'Ask Meldra is unavailable right now'),
     choose: async (q, toolId) =>
       jsonOrThrow(await apiCall('/api/assist/search/choose', { method: 'POST', body: { q, tool_id: toolId } }), 'Could not save choice'),
   },
@@ -432,7 +434,7 @@ export const backendApi = {
     },
   },
 
-  // Next-Gen Migration (column headers only, never employee values)
+  // Migration: column headers, and on request distinct picklist labels; never employee IDs or rows
   migration: {
     suggestMapping: async ({ sourceSystem, sheets, concepts }) => {
       const response = await apiCall('/api/migration/suggest-mapping', {
@@ -443,6 +445,18 @@ export const backendApi = {
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
         throw new Error(error.detail || 'Mapping assistant failed');
+      }
+      return response.json();
+    },
+    suggestValues: async ({ sourceSystem, groups }) => {
+      const response = await apiCall('/api/migration/suggest-values', {
+        method: 'POST',
+        body: { source_system: sourceSystem, groups },
+        timeoutMs: 60000,
+      });
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || 'Value assistant failed');
       }
       return response.json();
     },

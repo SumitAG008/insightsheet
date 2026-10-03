@@ -3,11 +3,12 @@
 
 export const PLAN_ORDER = ['free', 'pro', 'team', 'business'];
 
-export const PLAN_PRICES = {
-  free: { inr: '₹0', gbp: '£0', unit: '' },
-  pro: { inr: '₹599', gbp: '£9', unit: 'per month' },
-  team: { inr: '₹999', gbp: '£15', unit: 'per user per month' },
-  business: { inr: 'Custom', gbp: 'Custom', unit: 'annual licence' },
+// What each plan's price is for; the amount and currency come from the visitor's region (src/lib/region.js).
+export const PLAN_PRICE_UNITS = {
+  free: '',
+  pro: 'per month',
+  team: 'per user per month',
+  business: 'annual licence',
 };
 
 export const LIMIT_LABELS = {

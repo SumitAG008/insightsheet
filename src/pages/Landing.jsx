@@ -1,5 +1,6 @@
 // pages/Landing.jsx - Main landing page with About Us and application information
 import React from 'react';
+import { companyLine } from '@/lib/company';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -396,7 +397,13 @@ export default function Landing() {
             <Link to="/pricing" className="text-blue-600 hover:text-blue-700">
               Pricing
             </Link>
-            <span className="text-slate-500">Â© {new Date().getFullYear()} meldra. All rights reserved.</span>
+            <Link to="/terms" className="text-blue-600 hover:text-blue-700">
+              Terms
+            </Link>
+            <Link to="/privacy" className="text-blue-600 hover:text-blue-700">
+              Privacy
+            </Link>
+            <span className="text-slate-500">© {new Date().getFullYear()} meldra. All rights reserved.{companyLine() ? ` ${companyLine()}` : ''}</span>
           </div>
         </div>
       </footer>

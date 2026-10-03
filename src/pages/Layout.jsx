@@ -28,6 +28,7 @@ import SupportChatWidget from '@/components/SupportChatWidget';
 import OnboardingAssistantModal from '@/components/onboarding/OnboardingAssistantModal';
 import { applyPreferences, applyPrimaryColor, applyTheme, getUserPreferences } from '@/lib/userPreferences';
 import { useI18n } from '@/lib/i18n';
+import { companyLine } from '@/lib/company';
 
 export default function Layout({ children, currentPageName }) {
   const { t } = useI18n();
@@ -910,7 +911,8 @@ export default function Layout({ children, currentPageName }) {
 
           <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 text-center">
             <p className="text-sm text-slate-600 dark:text-slate-400">
-              © 2026 meldra • All rights reserved
+              © {new Date().getFullYear()} meldra • All rights reserved
+              {companyLine() && <span className="block text-xs mt-1">{companyLine()}</span>}
             </p>
           </div>
         </div>

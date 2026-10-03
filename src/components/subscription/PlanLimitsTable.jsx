@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { meldraAi } from '@/api/meldraClient';
-import { FALLBACK_LIMITS, HEADLINE_KEYS, PLAN_ORDER, PLAN_PRICES, formatLimit } from '@/lib/planLimits';
+import { FALLBACK_LIMITS, HEADLINE_KEYS, PLAN_ORDER, PLAN_PRICE_UNITS, formatLimit } from '@/lib/planLimits';
+import { REGIONS, useRegion } from '@/lib/region';
 
 // Side-by-side plan comparison, read from the server's limits table so it always matches what is enforced.
-export default function PlanLimitsTable({ currentPlan = null, keys = HEADLINE_KEYS }) {
+// Prices are in the visitor's regional currency; pass `region` to share a picker's choice.
+export default function PlanLimitsTable({ currentPlan = null, keys = HEADLINE_KEYS, region: regionProp = null }) {
   const [table, setTable] = useState(FALLBACK_LIMITS);
+  const [detectedRegion] = useRegion();
+  const prices = REGIONS[regionProp || detectedRegion]?.prices || REGIONS.ROW.prices;
 
   useEffect(() => {
     let alive = true;
@@ -36,10 +40,8 @@ export default function PlanLimitsTable({ currentPlan = null, keys = HEADLINE_KE
                   {table.plans?.[p]?.name || p}
                   {currentPlan === p && <span className="ml-2 text-xs font-medium text-blue-600 dark:text-blue-400">Your plan</span>}
                 </div>
-                <div className="text-slate-700 dark:text-slate-300 font-medium">
-                  {PLAN_PRICES[p].inr} / {PLAN_PRICES[p].gbp}
-                </div>
-                {PLAN_PRICES[p].unit && <div className="text-xs text-slate-500 dark:text-slate-400">{PLAN_PRICES[p].unit}</div>}
+                <div className="text-slate-700 dark:text-slate-300 font-medium">{prices[p]}</div>
+                {PLAN_PRICE_UNITS[p] && <div className="text-xs text-slate-500 dark:text-slate-400">{PLAN_PRICE_UNITS[p]}</div>}
               </th>
             ))}
           </tr>

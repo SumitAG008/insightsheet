@@ -19,7 +19,34 @@ An **annual licence**: a number of seats for a fixed term, on the Team or Busine
 Coming after launch: single sign-on (Google/Microsoft), a full audit log, and multi-document
 summaries with citations.
 
-## 2. Deal terms (suggested starting points)
+## 2. Regional prices and legal notices
+
+The website picks the visitor's region from their IP address (falling back to the browser's time
+zone; visitors can change it) and shows prices, tax wording and their local legal rights on the
+pricing page, Terms (section 13) and Privacy page. Settings: `src/lib/region.js`.
+
+| Region | Currency | Pro a month | Team per user a month | Seat per year | Tax shown | Legal notice |
+|---|---|---|---|---|---|---|
+| India | INR | ₹599 | ₹999 | ₹9,999 | + GST 18% | DPDP Act 2023, IT Act 2000, Grievance Officer, Data Protection Board |
+| United Kingdom | GBP | £9 | £15 | £150 | + VAT 20% | UK GDPR, DPA 2018, ICO, 14-day consumer cancellation |
+| European Union | EUR | €10 | €17 | €170 | + VAT (country rate / reverse charge) | GDPR, national authority, 14-day withdrawal |
+| Rest of world | USD | $11 | $18 | $180 | + local sales tax | US state privacy rights (e.g. California) |
+
+Company details appear in the footer, Terms and notices once set in Vercel (Project → Settings →
+Environment Variables), then redeploy. Unset values are not shown.
+
+| Variable | What |
+|---|---|
+| `VITE_COMPANY_NAME`, `VITE_COMPANY_ADDRESS`, `VITE_COMPANY_CIN` | Registered company name, office and CIN |
+| `VITE_COMPANY_GSTIN`, `VITE_COMPANY_UK_VAT`, `VITE_COMPANY_EU_VAT` | Tax registrations, once you have them |
+| `VITE_GRIEVANCE_OFFICER_NAME`, `VITE_GRIEVANCE_OFFICER_EMAIL` | **Required for India.** Until set, the notice shows legal@meldra.ai without a name |
+| `VITE_EU_REPRESENTATIVE` | GDPR Article 27 EU representative, if you sell to EU consumers without an EU office |
+| `VITE_LEGAL_EMAIL`, `VITE_PRIVACY_EMAIL` | Defaults: legal@meldra.ai, privacy@meldra.ai |
+
+Selling in the EU also means registering for VAT OSS (consumer sales) and, without an EU office,
+appointing an EU representative. Charging VAT or GST needs the registrations above first.
+
+## 3. Deal terms (suggested starting points)
 
 | Term | Suggestion |
 |---|---|
@@ -43,7 +70,7 @@ hospitals, which needs company registration and usually DPIIT recognition. UK: *
 (Digital Marketplace) for the NHS and public bodies, and **Jisc** for universities. UK public buyers
 usually ask for **Cyber Essentials** (about £300); get it early. ISO 27001 can come later.
 
-## 3. Sector packs
+## 4. Sector packs
 
 The same product, with a landing section, starter templates and features switched on per sector
 (the licence's `pack` field records which).
@@ -59,7 +86,7 @@ The same product, with a landing section, starter templates and features switche
 the Terms (section 7) until there is a signed agreement covering it, plus NHS DSPT (UK) or DPDP
 Act consent handling (India).
 
-## 4. Recording a deal in Meldra
+## 5. Recording a deal in Meldra
 
 On the website, signed in as Meldra admin: **Licences** (`/adminlicenses`).
 
@@ -74,7 +101,7 @@ On the website, signed in as Meldra admin: **Licences** (`/adminlicenses`).
 
 The customer's admin then manages their own people at `/organization`.
 
-## 5. Tracking customers and deals (CRM)
+## 6. Tracking customers and deals (CRM)
 
 Use **HubSpot CRM (free)** or **Zoho CRM** (pairs with Zoho Books for GST). Don't build a CRM.
 
@@ -92,7 +119,7 @@ Weekly, from Meldra's **Licences** page:
 - **Seat use over 90%**: an upsell; offer more seats.
 - **Invoiced but unpaid**: chase anything past 30 days.
 
-## 6. Financial reports
+## 7. Financial reports
 
 **Accounting**: Zoho Books (India, GST) or Xero (UK, VAT), with a CA or accountant for filings.
 Card payments (Stripe, when live) and enterprise invoices both go into it. Keep a separate company
@@ -116,9 +143,9 @@ Export the customer list with **Export CSV** on the Licences page
 **Annual value** in Meldra is the contract value spread over a year: a 2-year contract of £20,000
 counts as £10,000 of ARR. Pilots are listed but are not counted in ARR.
 
-## 7. Before the first enterprise contract
+## 8. Before the first enterprise contract
 
-- [ ] Company registered; contracting entity name on invoices and order forms
+- [ ] Company registered; contracting entity name on invoices and order forms, and the `VITE_COMPANY_*` and Grievance Officer variables set in Vercel
 - [ ] Order form template (customer, seats, term, price, limits, PO, governing law)
 - [ ] Data processing agreement (DPA), linked from the Terms
 - [ ] Security questionnaire answers (from `docs/DATA_PROTECTION.md` and `docs/CONNECTOR_SECURITY.md`)

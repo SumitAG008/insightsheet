@@ -1,9 +1,12 @@
-// Terms of Service. When the text changes, update TERMS_VERSION and TERMS_DATE, and tell paid customers 30 days ahead (section 13).
+// Terms of Service. When the text changes, update TERMS_VERSION and TERMS_DATE, and tell paid customers 30 days ahead (section 14).
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Scale } from 'lucide-react';
 import PlanLimitsTable from '@/components/subscription/PlanLimitsTable';
 import { LIMIT_LABELS } from '@/lib/planLimits';
+import RegionalCompliance, { RegionPicker } from '@/components/legal/RegionalCompliance';
+import { useRegion } from '@/lib/region';
+import { COMPANY, companyLine } from '@/lib/company';
 
 export const TERMS_VERSION = '2.0';
 export const TERMS_DATE = '3 October 2026';
@@ -18,6 +21,7 @@ function Section({ id, title, children }) {
 }
 
 export default function Terms() {
+  const [region, setRegion] = useRegion();
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12">
       <div className="container mx-auto px-4 max-w-4xl">
@@ -61,7 +65,7 @@ export default function Terms() {
               same time and requests per minute. The current figures are below and on your{' '}
               <Link className="text-blue-700 underline" to="/usage">Plan and usage</Link> page. They are enforced automatically.
             </p>
-            <PlanLimitsTable keys={Object.keys(LIMIT_LABELS)} />
+            <PlanLimitsTable keys={Object.keys(LIMIT_LABELS)} region={region} />
             <p>
               To keep the Service fast and available for everyone, we may queue, slow down, or decline requests when they go over a
               limit or when the Service is under heavy load. A declined request is not a breach of these terms by us, and the
@@ -192,7 +196,16 @@ export default function Terms() {
             </p>
           </Section>
 
-          <Section id="general" title="13. General">
+          <Section id="your-region" title="13. Your region">
+            <p>
+              Prices, tax and the rights below depend on where you are. We show your region automatically; you can change it here.
+              Nothing in these terms takes away rights your local law gives you.
+            </p>
+            <RegionPicker region={region} onChange={setRegion} />
+            <RegionalCompliance region={region} />
+          </Section>
+
+          <Section id="general" title="14. General">
             <p>
               We may update these terms. We will give at least 30 days&apos; notice of material changes by email or in the app; the
               change applies to paid plans from the next renewal unless it is needed for legal or security reasons. Continuing to
@@ -201,7 +214,8 @@ export default function Terms() {
             <p>
               These terms are governed by the laws of England and Wales, and the courts of England and Wales have exclusive
               jurisdiction, unless your order form states otherwise. If any part of these terms is unenforceable, the rest still
-              applies. Questions: legal@meldra.ai.
+              applies. Questions: {COMPANY.legalEmail}.
+              {companyLine() ? ` The Service is provided by ${companyLine()}.` : ''}
             </p>
           </Section>
         </div>

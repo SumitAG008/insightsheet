@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mapSheets, runMigration, cleanValue, detectDateOrder, toIsoDate, loadOrder, picklistValues, validIban, jobEventKind } from './engine';
+import { mapSheets, runMigration, cleanValue, detectDateOrder, toIsoDate, loadOrder, picklistValues, valueGroups, validIban, jobEventKind } from './engine';
 import { sourceFromRows } from '@/lib/unifiedReporting/model';
 import { SUCCESSFACTORS, DEFAULT_SETTINGS } from './targets/successfactors';
 import { buildWorkdaySample } from './sampleWorkday';
@@ -328,5 +328,33 @@ describe('migration profile (reuse mappings across mock loads)', () => {
   it('rejects files that are not profiles', async () => {
     const { applyProfile } = await import('./profile');
     expect(() => applyProfile({ foo: 1 }, [], {}, {})).toThrow(/not a Meldra migration profile/);
+  });
+});
+
+describe('AI value translation request', () => {
+  const rows = {
+    marital: [
+      { key: 'married', raw: 'Married', source: 'suggested' },
+      { key: 'wed', raw: 'Wed', source: 'missing' },
+      { key: 'x', raw: 'X', source: 'you' },
+    ],
+    reason: [
+      { key: 'resigned', raw: 'Resigned', source: 'suggested' },
+      { key: 'retired', raw: 'Retired', source: 'ai' },
+    ],
+    gender: [{ key: 'male', raw: 'Male', source: 'suggested' }],
+  };
+  it('sends unplaced fixed-list values with their allowed codes, and copied-through open values', () => {
+    const groups = valueGroups(rows);
+    expect(groups.map((g) => g.type)).toEqual(['marital', 'reason']);
+    expect(groups[0]).toMatchObject({ values: ['Wed'], allowed_codes: expect.arrayContaining(['S', 'M', 'D']) });
+    expect(groups[1]).toMatchObject({ values: ['Resigned'], allowed_codes: [] });
+  });
+  it('labels AI-filled codes so they can be told apart from your own', () => {
+    const sheets = [sourceFromRows('Workers', [{ ID: '1', Marital: 'Wed' }, { ID: '2', Marital: 'Single' }])];
+    const mapping = { [sheets[0].id]: { [sheets[0].columns[1].key]: { concept: 'marital_status' } } };
+    const out = picklistValues(sheets, mapping, { marital: { wed: 'M' } }, { marital: { wed: true } }).marital;
+    expect(out.find((r) => r.key === 'wed')).toMatchObject({ code: 'M', source: 'ai' });
+    expect(out.find((r) => r.key === 'single')).toMatchObject({ source: 'suggested' });
   });
 });

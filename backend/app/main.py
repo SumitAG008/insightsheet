@@ -85,7 +85,7 @@ from app.services.ai_service import (
 )
 from app.services.unified_reporting_service import build_report, plan_report, write_insight
 from app.services.api_connector_service import ConnectorError, allow_call, egress_info, fetch_records, public_presets, safe_summary
-from app.services.migration_service import suggest_mapping
+from app.services.migration_service import suggest_mapping, suggest_values
 import zipfile
 from app.services.zip_processor import ZipProcessorService
 from app.services.excel_to_ppt import ExcelToPPTService
@@ -2037,6 +2037,11 @@ class MigrationMappingRequest(BaseModel):
     source_system: str = Field("Workday", max_length=60)
     sheets: List[Dict[str, Any]] = Field(..., max_length=40)
     concepts: List[Dict[str, Any]] = Field(..., max_length=150)
+
+
+class MigrationValuesRequest(BaseModel):
+    source_system: str = Field("Workday", max_length=60)
+    groups: List[Dict[str, Any]] = Field(..., max_length=12)
 
 
 class UnifiedInsightRequest(BaseModel):
@@ -4352,6 +4357,23 @@ async def migration_suggest_mapping_endpoint(
     except Exception as e:
         logger.error(f"Migration mapping error: {str(e)}")
         raise HTTPException(status_code=502, detail=f"The mapping assistant is unavailable: {explain_ai_error(e)}.")
+
+
+@app.post("/api/migration/suggest-values")
+async def migration_suggest_values_endpoint(
+    request: MigrationValuesRequest,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Translate distinct picklist values to target codes (labels only, no employee IDs or counts)."""
+    try:
+        out = await suggest_values(request.groups, request.source_system)
+        db.add(UserActivity(user_email=current_user["email"], activity_type="migration_values"))
+        db.commit()
+        return out
+    except Exception as e:
+        logger.error(f"Migration value translation error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"The value assistant is unavailable: {explain_ai_error(e)}.")
 
 
 @app.post("/api/ai/explain-sql")

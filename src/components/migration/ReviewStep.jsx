@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, Wand2 } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, Loader2, Sparkles, Wand2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { PICKLISTS } from '@/lib/migration/dictionaries';
 
 const TYPE_LABEL = {
@@ -105,6 +106,8 @@ export function Stat({ label, value, tone }) {
 }
 Stat.propTypes = { label: PropTypes.string, value: PropTypes.node, tone: PropTypes.string };
 
+const SOURCE_TEXT = { you: 'set by you', ai: 'AI suggested', missing: 'needs a code', suggested: 'suggested' };
+
 function PicklistTable({ type, rows, onSet }) {
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-800">
@@ -125,7 +128,7 @@ function PicklistTable({ type, rows, onSet }) {
                   onBlur={(e) => { if (e.target.value !== r.code) onSet(type, r.key, e.target.value.trim()); }}
                 />
               </td>
-              <td className="px-3 py-1.5 text-xs text-slate-400">{r.source === 'you' ? 'set by you' : r.source === 'missing' ? 'needs a code' : 'suggested'}</td>
+              <td className={`px-3 py-1.5 text-xs ${r.source === 'ai' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>{SOURCE_TEXT[r.source] || 'suggested'}</td>
             </tr>
           ))}
         </tbody>
@@ -135,7 +138,7 @@ function PicklistTable({ type, rows, onSet }) {
 }
 PicklistTable.propTypes = { type: PropTypes.string.isRequired, rows: PropTypes.array.isRequired, onSet: PropTypes.func.isRequired };
 
-export default function ReviewStep({ result, picklistRows, onSetPicklist }) {
+export default function ReviewStep({ result, picklistRows, onSetPicklist, onTranslateWithAi, aiBusy = false, aiStatus = null }) {
   const [sev, setSev] = useState('error');
   const fixes = result.data.changes.reduce((a, c) => a + c.count, 0);
   const shown = useMemo(() => result.issues.filter((i) => i.severity === sev), [result.issues, sev]);
@@ -203,8 +206,23 @@ export default function ReviewStep({ result, picklistRows, onSetPicklist }) {
 
       {Object.keys(picklistRows).length > 0 && (
         <section className={card}>
-          <h3 className="m-0 text-[15px] font-semibold">Value translations</h3>
-          <p className="mt-1 text-sm text-slate-500">Picklist codes are configured per SuccessFactors instance. Check the suggestions against yours and type over any code; fields marked in red need one.</p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="m-0 text-[15px] font-semibold">Value translations</h3>
+              <p className="mt-1 text-sm text-slate-500">Picklist codes are configured per SuccessFactors instance. Check the suggestions against yours and type over any code; fields marked in red need one.</p>
+            </div>
+            {onTranslateWithAi && (
+              <Button variant="outline" onClick={onTranslateWithAi} disabled={aiBusy}>
+                {aiBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                Translate values with AI
+              </Button>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-slate-500">
+            The AI gets only the distinct values listed here (e.g. “Resigned”), never employee IDs, names or counts. It fills codes the dictionary doesn’t know and gives reasons and pay components one consistent code. Codes you typed are kept.
+          </p>
+          {aiStatus?.state === 'ok' && <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">AI filled {aiStatus.applied} value{aiStatus.applied === 1 ? '' : 's'}. Check them against your instance; they’re marked “AI suggested”.</p>}
+          {aiStatus?.state === 'error' && <p className="mt-1 text-sm text-red-600">{aiStatus.reason}</p>}
           <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {Object.entries(picklistRows).map(([type, rows]) => <PicklistTable key={type} type={type} rows={rows} onSet={onSetPicklist} />)}
           </div>
@@ -218,4 +236,7 @@ ReviewStep.propTypes = {
   result: PropTypes.object.isRequired,
   picklistRows: PropTypes.object.isRequired,
   onSetPicklist: PropTypes.func.isRequired,
+  onTranslateWithAi: PropTypes.func,
+  aiBusy: PropTypes.bool,
+  aiStatus: PropTypes.object,
 };

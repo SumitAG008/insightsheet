@@ -7,7 +7,7 @@ import MappingStep from '@/components/migration/MappingStep';
 import ReviewStep from '@/components/migration/ReviewStep';
 import ExportStep from '@/components/migration/ExportStep';
 import { CONCEPTS } from '@/lib/migration/concepts';
-import { mapSheets, picklistValues, runMigration } from '@/lib/migration/engine';
+import { mapSheets, picklistValues, runMigration, valueGroups } from '@/lib/migration/engine';
 import { buildReviewWorkbook, buildZip } from '@/lib/migration/exporter';
 import { applyProfile, exportProfile } from '@/lib/migration/profile';
 import { buildWorkdaySample, downloadWorkdaySampleXlsx } from '@/lib/migration/sampleWorkday';
@@ -22,6 +22,7 @@ const STEPS = [
   ['export', 'Load order & export'],
 ];
 const STORE_KEY = 'migration';
+const SOURCE_SYSTEMS = ['Workday', 'Oracle HCM Cloud', 'Oracle E-Business Suite', 'SAP HCM (on-premise)', 'ADP', 'UKG / Kronos', 'BambooHR', 'Dayforce (Ceridian)', 'PeopleSoft', 'Sage People', 'Excel / custom'];
 const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900';
 
 function SettingsPanel({ settings, onChange }) {
@@ -78,6 +79,9 @@ export default function Migration() {
   const [mapping, setMapping] = useState({});
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [picklists, setPicklists] = useState({});
+  // Which value translations the AI filled: { [type]: { [key]: true } }.
+  const [aiMarks, setAiMarks] = useState({});
+  const [valuesAiStatus, setValuesAiStatus] = useState(null);
   // What the AI says each tab is: { [sheetId]: { purpose, note } }.
   const [tabInfo, setTabInfo] = useState({});
   const [aiStatus, setAiStatus] = useState(null);
@@ -99,6 +103,7 @@ export default function Migration() {
         setMapping(saved.mapping || {});
         setSettings({ ...DEFAULT_SETTINGS, ...(saved.settings || {}) });
         setPicklists(saved.picklists || {});
+        setAiMarks(saved.aiMarks || {});
         setTabInfo(saved.tabInfo || {});
         setStep(saved.step || 'map');
       }
@@ -106,12 +111,13 @@ export default function Migration() {
     })();
   }, []);
   useEffect(() => {
-    if (loaded) store.save(STORE_KEY, { sheets, mapping, settings, picklists, step, tabInfo });
-  }, [loaded, sheets, mapping, settings, picklists, step, tabInfo]);
+    if (loaded) store.save(STORE_KEY, { sheets, mapping, settings, picklists, aiMarks, step, tabInfo });
+  }, [loaded, sheets, mapping, settings, picklists, aiMarks, step, tabInfo]);
 
   const purposes = useMemo(() => Object.fromEntries(Object.entries(tabInfo).map(([k, v]) => [k, v.purpose])), [tabInfo]);
   const result = useMemo(() => (sheets.length ? runMigration(SUCCESSFACTORS, sheets, mapping, settings, picklists, purposes) : null), [sheets, mapping, settings, picklists, purposes]);
-  const picklistRows = useMemo(() => (sheets.length ? picklistValues(sheets, mapping, picklists) : {}), [sheets, mapping, picklists]);
+  const picklistRows = useMemo(() => (sheets.length ? picklistValues(sheets, mapping, picklists, aiMarks) : {}), [sheets, mapping, picklists, aiMarks]);
+  const sourceSystem = settings.sourceSystem || 'Workday';
 
   const addSheets = (added) => {
     const next = [...sheets, ...added];
@@ -122,6 +128,7 @@ export default function Migration() {
       nextMapping = applied.mapping;
       setSettings(applied.settings);
       setPicklists(applied.picklists);
+      setAiMarks({});
       setTabInfo((cur) => ({ ...cur, ...applied.tabInfo }));
       setMessage(`Profile applied: ${applied.stats.applied} column choices on ${applied.stats.matchedTabs} of ${applied.stats.tabs} tabs.`);
       setPendingProfile(null);
@@ -160,6 +167,7 @@ export default function Migration() {
     setMapping(sampleMapping);
     setSheets(sample);
     setPicklists({});
+    setAiMarks({});
     setTabInfo({});
     setStep('map');
     runAi(sample, sampleMapping, { auto: true });
@@ -169,6 +177,8 @@ export default function Migration() {
     setSheets([]);
     setMapping({});
     setPicklists({});
+    setAiMarks({});
+    setValuesAiStatus(null);
     setTabInfo({});
     setAiStatus(null);
     setSettings(DEFAULT_SETTINGS);
@@ -190,7 +200,7 @@ export default function Migration() {
     setAiStatus({ state: 'running' });
     try {
       const out = await backendApi.migration.suggestMapping({
-        sourceSystem: 'Workday',
+        sourceSystem,
         sheets: sheetList.map((s) => ({ name: s.name, columns: s.columns.map((c) => c.name) })),
         concepts: CONCEPTS.map((c) => ({ id: c.id, label: `${c.label} (${c.group})` })),
       });
@@ -223,6 +233,51 @@ export default function Migration() {
   };
   const refineWithAi = () => runAi(sheets, mapping);
 
+  /**
+   * AI pass on value translations: fills codes the dictionary could not place
+   * and gives copied-through values (termination reasons, pay components…) one
+   * consistent code. Sends distinct value labels only, on request. Codes you
+   * typed are never overwritten.
+   */
+  const translateValuesWithAi = async () => {
+    const groups = valueGroups(picklistRows);
+    if (!groups.length) {
+      setValuesAiStatus({ state: 'ok', applied: 0 });
+      return;
+    }
+    setBusy('values');
+    setValuesAiStatus({ state: 'running' });
+    try {
+      const out = await backendApi.migration.suggestValues({ sourceSystem, groups });
+      const nextPicklists = { ...picklists };
+      const nextMarks = { ...aiMarks };
+      let applied = 0;
+      for (const v of out.values || []) {
+        const key = String(v.value).trim().toLowerCase();
+        const own = picklists[v.type]?.[key] !== undefined && !aiMarks[v.type]?.[key];
+        if (own) continue;
+        nextPicklists[v.type] = { ...(nextPicklists[v.type] || {}), [key]: v.code };
+        nextMarks[v.type] = { ...(nextMarks[v.type] || {}), [key]: true };
+        applied++;
+      }
+      setPicklists(nextPicklists);
+      setAiMarks(nextMarks);
+      setValuesAiStatus({ state: 'ok', applied });
+    } catch (e) {
+      setValuesAiStatus({ state: 'error', reason: e.message });
+    }
+    setBusy('');
+  };
+  const setPicklistCode = (type, key, code) => {
+    setPicklists((p) => ({ ...p, [type]: { ...(p[type] || {}), [key]: code } }));
+    setAiMarks((m) => {
+      if (!m[type]?.[key]) return m;
+      const rest = { ...m[type] };
+      delete rest[key];
+      return { ...m, [type]: rest };
+    });
+  };
+
   const saveProfile = () => {
     const profile = exportProfile({ sheets, mapping, settings, picklists, tabInfo });
     saveBlob(new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' }), `migration_profile_${new Date().toISOString().slice(0, 10)}.json`);
@@ -241,6 +296,7 @@ export default function Migration() {
       setMapping(applied.mapping);
       setSettings(applied.settings);
       setPicklists(applied.picklists);
+      setAiMarks({});
       setTabInfo((cur) => ({ ...cur, ...applied.tabInfo }));
       setMessage(`Profile applied: ${applied.stats.applied} column choices on ${applied.stats.matchedTabs} of ${applied.stats.tabs} tabs, plus its value translations and settings.`);
     } catch (e) {
@@ -345,7 +401,17 @@ export default function Migration() {
               <p className="mx-auto mt-1 max-w-lg text-sm text-slate-500">
                 Upload your raw data extract spreadsheet (Excel or CSVs) from any legacy HR, ERP, CRM, Finance, or Database system. AI automatically recognizes tabs, maps target fields, cleanses dates/IDs, and formats the output for cutover.
               </p>
-              <Button className="mt-5" onClick={() => fileInput.current?.click()} disabled={busy === 'upload'}>Choose files</Button>
+              <label className="mx-auto mt-4 flex max-w-xs items-center justify-center gap-2 text-sm">
+                <span className="text-slate-500">Source system</span>
+                <input
+                  list="migration-source-systems"
+                  className="w-48 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
+                  value={sourceSystem}
+                  onChange={(e) => setSettings((cur) => ({ ...cur, sourceSystem: e.target.value.slice(0, 60) }))}
+                />
+                <datalist id="migration-source-systems">{SOURCE_SYSTEMS.map((x) => <option key={x} value={x} />)}</datalist>
+              </label>
+              <Button className="mt-4" onClick={() => fileInput.current?.click()} disabled={busy === 'upload'}>Choose files</Button>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
                 <Button variant="outline" onClick={loadSample}><Sparkles className="mr-2 h-4 w-4" />Try a sample system extract</Button>
                 <Button variant="ghost" onClick={downloadWorkdaySampleXlsx}><Download className="mr-2 h-4 w-4" />Download sample as Excel</Button>
@@ -385,7 +451,10 @@ export default function Migration() {
           <ReviewStep
             result={result}
             picklistRows={picklistRows}
-            onSetPicklist={(type, key, code) => setPicklists((p) => ({ ...p, [type]: { ...(p[type] || {}), [key]: code } }))}
+            onSetPicklist={setPicklistCode}
+            onTranslateWithAi={translateValuesWithAi}
+            aiBusy={busy === 'values'}
+            aiStatus={valuesAiStatus}
           />
         )}
         {step === 'export' && result && <ExportStep result={result} settings={settings} onDownload={download} onDownloadWorkbook={downloadWorkbook} busy={busy === 'zip'} />}

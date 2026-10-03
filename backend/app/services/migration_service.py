@@ -76,3 +76,70 @@ async def suggest_mapping(sheets: List[Dict[str, Any]], concepts: List[Dict[str,
         if isinstance(t, dict) and t.get("purpose") in TAB_PURPOSES
     ]
     return {"mappings": mappings, "tabs": tabs}
+
+
+# ---------------------------------------------------------------------------
+# Value translation: source picklist values -> target codes.
+#
+# Only the distinct value labels of picklist-style columns are sent (e.g.
+# "Married", "Resigned - better offer"), never employee IDs, names or counts.
+# Fixed lists (gender, marital…) must use one of the allowed codes; open lists
+# (termination reasons, pay components…) get one short consistent code per
+# meaning, which the user checks against their instance before loading.
+# ---------------------------------------------------------------------------
+
+MAX_VALUE_GROUPS = 12
+MAX_VALUES_PER_GROUP = 150
+
+
+def _clean_code(value: Any) -> str:
+    return "".join(ch for ch in str(value or "").strip().upper().replace(" ", "_") if ch.isalnum() or ch in "_-")[:20]
+
+
+def build_values_prompt(groups: List[Dict[str, Any]], source_system: str) -> str:
+    lines = []
+    for g in groups[:MAX_VALUE_GROUPS]:
+        values = [_clip(v, 80) for v in (g.get("values") or [])[:MAX_VALUES_PER_GROUP]]
+        allowed = [_clip(c, 20) for c in (g.get("allowed_codes") or [])]
+        rule = f"choose ONLY from {json.dumps(allowed)}" if allowed else "propose a short UPPER_SNAKE code (max 20 chars)"
+        lines.append(f'- type "{_clip(g.get("type"), 30)}" ({_clip(g.get("label"), 80)}), {rule}. Values: {json.dumps(values)}')
+    return f"""You translate HR picklist values from a {_clip(source_system, 40)} extract into SAP SuccessFactors codes.
+{chr(10).join(lines)}
+
+Rules:
+- Translate a value only when its meaning is clear; leave out anything ambiguous.
+- Values that mean the same thing must get the same code (e.g. "Resigned", "Voluntary resignation" -> RESIGN).
+- Keep codes generic; the customer will check them against their own configuration.
+Return ONLY JSON:
+{{"values": [{{"type": type, "value": the value exactly as given, "code": code, "confidence": 0 to 1}}]}}"""
+
+
+async def suggest_values(groups: List[Dict[str, Any]], source_system: str) -> Dict[str, Any]:
+    out = await invoke_llm(
+        prompt=build_values_prompt(groups, source_system),
+        response_schema={"type": "json_object"},
+        max_tokens=4000,
+        model=assistant_model(),
+    )
+    if not isinstance(out, dict):
+        raise ValueError("Value assistant did not return JSON")
+    return {"values": filter_value_suggestions(groups, out.get("values") or [])}
+
+
+def filter_value_suggestions(groups: List[Dict[str, Any]], raw: List[Any]) -> List[Dict[str, Any]]:
+    """Keep only answers for values we sent, and for fixed lists only allowed codes."""
+    by_type = {str(g.get("type")): g for g in groups[:MAX_VALUE_GROUPS]}
+    kept = []
+    for v in raw:
+        if not isinstance(v, dict):
+            continue
+        g = by_type.get(str(v.get("type")))
+        value = str(v.get("value") or "")
+        if not g or value not in (g.get("values") or [])[:MAX_VALUES_PER_GROUP]:
+            continue
+        allowed = g.get("allowed_codes") or []
+        code = str(v.get("code") or "").strip() if allowed else _clean_code(v.get("code"))
+        if not code or (allowed and code not in allowed):
+            continue
+        kept.append({"type": str(v.get("type")), "value": value, "code": code, "confidence": v.get("confidence")})
+    return kept

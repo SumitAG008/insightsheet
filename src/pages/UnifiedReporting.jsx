@@ -600,13 +600,13 @@ export default function UnifiedReporting() {
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-4 dark:border-slate-800">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="m-0 text-2xl font-semibold tracking-tight">AI/ML Unified Reporting Engine</h1>
-            <span className="rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
-              🤖 Natural Language SQL + Predictive ML
+            <h1 className="m-0 text-2xl font-semibold tracking-tight">Unified Reporting</h1>
+            <span className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+              Ask in plain English
             </span>
           </div>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {m.empty ? 'Platform-agnostic reporting across any system (Databases, APIs, Warehouses, Spreadsheets) powered by AI forecasting & anomaly detection.' : `${sources.length} active sources · ${totalRows.toLocaleString()} rows · unified on ${m.shared.length ? m.shared.join(', ') : 'common keys'}`}
+            {m.empty ? 'Bring exports from your systems together (files, databases or APIs) and ask questions across all of them.' : `${sources.length} active sources · ${totalRows.toLocaleString()} rows · unified on ${m.shared.length ? m.shared.join(', ') : 'common keys'}`}
           </p>
         </div>
         <nav className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800" aria-label="Unified Reporting sections">

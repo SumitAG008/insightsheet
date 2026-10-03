@@ -346,9 +346,9 @@ export default function Migration() {
     <div className="mx-auto w-full max-w-[1440px] px-4 pb-10 pt-6 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight">Universal System Migration Engine</h1>
+          <h1 className="m-0 text-2xl font-semibold tracking-tight">HR Data Migration</h1>
           <p className="mt-1 text-sm text-slate-500">
-            <strong className="text-slate-700 dark:text-slate-200">Any Source System Extract</strong> <ArrowRight className="inline h-3.5 w-3.5" /> <strong className="text-slate-700 dark:text-slate-200">Target System Schema</strong> · AI Schema Mapping, Automated Transformation, Date/IBAN Cleansing & Cutover Excel Package · Runs 100% in browser RAM
+            <strong className="text-slate-700 dark:text-slate-200">{sourceSystem} extract</strong> <ArrowRight className="inline h-3.5 w-3.5" /> <strong className="text-slate-700 dark:text-slate-200">SAP SuccessFactors Employee Central</strong> · AI maps your columns, dates, IBANs and codes are cleaned and checked, load-ready files come out · Employee data stays in your browser; the AI sees column names only
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

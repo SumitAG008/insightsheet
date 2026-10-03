@@ -34,31 +34,27 @@ We’re building the tool I wish I had for financial reporting.
 ---
 
 ## Post 2: The Security Case Study
-**Goal:** Build trust by explaining your unique "Zero Storage" architecture.
-**Target Audience:** CIOs, CISOs, Legal, Enterprise Buyers.
+**Goal:** Build trust by explaining exactly what Meldra keeps (and doesn't).
+**Target Audience:** Finance leads, IT, Legal, business owners.
 **Format:** Text-only (Thought Leadership).
 
-**Headline:** Why we delete your data immediately (The Architecture of Trust) 🔒
+**Headline:** We never store your files. Here's exactly what we do keep. 🔒
 
 **Body:**
 
 "Can I use AI on my company's sensitive data?"
 
-For most enterprises, the answer is "No" – because they can't risk their data being stored on third-party servers or used to train public models.
+For most teams the honest answer is "it depends what the tool keeps". So here is ours, in plain words.
 
-When I built **Meldra**, I made a radical architectural decision: **Zero Data Storage.**
+When I built **Meldra**, I set one rule: **your files are never stored.**
 
-Unlike other AI tools that act like a "black box" (ingesting and keeping your files), Meldra acts like a "glass pipe."
+1.  **In your browser first:** spreadsheet analysis runs on your own computer.
+2.  **In memory on our server:** tools that need the server (conversions, OCR, PowerPoint) process your file in memory and discard it. No file, file name or contents is kept.
+3.  **AI gets only what the task needs:** often just your column names. Our AI provider doesn't train on it.
+4.  **What we do keep:** your account, sign-in and billing records, each deleted on a schedule. Delete your account any time in Settings.
 
-Here is how it works under the hood:
-1.  **Local First:** Processing happens right in your browser whenever possible.
-2.  **Ephemeral AI:** When we do need to use an LLM for analysis, the data is sent, processed, reduced to the answer, and then **immediately evaporated**.
-3.  **No Persistence:** We don't have a "User Data" database. If you refresh the page, your file is gone. We can't see it, and we definitely can't train on it.
+You shouldn't have to choose between **intelligence** and **privacy**. You can have both, and you should be able to read exactly how.
 
-This makes Meldra the only AI analyst that is compliant by design for industries like Finance, Healthcare, and Legal.
+Read exactly what we keep and for how long: https://insight.meldra.ai/privacy
 
-You shouldn't have to choose between **Intelligence** and **Privacy**. You can have both.
-
-Read more about our security model here: [Link to your security page]
-
-#CyberSecurity #DataPrivacy #EnterpriseAI #CISO #PrivacyFirst #Meldra
+#DataPrivacy #AI #Finance #PrivacyFirst #Meldra

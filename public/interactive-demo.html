@@ -52,7 +52,7 @@
             <span>📊 Overview & Demo</span>
           </button>
           <button class="px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition" onclick="switchDemoTab(1)">
-            <span>⚡ Excel to PPT (5s)</span>
+            <span>⚡ Excel to PPT</span>
           </button>
           <button class="px-3 py-2 rounded-lg hover:bg-slate-800 hover:text-white transition" onclick="switchDemoTab(2)">
             <span>🌐 Web URL Scraper</span>
@@ -69,7 +69,7 @@
         <div class="flex items-center gap-3">
           <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-            🔒 Zero File Storage Privacy
+            🔒 Your files are never stored
           </span>
           <a href="/login" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-sm transition shadow-md">Sign In</a>
         </div>
@@ -86,10 +86,10 @@
       <div class="absolute -right-20 -top-20 w-80 h-80 bg-blue-600/15 rounded-full blur-3xl pointer-events-none"></div>
       <div class="max-w-3xl">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-4">
-          ✨ Official Meldra AI Platform Interactive Showcase
+          ✨ Meldra interactive showcase (example data)
         </div>
         <h1 class="text-3xl sm:text-4xl font-extrabold font-display tracking-tight text-white mb-3">
-          The Privacy-First Autonomous AI Platform for Enterprise Data
+          Tell Meldra what you need. Get the report, the slides or the clean file.
         </h1>
         <p class="text-slate-300 text-base leading-relaxed">
           Experience the actual <span class="text-blue-400 font-semibold">meldra</span> platform in action. Test 5-second Excel to PPT deck generation, live web scraping into slides, platform-agnostic AI reporting, and system migration cutovers.
@@ -101,8 +101,8 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       <button id="btn-usecase-1" onclick="switchDemoTab(1)" class="glass-card p-5 rounded-xl text-left border-blue-500/60 bg-blue-500/10 transition-all hover:scale-[1.02]">
         <div class="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Usecase 1</div>
-        <div class="font-bold text-white text-base">📊 Excel to PPT Deck (5s)</div>
-        <div class="text-xs text-slate-400 mt-1">Converts raw 10k row spreadsheets to slides in RAM</div>
+        <div class="font-bold text-white text-base">📊 Excel to PPT Deck</div>
+        <div class="text-xs text-slate-400 mt-1">Turns spreadsheets into slides in seconds</div>
       </button>
 
       <button id="btn-usecase-2" onclick="switchDemoTab(2)" class="glass-card p-5 rounded-xl text-left hover:border-blue-500/40 transition-all hover:scale-[1.02]">
@@ -119,7 +119,7 @@
 
       <button id="btn-usecase-4" onclick="switchDemoTab(4)" class="glass-card p-5 rounded-xl text-left hover:border-blue-500/40 transition-all hover:scale-[1.02]">
         <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Usecase 4</div>
-        <div class="font-bold text-white text-base">🔄 Universal System Migration</div>
+        <div class="font-bold text-white text-base">🔄 HR Data Migration</div>
         <div class="text-xs text-slate-400 mt-1">AI schema mapping & cutover package export</div>
       </button>
     </div>
@@ -132,9 +132,9 @@
         <div class="flex items-center justify-between border-b border-slate-800 pb-4">
           <div>
             <h2 class="text-xl font-bold text-white font-display">FileToPPT: 5-Second Executive Slide Generator</h2>
-            <p class="text-sm text-slate-400 mt-0.5">Drag & drop raw financial exports to generate board-ready PowerPoint decks in RAM.</p>
+            <p class="text-sm text-slate-400 mt-0.5">Drag & drop raw financial exports to generate board-ready PowerPoint decks in seconds.</p>
           </div>
-          <span class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold">100% In-Memory RAM Execution</span>
+          <span class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold">Files never stored</span>
         </div>
 
         <div class="border-2 border-dashed border-slate-700 hover:border-blue-500 rounded-xl p-10 text-center bg-slate-900/40 cursor-pointer transition" onclick="runSimulatedPPT()">
@@ -146,7 +146,7 @@
 
         <!-- Simulated Loading -->
         <div id="loader-1" class="hidden text-center py-6">
-          <p id="loader-text-1" class="text-sm font-semibold text-blue-400 mb-2">Parsing Excel sheets in server RAM...</p>
+          <p id="loader-text-1" class="text-sm font-semibold text-blue-400 mb-2">Reading your Excel sheets...</p>
           <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
             <div id="bar-1" class="h-full bg-gradient-to-r from-blue-500 to-emerald-400 w-0 transition-all duration-300"></div>
           </div>
@@ -197,14 +197,14 @@
         </div>
 
         <div id="loader-2" class="hidden text-center py-6">
-          <p id="loader-text-2" class="text-sm font-semibold text-blue-400 mb-2">Launching Playwright Headless Chromium in RAM...</p>
+          <p id="loader-text-2" class="text-sm font-semibold text-blue-400 mb-2">Collecting the table from the website...</p>
           <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
             <div id="bar-2" class="h-full bg-gradient-to-r from-blue-500 to-emerald-400 w-0 transition-all duration-300"></div>
           </div>
         </div>
 
         <div id="output-2" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
-          <h3 class="text-sm font-bold text-emerald-400">✅ Web Data Extracted & Presentation Built in RAM!</h3>
+          <h3 class="text-sm font-bold text-emerald-400">✅ Web data collected and presentation built</h3>
           <p class="text-xs text-slate-300"><strong>Source Webpage:</strong> Apple Inc. (AAPL) Financial Disclosure</p>
           <p class="text-xs text-slate-300"><strong>Extracted Data:</strong> Income Statement, Balance Sheet Highlights, Operating Cash Flow</p>
           <p class="text-xs text-slate-400 italic">0 bytes stored to disk. Extracted web tables evaporated post-generation.</p>
@@ -216,9 +216,9 @@
         <div class="flex items-center justify-between border-b border-slate-800 pb-4">
           <div>
             <h2 class="text-xl font-bold text-white font-display">AI/ML Unified Reporting Engine</h2>
-            <p class="text-sm text-slate-400 mt-0.5">Platform-agnostic reporting across any system with Natural Language SQL & Predictive ML.</p>
+            <p class="text-sm text-slate-400 mt-0.5">Combine exports from several systems and ask questions across them in plain English.</p>
           </div>
-          <span class="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-semibold">Natural Language SQL + Predictive ML</span>
+          <span class="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-semibold">Ask in plain English</span>
         </div>
 
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
@@ -227,15 +227,15 @@
             <span class="text-emerald-400 font-bold">4 Active Data Sources</span>
           </div>
           <div class="flex gap-2">
-            <input type="text" value="Forecast Q1 headcount cost vs revenue growth next 12 months" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none" />
+            <input type="text" value="Revenue and headcount cost by department, last 12 months" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none" />
             <button class="px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-md" onclick="document.getElementById('output-3').style.display='block'">🤖 Run AI Query</button>
           </div>
         </div>
 
         <div id="output-3" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
-          <h3 class="text-sm font-bold text-indigo-400">🔮 AI Predictive ML Forecast Result</h3>
-          <p class="text-xs text-slate-300"><strong>Forecasted Revenue Growth:</strong> +18.4% over next 4 quarters (Polynomial Model)</p>
-          <p class="text-xs text-slate-300"><strong>AI Insight Narrative:</strong> Q1 Headcount expansion in EMEA exhibits a 0.84 correlation with pipeline growth.</p>
+          <h3 class="text-sm font-bold text-indigo-400">📊 Example answer</h3>
+          <p class="text-xs text-slate-300"><strong>Chart and table:</strong> revenue and headcount cost for each department, month by month (example data)</p>
+          <p class="text-xs text-slate-300"><strong>Summary:</strong> a short written insight on what stands out, based only on the totals shown</p>
         </div>
       </div>
 
@@ -243,10 +243,10 @@
       <div id="tab-4" class="hidden space-y-6">
         <div class="flex items-center justify-between border-b border-slate-800 pb-4">
           <div>
-            <h2 class="text-xl font-bold text-white font-display">Universal System Migration Engine</h2>
+            <h2 class="text-xl font-bold text-white font-display">HR Data Migration</h2>
             <p class="text-sm text-slate-400 mt-0.5">Automated source-to-target schema mapping, date cleansing, and cutover package generation.</p>
           </div>
-          <span class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold">Universal Source ➔ Target Schema</span>
+          <span class="px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold">HR extract ➔ SAP SuccessFactors</span>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 text-center">
@@ -297,7 +297,7 @@
       const t = setInterval(() => {
         p += 25;
         bar.style.width = p + '%';
-        if (p === 50) text.innerText = 'AI designing color palettes & charts in RAM...';
+        if (p === 50) text.innerText = 'Building charts and slides...';
         if (p >= 100) {
           clearInterval(t);
           loader.classList.add('hidden');

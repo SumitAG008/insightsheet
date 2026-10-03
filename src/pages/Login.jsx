@@ -142,7 +142,7 @@ export default function Login() {
           <div className="flex items-center justify-center mb-4">
             <Logo size="small" showText={false} />
           </div>
-          <CardTitle className="text-2xl text-center text-slate-900">Welcome to InsightSheet-lite</CardTitle>
+          <CardTitle className="text-2xl text-center text-slate-900">Welcome back to Meldra</CardTitle>
           <CardDescription className="text-center text-slate-600">
             Sign in to access your privacy-first data analysis platform
           </CardDescription>

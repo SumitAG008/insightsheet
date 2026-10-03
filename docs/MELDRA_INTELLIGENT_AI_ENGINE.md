@@ -1,88 +1,80 @@
-# 🧠 Meldra Intelligent AI Engine: Master Platform Architecture & Enterprise Pitch Strategy
+# Meldra: platform overview and how to pitch it
 
----
+Every claim here matches the product today. Before adding a claim, check it against `docs/marketing/CLAIMS.md`.
 
-## 🎯 1. Executive Vision & Selling Strategy
+## 1. Positioning
 
-**Product Name:** InsightSheet by Meldra AI  
-**Core Positioning:** *"The World's First Privacy-First Autonomous AI Engine for Enterprise Slide Automation, Unified Analytics, and System Migration."*
+**Meldra: Data Made Simple.** Tell Meldra what you need in your own words and get the report, the slides or the
+clean file. Your files are never stored.
 
-### 💡 **How You Sell This to Enterprise & B2B Customers:**
-Most software platforms sell individual single-purpose tools (an Excel converter, a CSV cleaner, or a database reporting widget). 
+**Who it's for:** finance, operations, HR and advisory teams who live in Excel and exports but aren't data
+specialists. No formulas, no IT ticket.
 
-**Meldra AI takes a revolutionary approach:**
-You are selling an **Autonomous Enterprise Intelligence Suite** controlled by the central **Meldra Intelligent AI Engine**. 
+**How to pitch it:** most tools sell one job (an Excel-to-slides converter, a PDF tool, a reporting widget).
+Meldra is one place for the everyday data jobs, with **Ask Meldra** in front: the customer describes the job,
+and Meldra picks the tool and sets it up with their files.
 
-Every module in the application operates as an **Intelligent Service** coordinated by the central Meldra AI Core:
-- **Intelligent Presentation Service:** 5-Second raw Excel/CSV to board-ready PowerPoint deck creation with AI slide styling.
-- **Intelligent Web Extraction Service:** Ephemeral RAM web scraping of public financial & ESG data.
-- **Intelligent Unified Analytics Engine:** Natural Language SQL queries and ML predictive forecasting across any data source.
-- **Intelligent Migration Engine:** AI-powered schema field mapping, date/IBAN cleansing, and cutover package generation.
-- **Intelligent Privacy Shield:** Zero File Storage Guarantee with in-memory execution and automated 30-day inactive metadata cleanup.
-
----
-
-## 🏗️ 2. The 4-Layer Architecture of Meldra Intelligent AI Engine
+## 2. How it fits together
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                            LAYER 4: USER INTERFACE & INTELLIGENT ASSIST                     │
-│               Context-Aware AI Assistant Bar • One-Prompt Workflows • Voice/Chat            │
-├─────────────────────────────────────────────────────────────────────────────────────────────┤
-│                            LAYER 3: INTELLIGENT MICRO-SERVICES                            │
-│  📊 Intelligent PPT   🌐 Intelligent URL    🔗 Intelligent Unified   🔄 Intelligent     │
-│     Builder Engine       Scraper Service       Lakehouse Engine       Migration Engine  │
-├─────────────────────────────────────────────────────────────────────────────────────────────┤
-│                            LAYER 2: MELDRA INTELLIGENT AI CORE                              │
-│  🧠 LLM Orchestrator (OpenAI / Anthropic / Local) • ML Predictive Model • Schema Engine     │
-├─────────────────────────────────────────────────────────────────────────────────────────────┤
-│                            LAYER 1: EPHEMERAL ZERO-STORAGE RAM PIPELINE                     │
-│  🔒 In-Memory Execution • 0 Bytes Persistent Disk Writes • Automated 30-Day Expiry Engine    │
-└─────────────────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ ASK MELDRA  (Dashboard box, or Ctrl/⌘+K on any page)                          │
+│ Request + file names + column headings → plan of 1–4 tools → each tool opens │
+│ with the files loaded and its instruction filled in. The user runs it.       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ TOOLS                                                                         │
+│ Excel → PowerPoint · File Analyzer · Auto Standardize · Reconciliation ·      │
+│ P&L Builder · Unified Reporting · HR Migration · Invoice Extractor ·          │
+│ PDF Editor · PDF/Doc Converter · OCR · Filename Cleaner · Web Data Connector ·│
+│ Database Connection · Data Model Creator · AI Agent                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ AI (backend/app/services/ai_service.py, one place to switch providers)        │
+│ Gets only what each task needs, e.g. column names; the provider doesn't train │
+│ on it.                                                                         │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ PRIVACY                                                                        │
+│ Spreadsheet analysis in the browser; server tools work in memory and discard  │
+│ the file. Kept: account, sign-in and billing records (docs/DATA_PROTECTION.md)│
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
----
+## 3. The tools that sell it
 
-## ⚡ 3. Core Intelligent Micro-Services Breakdown
+### Excel to PowerPoint
+- **What it does:** turns a spreadsheet into a deck with its charts, tables and key numbers, in seconds (1.6–5.8 s for files up to about 5 MB in `docs/benchmark-results.md`).
+- **Branding:** brand colour, font, company name and logo on every slide.
 
-### 1️⃣ **Intelligent Presentation & Slide Automation Service**
-* **Capabilities:** Ingests raw, unstructured 10,000+ row spreadsheets (`.xlsx`, `.csv`) and generates native PowerPoint presentations (`.pptx`) in under 5 seconds.
-* **AI Logic:** Analyzes table structures, extracts financial KPIs, designs color palettes, and formats executive summary slides automatically.
+### Unified Reporting
+- **What it does:** combine exports from several systems (files, databases or APIs) and ask questions across them in plain English.
+- **How it works:** the AI plans the query from column names and a few example values. Rows are joined and totalled in the browser.
+- **Lakehouse:** optional storage in Apache Iceberg, opt-in per upload, for customers who want their data kept.
 
-### 2️⃣ **Intelligent Web Scraping & Data Extraction Service**
-* **Capabilities:** Takes any public web URL (financial reports, stock disclosures, ESG metrics) and scrapes structured HTML tables into server RAM.
-* **AI Logic:** Uses Playwright headless Chromium DOM rendering + AI table parsers to synthesize webpage numbers directly into PowerPoint slides or clean datasets without saving any files to disk.
+### HR Data Migration
+- **What it does:** turns an HR system extract (Workday, Oracle, SAP HCM, ADP and others) into load-ready **SAP SuccessFactors** files.
+- **AI:** recognises each tab and maps the columns; translates picklist values on request.
+- **Rules engine:** cleans dates, countries, IBANs (checksum-validated) and codes.
+- **Checks and reconciliation:** a pre-flight check lists what SuccessFactors would reject, and a reconciliation proves pay and balance totals match the source.
+- **Privacy:** employee data stays in the browser; the AI sees column names only.
 
-### 3️⃣ **Intelligent Unified Analytics & Predictive ML Engine**
-* **Capabilities:** Platform-agnostic data lakehouse that connects databases, APIs, CSVs, and spreadsheets into one unified SQL query engine.
-* **AI & ML Logic:**
-  * **Natural Language to SQL:** Translates plain English prompts (*"Show gross margin vs marketing spend by region"*) into complex cross-source joins.
-  * **Predictive ML Forecasting:** Uses linear & polynomial regression models to forecast 3 to 12-month trends for revenue, headcount, and budget variances.
-  * **Anomaly Detection:** Automatically flags statistical outliers and data corruption.
+### Reconciliation, invoices, PDFs
+- **Reconciliation:** match two files (e.g. bank vs ledger) and list every difference.
+- **Invoice Extractor:** header fields and line items into Excel.
+- **PDF and scans:** PDF editing and filling, conversion between PDF, Word and Excel, and OCR.
 
-### 4️⃣ **Intelligent Universal Migration & Cutover Engine**
-* **Capabilities:** Universal source-to-target system migration tool for migrating legacy HR, ERP, CRM, or Finance data into new target platforms.
-* **AI Logic:**
-  * **AI Schema Mapping:** Automatically matches source extract columns to target schemas (e.g., `Given_Name` ➔ `firstName`).
-  * **Automated Data Cleansing:** Normalizes date formats (`MM/DD/YYYY` ➔ `YYYY-MM-DD`), translates picklists, and validates IBAN checksums.
-  * **Cutover Package:** Generates a load-sequenced ZIP package of CSVs and Excel review workbooks ready for cutover upload.
+### Web Data Connector
+- **What it does:** collects table and list data from a public website into a CSV.
 
-### 5️⃣ **Intelligent Ephemeral Privacy Shield**
-* **Capabilities:** Provides enterprise CISO compliance by ensuring uploaded files are processed strictly in-memory (RAM) and deleted immediately.
-* **Legal Policy:** Automated 30-day inactivity purge for free tier accounts to prevent long-term data liabilities.
+### Dashboard charts
+- **What it does:** 30+ chart types for a spreadsheet, including P&L views and forecast charts.
 
----
+## 4. Pitch hook
 
-## 📈 4. Scalability & Technical Blueprint
+> "Your team spends hours turning exports into reports, decks and clean files. With Meldra they say what they
+> need and get it in minutes, and their files are never stored."
 
-To scale the **Meldra Intelligent AI Engine** for global enterprise customers:
+## 5. What is not built yet (don't sell it)
 
-1. **Async Worker Queues (Celery + Redis):** Offload high-throughput web scraping jobs and 100,000+ row Excel parsing from HTTP threads to background worker pools.
-2. **Container Auto-Scaling (AWS Fargate / App Runner):** Dynamically scale API instances based on CPU utilization during end-of-month financial reporting windows.
-3. **Enterprise Multi-Tenancy:** Isolated database schemas per organization with SAML/SSO integration (Okta, Azure Active Directory).
-
----
-
-## 🎯 5. The Ultimate Enterprise Pitch Pitchdeck Hook
-
-> *"Most AI tools force enterprises to make a dangerous choice: accept privacy risk or miss out on AI efficiency. With the **Meldra Intelligent AI Engine**, your enterprise gets autonomous slide creation, live web data scraping, and system migration—powered by AI, executed in RAM, and backed by a 100% Zero File Storage Guarantee."*
+- **Migration to targets other than SuccessFactors.**
+- **Uploading your own `.pptx` template.** Branding is colour, font, name and logo today.
+- **Certifications:** SOC 2, ISO 27001 and similar.
+- **Enterprise features:** SSO / SAML and multi-user team workspaces.

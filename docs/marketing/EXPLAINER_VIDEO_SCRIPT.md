@@ -1,8 +1,8 @@
 # 🎬 60-Second Product Explainer Video Script & Storyboard
 
-**Title:** "Meet meldra: The Privacy-First Autonomous AI Platform"  
+**Title:** "Meet meldra: The Privacy-First AI Data Platform"  
 **Brand Identity:** Official **meldra** Logo (`/meldra.png`), Tagline: *DATA MADE SIMPLE*  
-**Goal:** Deliver a compelling product story showing pain, solution, zero storage security, and CTA.  
+**Goal:** Deliver a compelling product story showing pain, solution, the "your files are never stored" promise, and CTA.  
 **Target Duration:** 60 Seconds  
 **Style:** Smooth screen recording of actual **meldra** platform + energetic narration.
 
@@ -22,24 +22,24 @@
 * **Visual:** Transition to the official **meldra** platform interface with logo and navbar (*DATA MADE SIMPLE*). Cursor drops a raw `.xlsx` file into the `FileToPPT` upload zone.
 * **Voiceover:**  
   *"Meet meldra. Simply drag and drop your Excel spreadsheet, CSV export, or accounting report..."*
-* **Visual:** Progress bar completes in 4.8 seconds. The screen displays a 10-slide executive PowerPoint presentation with dynamic variance charts and financial KPIs.
+* **Visual:** Progress bar completes in seconds. The screen displays a 10-slide executive PowerPoint presentation with dynamic variance charts and financial KPIs.
 * **Voiceover:**  
-  *"...and in 5 seconds, meldra transforms your data into a fully formatted, executive PowerPoint deck."*
+  *"...and in seconds, meldra transforms your data into a fully formatted, executive PowerPoint deck."*
 
 ---
 
-### **0:25 - 0:45 | The Privacy Guarantee (Zero Storage Architecture)**
-* **Visual:** Close-up on the **meldra Security Trust Badge** in top right nav (*🔒 Zero File Storage Privacy*). Animated diagram shows data passing through RAM and evaporating immediately upon download.
+### **0:25 - 0:45 | The Privacy Guarantee ("files never stored" design)**
+* **Visual:** Close-up on the **meldra Security Trust Badge** in top right nav (*🔒 Your files are never stored*). Animated diagram: file goes in, result comes out, the file itself is discarded.
 * **Voiceover:**  
-  *"Worried about data privacy? Unlike standard AI tools that store your sensitive files, meldra is built on a strict Zero Data Storage architecture."*
+  *"Worried about data privacy? Unlike standard AI tools that store your sensitive files, meldra never stores your files."*
 * **Voiceover:**  
-  *"Your files are processed 100% in-memory and deleted immediately. We never save your documents, and we never use your financial data to train AI models."*
-* **On-Screen Text:** *"🔒 100% Ephemeral: Processed in RAM | Never Saved to Disk | Zero AI Training"*
+  *"Your files are processed in memory and discarded, never stored. We keep only your account and billing records, and our AI provider doesn't train on your data."*
+* **On-Screen Text:** *"🔒 Files never stored: Files never stored | AI provider doesn't train on it"*
 
 ---
 
 ### **0:45 - 0:60 | Features & Call to Action (CTA)**
-* **Visual:** Quick cuts of **meldra** core intelligent services: Playwright URL web scraper, platform-agnostic AI Unified Reporting, and Universal System Migration.
+* **Visual:** Quick cuts of **meldra** core intelligent services: Ask Meldra, the Web Data Connector, Unified Reporting across your systems, and HR data migration to SuccessFactors.
 * **Voiceover:**  
   *"Whether you’re managing monthly P&L decks, ESG sustainability metrics, or system migrations, meldra does the heavy lifting so you can focus on strategy."*
 * **Visual:** Final screen displaying the official **meldra** platform URL `meldra.ai` with prominent logo.

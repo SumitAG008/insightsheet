@@ -45,14 +45,14 @@ export default function StripeSuccess() {
         try {
           await meldraAi.integrations.Core.SendEmail({
             to: currentUser.email,
-            from_name: 'InsightSheet-lite',
-            subject: '🎉 Welcome to InsightSheet Premium!',
+            from_name: 'Meldra',
+            subject: 'Welcome to Meldra Premium',
             body: `Hi ${currentUser.full_name || 'there'},
 
-Thank you for subscribing to InsightSheet-lite ${subscription.plan}!
+Thank you for subscribing to Meldra ${subscription.plan}!
 
 Your benefits:
-- Unlimited file size
+- Uploads up to 500 MB per file
 - Unlimited transactions
 - Unlimited AI queries
 - Advanced features
@@ -63,7 +63,7 @@ Get started: ${window.location.origin}${createPageUrl('Dashboard')}
 Questions? Reply to this email anytime.
 
 Best,
-InsightSheet-lite Team`
+The Meldra team`
           });
         } catch (emailError) {
           console.error('Error sending welcome email:', emailError);

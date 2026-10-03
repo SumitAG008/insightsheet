@@ -101,16 +101,20 @@ export default function SuggestionsPanel({ page = 'dashboard', hasData = false, 
   const token = getToken();
   const canLoad = Boolean(api && token);
 
+  // Nothing to suggest: show nothing rather than an empty box.
+  const isFree = Boolean(plan) && !String(plan).toLowerCase().startsWith('premium');
+  if (canLoad && !loading && !error && suggestions.length === 0 && !isFree) return null;
+
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-base font-bold text-slate-900 dark:text-white">{t('suggestions_title')}</h3>
-        {plan && plan !== 'premium' && (
+        {isFree && (
           <span className="text-xs px-2 py-1 rounded-full bg-amber-500/15 text-amber-500 font-semibold">{t('suggestions_badge_free')}</span>
         )}
       </div>
 
-      {plan && plan !== 'premium' && (
+      {isFree && (
         <div className="text-xs text-slate-600 dark:text-slate-300 mb-3">
           {t('suggestions_free_watermark_note', { brand: 'meldra.ai' })}
         </div>

@@ -1,7 +1,7 @@
 // components/subscription/SubscriptionChecker.jsx - Enhanced with strict file size enforcement
 import React, { useState, useEffect } from 'react';
 import { meldraAi } from '@/api/meldraClient';
-import { AlertCircle, Crown, Zap, Lock } from 'lucide-react';
+import { AlertCircle, Crown, Zap } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -44,12 +44,6 @@ export default function SubscriptionChecker({ children }) {
   };
 
   const isUnlimited = (v) => v === -1 || v === 999999;
-  const formatLimit = (v) => (isUnlimited(v) ? 'Unlimited' : v);
-
-  const bytesToMb = (b) => {
-    const n = Number(b || 0);
-    return n / (1024 * 1024);
-  };
 
   if (loading) {
     return (
@@ -60,106 +54,65 @@ export default function SubscriptionChecker({ children }) {
   }
 
   const plan = (subscription?.plan || 'free').toLowerCase();
+  const isPremium = plan.startsWith('premium') || plan === 'pro';
+  const onFreeTrial = !isPremium && daysLeft !== null;
 
-  const tokensUsed = Number(subscription?.ai_queries_used || 0);
-  const tokensLimit = subscription?.ai_queries_limit;
-  const tokenUsage = isUnlimited(tokensLimit) ? 0 : ((tokensUsed / Number(tokensLimit || 1)) * 100);
-
-  const uploadBytesUsed = Number(subscription?.workflow_runs_used || 0);
-  const uploadBytesLimit = subscription?.workflow_runs_limit;
-  const uploadUsage = isUnlimited(uploadBytesLimit) ? 0 : ((uploadBytesUsed / Number(uploadBytesLimit || 1)) * 100);
-
-  const txUsed = Number(subscription?.conversions_used || 0);
-  const txLimit = subscription?.conversions_limit;
-  const txUsage = isUnlimited(txLimit) ? 0 : ((txUsed / Number(txLimit || 1)) * 100);
+  // Only limits that apply, in plain words; a limit gets a colour as it runs out.
+  const meters = [];
+  const addMeter = (used, limit, label) => {
+    if (limit === null || limit === undefined || isUnlimited(limit)) return;
+    const left = Math.max(0, Number(limit) - Number(used || 0));
+    const share = Number(limit) > 0 ? Number(used || 0) / Number(limit) : 1;
+    meters.push({ label, left, limit: Number(limit), share });
+  };
+  addMeter(subscription?.conversions_used, subscription?.conversions_limit, 'tool runs left this month');
+  addMeter(subscription?.ai_queries_used, subscription?.ai_queries_limit, isPremium ? 'AI questions left this month' : 'AI questions left today');
+  const tone = (share) => (share >= 0.9 ? 'text-red-600 dark:text-red-400' : share >= 0.7 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-900 dark:text-slate-200');
+  const uploadLimit = subscription?.workflow_runs_limit;
+  const uploadShare = isUnlimited(uploadLimit) || !uploadLimit ? 0 : Number(subscription?.workflow_runs_used || 0) / Number(uploadLimit);
 
   return (
     <>
-      {/* Trial Expiration Warning */}
-      {subscription?.status === 'trial' && daysLeft !== null && daysLeft <= 7 && (
-        <Alert className="mb-4 mx-4 bg-amber-500/10 border-amber-500/30">
-          <AlertCircle className="h-5 w-5 text-amber-400" />
-          <AlertDescription className="text-slate-300">
-            <strong className="text-amber-300">Trial Ending Soon!</strong> Your free trial expires in {daysLeft} day{daysLeft !== 1 ? 's' : ''}.
+      {/* Free accounts close at the end of the trial: say so in good time. */}
+      {onFreeTrial && daysLeft <= 7 && (
+        <Alert className="mb-4 mx-4 border-amber-500/30 bg-amber-50 dark:bg-amber-500/10">
+          <AlertCircle className="h-5 w-5 text-amber-600" />
+          <AlertDescription className="text-slate-700 dark:text-slate-300">
+            <strong className="text-amber-700 dark:text-amber-300">Your free trial ends in {daysLeft} day{daysLeft !== 1 ? 's' : ''}.</strong> After that the account is closed unless you upgrade.
             <Link to={createPageUrl('Pricing')}>
-              <Button size="sm" className="ml-4 bg-amber-600 hover:bg-amber-700">
-                Upgrade Now
-              </Button>
+              <Button size="sm" className="ml-4 bg-amber-600 hover:bg-amber-700">See plans</Button>
             </Link>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Subscription Info Bar */}
+      {/* Plan and what is left */}
       <div className="sticky top-16 z-40 bg-white dark:bg-slate-900/95 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 shadow-sm">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-6 text-sm">
-              {/* Plan Badge */}
+        <div className="container mx-auto px-4 py-2">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
               <div className="flex items-center gap-2">
-                {plan === 'premium' ? (
-                  <Crown className="w-4 h-4 text-amber-400" />
-                ) : (
-                  <Zap className="w-4 h-4 text-purple-400" />
-                )}
-                <span className="font-semibold text-slate-900 dark:text-slate-200">
-                  {plan === 'premium' ? 'Premium Plan' : plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
-                </span>
+                {isPremium ? <Crown className="w-4 h-4 text-amber-400" /> : <Zap className="w-4 h-4 text-blue-500" />}
+                <span className="font-semibold text-slate-900 dark:text-slate-200">{isPremium ? 'Premium' : 'Free trial'}</span>
+                {onFreeTrial && <span className="text-slate-500">· {daysLeft} day{daysLeft !== 1 ? 's' : ''} left</span>}
               </div>
-
-              {/* Upload Used */}
-              <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                <span className="text-slate-600 dark:text-slate-400">
-                  Upload Used: <strong className="text-slate-900 dark:text-slate-200">
-                    {bytesToMb(uploadBytesUsed).toFixed(1)}MB/{isUnlimited(uploadBytesLimit) ? 'Unlimited' : `${bytesToMb(uploadBytesLimit).toFixed(0)}MB`}
-                  </strong>
+              {meters.map((m) => (
+                <span key={m.label} className="text-slate-600 dark:text-slate-400">
+                  <strong className={tone(m.share)}>{m.left}</strong> of {m.limit} {m.label}
                 </span>
-              </div>
-
-              {/* Transaction Usage */}
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  txUsage >= 90 ? 'bg-red-500' : 
-                  txUsage >= 70 ? 'bg-amber-500' : 
-                  'bg-emerald-500'
-                } animate-pulse`} />
-                <span className="text-slate-600 dark:text-slate-400">
-                  Transactions: <strong className={`$${
-                    txUsage >= 90 ? 'text-red-600 dark:text-red-400' : 
-                    txUsage >= 70 ? 'text-amber-600 dark:text-amber-400' : 
-                    'text-slate-900 dark:text-slate-200'
-                  }`}>
-                    {txUsed}/{formatLimit(txLimit)}
-                  </strong>
+              ))}
+              {uploadShare >= 0.7 && (
+                <span className={tone(uploadShare)}>
+                  {Math.round(uploadShare * 100)}% of this month’s upload allowance used
                 </span>
-              </div>
-
-              {/* AI Tokens Usage */}
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  tokenUsage >= 90 ? 'bg-red-500' : 
-                  tokenUsage >= 70 ? 'bg-amber-500' : 
-                  'bg-emerald-500'
-                } animate-pulse`} />
-                <span className="text-slate-600 dark:text-slate-400">
-                  AI Tokens: <strong className={`$${
-                    tokenUsage >= 90 ? 'text-red-600 dark:text-red-400' : 
-                    tokenUsage >= 70 ? 'text-amber-600 dark:text-amber-400' : 
-                    'text-slate-900 dark:text-slate-200'
-                  }`}>
-                    {tokensUsed}/{formatLimit(tokensLimit)}
-                  </strong>
-                </span>
-              </div>
+              )}
             </div>
 
-            {/* Upgrade Button (only for free users) */}
-            {plan !== 'premium' && (
+            {!isPremium && (
               <Link to={createPageUrl('Pricing')}>
                 <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
                   <Crown className="w-4 h-4 mr-2" />
-                  Upgrade to Premium
+                  Upgrade
                 </Button>
               </Link>
             )}

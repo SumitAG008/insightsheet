@@ -1,6 +1,6 @@
 # 🎥 LinkedIn 30-Second Video Demo Script & Storyboard
 
-**Title:** "Raw Excel to Board-Ready PPT Deck in 5 Seconds flat 🚀"  
+**Title:** "Raw Excel to Board-Ready PPT Deck in seconds 🚀"  
 **Brand Identity:** Official **meldra** Platform UI (`/meldra.png` logo, Tagline: *DATA MADE SIMPLE*)  
 **Goal:** Hook financial analysts and executives within 3 seconds, show live conversion, and drive signups.  
 **Target Duration:** 30 Seconds  
@@ -12,30 +12,30 @@
 
 | Time | Visual / Screen Recording | On-Screen Text Overlay | Voiceover Script (Audio) |
 | :--- | :--- | :--- | :--- |
-| **0:00 - 0:05** | Close-up on the **meldra** official logo and header navigation (*DATA MADE SIMPLE*). Split screen shows a messy 15,000-row Excel sheet on left vs clock ticking at 9 PM on right. | *"Still copy-pasting Excel charts into PowerPoint manually at 9 PM?"* | "Stop wasting your evenings copy-pasting messy Excel charts into PowerPoint." |
-| **0:05 - 0:10** | On the **meldra** platform (`FileToPPT`), cursor drags `P_and_L_Q4_2025.xlsx` into the upload zone and clicks **"Generate PowerPoint Presentation (5s)"**. | *"Step 1: Drag & Drop raw Excel into meldra"* | "With meldra, just drag and drop your spreadsheet..." |
-| **0:10 - 0:18** | **5-Second Magic transformation:** Loading progress bar completes in 4.8 seconds. Instantly, a 10-slide executive PowerPoint deck renders with styled charts, KPI summaries, and automated color palettes. | *"⚡ Transformed in 5 Seconds! Zero File Storage."* | "...and in 5 seconds, AI turns your raw numbers into a board-ready PowerPoint deck." |
-| **0:18 - 0:24** | Close-up on the **meldra Security Trust Badge** in top right nav: *"🔒 Zero File Storage Privacy - Processed 100% in RAM"*. | *"🔒 100% Privacy: Files are processed in RAM & deleted immediately."* | "Best part? Your file is processed strictly in-memory and deleted instantly. Zero data stored." |
-| **0:24 - 0:30** | Screen switches to the official **meldra** platform homepage with URL `meldra.ai`. | *"Start Free Today ➔ meldra.ai"* | "Try it free today at meldra.ai and take your weekends back." |
+| **0:00 - 0:05** | Close-up on the **meldra** logo and menu (*DATA MADE SIMPLE*). Split screen: a messy Excel sheet on the left, a clock at 9 PM on the right. | *"Still copy-pasting Excel charts into PowerPoint at 9 PM?"* | "Stop spending your evenings copy-pasting Excel charts into PowerPoint." |
+| **0:05 - 0:10** | Dashboard, **"What do you want to get done?"** box. Type *"Turn this P&L into a board presentation"*, attach `P_and_L_Q4.xlsx`, press Enter. Meldra shows the plan: **Excel to PowerPoint**. Click **Open**. | *"Just say what you need"* | "With meldra, you just say what you need and attach the file..." |
+| **0:10 - 0:18** | The file is already in Excel to PowerPoint. Click generate; the deck appears in seconds with charts, tables and key numbers. Page through 3–4 slides. | *"⚡ A board-ready deck in seconds"* | "...and in seconds you have a board-ready PowerPoint deck." |
+| **0:18 - 0:24** | Landing page privacy card: **"Your files are never stored"**. | *"🔒 Your files are never stored"* | "And your file is processed and discarded. Meldra never stores it." |
+| **0:24 - 0:30** | meldra landing page at `insight.meldra.ai`, **"Start free for 60 days"** button. | *"Start free ➔ insight.meldra.ai"* | "Try it free at meldra and take your evenings back." |
 
 ---
 
 ## 📲 Post Copy & Hashtags
 
-**Headline:** 5 hours of PowerPoint work done in 5 seconds flat on **meldra**. ⏱️
+**Headline:** Hours of PowerPoint work done in seconds on **meldra**. ⏱️
 
 **Body:**  
 The end-of-month reporting crunch shouldn't mean spending your evening re-formatting Excel charts for executive slides.
 
-Watch how **meldra (DATA MADE SIMPLE)** takes a raw 15,000-row financial export and turns it into a fully styled, executive-ready PowerPoint presentation in under 5 seconds.
+Watch how **meldra (DATA MADE SIMPLE)** turns a raw financial export into a styled, board-ready PowerPoint presentation in seconds. You just say what you need.
 
-🔒 **Built for strict enterprise privacy:**
-- ⚡ 100% Ephemeral: Processed in RAM, never saved to disk.
-- 🚫 Zero AI Training: Your financial data stays yours.
-- 🛡️ CISO & GDPR Compliant by design.
+🔒 **Built for privacy:**
+- Your files are never stored: processed in memory and discarded.
+- Our AI provider doesn't train on your data.
+- Delete your account any time; we publish exactly what we keep.
 
 Stop wrestling with manual slides.
 
-👉 **Try it free right now:** https://meldra.ai
+👉 **Try it free right now:** https://insight.meldra.ai
 
-#FPandA #FinanceTech #ExcelToPPT #Productivity #AIInFinance #EnterpriseSecurity #Meldra
+#FPandA #FinanceTech #ExcelToPPT #Productivity #AIInFinance #Meldra

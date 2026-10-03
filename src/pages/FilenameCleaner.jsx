@@ -297,7 +297,7 @@ export default function FilenameCleaner() {
         <Alert className="mb-6 bg-emerald-500/10 border-emerald-500/30">
           <CheckCircle className="h-5 w-5 text-emerald-400" />
           <AlertDescription className="text-slate-300">
-            <strong className="text-emerald-300">Zero Storage:</strong> Files are processed instantly in your browser. No data is stored. Auto-download when complete.
+            <strong className="text-emerald-300">Never stored:</strong> Files are processed instantly in your browser. No data is stored. Auto-download when complete.
           </AlertDescription>
         </Alert>
 

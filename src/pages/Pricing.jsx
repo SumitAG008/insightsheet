@@ -6,6 +6,23 @@ import Logo from '@/components/branding/Logo';
 import { ArrowRight, Mail, Send, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
+const PLANS = [
+  {
+    name: 'Free',
+    price: '60-day trial',
+    blurb: 'Everything you need to try Meldra on real work.',
+    items: ['Every tool, including Ask Meldra', '20 tool runs a month', '2 AI questions a day', 'Files up to 10 MB', 'Exports carry a small meldra.ai watermark'],
+    note: 'After 60 days a free account is closed unless you upgrade. We email you 5 days before.',
+  },
+  {
+    name: 'Premium',
+    price: 'Price on request',
+    blurb: 'For people who use Meldra every week.',
+    items: ['Everything in Free', '200 tool runs a month (400 on yearly)', '300 AI questions a month (400 on yearly)', 'Files up to 500 MB', 'No watermark on exports'],
+    highlight: true,
+  },
+];
+
 export default function Pricing() {
   const [user, setUser] = useState(null);
   const [form, setForm] = useState({
@@ -77,10 +94,10 @@ export default function Pricing() {
             Pricing
           </Badge>
           <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-            Simple, Transparent Access
+            Start free. Upgrade when it saves you time.
           </h2>
           <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-6">
-            Start free today. For larger teams, higher volumes, and custom workflows, request pricing.
+            Try every tool free for 60 days. Premium removes the limits that matter for day-to-day work; teams and companies get a quote within 24 hours.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <a
@@ -98,6 +115,29 @@ export default function Pricing() {
             </Button>
           </div>
         </div>
+
+        {/* What each plan includes (figures from the plan limits on the server) */}
+        <section aria-labelledby="plans-title" className="mx-auto mb-12 max-w-4xl">
+          <h3 id="plans-title" className="sr-only">What each plan includes</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {PLANS.map((plan) => (
+              <div key={plan.name} className={`rounded-2xl border bg-white p-6 shadow-sm ${plan.highlight ? 'border-blue-500 ring-1 ring-blue-500' : 'border-slate-200'}`}>
+                <div className="flex items-baseline justify-between">
+                  <h4 className="text-xl font-bold text-slate-900">{plan.name}</h4>
+                  <span className="text-sm font-medium text-slate-500">{plan.price}</span>
+                </div>
+                <p className="mt-1 text-sm text-slate-600">{plan.blurb}</p>
+                <ul className="mt-4 space-y-2 text-sm text-slate-700">
+                  {plan.items.map((item) => (
+                    <li key={item} className="flex gap-2"><span aria-hidden="true" className="text-blue-600">✓</span>{item}</li>
+                  ))}
+                </ul>
+                {plan.note && <p className="mt-4 text-xs text-slate-500">{plan.note}</p>}
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 text-center text-sm text-slate-500">Every plan: your files are never stored, all tools included, delete your account any time in Settings.</p>
+        </section>
 
         {/* Pricing request */}
         <section id="pricing-request" className="mt-10 max-w-4xl mx-auto">

@@ -94,7 +94,7 @@ export default function Register() {
           </div>
           <CardTitle className="text-2xl text-center text-slate-900">Create your account</CardTitle>
           <CardDescription className="text-center text-slate-600">
-            Join InsightSheet-lite for privacy-first data analysis
+            Start free for 60 days. Your files are never stored.
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>

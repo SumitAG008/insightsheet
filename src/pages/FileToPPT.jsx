@@ -250,7 +250,7 @@ export default function FileToPPT() {
 
           const pptx = new window.PptxGenJS();
           pptx.layout = 'LAYOUT_16x9';
-          pptx.author = 'InsightSheet-lite';
+          pptx.author = 'Meldra';
           pptx.title = file.name.replace(/\.[^/.]+$/, '');
 
           const totalPages = pdf.numPages;

@@ -452,6 +452,8 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
 
   const maxSizeLimit = maxUploadMb(subscription);
   const maxSize = Number.isFinite(maxSizeLimit) ? maxSizeLimit : '∞'; // for display
+  // Yearly and quarterly plans are premium too (premium_yearly, premium_quarterly).
+  const isPremium = String(subscription?.plan || '').toLowerCase().startsWith('premium');
 
   return (
     <div>
@@ -464,15 +466,15 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
           </AlertDescription>
         </Alert>
       ) : (
-        <Alert className={`mb-6 ${subscription?.plan === 'premium' ? 'bg-[#4169E1]/10 border-[#4169E1]/40' : 'bg-amber-500/10 border-amber-500/30'}`}>
-          <Info className={`h-4 w-4 ${subscription?.plan === 'premium' ? 'text-[#4169E1]' : 'text-amber-600 dark:text-amber-400'}`} />
-          <AlertDescription className={subscription?.plan === 'premium' ? 'text-slate-900 dark:text-slate-200' : 'text-slate-700 dark:text-slate-300'}>
-            <strong className={`font-bold text-base ${subscription?.plan === 'premium' ? 'text-slate-900 dark:text-slate-100' : 'text-amber-700 dark:text-amber-300'}`}>
-              {subscription?.plan === 'premium' ? t('upload_plan_premium_unlimited_title') : t('upload_plan_file_size_limit_title', { maxSize })}
+        <Alert className={`mb-6 ${isPremium ? 'bg-[#4169E1]/10 border-[#4169E1]/40' : 'bg-amber-500/10 border-amber-500/30'}`}>
+          <Info className={`h-4 w-4 ${isPremium ? 'text-[#4169E1]' : 'text-amber-600 dark:text-amber-400'}`} />
+          <AlertDescription className={isPremium ? 'text-slate-900 dark:text-slate-200' : 'text-slate-700 dark:text-slate-300'}>
+            <strong className={`font-bold text-base ${isPremium ? 'text-slate-900 dark:text-slate-100' : 'text-amber-700 dark:text-amber-300'}`}>
+              {isPremium ? t('upload_plan_premium_unlimited_title') : t('upload_plan_file_size_limit_title', { maxSize })}
             </strong>
             <br />
-            <span className={`text-base font-semibold ${subscription?.plan === 'premium' ? 'text-slate-800 dark:text-slate-300' : ''}`}>
-              {subscription?.plan === 'premium' 
+            <span className={`text-base font-semibold ${isPremium ? 'text-slate-800 dark:text-slate-300' : ''}`}>
+              {isPremium 
                 ? t('upload_plan_premium_desc', { maxSize })
                 : t('upload_plan_free_desc', { maxSize })}
             </span>
@@ -552,7 +554,7 @@ export default function FileUploadZone({ onFileUpload, isProcessing, acceptedFor
                   <p className="text-slate-200 font-semibold text-base">
                     {t('upload_max_size_line', {
                       maxSize,
-                      suffix: subscription?.plan !== 'premium' ? ` ${t('upload_free_plan_suffix')}` : '',
+                      suffix: !isPremium ? ` ${t('upload_free_plan_suffix')}` : '',
                     })}
                   </p>
                 ) : null}

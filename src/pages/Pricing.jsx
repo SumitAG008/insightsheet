@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import Logo from '@/components/branding/Logo';
 import { ArrowRight, Mail, Send, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import PlanLimitsTable from '@/components/subscription/PlanLimitsTable';
 
 export default function Pricing() {
   const [user, setUser] = useState(null);
@@ -99,6 +100,42 @@ export default function Pricing() {
           </div>
         </div>
 
+        {/* Plans and limits — figures come from the server's limits table */}
+        <section id="plans" className="mt-10 max-w-5xl mx-auto">
+          <h3 className="text-2xl font-bold text-slate-900 mb-2">Plans and limits</h3>
+          <p className="text-slate-600 mb-4">
+            Every plan includes all tools. Plans differ in how much you can process. Team and Business are billed per user, yearly.
+          </p>
+          <PlanLimitsTable />
+          <p className="text-xs text-slate-500 mt-2">
+            Prices exclude GST/VAT. Monthly allowances reset on the 1st. See the{' '}
+            <a className="underline" href="/terms#limits">Terms of Service</a> for fair use.
+          </p>
+        </section>
+
+        {/* Organisations */}
+        <section id="organisations" className="mt-10 max-w-5xl mx-auto">
+          <h3 className="text-2xl font-bold text-slate-900 mb-2">For universities, hospitals and companies</h3>
+          <p className="text-slate-600 mb-4">
+            One annual licence for a department or the whole organisation: seats for your people, an admin page to add and remove
+            them, usage reports, invoice and purchase-order billing, and a data processing agreement. Volume and academic
+            discounts apply. Paid pilots available.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              ['Universities', 'Research document summaries, thesis PDFs to Excel, scanned archives via OCR, department reporting.'],
+              ['Hospitals (finance & admin)', 'Invoice extraction, supplier reconciliation, monthly reporting, P&L packs.'],
+              ['Insurance', 'Claims documents and forms to data, bordereaux reconciliation, OCR of scanned letters.'],
+              ['Manufacturing & operations', 'Plant and inventory reports, reconciliation, Excel to PowerPoint packs, system migrations.'],
+            ].map(([title, text]) => (
+              <div key={title} className="bg-white border border-slate-200 rounded-xl p-4">
+                <div className="font-semibold text-slate-900">{title}</div>
+                <p className="text-sm text-slate-600 mt-1">{text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Pricing request */}
         <section id="pricing-request" className="mt-10 max-w-4xl mx-auto">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 md:p-8 shadow-sm">
@@ -160,6 +197,10 @@ export default function Pricing() {
                   <option value="individual">Individual</option>
                   <option value="small_team">Small team</option>
                   <option value="company">Company</option>
+                  <option value="university">University / college</option>
+                  <option value="hospital">Hospital / healthcare</option>
+                  <option value="insurance">Insurance</option>
+                  <option value="manufacturing">Manufacturing</option>
                   <option value="enterprise">Enterprise</option>
                 </select>
               </div>

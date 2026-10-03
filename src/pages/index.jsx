@@ -58,6 +58,10 @@ import Migration from "./Migration";
 
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
+import Usage from "./Usage";
+import Organization from "./Organization";
+import AdminLicenses from "./AdminLicenses";
+import Terms from "./Terms";
 import Faq from "./Faq";
 
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
@@ -78,6 +82,14 @@ const PAGES = {
     Security: Security,
 
     Disclaimer: Disclaimer,
+
+    Terms: Terms,
+
+    Usage: Usage,
+
+    Organization: Organization,
+
+    AdminLicenses: AdminLicenses,
     
     FilenameCleaner: FilenameCleaner,
     
@@ -212,6 +224,18 @@ function PagesContent() {
 
                 <Route path="/Disclaimer" element={<Disclaimer />} />
                 <Route path="/disclaimer" element={<Disclaimer />} />
+
+                <Route path="/Terms" element={<Terms />} />
+                <Route path="/terms" element={<Terms />} />
+
+                <Route path="/Usage" element={<ProtectedRoute><Usage /></ProtectedRoute>} />
+                <Route path="/usage" element={<ProtectedRoute><Usage /></ProtectedRoute>} />
+
+                <Route path="/Organization" element={<ProtectedRoute><Organization /></ProtectedRoute>} />
+                <Route path="/organization" element={<ProtectedRoute><Organization /></ProtectedRoute>} />
+
+                <Route path="/AdminLicenses" element={<ProtectedRoute><AdminLicenses /></ProtectedRoute>} />
+                <Route path="/adminlicenses" element={<ProtectedRoute><AdminLicenses /></ProtectedRoute>} />
 
                 {/* Protected routes - require authentication */}
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

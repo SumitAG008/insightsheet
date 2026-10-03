@@ -135,6 +135,13 @@ const apiCall = async (endpoint, options = {}) => {
   let response;
   try {
     response = await fetch(`${API_URL}${endpoint}`, { ...rest, headers });
+    // The server answers 503 + Retry-After when it is busy with other people's files (server_guard.py).
+    // Wait and try again a few times so people see a short delay instead of an error.
+    for (let attempt = 0; attempt < 3 && response.status === 503 && response.headers.get('Retry-After'); attempt++) {
+      const waitSeconds = Math.min(30, Math.max(1, Number(response.headers.get('Retry-After')) || 5));
+      await new Promise((resolve) => setTimeout(resolve, waitSeconds * 1000 * (attempt + 1)));
+      response = await fetch(`${API_URL}${endpoint}`, { ...rest, headers });
+    }
   } catch (error) {
     if (error.name === 'AbortError') {
       throw new Error('Request timed out. Try a smaller image or try again later.');
@@ -155,6 +162,27 @@ const apiCall = async (endpoint, options = {}) => {
   }
 
   return response;
+};
+
+const errorMessage = (detail, fallback) => {
+  if (!detail) return fallback;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) return detail.map((d) => d?.msg || String(d)).join('; ');
+  return detail.message || fallback;
+};
+
+const jsonOrThrow = async (response, fallback) => {
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(errorMessage(data.detail, `${fallback} (${response.status})`));
+  return data;
+};
+
+const blobOrThrow = async (response, fallback) => {
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(errorMessage(data.detail, `${fallback} (${response.status})`));
+  }
+  return response.blob();
 };
 
 // Backend API Client
@@ -900,6 +928,25 @@ export const backendApi = {
     },
   },
 
+  // Plan limits (public table used by the pricing page)
+  plans: {
+    limits: async () => jsonOrThrow(await apiCall('/api/plans/limits'), 'Could not load plan limits'),
+  },
+
+  // The signed-in person's organisation (seats, members, usage). Admin calls need the owner or admin role.
+  org: {
+    me: async () => jsonOrThrow(await apiCall('/api/org/me'), 'Could not load your organisation'),
+    members: async () => jsonOrThrow(await apiCall('/api/org/members'), 'Could not load members'),
+    addMember: async (email, role = 'member') =>
+      jsonOrThrow(await apiCall('/api/org/members', { method: 'POST', body: { email, role } }), 'Could not add member'),
+    setRole: async (email, role) =>
+      jsonOrThrow(await apiCall(`/api/org/members/${encodeURIComponent(email)}`, { method: 'PATCH', body: { role } }), 'Could not change role'),
+    removeMember: async (email) =>
+      jsonOrThrow(await apiCall(`/api/org/members/${encodeURIComponent(email)}`, { method: 'DELETE' }), 'Could not remove member'),
+    usageCsv: async () => blobOrThrow(await apiCall('/api/org/usage.csv'), 'Could not export usage'),
+    events: async (days = 90) => jsonOrThrow(await apiCall(`/api/org/events?days=${days}`), 'Could not load history'),
+  },
+
   // Activity
   activity: {
     log: async (activityType, pageName, details) => {
@@ -972,6 +1019,24 @@ export const backendApi = {
       const response = await apiCall(`/api/admin/subscription-ip-summary?period=${period}`);
       return response.json();
     },
+
+    // Organisations, licences and the licence report (Meldra staff only)
+    orgs: {
+      list: async () => jsonOrThrow(await apiCall('/api/admin/orgs'), 'Could not load organisations'),
+      get: async (id) => jsonOrThrow(await apiCall(`/api/admin/orgs/${id}`), 'Could not load organisation'),
+      create: async (data) => jsonOrThrow(await apiCall('/api/admin/orgs', { method: 'POST', body: data }), 'Could not create organisation'),
+      update: async (id, data) => jsonOrThrow(await apiCall(`/api/admin/orgs/${id}`, { method: 'PATCH', body: data }), 'Could not update organisation'),
+      createLicense: async (id, data) =>
+        jsonOrThrow(await apiCall(`/api/admin/orgs/${id}/licenses`, { method: 'POST', body: data }), 'Could not create licence'),
+      updateLicense: async (licenseId, data) =>
+        jsonOrThrow(await apiCall(`/api/admin/licenses/${licenseId}`, { method: 'PATCH', body: data }), 'Could not update licence'),
+      addMember: async (id, email, role = 'member') =>
+        jsonOrThrow(await apiCall(`/api/admin/orgs/${id}/members`, { method: 'POST', body: { email, role } }), 'Could not add member'),
+      removeMember: async (id, email) =>
+        jsonOrThrow(await apiCall(`/api/admin/orgs/${id}/members/${encodeURIComponent(email)}`, { method: 'DELETE' }), 'Could not remove member'),
+      report: async () => jsonOrThrow(await apiCall('/api/admin/licenses/report'), 'Could not load licence report'),
+      reportCsv: async () => blobOrThrow(await apiCall('/api/admin/licenses/report.csv'), 'Could not export licence report'),
+    },
   },
 
   // Health check
@@ -985,6 +1050,8 @@ export const backendApi = {
 meldraAi.auth = backendApi.auth;
 meldraAi.subscriptions = backendApi.subscriptions;
 meldraAi.admin = backendApi.admin;
+meldraAi.org = backendApi.org;
+meldraAi.plans = backendApi.plans;
 meldraAi.files = backendApi.files;
 meldraAi.integrations.Core.InvokeLLM = backendApi.llm.invoke;
 meldraAi.integrations.Core.GenerateImage = backendApi.llm.generateImage;

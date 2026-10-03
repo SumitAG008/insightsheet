@@ -60,6 +60,8 @@ export default function SubscriptionChecker({ children }) {
   }
 
   const plan = (subscription?.plan || 'free').toLowerCase();
+  const planName = subscription?.plan_name || (plan === 'premium' ? 'Premium' : 'Free');
+  const orgName = subscription?.limits_source === 'organization' ? subscription?.organization?.name : null;
 
   const tokensUsed = Number(subscription?.ai_queries_used || 0);
   const tokensLimit = subscription?.ai_queries_limit;
@@ -102,16 +104,16 @@ export default function SubscriptionChecker({ children }) {
                 ) : (
                   <Zap className="w-4 h-4 text-purple-400" />
                 )}
-                <span className="font-semibold text-slate-900 dark:text-slate-200">
-                  {plan === 'premium' ? 'Premium Plan' : plan === 'pro' ? 'Pro Plan' : 'Free Plan'}
-                </span>
+                <Link to={createPageUrl('Usage')} className="font-semibold text-slate-900 dark:text-slate-200 hover:underline">
+                  {planName} Plan{orgName ? ` · ${orgName}` : ''}
+                </Link>
               </div>
 
               {/* Upload Used */}
               <div className="flex items-center gap-2">
                 <Lock className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                 <span className="text-slate-600 dark:text-slate-400">
-                  Upload Used: <strong className="text-slate-900 dark:text-slate-200">
+                  Uploads this month: <strong className="text-slate-900 dark:text-slate-200">
                     {bytesToMb(uploadBytesUsed).toFixed(1)}MB/{isUnlimited(uploadBytesLimit) ? 'Unlimited' : `${bytesToMb(uploadBytesLimit).toFixed(0)}MB`}
                   </strong>
                 </span>
@@ -125,7 +127,7 @@ export default function SubscriptionChecker({ children }) {
                   'bg-emerald-500'
                 } animate-pulse`} />
                 <span className="text-slate-600 dark:text-slate-400">
-                  Transactions: <strong className={`$${
+                  Conversions: <strong className={`$${
                     txUsage >= 90 ? 'text-red-600 dark:text-red-400' : 
                     txUsage >= 70 ? 'text-amber-600 dark:text-amber-400' : 
                     'text-slate-900 dark:text-slate-200'
@@ -135,7 +137,7 @@ export default function SubscriptionChecker({ children }) {
                 </span>
               </div>
 
-              {/* AI Tokens Usage */}
+              {/* AI questions this month */}
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${
                   tokenUsage >= 90 ? 'bg-red-500' : 
@@ -143,7 +145,7 @@ export default function SubscriptionChecker({ children }) {
                   'bg-emerald-500'
                 } animate-pulse`} />
                 <span className="text-slate-600 dark:text-slate-400">
-                  AI Tokens: <strong className={`$${
+                  AI questions: <strong className={`$${
                     tokenUsage >= 90 ? 'text-red-600 dark:text-red-400' : 
                     tokenUsage >= 70 ? 'text-amber-600 dark:text-amber-400' : 
                     'text-slate-900 dark:text-slate-200'

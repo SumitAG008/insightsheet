@@ -4,7 +4,7 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart, ArrowRightLeft, Globe } from 'lucide-react';
+import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart, ArrowRightLeft, Globe, Gauge, Scale, BadgePoundSterling } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -575,6 +575,18 @@ export default function Layout({ children, currentPageName }) {
                     <span>Users</span>
                   </Link>
 
+                  <Link
+                    to={createPageUrl('AdminLicenses')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
+                      isActive(createPageUrl('AdminLicenses'))
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'text-slate-900 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium'
+                    }`}
+                  >
+                    <BadgePoundSterling className="w-4 h-4" />
+                    <span>Licences</span>
+                  </Link>
+
                   <Link 
                     to={createPageUrl('DownloadCode')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium text-sm ${
@@ -624,6 +636,12 @@ export default function Layout({ children, currentPageName }) {
                         <Link to={createPageUrl('Help')} className="flex items-center gap-2 cursor-pointer">
                           <HelpCircle className="w-4 h-4" />
                           <span>Help Guide</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to={createPageUrl('Usage')} className="flex items-center gap-2 cursor-pointer">
+                          <Gauge className="w-4 h-4" />
+                          <span>Plan and usage</span>
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
@@ -747,6 +765,14 @@ export default function Layout({ children, currentPageName }) {
                   </Link>
                   <div className="pt-2 border-t border-slate-200 dark:border-slate-800 mt-2 space-y-2">
                     <Link
+                      to={createPageUrl('Usage')}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm"
+                    >
+                      <Gauge className="w-4 h-4" />
+                      <span>Plan and usage</span>
+                    </Link>
+                    <Link
                       to={createPageUrl('Settings')}
                       onClick={() => setMobileMenuOpen(false)}
                       className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm"
@@ -856,6 +882,13 @@ export default function Layout({ children, currentPageName }) {
                 >
                   <AlertTriangle className="w-4 h-4 flex-shrink-0" />
                   <span>{t('footer_disclaimer_terms')}</span>
+                </Link>
+                <Link
+                  to={createPageUrl('Terms')}
+                  className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                >
+                  <Scale className="w-4 h-4 flex-shrink-0" />
+                  <span>Terms of Service</span>
                 </Link>
               </div>
             </div>

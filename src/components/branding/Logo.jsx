@@ -1,32 +1,29 @@
-// components/branding/Logo.jsx - Meldra logo, the same as on meldra.ai: a blue rounded square with
-// a lime striped "m", and the "meldra" wordmark. The mark is drawn inline (no image to load), so it
+// components/branding/Logo.jsx - Meldra logo, traced block by block from the brand file (meldraweb/meldra.png):
+// a blue rounded square with a lime block "m", and the "meldra" wordmark. The mark is drawn inline (no image to load), so it
 // is sharp at every size and never shows a broken image. public/meldra-mark.svg is the same mark as a file.
 import PropTypes from 'prop-types';
 
-export const BRAND_BLUE = '#0B4FD0';
-export const BRAND_LIME = '#E2FF3B';
+export const BRAND_BLUE = '#004FCD';
+export const BRAND_LIME = '#DDFA21';
+export const BRAND_INK = '#02161A';
 
-// The "m": three legs and two arches, drawn as one dashed stroke.
+const M_PATH =
+  'M59 58h21v25h-21ZM90 58h20v24h-20ZM59 92h22v24h-22ZM119 92h24v24h-24ZM181 92h22v24h-22ZM59 124h22v24h-22ZM119 124h24v24h-24ZM181 124h22v24h-22ZM59 157h23v24h-23ZM119 157h24v24h-24ZM181 157h22v24h-22ZM59 190h24v18h-24ZM119 190h23v18h-23ZM181 190h22v18h-22ZM120 82V62A21 20 0 0 1 141 82ZM170 82V61A19 21 0 0 0 151 82ZM181 82V61A20 21 0 0 1 201 82Z';
+
+// The "m": square blocks for the legs, quarter-round blocks for the arches.
 export function MeldraMark({ size = 40, className = '', title = 'meldra' }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 100 100"
+      viewBox="0 0 260 260"
       className={className}
       role="img"
       aria-label={title}
       xmlns="http://www.w3.org/2000/svg"
     >
-      <rect width="100" height="100" rx="24" fill={BRAND_BLUE} />
-      <path
-        d="M30 77 V45 Q30 33 40 33 Q50 33 50 45 V77 M50 45 Q50 33 60 33 Q70 33 70 45 V77"
-        fill="none"
-        stroke={BRAND_LIME}
-        strokeWidth="8.5"
-        strokeDasharray="7.5 4"
-        strokeLinejoin="round"
-      />
+      <rect width="260" height="260" rx="46" fill={BRAND_BLUE} />
+      <path fill={BRAND_LIME} d={M_PATH} />
     </svg>
   );
 }
@@ -67,8 +64,8 @@ export default function Logo({ className = '', size = 'medium', showText = true,
       {showText && (
         <div className="flex flex-col justify-center min-w-0">
           <span
-            className={`${s.text} font-extrabold leading-none whitespace-nowrap overflow-hidden text-ellipsis`}
-            style={{ color: 'inherit', fontFamily: "'Inter', sans-serif", letterSpacing: '-0.035em' }}
+            className={`${s.text} font-black leading-none whitespace-nowrap overflow-hidden text-ellipsis`}
+            style={{ color: 'inherit', fontFamily: "'Inter', sans-serif", letterSpacing: '-0.025em' }}
           >
             {brandName}
           </span>

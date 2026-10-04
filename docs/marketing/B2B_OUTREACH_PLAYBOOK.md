@@ -1,6 +1,6 @@
 # 💼 B2B Cold Outreach Playbook & Team License Trial Campaign
 
-This playbook contains cold email sequences, LinkedIn outreach templates, and follow-up scripts engineered for B2B acquisition of accounting firms, financial consultancies, and ESG agencies.
+This playbook contains cold email sequences, LinkedIn outreach templates, and follow-up scripts engineered for B2B acquisition of accounting firms and financial consultancies.
 
 ---
 
@@ -50,31 +50,6 @@ We’d love to set up your team with a **Complimentary 30-Day Team Trial** so yo
 Do you have 10 minutes open this Thursday for a quick walkthrough?
 
 Best,
-
-**Sumit Agaria**  
-Founder, Meldra AI | https://meldra.ai
-
----
-
-## 🎯 Target Segment 3: ESG & Sustainability Consulting Agencies
-
-### Cold Email #1: ESG & CSRD Reporting Decks
-**Subject:** Streamlining Scope 1-3 & CSRD client slide reports
-
-**Hi {{First_Name}},**
-
-Converting raw carbon accounting spreadsheets and ESG metrics into clear executive sustainability decks is one of the most time-consuming parts of client delivery.
-
-**InsightSheet** accelerates ESG reporting:
-- Automatically transforms Scope 1/2/3 data, diversity metrics, and audit tables into executive PowerPoint decks.
-- Standardizes visual sustainability charts across your entire consulting team.
-- Ephemeral in-memory execution guarantees client carbon & compliance data is deleted instantly upon export.
-
-We are opening **Team License Trials** for ESG consultancies this month.
-
-Would you be interested in testing our trial balance / ESG converter with your team?
-
-Best regards,
 
 **Sumit Agaria**  
 Founder, Meldra AI | https://meldra.ai

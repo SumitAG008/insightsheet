@@ -1,7 +1,7 @@
 """
 Database configuration and models for InsightSheet-lite
 """
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Float, Boolean, Text, UniqueConstraint, Index
+from sqlalchemy import create_engine, BigInteger, Column, Integer, String, DateTime, Float, Boolean, Text, UniqueConstraint, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import JSON
@@ -162,8 +162,9 @@ class Subscription(Base):
     ai_queries_reset_at = Column(DateTime, nullable=True)  # Monthly reset marker (UTC)
     files_uploaded = Column(Integer, default=0)
 
-    workflow_runs_used = Column(Integer, default=0)
-    workflow_runs_limit = Column(Integer, default=0)  # 0 means not enabled for plan
+    # Monthly upload meter, in bytes: BigInteger because paid plans allow more than 2 GB a month.
+    workflow_runs_used = Column(BigInteger, default=0)
+    workflow_runs_limit = Column(BigInteger, default=0)  # -1 = unlimited
     workflow_runs_reset_at = Column(DateTime, nullable=True)  # Monthly reset marker (UTC)
 
     conversions_used = Column(Integer, default=0)
@@ -208,6 +209,82 @@ class UsageMeterDedup(Base):
     __table_args__ = (
         UniqueConstraint("user_email", "request_id", "kind", name="uq_usage_meter_dedup"),
     )
+
+
+class Organization(Base):
+    """A customer that buys seats: a university, hospital, insurer, manufacturer or company."""
+    __tablename__ = "organizations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    sector = Column(String(50), default="other")  # university, hospital, insurance, manufacturing, company, other
+    country = Column(String(100), nullable=True)
+    # Anyone who signs up with this email domain is offered a seat (when auto_join is on and seats remain).
+    email_domain = Column(String(255), index=True, nullable=True)
+    auto_join = Column(Boolean, default=False)
+    billing_email = Column(String(255), nullable=True)
+    billing_address = Column(Text, nullable=True)
+    tax_id = Column(String(100), nullable=True)  # GSTIN / VAT number
+    crm_ref = Column(String(255), nullable=True)  # the deal or company id in the CRM (HubSpot, Zoho)
+    notes = Column(Text, nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class OrganizationMember(Base):
+    """One seat. A person belongs to at most one organisation."""
+    __tablename__ = "organization_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, index=True, nullable=False)
+    user_email = Column(String(255), unique=True, index=True, nullable=False)
+    role = Column(String(20), default="member")  # owner, admin, member
+    status = Column(String(20), default="active")  # active, removed
+    added_by = Column(String(255), nullable=True)
+    joined_via = Column(String(20), default="invite")  # invite, domain, admin
+    created_date = Column(DateTime, default=datetime.utcnow)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class License(Base):
+    """A signed deal: seats, term, limits and money. The organisation's members get these limits."""
+    __tablename__ = "licenses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, index=True, nullable=False)
+    plan = Column(String(50), default="team")  # pro, team, business
+    pack = Column(String(50), nullable=True)  # university, hospital, insurance, manufacturing
+    seats = Column(Integer, default=10)
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=False)
+    grace_days = Column(Integer, default=14)  # members keep access this long after end_date
+    status = Column(String(20), default="active")  # pilot, active, suspended, cancelled
+    limits_json = Column(Text, nullable=True)  # per-key overrides of the plan's limits
+    features_json = Column(Text, nullable=True)  # e.g. {"sso": true, "audit_log": true}
+    # Money (contract value for the whole term, before tax)
+    contract_value = Column(Float, default=0.0)
+    currency = Column(String(3), default="INR")
+    billing_period = Column(String(20), default="annual")  # monthly, annual, multi_year
+    po_number = Column(String(100), nullable=True)
+    invoice_number = Column(String(100), nullable=True)
+    invoice_status = Column(String(20), default="draft")  # draft, sent, paid, overdue, void
+    paid_date = Column(DateTime, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_by = Column(String(255), nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class OrganizationEvent(Base):
+    """Who changed what in an organisation (seats, roles, licences). No file names or contents."""
+    __tablename__ = "organization_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(Integer, index=True, nullable=False)
+    actor_email = Column(String(255), nullable=True)
+    event_type = Column(String(100), nullable=False)
+    details = Column(Text, nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 class LoginHistory(Base):
@@ -576,8 +653,8 @@ def init_db():
                     "ai_queries_limit": "INTEGER DEFAULT 5",
                     "ai_queries_reset_at": "TIMESTAMP",
                     "files_uploaded": "INTEGER DEFAULT 0",
-                    "workflow_runs_used": "INTEGER DEFAULT 0",
-                    "workflow_runs_limit": "INTEGER DEFAULT 0",
+                    "workflow_runs_used": "BIGINT DEFAULT 0",
+                    "workflow_runs_limit": "BIGINT DEFAULT 0",
                     "workflow_runs_reset_at": "TIMESTAMP",
                     "conversions_used": "INTEGER DEFAULT 0",
                     "conversions_limit": "INTEGER DEFAULT 0",
@@ -602,6 +679,31 @@ def init_db():
     except Exception as e:
         # If table doesn't exist or other error, that's ok - tables will be created
         logger.warning(f"Could not add missing columns (may already exist or table not created yet): {str(e)}")
+
+    _widen_upload_meter_columns()
+
+
+def _widen_upload_meter_columns() -> None:
+    """
+    The monthly upload meter counts bytes, and paid plans allow more than 2 GB (the INTEGER limit),
+    so older Postgres databases get these two columns widened to BIGINT. Widening keeps every value;
+    it runs in its own transaction so a failure cannot undo the other start-up changes.
+    """
+    if not DATABASE_URL.startswith("postgresql"):
+        return  # SQLite stores any integer size
+    try:
+        from sqlalchemy import inspect, text
+
+        cols = {c["name"]: str(c["type"]).upper() for c in inspect(engine).get_columns("subscriptions")}
+        to_widen = [c for c in ("workflow_runs_used", "workflow_runs_limit") if c in cols and cols[c] != "BIGINT"]
+        if not to_widen:
+            return
+        with engine.begin() as connection:
+            for c in to_widen:
+                connection.execute(text(f"ALTER TABLE subscriptions ALTER COLUMN {c} TYPE BIGINT;"))
+        logger.info(f"Widened subscriptions columns to BIGINT: {to_widen}")
+    except Exception as e:
+        logger.warning(f"Could not widen upload meter columns: {type(e).__name__}: {e}")
 
 
 if __name__ == "__main__":

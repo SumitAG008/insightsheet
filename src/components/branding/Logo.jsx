@@ -1,70 +1,82 @@
-// components/branding/Logo.jsx - Meldra Logo Component
+// components/branding/Logo.jsx - Meldra logo, traced block by block from the brand file (meldraweb/meldra.png):
+// a blue rounded square with a lime block "m", and the "meldra" wordmark. The mark is drawn inline (no image to load), so it
+// is sharp at every size and never shows a broken image. public/meldra-mark.svg is the same mark as a file.
 import PropTypes from 'prop-types';
 
-const DEFAULT_TAGLINE = 'DATA MADE SIMPLE';
+export const BRAND_BLUE = '#004FCD';
+export const BRAND_LIME = '#DDFA21';
+export const BRAND_INK = '#02161A';
 
-export default function Logo({ className = "", size = "medium", showText = true, style = {}, lowercaseM = false, tagline, brandName: brandNameProp, logoUrl: logoUrlProp }) {
-  const sizes = {
-    small: { container: "w-12 h-12 md:w-10 md:h-10", text: "text-lg", tagline: "text-[11px]" },
-    medium: { container: "w-14 h-14 md:w-12 md:h-12", text: "text-2xl", tagline: "text-sm" },
-    large: { container: "w-24 h-24", text: "text-4xl", tagline: "text-sm" }
-  };
+const M_PATH =
+  'M59 58h21v25h-21ZM90 58h20v24h-20ZM59 92h22v24h-22ZM119 92h24v24h-24ZM181 92h22v24h-22ZM59 124h22v24h-22ZM119 124h24v24h-24ZM181 124h22v24h-22ZM59 157h23v24h-23ZM119 157h24v24h-24ZM181 157h22v24h-22ZM59 190h24v18h-24ZM119 190h23v18h-23ZM181 190h22v18h-22ZM120 82V62A21 20 0 0 1 141 82ZM170 82V61A19 21 0 0 0 151 82ZM181 82V61A20 21 0 0 1 201 82Z';
 
-  const currentSize = sizes[size];
-  const fallbackName = 'meldra';
-  const brandName = (brandNameProp && String(brandNameProp).trim()) ? String(brandNameProp).trim() : fallbackName;
-  const taglineText = tagline != null ? tagline : DEFAULT_TAGLINE;
-  const isPrimaryTagline = taglineText === DEFAULT_TAGLINE || String(taglineText).trim().toLowerCase() === 'for developers';
+// The "m": square blocks for the legs, quarter-round blocks for the arches.
+export function MeldraMark({ size = 40, className = '', title = 'meldra' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 260 260"
+      className={className}
+      role="img"
+      aria-label={title}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect width="260" height="260" rx="46" fill={BRAND_BLUE} />
+      <path fill={BRAND_LIME} d={M_PATH} />
+    </svg>
+  );
+}
+
+MeldraMark.propTypes = {
+  size: PropTypes.number,
+  className: PropTypes.string,
+  title: PropTypes.string,
+};
+
+const SIZES = {
+  small: { mark: 32, text: 'text-xl', tagline: 'text-[11px]', gap: 'gap-2.5' },
+  medium: { mark: 40, text: 'text-2xl', tagline: 'text-xs', gap: 'gap-3' },
+  large: { mark: 64, text: 'text-4xl', tagline: 'text-sm', gap: 'gap-4' },
+};
+
+export default function Logo({ className = '', size = 'medium', showText = true, style = {}, tagline, brandName: brandNameProp, logoUrl: logoUrlProp }) {
+  const s = SIZES[size] || SIZES.medium;
+  const brandName = brandNameProp && String(brandNameProp).trim() ? String(brandNameProp).trim() : 'meldra';
+  // A logo chosen in Settings (white-label) replaces the Meldra mark.
+  const customLogo = logoUrlProp && String(logoUrlProp).trim() ? String(logoUrlProp).trim() : null;
 
   return (
-    <div className={`flex items-center gap-5 ${className}`} style={style}>
-      {/* Meldra Logo — public/meldra.png */}
-      <div className={`${currentSize.container} flex items-center justify-center flex-shrink-0 min-w-0 p-1 rounded-xl bg-slate-900/[0.03] border border-slate-200 shadow-sm dark:bg-slate-100/[0.04] dark:border-slate-800`}>
-        <img 
-          src={logoUrlProp && String(logoUrlProp).trim() ? String(logoUrlProp).trim() : "/meldra.png"} 
-          alt="meldra" 
-          className="w-full h-full object-cover object-left contrast-125 saturate-125"
-          onError={(e) => {
-            e.target.style.display = 'none';
-            const parent = e.target.parentElement;
-            if (!parent.querySelector('.fallback-icon')) {
-              parent.innerHTML = `
-                <div class="fallback-icon w-full h-full bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center">
-                  <span class="text-white font-bold" style="font-family: 'Space Grotesk', sans-serif; font-size: 0.6em;">m</span>
-                </div>
-              `;
-            }
-          }}
+    <div className={`flex items-center ${s.gap} ${className}`} style={style}>
+      {customLogo ? (
+        <img
+          src={customLogo}
+          alt={brandName}
+          width={s.mark}
+          height={s.mark}
+          className="flex-shrink-0 rounded-[24%] object-cover"
+          style={{ width: s.mark, height: s.mark }}
         />
-      </div>
+      ) : (
+        <MeldraMark size={s.mark} className="flex-shrink-0" title={brandName} />
+      )}
 
-      {/* Brand Text — more space, less congested */}
       {showText && (
-        <div className="flex flex-col justify-center min-w-0 space-y-1">
-          <h1 
-            className={`${currentSize.text} font-bold leading-tight tracking-tight whitespace-nowrap overflow-hidden text-ellipsis`} 
-            style={{ 
-              color: 'inherit', 
-              fontFamily: "'Space Grotesk', sans-serif",
-              letterSpacing: '-0.02em',
-              lineHeight: '1.15'
-            }}
+        <div className="flex flex-col justify-center min-w-0">
+          <span
+            className={`${s.text} font-black leading-none whitespace-nowrap overflow-hidden text-ellipsis`}
+            style={{ color: 'inherit', fontFamily: "'Inter', sans-serif", letterSpacing: '-0.025em' }}
           >
             {brandName}
-          </h1>
-          <p 
-            className={`${currentSize.tagline} font-medium ${taglineText === DEFAULT_TAGLINE ? 'tracking-widest uppercase' : ''} whitespace-nowrap overflow-hidden text-ellipsis`} 
-            style={{ 
-              color: 'inherit', 
-              opacity: isPrimaryTagline ? 1 : 0.9,
-              fontFamily: "'Inter', sans-serif",
-              letterSpacing: taglineText === DEFAULT_TAGLINE ? '0.08em' : '0',
-              lineHeight: '1.4',
-              fontWeight: isPrimaryTagline ? 800 : 500
-            }}
-          >
-            {taglineText}
-          </p>
+          </span>
+          {tagline && (
+            <span
+              className={`${s.tagline} font-medium mt-1 whitespace-nowrap overflow-hidden text-ellipsis opacity-80`}
+              style={{ color: 'inherit', fontFamily: "'Inter', sans-serif" }}
+            >
+              {tagline}
+            </span>
+          )}
         </div>
       )}
     </div>
@@ -76,7 +88,7 @@ Logo.propTypes = {
   size: PropTypes.oneOf(['small', 'medium', 'large']),
   showText: PropTypes.bool,
   style: PropTypes.object,
-  lowercaseM: PropTypes.bool,
+  lowercaseM: PropTypes.bool, // kept so existing callers still validate; the wordmark is always lowercase
   tagline: PropTypes.string,
   brandName: PropTypes.string,
   logoUrl: PropTypes.string,

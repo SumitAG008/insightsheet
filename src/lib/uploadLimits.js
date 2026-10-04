@@ -4,7 +4,7 @@ export function maxUploadMb(subscription) {
   if (subscription && Object.prototype.hasOwnProperty.call(subscription, 'max_upload_mb')) {
     return subscription.max_upload_mb == null ? Infinity : Number(subscription.max_upload_mb);
   }
-  return subscription && String(subscription.plan || '').startsWith('premium') ? 500 : 10;
+  return subscription && String(subscription.plan || '').startsWith('premium') ? 50 : 10; // only until the server's figure loads
 }
 
 export function uploadLimitLabel(mb) {

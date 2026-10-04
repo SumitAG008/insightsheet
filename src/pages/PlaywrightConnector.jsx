@@ -1,4 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { meldraAi } from '@/api/meldraClient';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -43,6 +45,11 @@ export default function PlaywrightConnector() {
   const [jobId, setJobId] = useState('');
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [plan, setPlan] = useState(null); // 'free' | 'premium' (any paid plan or organisation licence)
+
+  useEffect(() => {
+    meldraAi.subscriptions.getMy().then((s) => setPlan(s?.plan || 'free')).catch(() => {});
+  }, []);
 
   const run = async () => {
     if (!apiBase) {
@@ -198,7 +205,17 @@ export default function PlaywrightConnector() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-blue-700 dark:text-blue-300">Web Automation (Playwright)</h1>
         <p className="text-sm text-blue-700/80 dark:text-blue-300/80 mt-1">Run web automation jobs and export CSV/JSON artifacts.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          One job at a time; each run counts as one conversion. Public websites only, and only data you are allowed to collect.
+        </p>
       </div>
+
+      {plan === 'free' && (
+        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm text-amber-900 dark:text-amber-200">
+          Web data is included in paid plans and organisation licences.{' '}
+          <Link to="/pricing" className="underline font-medium">See plans</Link>
+        </div>
+      )}
 
       <Card className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -1,0 +1,26 @@
+# Plan limits and server protection settings (docs/PLAN_LIMITS_AND_CAPACITY.md).
+# Change a figure here and restart the backend; no code change needed.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: insightsheet-limits
+  namespace: insightsheet
+data:
+  SERVER_GUARD: "on"
+  # Heavy file jobs (conversions, OCR, analysis) running at once in each worker process.
+  GUARD_HEAVY_JOBS_PER_PROCESS: "2"
+  # How long a file waits for a free slot before the server answers "busy, try again".
+  GUARD_QUEUE_WAIT_SECONDS: "25"
+  # Signed-out requests per minute from one IP address (a campus may share one address).
+  GUARD_ANON_REQUESTS_PER_MINUTE: "300"
+  # Seconds files already processing get to finish when a server stops.
+  GRACEFUL_SHUTDOWN_SECONDS: "90"
+  # Chromium browsers for web data jobs running at once per worker process.
+  PLAYWRIGHT_MAX_CONCURRENT: "1"
+  # Server-wide OCR caps (plans can only lower these).
+  OCR_MAX_PAGES_DEFAULT: "25"
+  OCR_TIMEOUT_PDF_SECONDS: "180"
+  OCR_TIMEOUT_IMAGE_SECONDS: "120"
+  # Per-plan overrides, e.g.:
+  # LIMIT_FREE_FILE_SIZE_MB: "10"
+  # LIMIT_PRO_AI_QUERIES_PER_MONTH: "300"

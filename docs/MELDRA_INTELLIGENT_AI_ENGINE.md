@@ -15,7 +15,7 @@ You are selling an **Autonomous Enterprise Intelligence Suite** controlled by th
 
 Every module in the application operates as an **Intelligent Service** coordinated by the central Meldra AI Core:
 - **Intelligent Presentation Service:** 5-Second raw Excel/CSV to board-ready PowerPoint deck creation with AI slide styling.
-- **Intelligent Web Extraction Service:** Ephemeral RAM web scraping of public financial & ESG data.
+- **Intelligent Web Extraction Service:** Ephemeral RAM web scraping of public financial data.
 - **Intelligent Unified Analytics Engine:** Natural Language SQL queries and ML predictive forecasting across any data source.
 - **Intelligent Migration Engine:** AI-powered schema field mapping, date/IBAN cleansing, and cutover package generation.
 - **Intelligent Privacy Shield:** Zero File Storage Guarantee with in-memory execution and automated 30-day inactive metadata cleanup.
@@ -50,7 +50,7 @@ Every module in the application operates as an **Intelligent Service** coordinat
 * **AI Logic:** Analyzes table structures, extracts financial KPIs, designs color palettes, and formats executive summary slides automatically.
 
 ### 2️⃣ **Intelligent Web Scraping & Data Extraction Service**
-* **Capabilities:** Takes any public web URL (financial reports, stock disclosures, ESG metrics) and scrapes structured HTML tables into server RAM.
+* **Capabilities:** Takes any public web URL (financial reports, stock disclosures) and scrapes structured HTML tables into server RAM.
 * **AI Logic:** Uses Playwright headless Chromium DOM rendering + AI table parsers to synthesize webpage numbers directly into PowerPoint slides or clean datasets without saving any files to disk.
 
 ### 3️⃣ **Intelligent Unified Analytics & Predictive ML Engine**

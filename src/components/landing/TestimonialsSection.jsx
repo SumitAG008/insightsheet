@@ -12,15 +12,6 @@ const testimonials = [
     metrics: "Saved 30+ hrs/month"
   },
   {
-    quote: "As an ESG consultant, converting complex Scope 1-3 carbon metrics into client PowerPoint slides was always a bottleneck. InsightSheet automates the visual charts instantly while guaranteeing zero file retention.",
-    author: "Elena Rostova",
-    title: "Senior ESG Director",
-    company: "GreenSphere Global",
-    rating: 5,
-    avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80",
-    metrics: "5x Faster Reports"
-  },
-  {
     quote: "The Zero File Storage architecture is a game changer for FP&A teams. We get the intelligence of generative AI without exposing sensitive board metrics or valuation models to third-party databases.",
     author: "Marcus Vance",
     title: "VP of Financial Planning",
@@ -56,7 +47,7 @@ export default function TestimonialsSection() {
             Loved by Analysts. Approved by CISOs.
           </h2>
           <p className="text-slate-400 text-base sm:text-lg">
-            See how top accounting firms, FP&A directors, and ESG agencies use InsightSheet to automate board presentations without compromising data privacy.
+            See how top accounting firms, and FP&A directors use InsightSheet to automate board presentations without compromising data privacy.
           </p>
         </div>
 

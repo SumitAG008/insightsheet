@@ -1,8 +1,11 @@
 // pages/Privacy.js - Comprehensive privacy policy and data breach notification
 import React from 'react';
 import { Shield, Lock, Eye, Server, AlertTriangle, FileText } from 'lucide-react';
+import RegionalCompliance, { RegionPicker } from '@/components/legal/RegionalCompliance';
+import { useRegion } from '@/lib/region';
 
 export default function Privacy() {
+  const [region, setRegion] = useRegion();
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-50 py-12">
       <div className="container mx-auto px-4 max-w-4xl">
@@ -23,6 +26,12 @@ export default function Privacy() {
         </div>
 
         {/* Main Content */}
+        {/* Rights and contacts under the visitor's own data protection law */}
+        <div className="mb-6 space-y-3">
+          <RegionPicker region={region} onChange={setRegion} />
+          <RegionalCompliance region={region} />
+        </div>
+
         <div className="bg-white rounded-2xl shadow-lg border border-slate-200 p-8 space-y-8">
           {/* Privacy-First Architecture */}
           <section>

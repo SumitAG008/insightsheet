@@ -6,7 +6,12 @@ metadata:
   labels:
     app: insightsheet-backend
 spec:
-  replicas: 3
+  replicas: 2  # the autoscaler below adds more under load
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0  # a deploy never drops below the running count
+      maxSurge: 1
   selector:
     matchLabels:
       app: insightsheet-backend
@@ -15,6 +20,22 @@ spec:
       labels:
         app: insightsheet-backend
     spec:
+      # Files already processing get time to finish on a deploy or scale-down (see GRACEFUL_SHUTDOWN_SECONDS).
+      terminationGracePeriodSeconds: 120
+      # Spread servers across data centres (zones) and machines so one failure can't take all of them.
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: insightsheet-backend
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+        labelSelector:
+          matchLabels:
+            app: insightsheet-backend
       containers:
       - name: backend
         image: ghcr.io/your-org/insightsheet-backend:latest
@@ -43,13 +64,22 @@ spec:
             configMapKeyRef:
               name: insightsheet-config
               key: ENVIRONMENT
+        # Shared limits across servers (docs/PLAN_LIMITS_AND_CAPACITY.md). Optional: without it each
+        # server counts on its own.
+        - name: REDIS_URL
+          value: "redis://insightsheet-redis:6379/0"
+        envFrom:
+        - configMapRef:
+            name: insightsheet-limits
+        # 2 workers x ~700MB plus LibreOffice/OCR headroom. Requests = what the scheduler reserves,
+        # so the autoscaler's percentages are of these figures.
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
+            memory: "1536Mi"
+            cpu: "500m"
           limits:
-            memory: "2Gi"
-            cpu: "1000m"
+            memory: "3Gi"
+            cpu: "2000m"
         livenessProbe:
           httpGet:
             path: /health
@@ -62,6 +92,63 @@ spec:
             port: 8000
           initialDelaySeconds: 10
           periodSeconds: 5
+        lifecycle:
+          preStop:
+            exec:
+              # Stop receiving new requests before shutdown begins (load balancer catch-up).
+              command: ["sh", "-c", "sleep 10"]
+---
+# Never fewer than one server during node maintenance or cluster upgrades.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: insightsheet-backend
+  namespace: insightsheet
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: insightsheet-backend
+---
+# Add servers when CPU or memory is busy; remove them slowly when quiet.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: insightsheet-backend
+  namespace: insightsheet
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: insightsheet-backend
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 600
+      policies:
+      - type: Pods
+        value: 1
+        periodSeconds: 120
 ---
 apiVersion: v1
 kind: Service

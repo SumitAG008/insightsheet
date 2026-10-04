@@ -74,8 +74,10 @@ def test_search_learns_new_words_from_what_people_pick():
 def test_suggestions_follow_recent_use_and_routine():
     email = _email("routine")
     now = datetime.utcnow()
-    # P&L every week on this weekday and hour; file cleaning once, long ago.
-    _views(email, [("/PLBuilder", now - timedelta(days=7 * w, minutes=5)) for w in range(1, 5)]
+    # P&L every week on this weekday and hour; file cleaning once, long ago. The views sit at the start
+    # of this hour (never "5 minutes ago", which falls on the previous day just after midnight).
+    hour_start = now.replace(minute=0, second=0, microsecond=0)
+    _views(email, [("/PLBuilder", hour_start - timedelta(days=7 * w)) for w in range(1, 5)]
            + [("/FilenameCleaner", now - timedelta(days=60))])
     s = _client(email).get("/api/assist/suggestions").json()["suggestions"]
     assert s[0]["id"] == "pl_builder"

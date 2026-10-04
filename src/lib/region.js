@@ -1,12 +1,14 @@
-// Which region a visitor is in, and what that changes: currency, prices, tax wording and the legal
-// rules shown on the pricing page, Terms and Privacy. Detection order: the visitor's own choice
-// (remembered in this browser) → country from the IP lookup → the browser's time zone → rest of world.
+// Which pricing region a visitor is in, and what that changes: currency, prices, tax wording and the legal
+// rules shown on the pricing page, Terms and Privacy. The region comes from the server's IP lookup
+// (/api/region) and cannot be chosen in the browser, so nobody sees another country's price list.
+// If the location cannot be determined, the visitor gets US dollar pricing.
 import { useEffect, useState } from 'react';
 import { getApiBase } from '@/utils/apiConfig';
 
-export const REGION_ORDER = ['IN', 'GB', 'EU', 'ROW'];
+export const REGION_ORDER = ['IN', 'GB', 'EU', 'INTL'];
+export const DEFAULT_REGION = 'INTL';
 
-// EU member states (ISO 3166-1 alpha-2).
+// EU member states (ISO 3166-1 alpha-2). Mirrors backend/app/services/pricing_region.py.
 const EU_COUNTRIES = new Set([
   'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT',
   'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
@@ -22,21 +24,21 @@ export const REGIONS = {
     tax: 'Prices exclude GST at 18%, which is added to your invoice.',
   },
   GB: {
-    label: 'United Kingdom',
+    label: 'the United Kingdom',
     currency: 'GBP',
     prices: { free: '£0', pro: '£9', team: '£15', business: 'Custom' },
     seatYear: '£150',
     tax: 'Prices exclude VAT at 20%, which is added where it applies.',
   },
   EU: {
-    label: 'European Union',
+    label: 'the European Union',
     currency: 'EUR',
     prices: { free: '€0', pro: '€10', team: '€17', business: 'Custom' },
     seatYear: '€170',
     tax: 'Prices exclude VAT. Consumers pay the VAT rate of their country; businesses with a valid VAT number are reverse-charged.',
   },
-  ROW: {
-    label: 'Rest of the world',
+  INTL: {
+    label: null,
     currency: 'USD',
     prices: { free: '$0', pro: '$11', team: '$18', business: 'Custom' },
     seatYear: '$180',
@@ -45,82 +47,51 @@ export const REGIONS = {
 };
 
 export function regionForCountry(code) {
-  const c = String(code || '').toUpperCase();
+  const c = String(code || '').trim().toUpperCase();
   if (c === 'IN') return 'IN';
   if (c === 'GB' || c === 'UK') return 'GB';
   if (EU_COUNTRIES.has(c)) return 'EU';
-  return c && c !== 'XX' ? 'ROW' : null;
+  return DEFAULT_REGION;
 }
 
-export function regionForTimeZone(tz) {
-  const z = String(tz || '');
-  if (z === 'Asia/Kolkata' || z === 'Asia/Calcutta') return 'IN';
-  if (z === 'Europe/London' || z === 'Europe/Belfast') return 'GB';
-  if (z.startsWith('Europe/') && !['Europe/Moscow', 'Europe/Istanbul', 'Europe/Kiev', 'Europe/Kyiv', 'Europe/Minsk', 'Europe/Zurich', 'Europe/Oslo', 'Europe/Belgrade'].includes(z)) return 'EU';
-  return z ? 'ROW' : null;
+// One line under the price table, e.g. "Prices in GBP for the United Kingdom, based on your location."
+export function regionNote(region) {
+  const r = REGIONS[region];
+  if (!r) return '';
+  return r.label ? `Prices in ${r.currency} for ${r.label}, based on your location.` : `Prices in ${r.currency}.`;
 }
 
-const STORAGE_KEY = 'meldra:region';
+let pending = null; // one lookup per page load
 
-function savedRegion() {
-  try {
-    const r = localStorage.getItem(STORAGE_KEY);
-    return REGIONS[r] ? r : null;
-  } catch {
-    return null;
-  }
-}
-
-function timeZoneRegion() {
-  try {
-    return regionForTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone);
-  } catch {
-    return null;
-  }
-}
-
-let detected = null; // one lookup per page load
-
-async function detectRegion() {
-  if (detected) return detected;
-  let region = null;
+export function detectRegion(fetchImpl = fetch) {
+  if (pending) return pending;
   const base = getApiBase();
-  if (base) {
+  pending = (async () => {
+    if (!base) return DEFAULT_REGION;
     try {
-      const r = await fetch(`${base}/api/ip-lookup`);
-      region = regionForCountry((await r.json())?.country_code);
+      const res = await fetchImpl(`${base}/api/region`);
+      const data = await res.json();
+      return REGIONS[data?.region] ? data.region : DEFAULT_REGION;
     } catch {
-      region = null;
+      return DEFAULT_REGION;
     }
-  }
-  detected = region || timeZoneRegion() || 'ROW';
-  return detected;
+  })();
+  return pending;
 }
 
-// [regionKey, setRegion, chosenByVisitor]
-export function useRegion() {
-  const [region, setRegionState] = useState(() => savedRegion() || timeZoneRegion() || 'ROW');
-  const [chosen, setChosen] = useState(() => Boolean(savedRegion()));
+export function resetRegionForTests() {
+  pending = null;
+}
 
+// [regionKey | null while loading]. There is no setter: the region follows the visitor's location.
+export function useRegion() {
+  const [region, setRegion] = useState(null);
   useEffect(() => {
-    if (savedRegion()) return undefined;
     let alive = true;
-    detectRegion().then((r) => alive && setRegionState(r));
+    detectRegion().then((r) => alive && setRegion(r));
     return () => {
       alive = false;
     };
   }, []);
-
-  const setRegion = (r) => {
-    if (!REGIONS[r]) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, r);
-    } catch {
-      /* private mode: the choice lasts this page view */
-    }
-    setRegionState(r);
-    setChosen(true);
-  };
-
-  return [region, setRegion, chosen];
+  return [region];
 }

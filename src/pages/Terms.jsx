@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Scale } from 'lucide-react';
 import PlanLimitsTable from '@/components/subscription/PlanLimitsTable';
 import { LIMIT_LABELS } from '@/lib/planLimits';
-import RegionalCompliance, { RegionPicker } from '@/components/legal/RegionalCompliance';
+import RegionalCompliance, { RegionNote } from '@/components/legal/RegionalCompliance';
 import { useRegion } from '@/lib/region';
 import { COMPANY, companyLine } from '@/lib/company';
 
@@ -21,7 +21,7 @@ function Section({ id, title, children }) {
 }
 
 export default function Terms() {
-  const [region, setRegion] = useRegion();
+  const [region] = useRegion();
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-12">
       <div className="container mx-auto px-4 max-w-4xl">
@@ -198,10 +198,10 @@ export default function Terms() {
 
           <Section id="your-region" title="13. Your region">
             <p>
-              Prices, tax and the rights below depend on where you are. We show your region automatically; you can change it here.
+              Prices, tax and the rights below depend on where you are. We work out your region from your location when you visit; prices and plans are offered only for that region.
               Nothing in these terms takes away rights your local law gives you.
             </p>
-            <RegionPicker region={region} onChange={setRegion} />
+            <RegionNote region={region} />
             <RegionalCompliance region={region} />
           </Section>
 

@@ -1,26 +1,15 @@
 import { Globe } from 'lucide-react';
-import { REGIONS, REGION_ORDER } from '@/lib/region';
+import { REGIONS, regionNote } from '@/lib/region';
 import { COMPANY, companyLine } from '@/lib/company';
 
-// Small "Prices and terms for: [region]" switch. Pass the value and setter from useRegion().
-export function RegionPicker({ region, onChange, className = '' }) {
+// Read-only line saying which price list applies. The region follows the visitor's location (see lib/region.js).
+export function RegionNote({ region, className = '' }) {
+  if (!region) return null;
   return (
-    <label className={`inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 ${className}`}>
+    <p className={`inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 ${className}`}>
       <Globe className="w-4 h-4" />
-      <span>Prices and terms for</span>
-      <select
-        value={region}
-        onChange={(e) => onChange(e.target.value)}
-        className="rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-sm text-slate-900 dark:text-slate-100"
-        aria-label="Region"
-      >
-        {REGION_ORDER.map((r) => (
-          <option key={r} value={r}>
-            {REGIONS[r].label} ({REGIONS[r].currency})
-          </option>
-        ))}
-      </select>
-    </label>
+      <span>{regionNote(region)}</span>
+    </p>
   );
 }
 
@@ -76,10 +65,10 @@ const NOTICES = {
       'Your statutory rights as a consumer are not affected by our Terms.',
     ],
   },
-  ROW: {
+  INTL: {
     title: 'For customers outside India, the UK and the EU',
     items: () => [
-      REGIONS.ROW.tax,
+      REGIONS.INTL.tax,
       <>
         We do not sell or share your personal information for advertising, and we do not use your files to train AI
         models. Residents of California and other US states with privacy laws can ask to know, correct or delete their
@@ -91,7 +80,8 @@ const NOTICES = {
 };
 
 export default function RegionalCompliance({ region, compact = false }) {
-  const notice = NOTICES[region] || NOTICES.ROW;
+  if (!region) return null;
+  const notice = NOTICES[region] || NOTICES.INTL;
   const entity = companyLine();
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-5">

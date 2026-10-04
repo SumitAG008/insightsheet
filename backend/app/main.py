@@ -7382,6 +7382,17 @@ def ip_lookup(request: Request):
         return fallback
 
 
+@app.get("/api/region")
+def pricing_region(request: Request):
+    """Pricing region for this visitor, decided from their IP. The browser cannot override it;
+    an unknown location gets US dollar pricing."""
+    from app.services.pricing_region import REGION_CURRENCY, region_for_country
+
+    info = ip_lookup(request) or {}
+    region = region_for_country(info.get("country_code"))
+    return {"region": region, "currency": REGION_CURRENCY[region]}
+
+
 # ============================================================================
 # HEALTH CHECK
 # ============================================================================

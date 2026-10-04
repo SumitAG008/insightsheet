@@ -4,11 +4,11 @@ import { FALLBACK_LIMITS, HEADLINE_KEYS, PLAN_ORDER, PLAN_PRICE_UNITS, formatLim
 import { REGIONS, useRegion } from '@/lib/region';
 
 // Side-by-side plan comparison, read from the server's limits table so it always matches what is enforced.
-// Prices are in the visitor's regional currency; pass `region` to share a picker's choice.
+// Prices are in the visitor's regional currency, decided by the server from their location.
 export default function PlanLimitsTable({ currentPlan = null, keys = HEADLINE_KEYS, region: regionProp = null }) {
   const [table, setTable] = useState(FALLBACK_LIMITS);
   const [detectedRegion] = useRegion();
-  const prices = REGIONS[regionProp || detectedRegion]?.prices || REGIONS.ROW.prices;
+  const prices = REGIONS[regionProp || detectedRegion]?.prices || null; // null until the region is known
 
   useEffect(() => {
     let alive = true;
@@ -40,7 +40,7 @@ export default function PlanLimitsTable({ currentPlan = null, keys = HEADLINE_KE
                   {table.plans?.[p]?.name || p}
                   {currentPlan === p && <span className="ml-2 text-xs font-medium text-blue-600 dark:text-blue-400">Your plan</span>}
                 </div>
-                <div className="text-slate-700 dark:text-slate-300 font-medium">{prices[p]}</div>
+                <div className="text-slate-700 dark:text-slate-300 font-medium">{prices ? prices[p] : ' '}</div>
                 {PLAN_PRICE_UNITS[p] && <div className="text-xs text-slate-500 dark:text-slate-400">{PLAN_PRICE_UNITS[p]}</div>}
               </th>
             ))}

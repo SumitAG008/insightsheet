@@ -6,12 +6,12 @@ import Logo from '@/components/branding/Logo';
 import { ArrowRight, Mail, Send, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import PlanLimitsTable from '@/components/subscription/PlanLimitsTable';
-import RegionalCompliance, { RegionPicker } from '@/components/legal/RegionalCompliance';
+import RegionalCompliance, { RegionNote } from '@/components/legal/RegionalCompliance';
 import { REGIONS, useRegion } from '@/lib/region';
 
 export default function Pricing() {
   const [user, setUser] = useState(null);
-  const [region, setRegion] = useRegion();
+  const [region] = useRegion();
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -112,11 +112,11 @@ export default function Pricing() {
                 Every plan includes all tools. Plans differ in how much you can process. Team and Business are billed per user, yearly.
               </p>
             </div>
-            <RegionPicker region={region} onChange={setRegion} />
+            <RegionNote region={region} />
           </div>
           <PlanLimitsTable region={region} />
           <p className="text-xs text-slate-500 mt-2">
-            {REGIONS[region].tax} Monthly allowances reset on the 1st. See the{' '}
+            {region ? `${REGIONS[region].tax} ` : ''}Monthly allowances reset on the 1st. See the{' '}
             <a className="underline" href="/terms#limits">Terms of Service</a> for fair use.
           </p>
         </section>
@@ -125,7 +125,7 @@ export default function Pricing() {
         <section id="organisations" className="mt-10 max-w-5xl mx-auto">
           <h3 className="text-2xl font-bold text-slate-900 mb-2">For universities, hospitals and companies</h3>
           <p className="text-slate-600 mb-4">
-            One annual licence for a department or the whole organisation, from {REGIONS[region].seatYear} per seat per year:
+            One annual licence for a department or the whole organisation, {region ? `from ${REGIONS[region].seatYear} ` : ''}per seat per year:
             seats for your people, an admin page to add and remove them, usage reports, invoice and purchase-order billing, and
             a data processing agreement. Volume and academic discounts apply. Paid pilots available.
           </p>

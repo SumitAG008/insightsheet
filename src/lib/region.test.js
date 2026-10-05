@@ -54,10 +54,12 @@ describe('visitor region', () => {
 
   it('prices every plan in each region currency', () => {
     expect(REGION_ORDER.map((r) => REGIONS[r].currency)).toEqual(['INR', 'GBP', 'EUR', 'USD']);
-    expect(REGIONS.IN.prices.pro).toBe('₹599');
+    expect(REGIONS.IN.prices.pro).toBe('₹1,499');
     expect(REGIONS.GB.prices.team).toBe('£15');
-    expect(REGIONS.EU.prices.pro).toBe('€10');
-    expect(REGIONS.INTL.prices.team).toBe('$18');
+    expect(REGIONS.EU.prices.pro).toBe('€29');
+    expect(REGIONS.GB.prices.pro).toBe('£25');
+    expect(REGIONS.GB.yearly.pro).toBe('£250'); // 2 months free
+    expect(REGIONS.INTL.prices.team).toBe('$19');
     for (const r of REGION_ORDER) expect(Object.keys(REGIONS[r].prices)).toEqual(['free', 'pro', 'team', 'business']);
   });
 });

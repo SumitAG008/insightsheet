@@ -169,6 +169,10 @@ class Subscription(Base):
 
     conversions_used = Column(Integer, default=0)
     conversions_limit = Column(Integer, default=0)  # 0 means not enabled for plan
+
+    # First time this person got a finished file back (activation: did a new signup get value?).
+    first_result_at = Column(DateTime, nullable=True)
+    first_result_tool = Column(String(100), nullable=True)  # the API path, e.g. /api/files/excel-to-ppt
     conversions_reset_at = Column(DateTime, nullable=True)  # Monthly reset marker (UTC)
 
     # Payment information
@@ -664,6 +668,8 @@ def init_db():
                     "amount_paid": "FLOAT",
                     "stripe_customer_id": "VARCHAR(255)",
                     "stripe_subscription_id": "VARCHAR(255)",
+                    "first_result_at": "TIMESTAMP",
+                    "first_result_tool": "VARCHAR(100)",
                 }
                 for col_name, col_type in missing_subscription_columns.items():
                     if col_name in subscription_columns:

@@ -109,7 +109,7 @@ export default function Pricing() {
             <div>
               <h3 className="text-2xl font-bold text-slate-900 mb-2">Plans and limits</h3>
               <p className="text-slate-600">
-                Every plan includes all tools. Plans differ in how much you can process. Team and Business are billed per user, yearly.
+                Every plan includes all tools. Plans differ in how much you can process. Pro is for one person; Team is per user, from 3 users. Pay yearly and get 2 months free.
               </p>
             </div>
             <RegionNote region={region} />

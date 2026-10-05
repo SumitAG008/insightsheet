@@ -14,37 +14,10 @@ const EU_COUNTRIES = new Set([
   'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
 ]);
 
-// List prices per region, before tax. Business is quoted per contract.
-export const REGIONS = {
-  IN: {
-    label: 'India',
-    currency: 'INR',
-    prices: { free: '₹0', pro: '₹599', team: '₹999', business: 'Custom' },
-    seatYear: '₹9,999',
-    tax: 'Prices exclude GST at 18%, which is added to your invoice.',
-  },
-  GB: {
-    label: 'the United Kingdom',
-    currency: 'GBP',
-    prices: { free: '£0', pro: '£9', team: '£15', business: 'Custom' },
-    seatYear: '£150',
-    tax: 'Prices exclude VAT at 20%, which is added where it applies.',
-  },
-  EU: {
-    label: 'the European Union',
-    currency: 'EUR',
-    prices: { free: '€0', pro: '€10', team: '€17', business: 'Custom' },
-    seatYear: '€170',
-    tax: 'Prices exclude VAT. Consumers pay the VAT rate of their country; businesses with a valid VAT number are reverse-charged.',
-  },
-  INTL: {
-    label: null,
-    currency: 'USD',
-    prices: { free: '$0', pro: '$11', team: '$18', business: 'Custom' },
-    seatYear: '$180',
-    tax: 'Prices exclude sales tax, VAT or GST, which is added where your local law requires it.',
-  },
-};
+// List prices per region, before tax. Kept in prices.js (no app imports) so the build's
+// pre-rendered pages (scripts/prerender.mjs) show exactly the same figures.
+export { REGIONS, ANNUAL_NOTE } from './prices.js';
+import { REGIONS } from './prices.js';
 
 export function regionForCountry(code) {
   const c = String(code || '').trim().toUpperCase();

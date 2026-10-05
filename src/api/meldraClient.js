@@ -64,7 +64,7 @@ export const meldraAi = {
 };
 
 /**
- * Backend API Client for InsightSheet-lite
+ * Backend API Client for meldra Insight
  * Connects to Python FastAPI backend
  */
 // SECURITY: Require HTTPS API URL - no localhost fallback in production
@@ -1037,6 +1037,9 @@ export const backendApi = {
       report: async () => jsonOrThrow(await apiCall('/api/admin/licenses/report'), 'Could not load licence report'),
       reportCsv: async () => blobOrThrow(await apiCall('/api/admin/licenses/report.csv'), 'Could not export licence report'),
     },
+
+    // Share of new signups who got a finished file within 24 hours / 7 days
+    activation: async (days = 30) => jsonOrThrow(await apiCall(`/api/admin/metrics/activation?days=${days}`), 'Could not load activation'),
   },
 
   // Health check

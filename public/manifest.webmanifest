@@ -1,12 +1,12 @@
 {
-  "name": "Meldra",
+  "name": "meldra Insight",
   "short_name": "Meldra",
-  "description": "Finance, forecasting and spreadsheet automation",
+  "description": "Data made simple: spreadsheets and PDFs to charts, P&L and board-ready slides",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0b1220",
-  "theme_color": "#4169E1",
+  "theme_color": "#004FCD",
   "icons": [
     {
       "src": "/meldra.png",

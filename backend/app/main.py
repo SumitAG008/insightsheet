@@ -816,7 +816,7 @@ def _env_int(name: str, default: int) -> int:
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="InsightSheet-lite Backend",
+    title="meldra Insight API",
     description="Privacy-first data analysis platform with AI-powered insights",
     version="1.0.0"
 )
@@ -860,10 +860,39 @@ async def _limit_request_body_size(request: Request, call_next):
 _FILE_WORK_PREFIXES = ("/api/files/", "/api/convert/", "/api/pdf/", "/api/v1/convert/", "/api/lakehouse/", "/api/invoices/", "/api/developer/files/")
 
 
+# People whose first finished file is already recorded (saves a database write on every later job).
+_FIRST_RESULT_RECORDED: set = set()
+
+
+def _record_first_result(email: str, tool: str) -> None:
+    """Note the first time someone gets a finished file back; only the first time is ever stored."""
+    from sqlalchemy import text
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        db.execute(
+            text("UPDATE subscriptions SET first_result_at = :now, first_result_tool = :tool "
+                 "WHERE user_email = :email AND first_result_at IS NULL"),
+            {"now": datetime.utcnow(), "tool": tool[:100], "email": email},
+        )
+        db.commit()
+        _FIRST_RESULT_RECORDED.add(email)
+    except Exception as e:
+        db.rollback()
+        logger.warning(f"First-result note failed: {type(e).__name__}")
+    finally:
+        db.close()
+
+
 @app.middleware("http")
 async def _release_memory_after_file_work(request: Request, call_next):
     """After a file request has been answered (the download included), hand its memory back."""
     response = await call_next(request)
+    if request.method == "POST" and request.url.path.startswith(_FILE_WORK_PREFIXES) and response.status_code < 300:
+        _, email = _guard_identity(request)
+        if email and email not in _FIRST_RESULT_RECORDED:
+            await asyncio.to_thread(_record_first_result, email, request.url.path)
     if request.method == "POST" and request.url.path.startswith(_FILE_WORK_PREFIXES):
         from starlette.background import BackgroundTasks
 
@@ -1002,6 +1031,10 @@ app.include_router(lakehouse_router)
 # Organisations, seats and licences (enterprise and university deals)
 from app.routes.organizations import router as organizations_router  # noqa: E402
 app.include_router(organizations_router)
+
+# Growth numbers for Meldra staff (activation)
+from app.routes.metrics import router as metrics_router  # noqa: E402
+app.include_router(metrics_router)
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -7403,7 +7436,7 @@ def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
-        "service": "InsightSheet-lite Backend",
+        "service": "meldra Insight API",
         "version": "1.0.0",
         "timestamp": datetime.utcnow().isoformat()
     }
@@ -7413,7 +7446,7 @@ def health_check():
 def root():
     """Root endpoint"""
     return {
-        "message": "InsightSheet-lite Backend API",
+        "message": "meldra Insight API",
         "version": "1.0.0",
         "docs": "/docs",
         "health": "/health"

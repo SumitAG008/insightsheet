@@ -27,10 +27,10 @@ pricing page, Terms (section 13) and Privacy page. Settings: `src/lib/region.js`
 
 | Region | Currency | Pro a month | Team per user a month | Seat per year | Tax shown | Legal notice |
 |---|---|---|---|---|---|---|
-| India | INR | ₹599 | ₹999 | ₹9,999 | + GST 18% | DPDP Act 2023, IT Act 2000, Grievance Officer, Data Protection Board |
-| United Kingdom | GBP | £9 | £15 | £150 | + VAT 20% | UK GDPR, DPA 2018, ICO, 14-day consumer cancellation |
-| European Union | EUR | €10 | €17 | €170 | + VAT (country rate / reverse charge) | GDPR, national authority, 14-day withdrawal |
-| Rest of world | USD | $11 | $18 | $180 | + local sales tax | US state privacy rights (e.g. California) |
+| India | INR | ₹1,499 | ₹999 | ₹9,990 | + GST 18% | DPDP Act 2023, IT Act 2000, Grievance Officer, Data Protection Board |
+| United Kingdom | GBP | £25 | £15 | £150 | + VAT 20% | UK GDPR, DPA 2018, ICO, 14-day consumer cancellation |
+| European Union | EUR | €29 | €17 | €170 | + VAT (country rate / reverse charge) | GDPR, national authority, 14-day withdrawal |
+| Rest of world | USD | $29 | $19 | $190 | + local sales tax | US state privacy rights (e.g. California) |
 
 Company details appear in the footer, Terms and notices once set in Vercel (Project → Settings →
 Environment Variables), then redeploy. Unset values are not shown.

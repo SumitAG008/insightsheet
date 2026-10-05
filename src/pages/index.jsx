@@ -64,7 +64,9 @@ import AdminLicenses from "./AdminLicenses";
 import Terms from "./Terms";
 import Faq from "./Faq";
 
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { descriptionFor, titleFor } from '@/lib/seo';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 
 const PAGES = {
@@ -156,6 +158,13 @@ const INSIGHT_BASE = 'https://insight.meldra.ai';
 // Create a wrapper component that uses useLocation inside the Router context
 function PagesContent() {
     const location = useLocation();
+
+    // Tab title and description for every page (the build also writes them into public pages' HTML).
+    useEffect(() => {
+        document.title = titleFor(location.pathname);
+        const meta = document.querySelector('meta[name="description"]');
+        if (meta) meta.setAttribute('content', descriptionFor(location.pathname));
+    }, [location.pathname]);
     const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
     const isDeveloperDomain = hostname === 'developer.meldra.ai';
     const isApiDeveloperDomain = hostname === 'api.developer.meldra.ai';

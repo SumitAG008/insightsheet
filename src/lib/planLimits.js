@@ -7,7 +7,7 @@ export const PLAN_ORDER = ['free', 'pro', 'team', 'business'];
 export const PLAN_PRICE_UNITS = {
   free: '',
   pro: 'per month',
-  team: 'per user per month',
+  team: 'per user per month, from 3 users',
   business: 'annual licence',
 };
 
@@ -27,7 +27,7 @@ export const FALLBACK_LIMITS = {
   keys: LIMIT_LABELS,
   plans: {
     free: { name: 'Free', limits: { file_size_mb: 10, spreadsheet_rows: 50000, pdf_pages: 50, ocr_pages: 5, conversions_per_month: 20, ai_queries_per_month: 20, monthly_upload_mb: 200, concurrent_jobs: 1, requests_per_minute: 120 } },
-    pro: { name: 'Pro', limits: { file_size_mb: 50, spreadsheet_rows: 300000, pdf_pages: 300, ocr_pages: 50, conversions_per_month: 500, ai_queries_per_month: 300, monthly_upload_mb: 5000, concurrent_jobs: 2, requests_per_minute: 240 } },
+    pro: { name: 'Pro', limits: { file_size_mb: 100, spreadsheet_rows: 300000, pdf_pages: 500, ocr_pages: 100, conversions_per_month: 1000, ai_queries_per_month: 500, monthly_upload_mb: 10000, concurrent_jobs: 2, requests_per_minute: 240 } },
     team: { name: 'Team', limits: { file_size_mb: 100, spreadsheet_rows: 1000000, pdf_pages: 1000, ocr_pages: 100, conversions_per_month: 2000, ai_queries_per_month: 1000, monthly_upload_mb: 20000, concurrent_jobs: 3, requests_per_minute: 300 } },
     business: { name: 'Business', limits: { file_size_mb: 200, spreadsheet_rows: 2000000, pdf_pages: 2000, ocr_pages: 300, conversions_per_month: 5000, ai_queries_per_month: 3000, monthly_upload_mb: 50000, concurrent_jobs: 4, requests_per_minute: 600 } },
   },

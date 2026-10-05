@@ -138,7 +138,7 @@ const DICTIONARY = {
 
     overview_trusted_from_excel_title: 'Trusted from Excel (Strict Correctness)',
     overview_excel_help_title: 'Formula files: how to make charts trustworthy',
-    overview_excel_help_body_1: "If your workbook contains formulas, InsightSheet relies on Excel's cached results. If the file was saved before formulas were calculated, charts may be blocked to avoid showing misleading numbers.",
+    overview_excel_help_body_1: "If your workbook contains formulas, meldra Insight relies on Excel's cached results. If the file was saved before formulas were calculated, charts may be blocked to avoid showing misleading numbers.",
     overview_excel_help_option1_title: 'Option 1 (recommended): Calculate + Save in Excel',
     overview_excel_help_option1_step1: '1) Open the workbook in Excel.',
     overview_excel_help_option1_step2: '2) Let calculations finish (you should see values populated, not blanks/zeros).',
@@ -977,7 +977,7 @@ This is most useful when connecting to databases or building a reusable data mod
 
     overview_trusted_from_excel_title: 'Verifiziert aus Excel (Strikte Korrektheit)',
     overview_excel_help_title: 'Formeldateien: So werden Charts zuverlässig',
-    overview_excel_help_body_1: 'Wenn deine Arbeitsmappe Formeln enthält, verwendet InsightSheet Excels Zwischenspeicher (cached results). Wurde die Datei gespeichert, bevor die Berechnung abgeschlossen war, können Charts blockiert werden, um irreführende Zahlen zu vermeiden.',
+    overview_excel_help_body_1: 'Wenn deine Arbeitsmappe Formeln enthält, verwendet meldra Insight Excels Zwischenspeicher (cached results). Wurde die Datei gespeichert, bevor die Berechnung abgeschlossen war, können Charts blockiert werden, um irreführende Zahlen zu vermeiden.',
     overview_excel_help_option1_title: 'Option 1 (empfohlen): Berechnen + in Excel speichern',
     overview_excel_help_option1_step1: '1) Öffne die Arbeitsmappe in Excel.',
     overview_excel_help_option1_step2: '2) Warte, bis die Berechnungen abgeschlossen sind (Werte sollten gefüllt sein, nicht leer/0).',
@@ -1757,7 +1757,7 @@ Das ist besonders nützlich bei Datenbankverbindungen oder beim Aufbau eines wie
 
     overview_trusted_from_excel_title: 'Fiable depuis Excel (Rigueur stricte)',
     overview_excel_help_title: 'Fichiers avec formules : rendre les graphiques fiables',
-    overview_excel_help_body_1: 'Si votre classeur contient des formules, InsightSheet s’appuie sur les résultats mis en cache par Excel. Si le fichier a été enregistré avant la fin des calculs, les graphiques peuvent être bloqués pour éviter des chiffres trompeurs.',
+    overview_excel_help_body_1: 'Si votre classeur contient des formules, meldra Insight s’appuie sur les résultats mis en cache par Excel. Si le fichier a été enregistré avant la fin des calculs, les graphiques peuvent être bloqués pour éviter des chiffres trompeurs.',
     overview_excel_help_option1_title: 'Option 1 (recommandée) : Calculer + Enregistrer dans Excel',
     overview_excel_help_option1_step1: '1) Ouvrez le classeur dans Excel.',
     overview_excel_help_option1_step2: '2) Attendez la fin des calculs (les valeurs doivent être remplies, pas vides/0).',

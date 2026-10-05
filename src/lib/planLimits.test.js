@@ -11,9 +11,9 @@ describe('plan limits shown on the website', () => {
 
   it('matches the published Free / Pro / Team figures', () => {
     const { free, pro, team } = FALLBACK_LIMITS.plans;
-    expect([free.limits.file_size_mb, pro.limits.file_size_mb, team.limits.file_size_mb]).toEqual([10, 50, 100]);
-    expect([free.limits.conversions_per_month, pro.limits.conversions_per_month, team.limits.conversions_per_month]).toEqual([20, 500, 2000]);
-    expect([free.limits.ai_queries_per_month, pro.limits.ai_queries_per_month, team.limits.ai_queries_per_month]).toEqual([20, 300, 1000]);
+    expect([free.limits.file_size_mb, pro.limits.file_size_mb, team.limits.file_size_mb]).toEqual([10, 100, 100]);
+    expect([free.limits.conversions_per_month, pro.limits.conversions_per_month, team.limits.conversions_per_month]).toEqual([20, 1000, 2000]);
+    expect([free.limits.ai_queries_per_month, pro.limits.ai_queries_per_month, team.limits.ai_queries_per_month]).toEqual([20, 500, 1000]);
   });
 
   it('formats limits for people', () => {

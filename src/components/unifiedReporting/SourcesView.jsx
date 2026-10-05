@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, Database, FileSpreadsheet, Link2, Loader2, Plug, RefreshCw, Server, Trash2, Upload, Warehouse, X } from 'lucide-react';
@@ -19,11 +19,13 @@ export function UploadZone({ onFiles, busy, compact, lake, storeInLake, onStoreI
       onDragOver={(e) => { e.preventDefault(); setOver(true); }}
       onDragLeave={() => setOver(false)}
       onDrop={(e) => { e.preventDefault(); setOver(false); onFiles([...e.dataTransfer.files]); }}
-      className={`rounded-2xl border-2 border-dashed text-center transition-colors ${over ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900'} ${compact ? 'px-4 py-5' : 'px-6 py-10'}`}
+      className={`rounded-2xl border-2 border-dashed text-center transition-colors ${over ? 'border-[#004FCD] bg-blue-50 dark:bg-blue-950' : 'border-blue-200 bg-gradient-to-b from-blue-50/70 to-white hover:border-[#004FCD] dark:border-blue-900 dark:from-blue-950/30 dark:to-slate-900'} ${compact ? 'px-4 py-5' : 'px-6 py-10'}`}
     >
       <input ref={input} type="file" multiple accept={toLake ? '.csv,.tsv,.xlsx,.xls,.parquet' : '.csv,.tsv,.xlsx,.xls'} className="hidden" onChange={(e) => { onFiles([...e.target.files]); e.target.value = ''; }} />
-      {busy ? <Loader2 className="mx-auto h-7 w-7 animate-spin text-blue-600" /> : <Upload className="mx-auto h-7 w-7 text-blue-600" />}
-      <p className="mt-2 font-medium" role="status" aria-live="polite">
+      <span className={`mx-auto grid place-items-center rounded-2xl bg-[#004FCD] text-white shadow-lg shadow-blue-900/20 ${compact ? 'h-10 w-10' : 'h-14 w-14'}`}>
+        {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
+      </span>
+      <p className={`mt-3 font-semibold text-slate-900 dark:text-white ${compact ? '' : 'text-lg'}`} role="status" aria-live="polite">
         {busy ? progress?.text || (toLake ? 'Storing in the Meldra lakehouse…' : 'Reading your files…') : 'Drop exports from several systems here'}
       </p>
       {busy && (
@@ -36,7 +38,7 @@ export function UploadZone({ onFiles, busy, compact, lake, storeInLake, onStoreI
           ? `CSV, Excel or Parquet, up to ${lake.max_upload_mb || 1024} MB each. Stored as Apache Iceberg tables in your Meldra lakehouse, available on every device.`
           : 'CSV or Excel. One file (or sheet) per system, e.g. an HR export, an expenses export, a sales export. Files stay in this browser.'}
       </p>
-      <Button className="mt-4" variant={compact ? 'outline' : 'default'} disabled={busy} onClick={() => input.current?.click()}>Choose files</Button>
+      <Button className={`mt-4 ${compact ? '' : 'bg-[#004FCD] hover:bg-[#0043ad]'}`} variant={compact ? 'outline' : 'default'} disabled={busy} onClick={() => input.current?.click()}>Choose files</Button>
       <p className="mt-2 text-xs text-slate-500">
         Select several files at once (Ctrl or ⌘ + click), or add them one after another.{' '}
         <a className="font-medium text-blue-700 underline dark:text-blue-400" href="/unified-reporting-test-pack/README.html" target="_blank" rel="noreferrer">Download a 4-file test pack</a>
@@ -203,11 +205,12 @@ RelationshipForm.propTypes = { sources: PropTypes.array.isRequired, onAdd: PropT
 
 export default function SourcesView({
   m, busy, onFiles, onConnectDatabase, onRefreshSource, onAddSource, onRefreshApiSource, onLoadSample, onUpdateSource, onRemoveSource, onRenameColumn,
-  onAddRelationship, onRemoveRelationship, onClearAll, lake, storeInLake, onStoreInLake, onMoveToLake, lakeLinks, progress,
+  onAddRelationship, onRemoveRelationship, onClearAll, lake, storeInLake, onStoreInLake, onMoveToLake, lakeLinks, progress, initialConnect, onConnectOpened,
 }) {
   const name = (id) => m.sources.find((s) => s.id === id)?.name || '?';
   // Which connector form is open: { kind: 'api' | 'database', refresh?: source }.
-  const [connect, setConnect] = useState(null);
+  const [connect, setConnect] = useState(initialConnect || null);
+  useEffect(() => { if (initialConnect) onConnectOpened?.(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const done = (src, msg) => {
     if (connect?.refresh) onRefreshApiSource(connect.refresh.id, src, msg);
     else onAddSource(src, msg);
@@ -325,6 +328,8 @@ SourcesView.propTypes = {
   onRemoveSource: PropTypes.func.isRequired,
   onRenameColumn: PropTypes.func.isRequired,
   onAddRelationship: PropTypes.func.isRequired,
+  initialConnect: PropTypes.object,
+  onConnectOpened: PropTypes.func,
   onRemoveRelationship: PropTypes.func.isRequired,
   onClearAll: PropTypes.func.isRequired,
   lake: PropTypes.object,

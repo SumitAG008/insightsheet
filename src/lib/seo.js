@@ -135,8 +135,7 @@ export function descriptionFor(pathname) {
 }
 
 // The <head> tags for one public page (title, description, canonical, link previews).
-export function headTags(path) {
-  const page = PUBLIC_PAGES[path];
+export function headTags(path, page = PUBLIC_PAGES[path]) {
   const url = SITE_URL + (path === '/' ? '/' : path);
   const image = `${SITE_URL}/meldra.png`;
   return [

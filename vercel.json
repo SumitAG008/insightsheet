@@ -62,6 +62,18 @@
       "destination": "/seo/disclaimer.html"
     },
     {
+      "source": "/help",
+      "destination": "/seo/help.html"
+    },
+    {
+      "source": "/Help",
+      "destination": "/seo/help.html"
+    },
+    {
+      "source": "/help/:slug",
+      "destination": "/seo/help/:slug.html"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

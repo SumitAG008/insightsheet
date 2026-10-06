@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
 import { toast } from 'sonner';
-import { Copy, ExternalLink, Plus, Search, Sparkles, Video } from 'lucide-react';
+import { Briefcase, Copy, ExternalLink, Plus, Search, Sparkles, Video } from 'lucide-react';
 import { legalApi } from '@/lib/legal/api';
 import { fmtDate, fmtMoney, isoToday } from '@/lib/legal/format';
 import { Btn, Card, Chip, Empty, Field, LoadState, Panel, SectionTitle, Select, TextArea, TextInput, useLegal, useLoad } from './shared';
@@ -358,19 +358,33 @@ export function MatterDetail({ matterId, onClose, onChanged }) {
 MatterDetail.propTypes = { matterId: PropTypes.number.isRequired, onClose: PropTypes.func.isRequired, onChanged: PropTypes.func };
 
 // --- list -----------------------------------------------------------------------------------
+function NextDate({ iso }) {
+  const today = isoToday();
+  const cls = !iso ? 'text-slate-400' : iso < today ? 'text-red-600 font-semibold' : iso === today ? 'text-blue-700 dark:text-blue-400 font-semibold' : 'text-slate-900 dark:text-slate-100';
+  return <span className={`tabular-nums ${cls}`}>{fmtDate(iso)}</span>;
+}
+
+NextDate.propTypes = { iso: PropTypes.string };
+
 export function MattersTab({ refreshKey, onChanged }) {
-  const { t, profile, openMatter } = useLegal();
+  const { t, profile, openMatter, goTab } = useLegal();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('open');
   const [court, setCourt] = useState('');
   const [creating, setCreating] = useState(false);
-  const state = useLoad(() => legalApi.matters({ status, court }), [status, court, refreshKey]);
+  const state = useLoad(() => legalApi.matters({ status }), [status, refreshKey]);
+  const all = state.data?.matters || [];
+  const courts = useMemo(() => {
+    const seen = new Map();
+    all.forEach((m) => m.court_code && seen.set(m.court_code, m.court_name || m.court_code));
+    return [...seen.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  }, [all]);
   const rows = useMemo(() => {
-    const all = state.data?.matters || [];
     const ql = q.trim().toLowerCase();
-    if (!ql) return all;
-    return all.filter((m) => [m.title, m.client, m.reference, m.court_name, ...(Object.values(m.references || {}))].join(' ').toLowerCase().includes(ql));
-  }, [state.data, q]);
+    return all.filter((m) => (!court || m.court_code === court)
+      && (!ql || [m.title, m.client, m.reference, m.court_name, m.lawyer_email, ...(Object.values(m.references || {}))].join(' ').toLowerCase().includes(ql)));
+  }, [all, q, court]);
+  const due = (m) => Math.max(0, Number(m.fees_billed || 0) - Number(m.fees_collected || 0));
 
   return (
     <div className="space-y-3">
@@ -381,18 +395,67 @@ export function MattersTab({ refreshKey, onChanged }) {
         </div>
         <Btn onClick={() => setCreating(true)} aria-label={t('matters_new')}><Plus className="w-4 h-4" /><span className="hidden sm:inline">{t('matters_new')}</span></Btn>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
         {['open', 'disposed', ''].map((s) => (
           <Chip key={s || 'all'} active={status === s} onClick={() => setStatus(s)}>{s ? t(`status_${s}`) : t('all')}</Chip>
         ))}
-        <select value={court} onChange={(e) => setCourt(e.target.value)} className="rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3">
+        <select value={court} onChange={(e) => setCourt(e.target.value)} className="shrink-0 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm px-3 py-1.5">
           <option value="">{t('f_court')}: {t('all')}</option>
-          {courtOptions(profile).map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+          {courts.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
         </select>
+        {state.data ? <span className="ml-auto shrink-0 text-xs text-slate-500">{rows.length} / {all.length}</span> : null}
       </div>
       <LoadState state={state} t={t} />
-      {state.data && !rows.length ? <Empty>{t('matters_none')}</Empty> : null}
-      <ul className="space-y-2">
+
+      {state.data && !all.length && !q && status !== 'disposed' ? (
+        <Card className="text-center py-10">
+          <Briefcase className="w-9 h-9 mx-auto text-slate-300 mb-2" />
+          <div className="font-semibold text-slate-800 dark:text-slate-100">{t('matters_empty_title')}</div>
+          <p className="text-sm text-slate-500 max-w-md mx-auto mt-1 mb-4">{t('matters_none')}</p>
+          <div className="flex flex-wrap justify-center gap-2">
+            <Btn onClick={() => setCreating(true)}><Plus className="w-4 h-4" />{t('matters_new')}</Btn>
+            <Btn variant="secondary" onClick={() => goTab('more')}>{t('more_import')}</Btn>
+          </div>
+        </Card>
+      ) : null}
+      {state.data && all.length && !rows.length ? <Empty>{t('none')}</Empty> : null}
+
+      {rows.length ? (
+        <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 dark:bg-slate-800/60 text-left text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-2.5 font-semibold">{t('col_matter')}</th>
+                <th className="px-3 py-2.5 font-semibold">{t('f_court')}</th>
+                <th className="px-3 py-2.5 font-semibold">{t('f_stage')}</th>
+                <th className="px-3 py-2.5 font-semibold whitespace-nowrap">{t('col_next')}</th>
+                <th className="px-3 py-2.5 font-semibold">{t('f_lawyer').replace(/\s*\(.*\)/, '')}</th>
+                <th className="px-4 py-2.5 font-semibold text-right whitespace-nowrap">{t('col_fees_due')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {rows.map((m) => (
+                <tr key={m.id} onClick={() => openMatter(m.id)} className="cursor-pointer hover:bg-blue-50/50 dark:hover:bg-slate-800/60">
+                  <td className="px-4 py-3 max-w-[18rem]">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100 truncate">{m.title}</div>
+                    <div className="text-xs text-slate-500 truncate">{[m.reference, m.client].filter(Boolean).join(' · ') || '—'}</div>
+                  </td>
+                  <td className="px-3 py-3 text-slate-700 dark:text-slate-300 max-w-[11rem] truncate">{m.court_name || '—'}</td>
+                  <td className="px-3 py-3">
+                    {m.stage ? <span className="px-2 py-0.5 rounded-full text-xs bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-200 whitespace-nowrap">{stageLabel(profile, m.stage)}</span> : <span className="text-slate-400">—</span>}
+                    {m.status !== 'open' ? <span className="ml-1 px-2 py-0.5 rounded-full text-xs bg-slate-100 dark:bg-slate-800">{t(`status_${m.status}`)}</span> : null}
+                  </td>
+                  <td className="px-3 py-3 whitespace-nowrap"><NextDate iso={m.next_hearing} /></td>
+                  <td className="px-3 py-3 text-slate-600 dark:text-slate-300 max-w-[10rem] truncate" title={m.lawyer_email || ''}>{m.lawyer_email || '—'}</td>
+                  <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">{due(m) ? fmtMoney(due(m), m.country) : <span className="text-slate-400">—</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+
+      <ul className="space-y-2 md:hidden">
         {rows.map((m) => (
           <li key={m.id}>
             <button type="button" onClick={() => openMatter(m.id)} className="w-full text-left rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 hover:border-blue-400">
@@ -402,7 +465,7 @@ export function MattersTab({ refreshKey, onChanged }) {
                   <div className="text-xs text-slate-500 truncate">{m.court_name || '—'}{m.reference ? ` · ${m.reference}` : ''}</div>
                 </div>
                 <div className="text-right shrink-0">
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{fmtDate(m.next_hearing)}</div>
+                  <div className="text-sm"><NextDate iso={m.next_hearing} /></div>
                   <div className="text-xs text-slate-500">{stageLabel(profile, m.stage)}</div>
                 </div>
               </div>

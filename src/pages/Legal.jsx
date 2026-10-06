@@ -99,11 +99,11 @@ export default function Legal() {
     setLangState(l);
     writeStore(LANG_KEY, l);
   }, []);
-  const changeTab = (id) => {
+  const changeTab = useCallback((id) => {
     setTab(id);
     writeStore(TAB_KEY, id);
     window.scrollTo?.({ top: 0 });
-  };
+  }, []);
   const bump = useCallback(() => setRefreshKey((k) => k + 1), []);
   const reloadAll = useCallback(() => {
     bump();
@@ -122,8 +122,10 @@ export default function Legal() {
       settings: data.settings,
       me: data.me,
       openMatter: (id) => setMatterId(id),
+      goTab: changeTab,
+      reloadAll,
     };
-  }, [data, effectiveLang, setLang]);
+  }, [data, effectiveLang, setLang, changeTab, reloadAll]);
 
   if (boot.loading) return <div className="py-20 text-center text-slate-500">{translate(effectiveLang || 'en', 'loading')}</div>;
   if (boot.locked) return LEGAL_PUBLIC ? <Locked lang={effectiveLang || 'en'} /> : <Navigate to="/Dashboard" replace />;
@@ -140,11 +142,14 @@ export default function Legal() {
 
   return (
     <LegalContext.Provider value={ctx}>
-      <div className={`max-w-5xl mx-auto px-4 pt-4 ${native ? 'pb-28' : 'pb-28 md:pb-10'}`}>
+      <div className={`max-w-6xl mx-auto px-4 pt-4 ${native ? 'pb-28' : 'pb-28 md:pb-10'}`}>
         <header className="flex items-center justify-between gap-3 mb-4">
           <div className="min-w-0">
             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2"><Scale className="w-5 h-5 text-blue-700" />{t('app_name')}</h1>
-            <p className="text-xs text-slate-500 truncate">{data.settings.firm_name || data.me.email} · {data.profile.name}</p>
+            <p className="text-xs text-slate-500 truncate flex items-center gap-2">
+              <span className="truncate">{data.settings.firm_name || data.me.email}</span>
+              <span className="shrink-0 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">{data.profile.country === 'GB' ? 'UK' : 'India'}</span>
+            </p>
           </div>
           <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden text-sm shrink-0">
             {['en', 'hi'].map((l) => (

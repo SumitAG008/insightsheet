@@ -22,7 +22,10 @@ export default function Login() {
   const [deviceLimit, setDeviceLimit] = useState(null); // { message, devices } when signed in on too many devices
 
   // Get the page user was trying to access (if any)
-  const from = location.state?.from?.pathname || '/dashboard';
+  // Where to go after signing in: the page that sent you here, or ?next=/path (same-site paths only).
+  const nextParam = new URLSearchParams(location.search).get('next') || '';
+  const safeNext = /^\/(?!\/)[\w\-/]*$/.test(nextParam) ? nextParam : '';
+  const from = location.state?.from?.pathname || safeNext || '/dashboard';
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -101,6 +101,9 @@ def sign_pdf_with_certificate(
     from pyhanko.sign import fields, signers
 
     signer = _load_signer(pfx, password)
+    # PyMuPDF 1.24 writes the free-list head as generation 65536 (the standard says 65535), which
+    # strict PDF validators reject. Same length, so no offsets move.
+    pdf_bytes = pdf_bytes.replace(b"0000000000 65536 f", b"0000000000 65535 f", 1)
     try:
         empty = _empty_signature_fields(pdf_bytes)
     except Exception:

@@ -710,6 +710,17 @@ def _is_signature_blank(f: "Field") -> bool:
             and not re.search(r"\bdate\b|दिनांक", label, re.I))
 
 
+def _make_signature_field(doc: fitz.Document, xref: int) -> None:
+    """Turn a freshly added (empty) text field into an unsigned signature field with a blank appearance."""
+    doc.xref_set_key(xref, "FT", "/Sig")
+    # Drop the text-field keys entirely: signing tools read any /V, even /V null, as "already signed".
+    obj = re.sub(r"^\s*/(?:V|DV|DA|MaxLen|Ff)\b[^\n]*\n", "", doc.xref_object(xref, compressed=False), flags=re.M)
+    doc.update_object(xref, obj)
+    kind, ref = doc.xref_get_key(xref, "AP/N")
+    if kind == "xref":
+        doc.update_stream(int(ref.split()[0]), b" ")
+
+
 def make_fillable_pdf(data: bytes, filename: str = "", ocr_lang: Optional[str] = None, max_pages: int = 25) -> Tuple[bytes, Dict[str, Any]]:
     """Return (fillable PDF bytes, report)."""
     lang = _normalize_ocr_lang(ocr_lang)
@@ -745,8 +756,9 @@ def make_fillable_pdf(data: bytes, filename: str = "", ocr_lang: Optional[str] =
                     report["checkboxes"] += 1
                 elif _is_signature_blank(f):
                     # A real signature field: Acrobat, a DSC token or an eSign app can sign it digitally,
-                    # and meldra's editor places a drawn signature there.
-                    wdg.field_type = fitz.PDF_WIDGET_TYPE_SIGNATURE
+                    # and meldra's editor places a drawn signature there. Added as a text field and then
+                    # turned into a signature field: PyMuPDF 1.24 fails to create signature widgets.
+                    wdg.field_type = fitz.PDF_WIDGET_TYPE_TEXT
                     f.kind = "signature"
                     report["signatures"] += 1
                 else:
@@ -765,10 +777,7 @@ def make_fillable_pdf(data: bytes, filename: str = "", ocr_lang: Optional[str] =
                     report["fields"] += 1
                 added = page.add_widget(wdg)
                 if f.kind == "signature" and added is not None:
-                    # Empty appearance: MuPDF's default is an orange "SIGN" tag, which other readers would print.
-                    kind, ref = doc.xref_get_key(added.xref, "AP/N")
-                    if kind == "xref":
-                        doc.update_stream(int(ref.split()[0]), b" ")
+                    _make_signature_field(doc, added.xref)
                 report["field_list"].append({"name": f.name, "label": f.label, "page": f.page, "type": f.kind})
         out = doc.tobytes(garbage=3, deflate=True, encryption=fitz.PDF_ENCRYPT_NONE)
         return out, report

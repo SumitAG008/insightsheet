@@ -34,6 +34,8 @@ import { applyPreferences, applyPrimaryColor, applyTheme, getUserPreferences } f
 import { useI18n } from '@/lib/i18n';
 import { companyLine } from '@/lib/company';
 import { visibleNav, isEntryActive } from '@/lib/navigation';
+import { useLegalAccess } from '@/lib/legal/api';
+import { isLegalOperator } from '@/lib/legal/launch';
 import RenewalBanner from '@/components/subscription/RenewalBanner';
 
 const NAV_ICONS = {
@@ -287,7 +289,9 @@ export default function Layout({ children, currentPageName }) {
   }, [user]);
   
   const isActive = (path) => location.pathname === path;
-  const navEntries = visibleNav({ agenticWorkflows: canAccessAgenticWorkflows });
+  const legalLicensed = useLegalAccess(user?.email);
+  const canAccessLegal = legalLicensed || isLegalOperator(user?.email);
+  const navEntries = visibleNav({ agenticWorkflows: canAccessAgenticWorkflows, legal: canAccessLegal });
   // Existing translations (nav_migration, nav_unified_reporting…) are used where they exist.
   const navLabel = (entry) => {
     const key = `nav_${entry.id}`;
@@ -314,14 +318,14 @@ export default function Layout({ children, currentPageName }) {
               />
             </Link>
 
-            <div className="hidden xl:flex items-center gap-1 [&>a>svg:first-child]:hidden [&>button>svg:first-child]:hidden 2xl:[&>a>svg:first-child]:block 2xl:[&>button>svg:first-child]:block">
+            <div className="hidden xl:flex items-center gap-0.5 min-[1800px]:gap-1 whitespace-nowrap [&>a>svg:first-child]:hidden [&>button>svg:first-child]:hidden min-[1800px]:[&>a>svg:first-child]:block min-[1800px]:[&>button>svg:first-child]:block">
               {/* Show menu items only when user is logged in */}
               {user && user.email ? (
                 <>
                   {navEntries.map((entry) => {
                     const Icon = NAV_ICONS[entry.icon];
                     const active = isEntryActive(entry, location.pathname);
-                    const cls = `flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${active ? NAV_ACTIVE : NAV_IDLE}`;
+                    const cls = `flex items-center gap-2 px-2.5 min-[1800px]:px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${active ? NAV_ACTIVE : NAV_IDLE}`;
                     if (!entry.items) {
                       return (
                         <Link key={entry.id} to={entry.to} className={cls}>
@@ -440,7 +444,7 @@ export default function Layout({ children, currentPageName }) {
               )}
 
               {user && user.email ? (
-                <div className="ml-4 flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
+                <div className="ml-2 min-[1800px]:ml-4 flex items-center gap-3 pl-2 min-[1800px]:pl-4 border-l border-slate-200 dark:border-slate-700">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <button
@@ -448,13 +452,14 @@ export default function Layout({ children, currentPageName }) {
                         className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                         title="Account"
                       >
-                        <span className="2xl:hidden grid h-7 w-7 place-items-center rounded-full bg-blue-600 text-xs font-semibold text-white" aria-hidden="true">{user.email.charAt(0).toUpperCase()}</span>
-                        <span className="text-sm text-slate-700 dark:text-slate-300 font-medium hidden 2xl:inline max-w-[180px] truncate">{user.email}</span>
+                        <span className="grid h-7 w-7 place-items-center rounded-full bg-blue-600 text-xs font-semibold text-white" aria-hidden="true">{user.email.charAt(0).toUpperCase()}</span>
+                        <span className="sr-only">{user.email}</span>
                         <ChevronDown className="w-4 h-4 opacity-70" />
                       </button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="min-w-[220px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
                       <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_account')}</DropdownMenuLabel>
+                      <div className="px-2 pb-2 text-sm text-slate-700 dark:text-slate-200 truncate max-w-[260px]" title={user.email}>{user.email}</div>
                       <DropdownMenuItem onClick={openOnboarding} className="flex items-center gap-2 cursor-pointer">
                         <HelpCircle className="w-4 h-4" />
                         {t('nav_onboarding')}

@@ -68,7 +68,7 @@ export default function SupportChatWidget({ page, className }) {
 
   return (
     <div className={className || ''}>
-      <div className="fixed bottom-6 right-6 z-[60]">
+      <div className="support-chat-anchor fixed bottom-6 right-6 z-[60]">
         {open && (
           <div className="mb-4 w-[360px] max-w-[calc(100vw-3rem)] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">

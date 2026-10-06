@@ -4,9 +4,9 @@ import { SOLUTIONS } from './solutions';
 import { renewalNotice } from './renewal';
 
 describe('main menu', () => {
-  it('has the seven entries in order', () => {
+  it('has the seven entries in order, then licensed add-ons', () => {
     expect(NAV.map((e) => e.id)).toEqual([
-      'home', 'workbench', 'unified_reporting', 'migration', 'documents', 'solutions', 'automations',
+      'home', 'workbench', 'unified_reporting', 'migration', 'documents', 'solutions', 'automations', 'legal',
     ]);
   });
 

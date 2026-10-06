@@ -1331,3 +1331,51 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
     except Exception as e:
         logger.warning(f"Login OTP email via SMTP failed: {type(e).__name__}: {e}")
         return False
+
+
+async def send_simple_email(to: list, subject: str, text_body: str) -> bool:
+    """Send a short plain-text email (renewal reminders, renewal requests). Resend first, then SMTP."""
+    recipients = [r for r in (to or []) if r]
+    if not recipients:
+        return False
+    resend_api_key = os.getenv("RESEND_API_KEY", "")
+    if resend_api_key and RESEND_AVAILABLE:
+        try:
+            resend.api_key = resend_api_key
+            from_email = os.getenv("SMTP_FROM_EMAIL", os.getenv("SMTP_USER", "onboarding@resend.dev"))
+            await asyncio.to_thread(resend.Emails.send, {
+                "from": from_email,
+                "to": recipients,
+                "subject": subject,
+                "text": text_body,
+            })
+            return True
+        except Exception as e:
+            logger.warning(f"Email via Resend failed: {type(e).__name__}: {e}")
+
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_password = os.getenv("SMTP_PASSWORD", "")
+    if not smtp_user or not smtp_password:
+        logger.warning("SMTP not configured; email '%s' not sent.", subject)
+        return False
+    smtp_from_email = os.getenv("SMTP_FROM_EMAIL", smtp_user)
+    try:
+        message = MIMEText(text_body, "plain")
+        message["Subject"] = subject
+        message["From"] = f"meldra <{smtp_from_email}>"
+        message["To"] = ", ".join(recipients)
+        port = int(os.getenv("SMTP_PORT", "587"))
+        await aiosmtplib.send(
+            message,
+            hostname=os.getenv("SMTP_HOST", "smtp.gmail.com"),
+            port=port,
+            username=smtp_user,
+            password=smtp_password,
+            use_tls=port == 465,
+            start_tls=port != 465,
+            timeout=30,
+        )
+        return True
+    except Exception as e:
+        logger.warning(f"Email via SMTP failed: {type(e).__name__}: {e}")
+        return False

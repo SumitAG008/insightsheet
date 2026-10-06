@@ -182,3 +182,93 @@ def test_unknown_limit_names_are_rejected():
 def test_plan_limits_endpoint_is_public():
     r = TestClient(main.app).get("/api/plans/limits")
     assert r.status_code == 200 and r.json()["plans"]["free"]["limits"]["file_size_mb"] == 10
+
+
+def test_renewal_stage_follows_the_end_date():
+    from app.services.organizations import renewal_stage
+
+    now = datetime(2026, 10, 1)
+
+    def lic(days, status="active", grace=14):
+        return License(organization_id=1, start_date=now - timedelta(days=300), end_date=now + timedelta(days=days),
+                       grace_days=grace, status=status)
+
+    assert renewal_stage(lic(200), now) is None
+    assert renewal_stage(lic(90), now) == "d90"
+    assert renewal_stage(lic(45), now) == "d60"
+    assert renewal_stage(lic(30), now) == "d30"
+    assert renewal_stage(lic(3), now) == "d7"
+    assert renewal_stage(lic(-5), now) == "grace"
+    assert renewal_stage(lic(-30), now) == "expired"
+    assert renewal_stage(lic(10, status="suspended"), now) is None
+    assert renewal_stage(None, now) is None
+
+
+def test_org_admin_sees_renewal_notice_and_can_request_renewal(monkeypatch):
+    from app.routes import organizations as routes
+
+    sent = []
+
+    async def fake_send(to, subject, body):
+        sent.append((to, subject, body))
+        return True
+
+    monkeypatch.setattr(routes, "send_simple_email", fake_send)
+    domain = _domain()
+    org_id, _, owner = _set_up_deal(domain, seats=3, start_date=_iso(-300), end_date=_iso(20))
+    admin = _as({"email": owner, "role": "user"})
+    me = admin.get("/api/org/me").json()
+    assert me["organization"]["renewal_stage"] == "d30"
+
+    r = admin.post("/api/org/renewal-request", json={"seats": 5, "message": "Add two seats"})
+    assert r.status_code == 200 and r.json()["emailed"] is True
+    assert "Renewal request" in sent[0][1] and "Seats wanted: 5" in sent[0][2]
+    # A second click the same day is logged but doesn't email sales again.
+    assert admin.post("/api/org/renewal-request", json={}).json()["emailed"] is False
+    assert len(sent) == 1
+
+    # Ordinary members can't request renewals.
+    colleague = f"member@{domain}"
+    _register(colleague)
+    assert admin.post("/api/org/members", json={"email": colleague}).status_code == 200
+    assert _as({"email": colleague, "role": "user"}).post("/api/org/renewal-request", json={}).status_code == 403
+
+    # Once the renewal licence is recorded, the notice goes away.
+    c = _as(STAFF)
+    renewal = c.post(f"/api/admin/orgs/{org_id}/licenses", json={
+        "plan": "team", "seats": 5, "start_date": _iso(21), "end_date": _iso(386), "contract_value": 1, "currency": "INR"})
+    assert renewal.status_code == 200, renewal.text
+    assert _as({"email": owner, "role": "user"}).get("/api/org/me").json()["organization"]["renewal_stage"] is None
+
+
+def test_renewal_reminders_are_sent_once_per_stage(monkeypatch):
+    from app.routes import organizations as routes
+
+    sent = []
+
+    async def fake_send(to, subject, body):
+        sent.append((to, subject, body))
+        return True
+
+    monkeypatch.setattr(routes, "send_simple_email", fake_send)
+    domain = _domain()
+    org_id, _, owner = _set_up_deal(domain, seats=3, start_date=_iso(-300), end_date=_iso(5))
+    c = TestClient(main.app)
+
+    monkeypatch.delenv("CRON_SECRET", raising=False)
+    assert c.post("/api/cron/renewal-reminders").status_code == 503
+    monkeypatch.setenv("CRON_SECRET", "s3cret")
+    assert c.post("/api/cron/renewal-reminders", headers={"X-Cron-Secret": "wrong"}).status_code == 403
+
+    dry = c.post("/api/cron/renewal-reminders?dry_run=true", headers={"X-Cron-Secret": "s3cret"}).json()
+    mine = [r for r in dry["results"] if r["organization_id"] == org_id]
+    assert mine == [{"organization_id": org_id, "stage": "d7", "recipients": 1, "sent": False}]
+    assert not sent
+
+    first = c.post("/api/cron/renewal-reminders", headers={"X-Cron-Secret": "s3cret"}).json()
+    assert any(r["organization_id"] == org_id and r["sent"] for r in first["results"])
+    mail = [m for m in sent if owner in m[0]]
+    assert len(mail) == 1 and "7 days or less" in mail[0][2]
+
+    again = c.post("/api/cron/renewal-reminders", headers={"X-Cron-Secret": "s3cret"}).json()
+    assert not any(r["organization_id"] == org_id for r in again["results"])

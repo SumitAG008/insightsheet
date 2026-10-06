@@ -1,10 +1,14 @@
 
 
-// Layout.jsx - Remove Workflow, Excel-to-PPT, add Agentic AI
+// Layout.jsx - the signed-in app's frame: menu (src/lib/navigation.js), renewal notice, footer.
 import React, { useCallback, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { createPageUrl } from '@/utils';
-import { LayoutDashboard, DollarSign, FileText, FileType, Shield, AlertTriangle, Sparkles, FileArchive, Users, Download, Brain, BarChart3, MessageSquareText, FileSpreadsheet, Database, MessageSquare, X, Menu, Plug, ScanLine, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, GitCompareArrows, LineChart, ArrowRightLeft, Globe, Gauge, Scale, BadgePoundSterling } from 'lucide-react';
+import {
+  Home, Table2, LineChart, ArrowRightLeft, FileText, Briefcase, Workflow, BarChart3, Sparkles, Plug, Globe, Database,
+  FileType, ScanLine, Receipt, Presentation, FileArchive, GitCompareArrows, Scale, Users, Building2,
+  DollarSign, Shield, Download, MessageSquareText, AlertTriangle, X, Menu, ChevronDown, Code, Settings as SettingsIcon, LogOut, HelpCircle, Gauge, BadgePoundSterling,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +33,15 @@ import OnboardingAssistantModal from '@/components/onboarding/OnboardingAssistan
 import { applyPreferences, applyPrimaryColor, applyTheme, getUserPreferences } from '@/lib/userPreferences';
 import { useI18n } from '@/lib/i18n';
 import { companyLine } from '@/lib/company';
+import { visibleNav, isEntryActive } from '@/lib/navigation';
+import RenewalBanner from '@/components/subscription/RenewalBanner';
+
+const NAV_ICONS = {
+  Home, Table2, LineChart, ArrowRightLeft, FileText, Briefcase, Workflow, BarChart3, Sparkles, Plug, Globe, Database,
+  FileType, ScanLine, Receipt, Presentation, FileArchive, GitCompareArrows, Scale, Users,
+};
+const NAV_ACTIVE = 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold';
+const NAV_IDLE = 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400';
 
 export default function Layout({ children, currentPageName }) {
   const { t } = useI18n();
@@ -274,6 +287,13 @@ export default function Layout({ children, currentPageName }) {
   }, [user]);
   
   const isActive = (path) => location.pathname === path;
+  const navEntries = visibleNav({ agenticWorkflows: canAccessAgenticWorkflows });
+  // Existing translations (nav_migration, nav_unified_reporting…) are used where they exist.
+  const navLabel = (entry) => {
+    const key = `nav_${entry.id}`;
+    const translated = t(key);
+    return translated && translated !== key ? translated : entry.label;
+  };
 
   return (
     <div className="min-h-screen app-premium-bg dark:bg-slate-950">
@@ -298,242 +318,48 @@ export default function Layout({ children, currentPageName }) {
               {/* Show menu items only when user is logged in */}
               {user && user.email ? (
                 <>
-                  {/* Dashboard — group */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                          [createPageUrl('Dashboard')].some(p => isActive(p))
-                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
-                            : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
-                        }`}
-                      >
-                        <LayoutDashboard className="w-4 h-4" />
-                        <span>{t('nav_dashboard')}</span>
-                        <ChevronDown className="w-4 h-4 opacity-70" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[220px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_dashboard')}</DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('Dashboard')} className="flex items-center gap-2 cursor-pointer">
-                          <LayoutDashboard className="w-4 h-4" />
-                          {t('nav_overview')}
+                  {navEntries.map((entry) => {
+                    const Icon = NAV_ICONS[entry.icon];
+                    const active = isEntryActive(entry, location.pathname);
+                    const cls = `flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${active ? NAV_ACTIVE : NAV_IDLE}`;
+                    if (!entry.items) {
+                      return (
+                        <Link key={entry.id} to={entry.to} className={cls}>
+                          <Icon className="w-4 h-4" />
+                          <span>{navLabel(entry)}</span>
+                          {entry.beta && <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">Beta</span>}
                         </Link>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  {/* AI Assistant — group */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                          [createPageUrl('AgenticAI'), ...(canAccessAgenticWorkflows ? [createPageUrl('AgenticWorkflows')] : [])].some(p => isActive(p))
-                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
-                            : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
-                        }`}
-                      >
-                        <Brain className="w-4 h-4" />
-                        <span>{t('nav_ai_assistant')}</span>
-                        <ChevronDown className="w-4 h-4 opacity-70" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[220px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_ai_assistant')}</DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('AgenticAI')} className="flex items-center gap-2 cursor-pointer">
-                          <Brain className="w-4 h-4" />
-                          AI Assistant
-                        </Link>
-                      </DropdownMenuItem>
-                      {canAccessAgenticWorkflows && (
-                        <DropdownMenuItem asChild>
-                          <Link to={createPageUrl('AgenticWorkflows')} className="flex items-center gap-2 cursor-pointer">
-                            <Sparkles className="w-4 h-4" />
-                            Agentic Workflows (Beta)
-                          </Link>
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  {/* File Analysis — group */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                          [createPageUrl('FileAnalyzer'), createPageUrl('PLBuilder'), createPageUrl('AutoStandardize'), createPageUrl('Reconciliation')].some(p => isActive(p))
-                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
-                            : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
-                        }`}
-                      >
-                        <BarChart3 className="w-4 h-4" />
-                        <span>{t('nav_file_analysis')}</span>
-                        <ChevronDown className="w-4 h-4 opacity-70" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[200px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_file_analysis')}</DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('FileAnalyzer')} className="flex items-center gap-2 cursor-pointer">
-                          <BarChart3 className="w-4 h-4" />
-                          {t('nav_analyzer')}
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('AutoStandardize')} className="flex items-center gap-2 cursor-pointer">
-                          <Sparkles className="w-4 h-4" />
-                          {t('nav_auto_standardize')}
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('Reconciliation')} className="flex items-center gap-2 cursor-pointer">
-                          <GitCompareArrows className="w-4 h-4" />
-                          {t('nav_reconciliation')}
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('PLBuilder')} className="flex items-center gap-2 cursor-pointer">
-                          <FileSpreadsheet className="w-4 h-4" />
-                          {t('nav_pl_builder')}
-                        </Link>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  {/* Unified Reporting */}
-                  <Link
-                    to="/unified-reporting"
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                      isActive('/unified-reporting')
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
-                        : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400'
-                    }`}
-                  >
-                    <LineChart className="w-4 h-4" />
-                    <span>{t('nav_unified_reporting')}</span>
-                  </Link>
-
-                  {/* Next-Gen Migration */}
-                  <Link
-                    to="/migration"
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                      isActive('/migration')
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
-                        : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400'
-                    }`}
-                  >
-                    <ArrowRightLeft className="w-4 h-4" />
-                    <span>{t('nav_migration')}</span>
-                  </Link>
-
-                  {/* Data & Schema — group */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                          [createPageUrl('DataModelCreator'), createPageUrl('DatabaseConnection'), createPageUrl('PlaywrightConnector')].some(p => isActive(p))
-                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
-                            : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
-                        }`}
-                      >
-                        <Database className="w-4 h-4" />
-                        <span>{t('nav_data_schema')}</span>
-                        <ChevronDown className="w-4 h-4 opacity-70" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[200px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_data_schema')}</DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('DataModelCreator')} className="flex items-center gap-2 cursor-pointer">
-                          <Database className="w-4 h-4" />
-                          {t('nav_db_schema')}
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('DatabaseConnection')} className="flex items-center gap-2 cursor-pointer">
-                          <Plug className="w-4 h-4" />
-                          {t('nav_db_connect')}
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('PlaywrightConnector')} className="flex items-center gap-2 cursor-pointer">
-                          <Globe className="w-4 h-4" />
-                          {t('nav_web_data')}
-                        </Link>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  {/* File Conversion — group */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                          [createPageUrl('FileToPPT'), createPageUrl('OCRConverter'), createPageUrl('PdfDocConverter'), createPageUrl('FilenameCleaner'), '/pdfeditor'].some(p => isActive(p))
-                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 font-semibold'
-                            : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800'
-                        }`}
-                      >
-                        <FileText className="w-4 h-4" />
-                        <span>{t('nav_file_conversion')}</span>
-                        <ChevronDown className="w-4 h-4 opacity-70" />
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="min-w-[200px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
-                      <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{t('nav_file_conversion')}</DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('FileToPPT')} className="flex items-center gap-2 cursor-pointer">
-                          <FileText className="w-4 h-4" />
-                          {t('nav_excel_to_ppt')}
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('OCRConverter')} className="flex items-center gap-2 cursor-pointer">
-                          <ScanLine className="w-4 h-4" />
-                          {t('nav_ocr_to_doc_pdf')}
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('PdfDocConverter')} className="flex items-center gap-2 cursor-pointer">
-                          <FileType className="w-4 h-4" />
-                          {t('nav_document_converter')}
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to="/pdfeditor" className="flex items-center gap-2 cursor-pointer">
-                          <FileType className="w-4 h-4" />
-                          PDF Tools & Editor
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('FilenameCleaner')} className="flex items-center gap-2 cursor-pointer">
-                          <FileArchive className="w-4 h-4" />
-                          {t('nav_zip_cleaner')}
-                        </Link>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  {/* Developers (developer.meldra.ai / API docs) — opens /developers on same host */}
-                  <Link
-                    to="/developers"
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all duration-200 text-sm font-medium ${
-                      location.pathname.toLowerCase() === '/developers'
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 scale-105 font-semibold'
-                        : 'text-slate-900 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-blue-700 dark:hover:text-blue-400 hover:scale-105'
-                    }`}
-                    title="developer.meldra.ai – API docs"
-                  >
-                    <Code className={`w-4 h-4 ${location.pathname.toLowerCase() === '/developers' ? 'text-white' : ''}`} />
-                    <span>{t('nav_developers')}</span>
-                  </Link>
+                      );
+                    }
+                    return (
+                      <DropdownMenu key={entry.id}>
+                        <DropdownMenuTrigger asChild>
+                          <button type="button" className={`${cls} data-[state=open]:bg-slate-100 data-[state=open]:dark:bg-slate-800`}>
+                            <Icon className="w-4 h-4" />
+                            <span>{navLabel(entry)}</span>
+                            <ChevronDown className="w-4 h-4 opacity-70" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[260px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl">
+                          <DropdownMenuLabel className="text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase tracking-wider">{navLabel(entry)}</DropdownMenuLabel>
+                          {entry.items.map((item) => {
+                            const ItemIcon = NAV_ICONS[item.icon];
+                            return (
+                              <DropdownMenuItem key={item.to} asChild>
+                                <Link to={item.to} className="flex items-start gap-2 cursor-pointer">
+                                  <ItemIcon className="w-4 h-4 mt-0.5 shrink-0" />
+                                  <span className="flex flex-col">
+                                    <span className="font-medium">{item.label}</span>
+                                    <span className="text-xs text-slate-500 dark:text-slate-400">{item.description}</span>
+                                  </span>
+                                </Link>
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    );
+                  })}
                 </>
               ) : (
                 /* Show only Pricing link when not logged in */
@@ -646,6 +472,18 @@ export default function Layout({ children, currentPageName }) {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
+                        <Link to={createPageUrl('Organization')} className="flex items-center gap-2 cursor-pointer">
+                          <Building2 className="w-4 h-4" />
+                          <span>Organisation and licence</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/developers" className="flex items-center gap-2 cursor-pointer">
+                          <Code className="w-4 h-4" />
+                          <span>{t('nav_developers')}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
                         <Link to={createPageUrl('Settings')} className="flex items-center gap-2 cursor-pointer">
                           <SettingsIcon className="w-4 h-4" />
                           {t('nav_settings')}
@@ -689,81 +527,31 @@ export default function Layout({ children, currentPageName }) {
             <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 py-4 space-y-1">
               {user && user.email ? (
                 <>
-                  <p className="px-4 pt-1 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_dashboard')}</p>
-                  <Link 
-                    to={createPageUrl('Dashboard')}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
-                      isActive(createPageUrl('Dashboard'))
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <LayoutDashboard className="w-4 h-4" />
-                    <span>{t('nav_dashboard')}</span>
-                  </Link>
-
-                  <Link to={createPageUrl('AgenticAI')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-semibold text-sm ${isActive(createPageUrl('AgenticAI')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg' : 'text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <Brain className={`w-4 h-4 ${isActive(createPageUrl('AgenticAI')) ? 'text-white' : 'text-blue-500'}`} /> <span>{t('nav_ai_assistant')}</span>
-                  </Link>
-
-                  {canAccessAgenticWorkflows && (
-                    <Link to={createPageUrl('AgenticWorkflows')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('AgenticWorkflows')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                      <Sparkles className="w-4 h-4" /> <span>Agentic Workflows (Beta)</span>
-                    </Link>
-                  )}
-
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_file_analysis')}</p>
-                  <Link to={createPageUrl('FileAnalyzer')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FileAnalyzer')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <BarChart3 className="w-4 h-4" /> <span>{t('nav_analyzer')}</span>
-                  </Link>
-                  <Link to={createPageUrl('AutoStandardize')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('AutoStandardize')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <Sparkles className="w-4 h-4" /> <span>{t('nav_auto_standardize')}</span>
-                  </Link>
-                  <Link to={createPageUrl('Reconciliation')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('Reconciliation')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <GitCompareArrows className="w-4 h-4" /> <span>{t('nav_reconciliation')}</span>
-                  </Link>
-                  <Link to={createPageUrl('PLBuilder')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('PLBuilder')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <FileSpreadsheet className="w-4 h-4" /> <span>{t('nav_pl_builder')}</span>
-                  </Link>
-
-                  <Link to="/unified-reporting" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/unified-reporting') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <LineChart className="w-4 h-4" /> <span>{t('nav_unified_reporting')}</span>
-                  </Link>
-                  <Link to="/migration" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/migration') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <ArrowRightLeft className="w-4 h-4" /> <span>{t('nav_migration')}</span>
-                  </Link>
-
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_data_schema')}</p>
-                  <Link to={createPageUrl('DataModelCreator')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('DataModelCreator')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <Database className="w-4 h-4" /> <span>{t('nav_db_schema')}</span>
-                  </Link>
-                  <Link to={createPageUrl('DatabaseConnection')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('DatabaseConnection')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <Plug className="w-4 h-4" /> <span>{t('nav_db_connect')}</span>
-                  </Link>
-                  <Link to={createPageUrl('PlaywrightConnector')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('PlaywrightConnector')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <Globe className="w-4 h-4" /> <span>{t('nav_web_data')}</span>
-                  </Link>
-
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_file_conversion')}</p>
-                  <Link to={createPageUrl('FileToPPT')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FileToPPT')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <FileText className="w-4 h-4" /> <span>{t('nav_excel_to_ppt')}</span>
-                  </Link>
-                  <Link to={createPageUrl('OCRConverter')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('OCRConverter')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <ScanLine className="w-4 h-4" /> <span>{t('nav_ocr_to_doc_pdf')}</span>
-                  </Link>
-                  <Link to={createPageUrl('PdfDocConverter')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('PdfDocConverter')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <FileType className="w-4 h-4" /> <span>{t('nav_document_converter')}</span>
-                  </Link>
-                  <Link to="/pdfeditor" onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive('/pdfeditor') ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <FileType className="w-4 h-4" /> <span>PDF Tools & Editor</span>
-                  </Link>
-                  <Link to={createPageUrl('FilenameCleaner')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FilenameCleaner')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                    <FileArchive className="w-4 h-4" /> <span>{t('nav_zip_cleaner')}</span>
-                  </Link>
-                  <Link to="/developers" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
-                    <Code className="w-4 h-4" /> <span>{t('nav_developers')}</span>
-                  </Link>
+                  {navEntries.map((entry) => {
+                    const links = entry.items || [{ ...entry, label: navLabel(entry) }];
+                    return (
+                      <React.Fragment key={entry.id}>
+                        {entry.items && (
+                          <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{navLabel(entry)}</p>
+                        )}
+                        {links.map((item) => {
+                          const ItemIcon = NAV_ICONS[item.icon];
+                          const active = location.pathname.toLowerCase() === item.to.toLowerCase();
+                          return (
+                            <Link
+                              key={item.to}
+                              to={item.to}
+                              onClick={() => setMobileMenuOpen(false)}
+                              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${active ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                            >
+                              <ItemIcon className="w-4 h-4" /> <span>{item.label}</span>
+                              {item.beta && <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">Beta</span>}
+                            </Link>
+                          );
+                        })}
+                      </React.Fragment>
+                    );
+                  })}
                   <div className="pt-2 border-t border-slate-200 dark:border-slate-800 mt-2 space-y-2">
                     <Link
                       to={createPageUrl('Usage')}
@@ -772,6 +560,22 @@ export default function Layout({ children, currentPageName }) {
                     >
                       <Gauge className="w-4 h-4" />
                       <span>Plan and usage</span>
+                    </Link>
+                    <Link
+                      to={createPageUrl('Organization')}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm"
+                    >
+                      <Building2 className="w-4 h-4" />
+                      <span>Organisation and licence</span>
+                    </Link>
+                    <Link
+                      to="/developers"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium text-sm"
+                    >
+                      <Code className="w-4 h-4" />
+                      <span>{t('nav_developers')}</span>
                     </Link>
                     <Link
                       to={createPageUrl('Settings')}
@@ -837,6 +641,8 @@ export default function Layout({ children, currentPageName }) {
           )}
         </div>
       </nav>
+
+      {user && user.email && <RenewalBanner />}
 
       {/* Main content */}
       <SubscriptionChecker>

@@ -945,6 +945,8 @@ export const backendApi = {
       jsonOrThrow(await apiCall(`/api/org/members/${encodeURIComponent(email)}`, { method: 'DELETE' }), 'Could not remove member'),
     usageCsv: async () => blobOrThrow(await apiCall('/api/org/usage.csv'), 'Could not export usage'),
     events: async (days = 90) => jsonOrThrow(await apiCall(`/api/org/events?days=${days}`), 'Could not load history'),
+    requestRenewal: async ({ seats = null, message = null } = {}) =>
+      jsonOrThrow(await apiCall('/api/org/renewal-request', { method: 'POST', body: { seats, message } }), 'Could not request renewal'),
   },
 
   // Activity

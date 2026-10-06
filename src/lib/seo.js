@@ -104,7 +104,9 @@ export const PUBLIC_PAGES = {
 
 // Tab titles for signed-in pages (by lower-case path).
 const APP_TITLES = {
-  '/dashboard': 'Dashboard',
+  '/dashboard': 'Home',
+  '/solutions': 'Solutions',
+  '/agenticworkflows': 'Automations',
   '/usage': 'Plan and usage',
   '/organization': 'Organisation',
   '/adminlicenses': 'Licences',

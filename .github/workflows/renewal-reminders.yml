@@ -1,0 +1,36 @@
+name: Licence renewal reminders
+
+# Daily: emails each organisation's admins (and billing contact) 90, 60, 30 and 7 days before their
+# licence ends, and once in the grace period. Each reminder is sent once; renewed licences are skipped.
+# Needs two repository secrets: MELDRA_API_URL (e.g. https://api.meldra.ai) and CRON_SECRET (the same
+# value as the backend's CRON_SECRET environment variable). Without them it does nothing.
+on:
+  schedule:
+    - cron: "23 6 * * *"   # 06:23 UTC every day
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "List who would be emailed without sending"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send due reminders
+        env:
+          API: ${{ secrets.MELDRA_API_URL }}
+          SECRET: ${{ secrets.CRON_SECRET }}
+          DRY_RUN: ${{ inputs.dry_run || false }}
+        run: |
+          if [ -z "$API" ] || [ -z "$SECRET" ]; then
+            echo "MELDRA_API_URL or CRON_SECRET is not set; skipping." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          curl -fsS -X POST "${API%/}/api/cron/renewal-reminders?dry_run=${DRY_RUN}" \
+            -H "X-Cron-Secret: ${SECRET}" | tee result.json
+          echo '```json' >> "$GITHUB_STEP_SUMMARY"; cat result.json >> "$GITHUB_STEP_SUMMARY"; echo '```' >> "$GITHUB_STEP_SUMMARY"

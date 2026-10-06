@@ -101,6 +101,48 @@ On the website, signed in as meldra admin: **Licences** (`/adminlicenses`).
 
 The customer's admin then manages their own people at `/organization`.
 
+## 5a. Renewals: built in
+
+What meldra does on its own, so no renewal is missed:
+
+| When | What happens |
+|---|---|
+| 90, 60, 30 and 7 days before the end date | The customer's owners and admins see a renewal strip under the menu, with **Request renewal**. The same days, they and the billing contact get one email each (daily job, never sent twice). |
+| Admin clicks **Request renewal** (Organisation page) | They can give next term's seats and a note. meldra logs it in the change history and emails `MELDRA_SALES_EMAIL` (default sales@meldra.ai), at most once a day per organisation. |
+| End date passes | 14-day grace period (per licence): everyone keeps access, members now see the notice too, and a final email goes out. |
+| Grace ends | Members fall back to their own plans. Their organisation, members and history stay, so renewing restores access at once. |
+| Renewal licence recorded (step 4 above) | Notices and emails stop. The Licences report marks the renewal as done. |
+
+**Setup** (once):
+
+1. Backend environment: `CRON_SECRET` (a long random value) and, if not sales@meldra.ai, `MELDRA_SALES_EMAIL`. Email needs `RESEND_API_KEY` or the `SMTP_*` settings already used for sign-up emails.
+2. GitHub repository secrets: `MELDRA_API_URL` (the backend's public URL) and `CRON_SECRET` (same value).
+3. Check it: **Actions → Licence renewal reminders → Run workflow** with *dry run* ticked lists who would be emailed without sending.
+
+## 5b. Renewal strategy: why customers renew
+
+Customers renew when meldra holds work they would have to rebuild elsewhere, and when the renewal is easier than the alternative. Lock-in by holding data hostage is not an option: customers can always export their data (the Privacy Policy promises data portability, and data protection law requires it).
+
+**Make value build up inside meldra**
+- Saved mappings, crosswalks, cleansing rules and templates (Migration today; Workbench recipes and Automations next). Each month of use adds to what a competitor would have to rebuild.
+- Scheduled jobs and monitored pipelines (Automations, roadmap Phases 4–5): once month-end runs itself, stopping is a visible step backwards.
+- History and audit trail: reconciliations, sign-offs and run logs that auditors ask for.
+
+**Show the value before the renewal conversation**
+- At 90 days, send a short value summary: jobs run, files processed, active members, hours saved (planned: generated from usage counts).
+- Seat use under 50% at 90 days is a risk: offer a training session before the quote, not after.
+- Seat use over 90%: quote more seats with the renewal.
+
+**Contract terms that favour renewal**
+- Annual or multi-year terms, invoiced yearly in advance.
+- Auto-renewal clause in the order form: renews for another year unless either side gives 60 days' written notice.
+- Price protection: renewal uplift capped (e.g. 5–7%), or a 2–3 year price lock for 5–10% off.
+- Early-renewal incentive: renew 30+ days before the end date and keep this year's price.
+- Co-terminate add-ons (solution packs, extra seats) with the main licence, so there is one renewal date.
+
+**Individual Pro plans**
+Card payments are not live yet. When Stripe goes live, sell monthly and yearly subscriptions that renew automatically, with the reminder email before a yearly renewal that consumer law in the UK and EU expects.
+
 ## 6. Tracking customers and deals (CRM)
 
 Use **HubSpot CRM (free)** or **Zoho CRM** (pairs with Zoho Books for GST). Don't build a CRM.

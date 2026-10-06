@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Building2, Download, History, Trash2, UserPlus } from 'lucide-react';
+import { Building2, CalendarClock, Download, History, Trash2, UserPlus } from 'lucide-react';
 import { meldraAi } from '@/api/meldraClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { renewalNotice } from '@/lib/renewal';
 
 function saveBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -25,6 +26,8 @@ export default function Organization() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
+  const [renewSeats, setRenewSeats] = useState('');
+  const [renewMessage, setRenewMessage] = useState('');
 
   const isAdmin = me && ['owner', 'admin'].includes(me.role);
 
@@ -45,6 +48,13 @@ export default function Organization() {
   useEffect(() => {
     load();
   }, []);
+
+  // The renewal banner links to #renewal; the card only exists once the licence has loaded.
+  useEffect(() => {
+    if (data && window.location.hash === '#renewal') {
+      document.getElementById('renewal')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [data]);
 
   const run = async (fn, okMessage) => {
     setBusy(true);
@@ -119,6 +129,46 @@ export default function Organization() {
             <div>
               <div className="text-slate-500 dark:text-slate-400">Status</div>
               <div className="font-semibold capitalize text-slate-900 dark:text-slate-100">{org.state}</div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {isAdmin && org?.license_id && (
+        <Card id="renewal" className="scroll-mt-40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarClock className="w-5 h-5" />
+              Renewal
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p className="text-slate-600 dark:text-slate-400">
+              {renewalNotice(org, me.role)?.text ||
+                'Renewing keeps your members, saved mappings, templates and history in place with no gap in access.'}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                type="number"
+                min="1"
+                placeholder={`Seats next term (now ${org.seats})`}
+                value={renewSeats}
+                onChange={(e) => setRenewSeats(e.target.value)}
+                className="sm:max-w-[220px]"
+              />
+              <Input placeholder="Anything we should know (optional)" value={renewMessage} onChange={(e) => setRenewMessage(e.target.value)} maxLength={2000} />
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  run(async () => {
+                    const seats = parseInt(renewSeats, 10);
+                    await meldraAi.org.requestRenewal({ seats: seats > 0 ? seats : null, message: renewMessage || null });
+                    setRenewMessage('');
+                  }, 'Renewal requested. We will send you a quote by email.')
+                }
+              >
+                Request renewal
+              </Button>
             </div>
           </CardContent>
         </Card>

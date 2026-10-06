@@ -26,7 +26,7 @@ function Coverage({ coverage }) {
         </span>
       </div>
       <p className="mt-1 text-sm text-slate-500">
-        {coverage.total} source columns: <strong>{coverage.mapped}</strong> migrated into SuccessFactors files, <strong>{coverage.carried}</strong> carried in custom files (no standard target yet, e.g. dependents), <strong>{coverage.left}</strong> left behind — {pct}% accounted for.
+        {coverage.total} source columns: <strong>{coverage.mapped}</strong> migrated into target files, <strong>{coverage.carried}</strong> carried in custom files (no standard target yet, e.g. dependents), <strong>{coverage.left}</strong> left behind — {pct}% accounted for.
       </p>
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-sm">
@@ -209,7 +209,7 @@ export default function ReviewStep({ result, picklistRows, onSetPicklist, onTran
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="m-0 text-[15px] font-semibold">Value translations</h3>
-              <p className="mt-1 text-sm text-slate-500">Picklist codes are configured per SuccessFactors instance. Check the suggestions against yours and type over any code; fields marked in red need one.</p>
+              <p className="mt-1 text-sm text-slate-500">Picklist codes are configured per target system. Check the suggestions against yours and type over any code; fields marked in red need one.</p>
             </div>
             {onTranslateWithAi && (
               <Button variant="outline" onClick={onTranslateWithAi} disabled={aiBusy}>

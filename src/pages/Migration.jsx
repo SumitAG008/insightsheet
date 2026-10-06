@@ -15,7 +15,8 @@ import { mapSheets, picklistValues, runMigration, valueGroups } from '@/lib/migr
 import { buildReviewWorkbook, buildZip } from '@/lib/migration/exporter';
 import { applyProfile, exportProfile } from '@/lib/migration/profile';
 import { buildWorkdaySample, downloadWorkdaySampleXlsx } from '@/lib/migration/sampleWorkday';
-import { DEFAULT_SETTINGS, SUCCESSFACTORS } from '@/lib/migration/targets/successfactors';
+import { DEFAULT_SETTINGS } from '@/lib/migration/targets/successfactors';
+import { SOURCE_SYSTEMS, TARGETS, settingsFor, targetFor } from '@/lib/migration/targets';
 import { parseFile } from '@/lib/unifiedReporting/model';
 import * as store from '@/lib/unifiedReporting/storage';
 
@@ -25,7 +26,6 @@ const STEPS = [
   ['cleanse', 'Cleanse & validate', 'Values fixed, codes translated'],
   ['export', 'Load order & export', 'Load-ready files, in order'],
 ];
-const TARGET_NAME = 'SAP SuccessFactors Employee Central';
 const HOW_IT_WORKS = [
   [Wand2, 'Automatic mapping', 'Every column is matched to a target field by its name, synonyms and the shape of its values. AI refines what the rules cannot place, using tab and column names only.'],
   [FolderSync, 'Records assembled for you', 'Tabs are joined per employee without VLOOKUPs, and org, job and cost centre lists are built from the data.'],
@@ -33,10 +33,10 @@ const HOW_IT_WORKS = [
   [FileCheck2, 'Load-ready package', 'A zip of import files numbered in load order, plus a review workbook and a reconciliation of counts and totals.'],
 ];
 const STORE_KEY = 'migration';
-const SOURCE_SYSTEMS = ['Workday', 'Oracle HCM Cloud', 'Oracle E-Business Suite', 'SAP HCM (on-premise)', 'ADP', 'UKG / Kronos', 'BambooHR', 'Dayforce (Ceridian)', 'PeopleSoft', 'Sage People', 'Excel / custom'];
 const card = 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900';
 
-function SettingsPanel({ settings, onChange }) {
+function SettingsPanel({ settings, onChange, target }) {
+  const sf = target.id === 'successfactors';
   const field = (key, label, hint, input) => (
     <label className="block text-sm">
       <span className="font-medium">{label}</span>
@@ -53,8 +53,11 @@ function SettingsPanel({ settings, onChange }) {
   );
   return (
     <div className={`${card} grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4`}>
-      {field('dateFormat', 'Output date format', 'Match what your instance’s import expects.', select('dateFormat', [['MM/dd/yyyy', 'MM/dd/yyyy'], ['yyyy-MM-dd', 'yyyy-MM-dd'], ['dd/MM/yyyy', 'dd/MM/yyyy']]))}
+      {field('dateFormat', 'Output date format', 'Match what the target’s import expects.', select('dateFormat', [['MM/dd/yyyy', 'MM/dd/yyyy'], ['yyyy-MM-dd', 'yyyy-MM-dd'], ['yyyy/MM/dd', 'yyyy/MM/dd (Oracle HDL)'], ['dd/MM/yyyy', 'dd/MM/yyyy']]))}
       {field('sourceDateOrder', 'Source date order', 'Auto reads it from dates like 25/04 or 04/25.', select('sourceDateOrder', [['auto', 'Detect per column'], ['MDY', 'Month / day / year'], ['DMY', 'Day / month / year']]))}
+      {(target.settingsFields || []).map(([key, label, hint]) => <div key={key}>{field(key, label, hint)}</div>)}
+      {field('foundationStartDate', 'Foundation start date (ISO)', 'Effective start for org records.')}
+      {sf && <>
       {field('hireEventReason', 'Hire event reason', 'First job record.')}
       {field('jobChangeEventReason', 'Job change event reason', 'Later records where the job, title or grade changed.')}
       {field('transferEventReason', 'Transfer event reason', 'Later records where the org, location or cost center changed.')}
@@ -74,21 +77,21 @@ function SettingsPanel({ settings, onChange }) {
       {field('workEmailType', 'Work email type code')}
       {field('phoneType', 'Work phone type code')}
       {field('addressType', 'Address type code')}
-      {field('foundationStartDate', 'Foundation start date (ISO)', 'Effective start for org records.')}
       <label className="flex items-center gap-2 text-sm sm:col-span-2">
         <input type="checkbox" checked={settings.labelRow} onChange={(e) => onChange({ labelRow: e.target.checked })} />
         Include the second header row with field labels (as in downloaded templates)
       </label>
+      </>}
     </div>
   );
 }
 
-SettingsPanel.propTypes = { settings: PropTypes.object.isRequired, onChange: PropTypes.func.isRequired };
+SettingsPanel.propTypes = { settings: PropTypes.object.isRequired, onChange: PropTypes.func.isRequired, target: PropTypes.object.isRequired };
 
 export default function Migration() {
   const [sheets, setSheets] = useState([]);
   const [mapping, setMapping] = useState({});
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState(() => settingsFor(targetFor(DEFAULT_SETTINGS.target)));
   const [picklists, setPicklists] = useState({});
   // Which value translations the AI filled: { [type]: { [key]: true } }.
   const [aiMarks, setAiMarks] = useState({});
@@ -112,7 +115,7 @@ export default function Migration() {
       if (saved?.sheets?.length) {
         setSheets(saved.sheets);
         setMapping(saved.mapping || {});
-        setSettings({ ...DEFAULT_SETTINGS, ...(saved.settings || {}) });
+        setSettings(settingsFor(targetFor(saved.settings?.target), saved.settings || {}));
         setPicklists(saved.picklists || {});
         setAiMarks(saved.aiMarks || {});
         setTabInfo(saved.tabInfo || {});
@@ -126,7 +129,9 @@ export default function Migration() {
   }, [loaded, sheets, mapping, settings, picklists, aiMarks, step, tabInfo]);
 
   const purposes = useMemo(() => Object.fromEntries(Object.entries(tabInfo).map(([k, v]) => [k, v.purpose])), [tabInfo]);
-  const result = useMemo(() => (sheets.length ? runMigration(SUCCESSFACTORS, sheets, mapping, settings, picklists, purposes) : null), [sheets, mapping, settings, picklists, purposes]);
+  const target = targetFor(settings.target);
+  const chooseTarget = (id) => setSettings((cur) => settingsFor(targetFor(id), cur));
+  const result = useMemo(() => (sheets.length ? runMigration(target, sheets, mapping, settings, picklists, purposes) : null), [target, sheets, mapping, settings, picklists, purposes]);
   const picklistRows = useMemo(() => (sheets.length ? picklistValues(sheets, mapping, picklists, aiMarks) : {}), [sheets, mapping, picklists, aiMarks]);
   const sourceSystem = settings.sourceSystem || 'Workday';
 
@@ -192,7 +197,7 @@ export default function Migration() {
     setValuesAiStatus(null);
     setTabInfo({});
     setAiStatus(null);
-    setSettings(DEFAULT_SETTINGS);
+    setSettings((cur) => settingsFor(targetFor(cur.target)));
     setStep('upload');
   };
 
@@ -290,7 +295,7 @@ export default function Migration() {
   };
 
   const saveProfile = () => {
-    const profile = exportProfile({ sheets, mapping, settings, picklists, tabInfo });
+    const profile = exportProfile({ sheets, mapping, settings, picklists, tabInfo, source: sourceSystem, target: target.id });
     saveBlob(new Blob([JSON.stringify(profile, null, 2)], { type: 'application/json' }), `migration_profile_${new Date().toISOString().slice(0, 10)}.json`);
   };
   const loadProfile = async (file) => {
@@ -326,7 +331,7 @@ export default function Migration() {
   const downloadWorkbook = async () => {
     setBusy('zip');
     try {
-      saveBlob(await buildReviewWorkbook({ result, settings }), `migration_review_${new Date().toISOString().slice(0, 10)}.xlsx`);
+      saveBlob(await buildReviewWorkbook({ result, settings, target }), `migration_review_${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (e) {
       setMessage(`The workbook could not be built: ${e.message}`);
     }
@@ -336,11 +341,11 @@ export default function Migration() {
   const download = async () => {
     setBusy('zip');
     try {
-      const blob = await buildZip({ result, target: SUCCESSFACTORS, settings, sheets, mapping });
+      const blob = await buildZip({ result, target, settings, sheets, mapping });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `successfactors_migration_${new Date().toISOString().slice(0, 10)}.zip`;
+      a.download = `${target.id}_migration_${new Date().toISOString().slice(0, 10)}.zip`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
@@ -360,7 +365,7 @@ export default function Migration() {
         icon={ArrowRightLeft}
         eyebrow="Migration"
         title="HR data migration, ready to load"
-        description={`Turn a legacy HR extract into load-ready ${TARGET_NAME} files: mapped, cleansed, validated and in load order. Save the result as a profile and rerun every mock cycle in minutes.`}
+        description={`Turn an HR extract from any system into load-ready ${target.label} files: mapped, cleansed, validated and in load order. Save the result as a profile and rerun every mock cycle in minutes.`}
         points={[[Lock, 'Processed in your browser'], [Sparkles, 'AI sees column names, never values'], [FolderSync, 'Reusable for every mock cycle']]}
         guide="/help/migration-overview"
         actions={(
@@ -383,7 +388,15 @@ export default function Migration() {
         <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
           <span className="rounded-lg bg-white px-3 py-1.5 font-semibold text-[#02161A] shadow-sm">{sourceSystem}</span>
           <ArrowRight className="h-4 w-4 text-[#DDFA21]" aria-hidden="true" />
-          <span className="rounded-lg bg-white px-3 py-1.5 font-semibold text-[#02161A] shadow-sm">{TARGET_NAME}</span>
+          <label className="sr-only" htmlFor="migration-target">Target system</label>
+          <select
+            id="migration-target"
+            value={target.id}
+            onChange={(e) => chooseTarget(e.target.value)}
+            className="rounded-lg bg-white px-3 py-1.5 font-semibold text-[#02161A] shadow-sm"
+          >
+            {TARGETS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
         </div>
       </ProductHeader>
 
@@ -415,7 +428,7 @@ export default function Migration() {
         })}
       </ol>
 
-      {showSettings && <div className="mt-4"><SettingsPanel settings={settings} onChange={(p) => setSettings((s) => ({ ...s, ...p }))} /></div>}
+      {showSettings && <div className="mt-4"><SettingsPanel settings={settings} target={target} onChange={(p) => setSettings((s) => ({ ...s, ...p }))} /></div>}
       {message && <p className="mt-4 rounded-lg bg-slate-100 px-3 py-2 text-sm dark:bg-slate-800" role="status">{message}</p>}
 
       <div className="mt-6">
@@ -443,6 +456,16 @@ export default function Migration() {
                   onChange={(e) => setSettings((cur) => ({ ...cur, sourceSystem: e.target.value.slice(0, 60) }))}
                 />
                 <datalist id="migration-source-systems">{SOURCE_SYSTEMS.map((x) => <option key={x} value={x} />)}</datalist>
+              </label>
+              <label className="mx-auto mt-2 flex max-w-sm items-center justify-center gap-2 text-sm">
+                <span className="font-medium text-slate-600 dark:text-slate-300">Target system</span>
+                <select
+                  className="w-52 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
+                  value={target.id}
+                  onChange={(e) => chooseTarget(e.target.value)}
+                >
+                  {TARGETS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+                </select>
               </label>
               <Button className="mt-5 h-11 bg-[#004FCD] px-6 text-base hover:bg-[#0043ad]" onClick={() => fileInput.current?.click()} disabled={busy === 'upload'}>Choose files</Button>
               <p className="mt-2 text-xs text-slate-400">Excel (.xlsx, .xls) or CSV · files stay in your browser</p>
@@ -497,7 +520,7 @@ export default function Migration() {
             aiStatus={valuesAiStatus}
           />
         )}
-        {step === 'export' && result && <ExportStep result={result} settings={settings} onDownload={download} onDownloadWorkbook={downloadWorkbook} busy={busy === 'zip'} />}
+        {step === 'export' && result && <ExportStep result={result} settings={settings} target={target} onDownload={download} onDownloadWorkbook={downloadWorkbook} busy={busy === 'zip'} />}
       </div>
 
       {sheets.length > 0 && stepIdx < STEPS.length - 1 && step !== 'upload' && (

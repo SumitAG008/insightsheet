@@ -33,6 +33,21 @@ const foundation = (id, label, list, extra = [], dependsOn = []) => ({
 export const SUCCESSFACTORS = {
   id: 'successfactors',
   label: 'SAP SuccessFactors Employee Central',
+  short: 'SuccessFactors',
+  format: 'csv',
+  // Foundation files that other files reference, and the org list behind each.
+  orgRefs: { FOCostCenter: 'cost_center', FOCompany: 'company', FOBusinessUnit: 'business_unit', FODivision: 'division', FODepartment: 'department', FOLocation: 'location', FOJobCode: 'job' },
+  reconcile: {
+    employees: 'User',
+    employeeField: 'USERID',
+    money: [
+      ['Recurring pay', 'salary_amount', 'EmpPayCompRecurring', 'paycompvalue', 'currency-code'],
+      ['One-time payments', 'one_time_amount', 'EmpPayCompNonRecurring', 'value', 'currency-code'],
+      ['Payroll YTD balances', 'ytd_amount', 'PayrollYTD', 'amount', 'currency'],
+      ['Pension payouts', 'pension_payout_amount', 'PensionPayout', 'amount', 'currency'],
+      ['Payroll results → SAP T558C', 'payroll_amount', 'SAP_T558C', 'BETRG', '__currency'],
+    ],
+  },
   entities: [
     foundation('FOCompany', 'Legal Entity', 'company', [
       { id: 'country', label: 'Country', derive: (c) => c.extra.company_country, required: true },

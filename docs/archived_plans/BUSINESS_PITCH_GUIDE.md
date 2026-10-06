@@ -1,4 +1,4 @@
-# How to Pitch Meldra to Business People (No Tech Jargon)
+# How to Pitch meldra to Business People (No Tech Jargon)
 
 Use this when talking to finance, sales, ops, or executives who care about **outcomes and time**, not features or tech.
 
@@ -31,7 +31,7 @@ Use this when talking to finance, sales, ops, or executives who care about **out
 | ZIP File Cleaner | *Fix messy filenames in ZIP files so they open correctly everywhere* |
 | Advanced filtering, AND/OR operators | *Filter your data by multiple conditions at once* |
 | Natural language interface | *Tell it what you want in plain English* |
-| API / API key | *Way for your developers to use Meldra from your own apps* (only when talking to technical buyers) |
+| API / API key | *Way for your developers to use meldra from your own apps* (only when talking to technical buyers) |
 
 ---
 
@@ -39,7 +39,7 @@ Use this when talking to finance, sales, ops, or executives who care about **out
 
 ### Finance & accounting
 - **Pain:** Manual P&Ls, copying from Excel to PowerPoint, errors in formulas.
-- **Pitch:** *"Describe your P&L in words; Meldra builds the numbers and charts. Export to Excel or PowerPoint for month-end and board packs."*
+- **Pitch:** *"Describe your P&L in words; meldra builds the numbers and charts. Export to Excel or PowerPoint for month-end and board packs."*
 - **Hook:** *"P&L from a sentence, not a spreadsheet."*
 
 ### Sales & operations
@@ -79,7 +79,7 @@ Use this when talking to finance, sales, ops, or executives who care about **out
 
 ---
 
-## “Why Meldra?” for business (3 bullets)
+## “Why meldra?” for business (3 bullets)
 
 Use these on the site or in decks:
 
@@ -124,7 +124,7 @@ Use these on the site or in decks:
 
 ## When they say “I’m not technical”
 
-- *"That’s the point. You say what you want in normal language; Meldra does the rest. We can do a 5‑minute demo with your kind of data."*
+- *"That’s the point. You say what you want in normal language; meldra does the rest. We can do a 5‑minute demo with your kind of data."*
 - Avoid: *schema*, *API*, *LLM*, *browser-native*, *AND/OR operators*, *multi-column filtering*.
 - Use: *"Ask in plain English"*, *"Charts and reports"*, *"We don’t store your files"*, *"Ready for your board or clients."*
 

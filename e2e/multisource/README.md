@@ -1,10 +1,10 @@
 # Real multi-source test
 
-Three real systems are brought into Meldra through the UI, stored in the lakehouse
+Three real systems are brought into meldra through the UI, stored in the lakehouse
 (Iceberg on Apache Polaris), linked, and asked questions across them. Every number is
 checked against an independent calculation straight from the source systems.
 
-| System | What it is | How it enters Meldra |
+| System | What it is | How it enters meldra |
 |---|---|---|
 | Spreadsheet | `team_budgets.xlsx`: team, department, budget | Upload |
 | Database | PostgreSQL 16 `it_finance`: software usage per team, 540 licence invoices; read-only user | Connect a database (two tables) |

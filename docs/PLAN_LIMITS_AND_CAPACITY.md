@@ -1,23 +1,25 @@
 # Plan limits and capacity
 
-How Meldra stops one person, one file or a busy hour from slowing down or crashing the service, and how
+How meldra stops one person, one file or a busy hour from slowing down or crashing the service, and how
 to change any limit without a code change.
 
 ## 1. The plan table
+
+Prices shown are UK list prices; other regions see INR, EUR or USD (src/lib/prices.js). Paying yearly gives 2 months free.
 
 One table in `backend/app/services/plan_limits.py` drives everything: enforcement on the server, the
 website's usage bar and **Plan and usage** page, the pricing page and the Terms of Service
 (all read it from `GET /api/plans/limits`).
 
-| Limit (per user) | Free | Pro ₹599 / £9 | Team ₹999 / £15 per user | Business |
+| Limit (per user) | Free | Pro £25 a month (£250 a year) | Team £15 per user a month (from 3 users; £150 a year) | Business |
 |---|---|---|---|---|
-| Largest single file | 10 MB | 50 MB | 100 MB | 200 MB, or as agreed |
+| Largest single file | 10 MB | 100 MB | 100 MB | 200 MB, or as agreed |
 | Rows per spreadsheet (all sheets) | 50,000 | 300,000 | 1,000,000 | 2,000,000, or as agreed |
-| Pages per PDF | 50 | 300 | 1,000 | 2,000, or as agreed |
-| Scanned pages read by OCR per file | 5 | 50 | 100 | 300, or as agreed |
-| Conversions and file jobs per month | 20 | 500 | 2,000 | 5,000, or as agreed |
-| AI questions per month | 20 | 300 | 1,000 | 3,000, or as agreed |
-| Total uploads per month | 200 MB | 5 GB | 20 GB | 50 GB, or as agreed |
+| Pages per PDF | 50 | 500 | 1,000 | 2,000, or as agreed |
+| Scanned pages read by OCR per file | 5 | 100 | 100 | 300, or as agreed |
+| Conversions and file jobs per month | 20 | 1,000 | 2,000 | 5,000, or as agreed |
+| AI questions per month | 20 | 500 | 1,000 | 3,000, or as agreed |
+| Total uploads per month | 200 MB | 10 GB | 20 GB | 50 GB, or as agreed |
 | Files processing at the same time | 1 | 2 | 3 | 4 |
 | Requests per minute | 120 | 240 | 300 | 600 |
 
@@ -97,14 +99,14 @@ Endpoints (`backend/app/routes/organizations.py`):
 
 | Who | Endpoint | Purpose |
 |---|---|---|
-| Meldra admin | `GET/POST /api/admin/orgs`, `GET/PATCH /api/admin/orgs/{id}` | Customers |
-| Meldra admin | `POST /api/admin/orgs/{id}/licenses`, `PATCH /api/admin/licenses/{id}` | Record the deal, mark invoices paid, extend, suspend |
-| Meldra admin | `POST/DELETE /api/admin/orgs/{id}/members` | Add people (seat count not enforced for staff) |
-| Meldra admin | `GET /api/admin/licenses/report` (+ `.csv`) | ARR, unpaid invoices, seat use, renewals in 90 days, low-use customers |
+| meldra admin | `GET/POST /api/admin/orgs`, `GET/PATCH /api/admin/orgs/{id}` | Customers |
+| meldra admin | `POST /api/admin/orgs/{id}/licenses`, `PATCH /api/admin/licenses/{id}` | Record the deal, mark invoices paid, extend, suspend |
+| meldra admin | `POST/DELETE /api/admin/orgs/{id}/members` | Add people (seat count not enforced for staff) |
+| meldra admin | `GET /api/admin/licenses/report` (+ `.csv`) | ARR, unpaid invoices, seat use, renewals in 90 days, low-use customers |
 | Customer admin | `GET /api/org/me`, `GET/POST/PATCH/DELETE /api/org/members` | Seats and people (seat count enforced) |
 | Customer admin | `GET /api/org/usage.csv`, `GET /api/org/events` | Usage per person (counts only) and change history |
 
-Website pages: **Licences** (`/adminlicenses`, Meldra staff), **Organisation** (`/organization`,
+Website pages: **Licences** (`/adminlicenses`, meldra staff), **Organisation** (`/organization`,
 customer admins), **Plan and usage** (`/usage`, everyone).
 
 ## 4. What happens under load

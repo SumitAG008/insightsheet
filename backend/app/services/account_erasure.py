@@ -1,7 +1,7 @@
 """
 Account erasure ("Delete my account", the right to erasure).
 
-Everything Meldra holds about a person is deleted, except billing records the law requires a
+Everything meldra holds about a person is deleted, except billing records the law requires a
 business to keep (invoices and payments, typically 6 to 10 years for tax). Those are kept without
 the IP address and browser details that were logged with them.
 """

@@ -1,6 +1,6 @@
-# Meldra Library
+# meldra Library
 
-A comprehensive JavaScript library for AI, ML, UI, and backend utilities built specifically for the Meldra platform and InsightSheet application.
+A comprehensive JavaScript library for AI, ML, UI, and backend utilities built specifically for the meldra platform and InsightSheet application.
 
 ## Installation
 
@@ -264,4 +264,4 @@ When adding new utilities:
 
 ## License
 
-MIT License - Copyright (c) 2024 Meldra Team
+MIT License - Copyright (c) 2024 meldra Team

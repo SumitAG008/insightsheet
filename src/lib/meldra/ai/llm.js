@@ -1,5 +1,5 @@
 /**
- * Meldra AI - LLM Utilities
+ * meldra AI - LLM Utilities
  *
  * This module provides high-level utilities for working with Large Language Models,
  * including schema generation, data analysis, text processing, and more.

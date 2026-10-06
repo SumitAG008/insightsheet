@@ -1,4 +1,4 @@
-# Meldra AI Assistant — Knowledge Base (Customer-Facing)
+# meldra AI Assistant — Knowledge Base (Customer-Facing)
 
 **Document type:** Canonical KB (customer-facing only)
 
@@ -10,7 +10,7 @@
 
 ## 0) Purpose
 
-This document is the single source of truth for the **Meldra AI Assistant**.
+This document is the single source of truth for the **meldra AI Assistant**.
 
 The assistant must help users with:
 - product features and how to use them
@@ -38,7 +38,7 @@ The assistant must NOT answer backend/internal implementation questions.
 ### 1.2 Disallowed topics (the assistant must refuse)
 
 If asked about any of the below, the assistant must reply:
-- “I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.”
+- “I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact meldra support.”
 
 Disallowed examples:
 - database schema, table names, migrations
@@ -50,15 +50,15 @@ Disallowed examples:
 
 ## 2) Product overview (customer view)
 
-### 2.1 What Meldra does
+### 2.1 What meldra does
 
-Meldra provides:
+meldra provides:
 - privacy-first data analysis workflows (in-app)
 - a Developer API for document conversion and related utilities
 
 ### 2.2 “No customer work stored” (customer explanation)
 
-Meldra is designed to avoid storing customer uploaded work beyond what is required to complete the request.
+meldra is designed to avoid storing customer uploaded work beyond what is required to complete the request.
 - You receive your output immediately.
 - Temporary processing metadata may exist briefly during a session.
 
@@ -85,7 +85,7 @@ Email verification helps:
 
 ### 4.1 What is an API key?
 
-A Meldra API key is a secret token used to authenticate your requests.
+A meldra API key is a secret token used to authenticate your requests.
 
 Your key format looks like:
 - `meldra_test_<hex>` (sandbox)
@@ -340,9 +340,9 @@ To reduce hallucinations:
 
 - Initial KB created for AI assistant: API keys, onboarding, limits, endpoints, troubleshooting.
 
-## Ask Meldra (one prompt for every tool)
+## Ask meldra (one prompt for every tool)
 - Where: the "What do you want to get done?" box on the Dashboard, or press Ctrl/⌘ + K on any page and type the task as a sentence.
-- How: describe the task in your own words and attach files if you have them. Meldra plans which tools to use (sometimes two in a row, e.g. Invoice Extractor then Reconciliation), puts your files into each tool and fills in its instruction box. You review and press the tool's own button; nothing runs by itself.
-- If the request is unclear, Meldra asks one question back. Questions about Meldra itself get a short answer.
+- How: describe the task in your own words and attach files if you have them. meldra plans which tools to use (sometimes two in a row, e.g. Invoice Extractor then Reconciliation), puts your files into each tool and fills in its instruction box. You review and press the tool's own button; nothing runs by itself.
+- If the request is unclear, meldra asks one question back. Questions about meldra itself get a short answer.
 - Privacy: the planner sees your words, file names and spreadsheet column headings only, never file contents.
-- If the AI is unavailable, Ask Meldra still opens the best-matching tool from search.
+- If the AI is unavailable, Ask meldra still opens the best-matching tool from search.

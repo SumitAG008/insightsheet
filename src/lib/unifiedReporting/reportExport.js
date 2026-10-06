@@ -82,7 +82,7 @@ async function toPdf(doc, charts, currency) {
   }
   const systems = [...new Set(charts.flatMap((c) => systemsOf(c.res)))];
   pdf.text(`${charts.length} chart${charts.length === 1 ? '' : 's'}${systems.length ? ` from ${systems.join(', ')}` : ''}`, M, y);
-  pdf.text(`Meldra Unified Reporting · ${today()}`, M, y + 18);
+  pdf.text(`meldra Unified Reporting · ${today()}`, M, y + 18);
 
   charts.forEach(({ spec, res, image }) => {
     pdf.addPage();
@@ -131,7 +131,7 @@ async function toPptx(doc, charts, currency) {
   const s0 = pptx.addSlide();
   s0.addText(doc.title, { x: 0.6, y: 2.2, w: 12, h: 1.2, fontSize: 36, bold: true, color: '0F172A' });
   if (doc.summary) s0.addText(doc.summary, { x: 0.6, y: 3.5, w: 12, h: 1.4, fontSize: 16, color: '475569', valign: 'top' });
-  s0.addText(`Meldra Unified Reporting · ${today()}`, { x: 0.6, y: 6.6, w: 12, h: 0.4, fontSize: 12, color: '94A3B8' });
+  s0.addText(`meldra Unified Reporting · ${today()}`, { x: 0.6, y: 6.6, w: 12, h: 0.4, fontSize: 12, color: '94A3B8' });
 
   for (const { spec, res, image } of charts) {
     const s = pptx.addSlide();
@@ -202,7 +202,7 @@ async function toDocx(doc, charts, currency) {
   const children = [
     new Paragraph({ text: doc.title, heading: HeadingLevel.TITLE }),
     ...(doc.summary ? [new Paragraph({ children: [new TextRun({ text: doc.summary, size: 24 })] })] : []),
-    new Paragraph({ children: [new TextRun({ text: `Meldra Unified Reporting · ${today()}`, color: '64748B', size: 20 })] }),
+    new Paragraph({ children: [new TextRun({ text: `meldra Unified Reporting · ${today()}`, color: '64748B', size: 20 })] }),
   ];
   for (const { spec, res, image } of charts) {
     children.push(new Paragraph({ text: spec.title, heading: HeadingLevel.HEADING_1, pageBreakBefore: children.length > 3 }));
@@ -224,7 +224,7 @@ async function toDocx(doc, charts, currency) {
     if (note) children.push(new Paragraph({ children: [new TextRun({ text: note, color: '64748B', size: 18 })] }));
     if (spec.sql) children.push(new Paragraph({ children: [new TextRun({ text: spec.sql, font: 'Consolas', size: 16 })] }));
   }
-  return Packer.toBlob(new Document({ creator: 'Meldra', title: doc.title, sections: [{ children }] }));
+  return Packer.toBlob(new Document({ creator: 'meldra', title: doc.title, sections: [{ children }] }));
 }
 
 /**

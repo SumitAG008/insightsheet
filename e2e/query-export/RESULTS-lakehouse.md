@@ -1,6 +1,6 @@
 # Query panel and report downloads: results (lakehouse mode)
 
-Run 2026-09-27 20:49 UTC against http://localhost:5173; sources stored in the Meldra lakehouse, SQL run by DuckDB.
+Run 2026-09-27 20:49 UTC against http://localhost:5173; sources stored in the meldra lakehouse, SQL run by DuckDB.
 **30 of 30 checks passed.**
 
 | # | Check | Result | Detail |
@@ -9,14 +9,14 @@ Run 2026-09-27 20:49 UTC against http://localhost:5173; sources stored in the Me
 | 2 | Query panel explains the joins (lookup through a link and the join on the breakdown) | PASS |  |
 | 3 | SQL shows the LEFT JOIN lookup and the join on department | PASS |  |
 | 4 | Tables you can query lists every source with its columns | PASS |  |
-| 5 | the SQL runs in the lakehouse (DuckDB over Iceberg) | PASS | 6 rows · ran in the Meldra lakehouse · 95 ms |
+| 5 | the SQL runs in the lakehouse (DuckDB over Iceberg) | PASS | 6 rows · ran in the meldra lakehouse · 95 ms |
 | 6 | running the SQL gives the numbers shown in the answer | PASS | HR/7/£521K ; Finance/11/£724K ; Support/23/£1.8M |
 | 7 | edited SQL runs and shows its rows | PASS | level	headcount	avg_salary / L3	38	74232.97368421052 |
 | 8 | the chart now shows the custom SQL result | PASS |  |
 | 9 | the custom SQL answer downloads with its own columns | PASS | level,headcount,avg_salary |
 | 10 | a non-SELECT statement is refused with a clear message | PASS |  |
 | 11 | a wrong column gives the database error | PASS | Binder Error: Referenced column "nope" not found in FROM clause! |
-| 12 | "Back to Meldra's query" restores the original answer | PASS |  |
+| 12 | "Back to meldra's query" restores the original answer | PASS |  |
 | 13 | report built from one prompt | PASS | 6 charts |
 | 14 | each report chart has its Query panel with SQL | PASS |  |
 | 15 | report downloads as PDF | PASS | lakehouse-workforce-cost-and-revenue.pdf, 220 KB, 6.3s |

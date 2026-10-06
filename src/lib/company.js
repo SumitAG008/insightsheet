@@ -1,11 +1,11 @@
-// The legal entity behind Meldra, shown in the footer, Terms and regional notices.
+// The legal entity behind meldra, shown in the footer, Terms and regional notices.
 // Set these in Vercel (Project → Settings → Environment Variables) once the company is registered,
 // then redeploy. Anything left unset is simply not shown; nothing placeholder-like goes live.
 const env = import.meta.env || {};
 const clean = (v) => (typeof v === 'string' && v.trim() ? v.trim() : null);
 
 export const COMPANY = {
-  name: clean(env.VITE_COMPANY_NAME), // e.g. "Meldra Technologies Private Limited"
+  name: clean(env.VITE_COMPANY_NAME), // e.g. "meldra Technologies Private Limited"
   address: clean(env.VITE_COMPANY_ADDRESS), // registered office
   cin: clean(env.VITE_COMPANY_CIN), // India: Corporate Identity Number
   gstin: clean(env.VITE_COMPANY_GSTIN), // India: GST registration

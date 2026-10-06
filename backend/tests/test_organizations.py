@@ -1,4 +1,4 @@
-"""Organisations, seats and licences: deals set up by Meldra staff, managed by the customer's admins."""
+"""Organisations, seats and licences: deals set up by meldra staff, managed by the customer's admins."""
 import io
 import os
 import secrets

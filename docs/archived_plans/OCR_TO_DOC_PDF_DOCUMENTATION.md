@@ -1,6 +1,6 @@
 # OCR to DOC & OCR to PDF — Feature Documentation
 
-This document describes the **OCR to DOC** and **OCR to PDF** feature added to InsightSheet-lite / Meldra. Users can upload any image (scans, photos, forms, screenshots), extract text via OCR, edit it, save a draft, and download as an editable Word document (.docx) or searchable PDF.
+This document describes the **OCR to DOC** and **OCR to PDF** feature added to InsightSheet-lite / meldra. Users can upload any image (scans, photos, forms, screenshots), extract text via OCR, edit it, save a draft, and download as an editable Word document (.docx) or searchable PDF.
 
 ---
 

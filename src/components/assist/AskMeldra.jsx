@@ -1,4 +1,4 @@
-// Ask Meldra: say what you want in plain words, attach files if you have them, and Meldra plans
+// Ask meldra: say what you want in plain words, attach files if you have them, and meldra plans
 // which tools to use and sets each one up for you. The planner sees file names and spreadsheet
 // column headers only, never file contents.
 import { useEffect, useRef, useState } from 'react';
@@ -72,7 +72,7 @@ export default function AskMeldra({ initialRequest = '', onDone, compact = false
       const meta = await Promise.all(files.map(async (f) => ({ name: f.name, type: (f.name.split('.').pop() || '').toLowerCase(), headers: await readHeaders(f) })));
       setPlan(await backendApi.assist.plan({ request: q, files: meta, page: window.location.pathname }));
     } catch (e) {
-      setError(e.message || 'Ask Meldra is unavailable right now. Try the tool search instead.');
+      setError(e.message || 'Ask meldra is unavailable right now. Try the tool search instead.');
     }
     setBusy(false);
   };
@@ -125,12 +125,12 @@ export default function AskMeldra({ initialRequest = '', onDone, compact = false
               <button type="button" aria-label={`Remove ${f.name}`} onClick={() => setFiles((cur) => cur.filter((_, j) => j !== i))}><X className="h-3 w-3" /></button>
             </span>
           ))}
-          <button type="submit" disabled={!request.trim() || busy} aria-label="Ask Meldra" className="ml-auto grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white disabled:opacity-40">
+          <button type="submit" disabled={!request.trim() || busy} aria-label="Ask meldra" className="ml-auto grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white disabled:opacity-40">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
           </button>
         </div>
       </form>
-      <p className="text-xs text-slate-500">Meldra sees your words, file names and spreadsheet column headings to plan this. File contents stay with you until you run a tool.</p>
+      <p className="text-xs text-slate-500">meldra sees your words, file names and spreadsheet column headings to plan this. File contents stay with you until you run a tool.</p>
 
       {!plan && !busy && !compact && (
         <div className="flex flex-wrap gap-2">
@@ -144,7 +144,7 @@ export default function AskMeldra({ initialRequest = '', onDone, compact = false
 
       {plan?.kind === 'plan' && (
         <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm font-medium"><Sparkles className="h-4 w-4 text-blue-600" />{plan.summary || 'Here’s how Meldra will do it'}{plan.source === 'search' && <span className="text-xs font-normal text-slate-400">(best match from search)</span>}</div>
+          <div className="flex items-center gap-2 text-sm font-medium"><Sparkles className="h-4 w-4 text-blue-600" />{plan.summary || 'Here’s how meldra will do it'}{plan.source === 'search' && <span className="text-xs font-normal text-slate-400">(best match from search)</span>}</div>
           <ol className="space-y-2">{plan.steps.map((s, i) => <Step key={`${s.tool}-${i}`} step={s} n={i + 1} files={files} onOpen={open} primary={i === 0} />)}</ol>
         </div>
       )}

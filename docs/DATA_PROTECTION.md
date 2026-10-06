@@ -1,6 +1,6 @@
-# Data protection: what Meldra keeps, where, for how long, and how it is backed up
+# Data protection: what meldra keeps, where, for how long, and how it is backed up
 
-The rule: **customer files and their contents are never stored**. Meldra keeps only account, sign-in/device
+The rule: **customer files and their contents are never stored**. meldra keeps only account, sign-in/device
 (IP) and billing records, plus a few short-lived records listed below that are deleted on a schedule.
 
 ## 1. What is stored

@@ -14,7 +14,7 @@ Email sending functionality has been added! Now you need to configure SMTP crede
    - Go to: https://myaccount.google.com/apppasswords
    - Sign in with your Gmail account
    - Select "Mail" and "Other (Custom name)"
-   - Enter "Meldra" as the name
+   - Enter "meldra" as the name
    - Click "Generate"
    - **Copy the 16-character app password** (you'll need this)
 
@@ -43,7 +43,7 @@ Email sending functionality has been added! Now you need to configure SMTP crede
 2. **Create API Key:**
    - SendGrid Dashboard → Settings → API Keys
    - Click "Create API Key"
-   - Name it "Meldra Password Reset"
+   - Name it "meldra Password Reset"
    - Select "Full Access" or "Mail Send" permissions
    - **Copy the API key** (shown only once!)
 

@@ -100,7 +100,7 @@ PRESETS: List[Dict[str, Any]] = [
                           "audience": "www.successfactors.com", "api_key_attribute": True, "client_auth": "none"},
         "paging": "odata",
         "records_path": "d.results",
-        "help": "OAuth 2.0 SAML bearer: in Admin Center > Manage OAuth2 Client Applications, register Meldra with your X.509 certificate; the API key is the client ID, the subject is the API user ID." + NO_ALLOWLIST,
+        "help": "OAuth 2.0 SAML bearer: in Admin Center > Manage OAuth2 Client Applications, register meldra with your X.509 certificate; the API key is the client ID, the subject is the API user ID." + NO_ALLOWLIST,
     },
     {
         "id": "s4hana",
@@ -158,7 +158,7 @@ PRESETS: List[Dict[str, Any]] = [
         "headers": {"Accept": "application/json"},
         "paging": "none",
         "records_path": "QueryResponse.Invoice",
-        "help": "Intuit issues a new refresh token on each use: Meldra shows it after the fetch so you can keep it." + NO_ALLOWLIST,
+        "help": "Intuit issues a new refresh token on each use: meldra shows it after the fetch so you can keep it." + NO_ALLOWLIST,
     },
     {
         "id": "stripe",
@@ -592,7 +592,7 @@ async def fetch_records(config: Dict[str, Any], resolver: Resolver = _default_re
         raise ConnectorError("Unknown authentication type.")
 
     origin_host, _, _ = check_url(url, resolver)
-    headers = {"Accept": "application/json, application/xml;q=0.9, */*;q=0.5", "User-Agent": "Meldra-Connector/1.0"}
+    headers = {"Accept": "application/json, application/xml;q=0.9, */*;q=0.5", "User-Agent": "meldra-Connector/1.0"}
     headers.update(_clean_headers(config.get("headers")))
 
     body: Optional[bytes] = None

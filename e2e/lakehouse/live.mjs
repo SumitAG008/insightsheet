@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 
 // Storing in the lakehouse is opt-in: tick the box before uploading.
 const optInToLakehouse = async (page) => {
-  const box = page.getByLabel(/Store in the Meldra lakehouse/);
+  const box = page.getByLabel(/Store in the meldra lakehouse/);
   if (await box.count()) await box.first().check();
 };
 
@@ -62,16 +62,16 @@ await open();
 
 // ---------- 1. Lakehouse is on ----------
 await nav().getByRole('button', { name: /Data sources/ }).click();
-const toggle = page.getByRole('checkbox', { name: /Store in the Meldra lakehouse/ });
+const toggle = page.getByRole('checkbox', { name: /Store in the meldra lakehouse/ });
 await toggle.waitFor();
-check('upload offers "Store in the Meldra lakehouse", on by default', await toggle.isChecked());
+check('upload offers "Store in the meldra lakehouse", on by default', await toggle.isChecked());
 
 // ---------- 2. A large file through the UI into Iceberg ----------
 if (BIG) {
   const t0 = performance.now();
   await optInToLakehouse(page);
   await page.locator('input[type=file]').first().setInputFiles(BIG);
-  const card = page.locator('div.rounded-2xl').filter({ has: page.getByText('Meldra lakehouse', { exact: true }) }).first();
+  const card = page.locator('div.rounded-2xl').filter({ has: page.getByText('meldra lakehouse', { exact: true }) }).first();
   await card.waitFor({ timeout: 15 * 60000 });
   const secs = ((performance.now() - t0) / 1000).toFixed(1);
   const size = (fs.statSync(BIG).size / 1e6).toFixed(0);
@@ -95,7 +95,7 @@ if (BIG) {
 
 // ---------- 3. Sample company stored in the lakehouse ----------
 await page.getByRole('button', { name: 'Load a sample company' }).click();
-await page.getByText(/stored in the Meldra lakehouse/).waitFor({ timeout: 120000 });
+await page.getByText(/stored in the meldra lakehouse/).waitFor({ timeout: 120000 });
 const stored = await (await fetch(`${API}/api/lakehouse/sources`)).json().catch(() => null);
 const tables = await page.evaluate(async () => {
   const { backendApi } = await import('/src/api/backendClient.js');
@@ -191,12 +191,12 @@ const dashTiles = await page.locator('h3').count();
 check('dashboard shows the report tiles, computed in the lakehouse', dashTiles >= 6, `${dashTiles} tiles`);
 await page.screenshot({ path: `${OUT}/lake-3-dashboard.png` });
 
-// ---------- 9. Another device: nothing in the browser, everything comes back from Meldra ----------
+// ---------- 9. Another device: nothing in the browser, everything comes back from meldra ----------
 await page.evaluate(() => new Promise((res) => { const r = indexedDB.deleteDatabase('meldra-unified-reporting'); r.onsuccess = res; r.onerror = res; r.onblocked = res; }));
 await open();
 await nav().getByRole('button', { name: /Data sources/ }).click();
-await page.getByText('Meldra lakehouse', { exact: true }).first().waitFor({ timeout: 60000 });
-const restored = await page.getByText('Meldra lakehouse', { exact: true }).count();
+await page.getByText('meldra lakehouse', { exact: true }).first().waitFor({ timeout: 60000 });
+const restored = await page.getByText('meldra lakehouse', { exact: true }).count();
 check('fresh browser: stored sources load from the lakehouse', restored === 6, `${restored} sources`);
 const links = await page.getByText(/% of values match/).count();
 check('links between stored tables suggested by the server', links >= 1, `${links} suggestions`);

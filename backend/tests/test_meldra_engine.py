@@ -28,7 +28,7 @@ def test_plan_keeps_known_tools_and_attached_files_only():
 
 def test_plan_without_usable_steps_becomes_a_question():
     assert validate_plan({"kind": "plan", "steps": [{"tool": "nope"}]}, 0)["kind"] == "clarify"
-    assert validate_plan({"kind": "answer", "answer": "Meldra never stores files."}, 0)["answer"] == "Meldra never stores files."
+    assert validate_plan({"kind": "answer", "answer": "meldra never stores files."}, 0)["answer"] == "meldra never stores files."
 
 
 def test_fallback_uses_best_search_match():

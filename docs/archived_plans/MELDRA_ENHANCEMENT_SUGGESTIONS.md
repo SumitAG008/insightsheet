@@ -1,4 +1,4 @@
-# 🚀 Meldra/InsightLite Enhancement Suggestions
+# 🚀 meldra/InsightLite Enhancement Suggestions
 
 ## 📊 Current State Analysis
 

@@ -1,10 +1,10 @@
-# 🚀 Product Hunt Launch Kit - InsightSheet by Meldra AI
+# 🚀 Product Hunt Launch Kit - InsightSheet by meldra AI
 
 ---
 
 ## 📌 Listing Essentials
 
-* **Product Name:** InsightSheet by Meldra AI
+* **Product Name:** InsightSheet by meldra AI
 * **Tagline:** Turn messy Excel data into executive PPT decks with Zero Storage Privacy 🔒
 * **Topic Tags:** Productivity, Finance, Artificial Intelligence, Privacy, Enterprise
 * **Primary URL:** `https://meldra.ai`
@@ -20,7 +20,7 @@ InsightSheet turns raw Excel, CSV & financial data into board-ready PowerPoint p
 
 > **Hey Product Hunt community! 👋**
 >
-> I'm Sumit, creator of **InsightSheet (by Meldra AI)**.
+> I'm Sumit, creator of **InsightSheet (by meldra AI)**.
 >
 > As someone who spent years building enterprise analytics and working with financial data, I noticed a constant pain point across finance teams, analysts and management consultants:
 >
@@ -42,7 +42,7 @@ InsightSheet turns raw Excel, CSV & financial data into board-ready PowerPoint p
 >
 > Check out the live demo, try it out with your spreadsheets, and let me know your thoughts in the comments below! 🚀
 >
-> — Sumit Agaria & Team Meldra
+> — Sumit Agaria & Team meldra
 
 ---
 

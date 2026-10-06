@@ -1,4 +1,4 @@
-// Spreadsheet column headers for Ask Meldra's planner, read on the device.
+// Spreadsheet column headers for Ask meldra's planner, read on the device.
 
 /** Column headers of a spreadsheet (first sheet, first row), read on the device. Nothing else is sent. */
 export async function readHeaders(file) {

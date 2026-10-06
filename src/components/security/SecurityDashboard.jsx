@@ -184,14 +184,14 @@ export default function SecurityDashboard() {
         </Card>
       )}
 
-      {/* Meldra API Key — only for external/API use (developer.meldra.ai). In-app never needs this. */}
+      {/* meldra API Key — only for external/API use (developer.meldra.ai). In-app never needs this. */}
       <Card className={cardClass}>
         <CardHeader>
           <CardTitle className={`${cardTitleClass} flex items-center gap-2`}>
             <Key className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-            Meldra API Key (for external API only)
+            meldra API Key (for external API only)
           </CardTitle>
-          <p className={`text-sm ${subtleTextClass}`}>Only for calling Meldra from your own apps or developer.meldra.ai. In-app Document Converter and FileName Cleaner use your Meldra login only; they do <strong>not</strong> use or require this key.</p>
+          <p className={`text-sm ${subtleTextClass}`}>Only for calling meldra from your own apps or developer.meldra.ai. In-app Document Converter and FileName Cleaner use your meldra login only; they do <strong>not</strong> use or require this key.</p>
         </CardHeader>
         <CardContent className="space-y-3">
           {meldraKeySet && !meldraKeyInput ? (
@@ -203,7 +203,7 @@ export default function SecurityDashboard() {
             <>
               <Input
                 type="password"
-                placeholder="Meldra API key"
+                placeholder="meldra API key"
                 value={meldraKeyInput}
                 onChange={(e) => setMeldraKeyInput(e.target.value)}
                 className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 placeholder:text-slate-500"

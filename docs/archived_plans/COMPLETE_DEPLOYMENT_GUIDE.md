@@ -1,4 +1,4 @@
-# 🚀 Complete Deployment Guide for Meldra
+# 🚀 Complete Deployment Guide for meldra
 
 ## 📋 Overview
 

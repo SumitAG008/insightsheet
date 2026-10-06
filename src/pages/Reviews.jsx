@@ -189,7 +189,7 @@ export default function Reviews() {
             Customer Reviews
           </h1>
           <p className="text-slate-600 dark:text-slate-400">
-            See what our users are saying about Meldra
+            See what our users are saying about meldra
           </p>
         </div>
 
@@ -344,7 +344,7 @@ export default function Reviews() {
                   id="comment"
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Share your experience with Meldra..."
+                  placeholder="Share your experience with meldra..."
                   rows={5}
                   className="w-full"
                   required

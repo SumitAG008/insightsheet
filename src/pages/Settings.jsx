@@ -402,7 +402,7 @@ export default function Settings() {
           <CardContent className="space-y-4">
             <p className="text-sm text-slate-700 dark:text-slate-300">
               This permanently deletes your account, sign-in and device history, usage history, API keys and any data you
-              stored in Meldra. It cannot be undone. Payment records are kept for as long as tax law requires, without your
+              stored in meldra. It cannot be undone. Payment records are kept for as long as tax law requires, without your
               IP address or browser details.
             </p>
             <div className="grid md:grid-cols-2 gap-4 max-w-2xl">

@@ -88,8 +88,8 @@ await panel.getByRole('button', { name: 'Tables you can query' }).click();
 check('Tables you can query lists every source with its columns', await panel.locator('.font-mono.font-semibold').count() === 6);
 await panel.getByRole('button', { name: 'Tables you can query' }).click();
 await panel.getByRole('button', { name: 'Run SQL' }).click();
-await panel.getByText(/ran in (this browser|the Meldra lakehouse)/).waitFor({ timeout: 60000 });
-const ranText = await panel.getByText(/ran in (this browser|the Meldra lakehouse)/).textContent();
+await panel.getByText(/ran in (this browser|the meldra lakehouse)/).waitFor({ timeout: 60000 });
+const ranText = await panel.getByText(/ran in (this browser|the meldra lakehouse)/).textContent();
 const answerRows = await card.locator('table').first().locator('tbody tr').count().catch(() => 0);
 check(`the SQL runs ${MODE === 'lakehouse' ? 'in the lakehouse (DuckDB over Iceberg)' : 'in the browser (SQLite)'}`, MODE === 'lakehouse' ? /lakehouse/.test(ranText) : /browser/.test(ranText), ranText.trim());
 await card.screenshot({ path: `${OUT}/${MODE}-1-query-panel.png` });
@@ -126,9 +126,9 @@ await p2.getByRole('textbox', { name: 'SQL query' }).fill('SELECT nope FROM empl
 await p2.getByRole('button', { name: 'Run SQL' }).click();
 await p2.getByRole('alert').waitFor();
 check('a wrong column gives the database error', /nope/i.test(await p2.getByRole('alert').textContent()), (await p2.getByRole('alert').textContent()).slice(0, 80));
-await p2.getByRole('button', { name: /Back to Meldra/ }).click();
+await p2.getByRole('button', { name: /Back to meldra/ }).click();
 await page.waitForTimeout(800);
-check('"Back to Meldra\'s query" restores the original answer', await card.getByText('Custom SQL').count() === 0);
+check('"Back to meldra\'s query" restores the original answer', await card.getByText('Custom SQL').count() === 0);
 
 // ---------- 3. A report from one prompt, then its downloads ----------
 await ask('Board pack on workforce cost and revenue', 'Build a report');
@@ -166,7 +166,7 @@ const passed = steps.filter((s) => s.ok).length;
 const md = [
   `# Query panel and report downloads: results (${MODE} mode)`,
   '',
-  `Run ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC against ${APP}; ${MODE === 'lakehouse' ? 'sources stored in the Meldra lakehouse, SQL run by DuckDB' : 'data kept in the browser, SQL run by SQLite (sql.js)'}.`,
+  `Run ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC against ${APP}; ${MODE === 'lakehouse' ? 'sources stored in the meldra lakehouse, SQL run by DuckDB' : 'data kept in the browser, SQL run by SQLite (sql.js)'}.`,
   `**${passed} of ${steps.length} checks passed.**`,
   '',
   '| # | Check | Result | Detail |', '|---|---|---|---|',

@@ -1,5 +1,5 @@
 """
-Plan limits: one table for every allowance Meldra enforces, and the rule for which one applies.
+Plan limits: one table for every allowance meldra enforces, and the rule for which one applies.
 
 A user's limits come from their organisation's licence when they hold a seat on an active one,
 and from their own plan otherwise. Every figure can be changed without a code change:
@@ -55,13 +55,13 @@ PLAN_LIMITS: Dict[str, Dict[str, int]] = {
         "requests_per_minute": 120,
     },
     "pro": {
-        "file_size_mb": 50,
+        "file_size_mb": 100,
         "spreadsheet_rows": 300_000,
-        "pdf_pages": 300,
-        "ocr_pages": 50,
-        "conversions_per_month": 500,
-        "ai_queries_per_month": 300,
-        "monthly_upload_mb": 5_000,
+        "pdf_pages": 500,
+        "ocr_pages": 100,
+        "conversions_per_month": 1_000,
+        "ai_queries_per_month": 500,
+        "monthly_upload_mb": 10_000,
         "concurrent_jobs": 2,
         "requests_per_minute": 240,
     },

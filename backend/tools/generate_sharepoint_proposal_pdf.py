@@ -27,7 +27,7 @@ def build_pdf(out_path: Path) -> None:
         topMargin=2.0 * cm,
         bottomMargin=2.0 * cm,
         title="SharePoint Intranet + Migration Proposal",
-        author="Meldra",
+        author="meldra",
     )
 
     today = date.today().isoformat()

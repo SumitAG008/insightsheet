@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { ArrowRight, Check, Download, FileSpreadsheet, Loader2, RotateCcw, Settings2, Sparkles, Trash2, Upload } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import {
+  ArrowRight, ArrowRightLeft, Check, Download, FileCheck2, FileSpreadsheet, FolderSync, Loader2, Lock, RotateCcw, Settings2, ShieldCheck, Sparkles, Trash2, Upload, Wand2,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ProductHeader, { StatTile, headerButton } from '@/components/common/ProductHeader';
 import { backendApi } from '@/api/backendClient';
 import MappingStep from '@/components/migration/MappingStep';
 import ReviewStep from '@/components/migration/ReviewStep';
@@ -16,10 +20,17 @@ import { parseFile } from '@/lib/unifiedReporting/model';
 import * as store from '@/lib/unifiedReporting/storage';
 
 const STEPS = [
-  ['upload', 'Upload extract'],
-  ['map', 'Map fields'],
-  ['cleanse', 'Cleanse & validate'],
-  ['export', 'Load order & export'],
+  ['upload', 'Upload extract', 'Excel or CSV from the legacy system'],
+  ['map', 'Map fields', 'Columns matched to target fields'],
+  ['cleanse', 'Cleanse & validate', 'Values fixed, codes translated'],
+  ['export', 'Load order & export', 'Load-ready files, in order'],
+];
+const TARGET_NAME = 'SAP SuccessFactors Employee Central';
+const HOW_IT_WORKS = [
+  [Wand2, 'Automatic mapping', 'Every column is matched to a target field by its name, synonyms and the shape of its values. AI refines what the rules cannot place, using tab and column names only.'],
+  [FolderSync, 'Records assembled for you', 'Tabs are joined per employee without VLOOKUPs, and org, job and cost centre lists are built from the data.'],
+  [ShieldCheck, 'Cleansed and validated', 'Dates, countries, picklists and bank details are standardised, and every fix and every problem is listed before you load.'],
+  [FileCheck2, 'Load-ready package', 'A zip of import files numbered in load order, plus a review workbook and a reconciliation of counts and totals.'],
 ];
 const STORE_KEY = 'migration';
 const SOURCE_SYSTEMS = ['Workday', 'Oracle HCM Cloud', 'Oracle E-Business Suite', 'SAP HCM (on-premise)', 'ADP', 'UKG / Kronos', 'BambooHR', 'Dayforce (Ceridian)', 'PeopleSoft', 'Sage People', 'Excel / custom'];
@@ -344,41 +355,61 @@ export default function Migration() {
 
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 pb-10 pt-6 sm:px-6 lg:px-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="m-0 text-2xl font-semibold tracking-tight">Universal System Migration Engine</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            <strong className="text-slate-700 dark:text-slate-200">Any Source System Extract</strong> <ArrowRight className="inline h-3.5 w-3.5" /> <strong className="text-slate-700 dark:text-slate-200">Target System Schema</strong> · AI Schema Mapping, Automated Transformation, Date/IBAN Cleansing & Cutover Excel Package · Runs 100% in browser RAM
-          </p>
+      <input ref={profileInput} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { loadProfile(e.target.files[0]); e.target.value = ''; }} />
+      <ProductHeader
+        icon={ArrowRightLeft}
+        eyebrow="Migration"
+        title="HR data migration, ready to load"
+        description={`Turn a legacy HR extract into load-ready ${TARGET_NAME} files: mapped, cleansed, validated and in load order. Save the result as a profile and rerun every mock cycle in minutes.`}
+        points={[[Lock, 'Processed in your browser'], [Sparkles, 'AI sees column names, never values'], [FolderSync, 'Reusable for every mock cycle']]}
+        guide="/help/migration-overview"
+        actions={(
+          <>
+            <button type="button" className={headerButton} onClick={() => profileInput.current?.click()} title="Re-use mappings, value translations and settings from an earlier run">Load profile</button>
+            {sheets.length > 0 && <button type="button" className={headerButton} onClick={saveProfile} title="Save mappings, value translations and settings for the next mock load or cutover">Save profile</button>}
+            {sheets.length > 0 && <button type="button" className={headerButton} onClick={() => setShowSettings(!showSettings)} aria-pressed={showSettings}><Settings2 className="h-4 w-4" />Settings</button>}
+            {sheets.length > 0 && <button type="button" className={headerButton} onClick={reset}><RotateCcw className="h-4 w-4" />Start over</button>}
+          </>
+        )}
+        stats={result && (
+          <>
+            <StatTile label="Employees" value={(result.reconciliation.find((r) => r.label === 'Employees')?.source || 0).toLocaleString()} hint={`${sheets.length} tab${sheets.length === 1 ? '' : 's'} · ${sheets.reduce((a, x) => a + x.rows.length, 0).toLocaleString()} rows`} />
+            <StatTile label="Columns mapped" value={`${result.coverage.mapped + result.coverage.carried} / ${result.coverage.total}`} hint={result.coverage.left ? `${result.coverage.left} still to place` : 'All columns placed'} />
+            <StatTile label="Errors to fix" value={result.issues.filter((x) => x.severity === 'error').length.toLocaleString()} hint={`${result.issues.filter((x) => x.severity === 'warning').length.toLocaleString()} warnings`} />
+            <StatTile label="Load files" value={result.files.length.toLocaleString()} hint="Numbered in load order" />
+          </>
+        )}
+      >
+        <div className="mt-5 flex flex-wrap items-center gap-2 text-sm">
+          <span className="rounded-lg bg-white px-3 py-1.5 font-semibold text-[#02161A] shadow-sm">{sourceSystem}</span>
+          <ArrowRight className="h-4 w-4 text-[#DDFA21]" aria-hidden="true" />
+          <span className="rounded-lg bg-white px-3 py-1.5 font-semibold text-[#02161A] shadow-sm">{TARGET_NAME}</span>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <input ref={profileInput} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { loadProfile(e.target.files[0]); e.target.value = ''; }} />
-          <Button variant="outline" size="sm" onClick={() => profileInput.current?.click()} title="Re-use mappings, value translations and settings from an earlier run">Load profile</Button>
-          {sheets.length > 0 && <Button variant="outline" size="sm" onClick={saveProfile} title="Save mappings, value translations and settings for the next mock load or cutover">Save profile</Button>}
-          {sheets.length > 0 && <Button variant="outline" size="sm" onClick={() => setShowSettings(!showSettings)}><Settings2 className="mr-1.5 h-4 w-4" />Settings</Button>}
-          {sheets.length > 0 && <Button variant="ghost" size="sm" onClick={reset}><RotateCcw className="mr-1.5 h-4 w-4" />Start over</Button>}
-        </div>
-      </div>
+      </ProductHeader>
 
       {/* Stepper */}
-      <ol className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-4">
-        {STEPS.map(([k, label], i) => {
+      <ol className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Migration steps">
+        {STEPS.map(([k, label, hint], i) => {
           const done = i < stepIdx;
           const active = k === step;
           return (
-            <li key={k}>
+            <li key={k} className="relative">
               <button
                 type="button"
                 disabled={!canGo(k)}
                 onClick={() => setStep(k)}
                 aria-current={active ? 'step' : undefined}
-                className={`flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm transition disabled:opacity-50 ${active ? 'border-blue-600 bg-blue-50 dark:bg-blue-950' : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900'}`}
+                className={`group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${active ? 'border-[#004FCD] bg-white shadow-md shadow-blue-900/10 ring-4 ring-blue-50 dark:bg-slate-900 dark:ring-blue-950' : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900'}`}
               >
-                <span className={`grid h-6 w-6 flex-none place-items-center rounded-full text-xs font-semibold ${active ? 'bg-blue-600 text-white' : done ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-200'}`}>
-                  {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
+                <span className={`grid h-8 w-8 flex-none place-items-center rounded-full text-sm font-semibold ${active ? 'bg-[#004FCD] text-white' : done ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-300'}`}>
+                  {done ? <Check className="h-4 w-4" /> : i + 1}
                 </span>
-                <span className="font-medium">{label}</span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-slate-900 dark:text-white">{label}</span>
+                  <span className="block truncate text-xs text-slate-500">{hint}</span>
+                </span>
               </button>
+              <span className={`absolute -bottom-2 left-4 right-4 h-1 rounded-full ${done ? 'bg-emerald-500' : active ? 'bg-[#004FCD]' : 'bg-transparent'}`} aria-hidden="true" />
             </li>
           );
         })}
@@ -389,42 +420,51 @@ export default function Migration() {
 
       <div className="mt-6">
         {step === 'upload' && (
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_400px]">
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => { e.preventDefault(); onFiles([...e.dataTransfer.files]); }}
-              className="rounded-2xl border-2 border-dashed border-slate-300 bg-white px-6 py-12 text-center dark:border-slate-700 dark:bg-slate-900"
+              className="relative overflow-hidden rounded-3xl border-2 border-dashed border-blue-200 bg-gradient-to-b from-blue-50/70 to-white px-6 py-12 text-center transition hover:border-[#004FCD] dark:border-blue-900 dark:from-blue-950/30 dark:to-slate-900"
             >
               <input ref={fileInput} type="file" multiple accept=".csv,.tsv,.xlsx,.xls" className="hidden" onChange={(e) => { onFiles([...e.target.files]); e.target.value = ''; }} />
-              {busy === 'upload' ? <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" /> : <Upload className="mx-auto h-8 w-8 text-blue-600" />}
-              <h2 className="mt-3 text-xl font-semibold">Drop your Source System Extract</h2>
-              <p className="mx-auto mt-1 max-w-lg text-sm text-slate-500">
-                Upload your raw data extract spreadsheet (Excel or CSVs) from any legacy HR, ERP, CRM, Finance, or Database system. AI automatically recognizes tabs, maps target fields, cleanses dates/IDs, and formats the output for cutover.
+              <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#004FCD] text-white shadow-lg shadow-blue-900/20">
+                {busy === 'upload' ? <Loader2 className="h-7 w-7 animate-spin" /> : <Upload className="h-7 w-7" />}
+              </span>
+              <h2 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Drop your system extract here</h2>
+              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">
+                One workbook with several tabs, or several CSV files: people, jobs, pay, addresses, bank details and org lists. meldra recognises each tab and maps it for you.
               </p>
-              <label className="mx-auto mt-4 flex max-w-xs items-center justify-center gap-2 text-sm">
-                <span className="text-slate-500">Source system</span>
+              <label className="mx-auto mt-5 flex max-w-sm items-center justify-center gap-2 text-sm">
+                <span className="font-medium text-slate-600 dark:text-slate-300">Source system</span>
                 <input
                   list="migration-source-systems"
-                  className="w-48 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-900"
+                  className="w-52 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm shadow-sm dark:border-slate-700 dark:bg-slate-900"
                   value={sourceSystem}
                   onChange={(e) => setSettings((cur) => ({ ...cur, sourceSystem: e.target.value.slice(0, 60) }))}
                 />
                 <datalist id="migration-source-systems">{SOURCE_SYSTEMS.map((x) => <option key={x} value={x} />)}</datalist>
               </label>
-              <Button className="mt-4" onClick={() => fileInput.current?.click()} disabled={busy === 'upload'}>Choose files</Button>
-              <div className="mt-6 flex flex-wrap justify-center gap-2">
+              <Button className="mt-5 h-11 bg-[#004FCD] px-6 text-base hover:bg-[#0043ad]" onClick={() => fileInput.current?.click()} disabled={busy === 'upload'}>Choose files</Button>
+              <p className="mt-2 text-xs text-slate-400">Excel (.xlsx, .xls) or CSV · files stay in your browser</p>
+              <div className="mt-7 flex flex-wrap justify-center gap-2 border-t border-blue-100 pt-6 dark:border-slate-800">
                 <Button variant="outline" onClick={loadSample}><Sparkles className="mr-2 h-4 w-4" />Try a sample system extract</Button>
                 <Button variant="ghost" onClick={downloadWorkdaySampleXlsx}><Download className="mr-2 h-4 w-4" />Download sample as Excel</Button>
               </div>
             </div>
-            <div className={card}>
-              <h3 className="m-0 text-[15px] font-semibold">How Migration Works</h3>
-              <ol className="mt-3 space-y-3 text-sm">
-                <li><strong>1. AI Mapping.</strong> AI matches source extract columns to the target schema (e.g. <code>Given_Name</code> → <code>firstName</code>) without complex manual VLOOKUPs.</li>
-                <li><strong>2. Auto-Resolution.</strong> Automatically builds reference structures (org objects, job codes, cost centers, employee records) and joins relational data.</li>
-                <li><strong>3. Data Cleansing & Validation.</strong> Converts date formats, picklists, and IBANs while running pre-flight checks against target system validation rules.</li>
-                <li><strong>4. Package Export.</strong> Generates a zip of load-sequenced CSVs or cutover Excel workbooks ready for target system upload.</li>
+            <div className={`${card} p-6`}>
+              <h3 className="m-0 text-base font-semibold text-slate-900 dark:text-white">How it works</h3>
+              <ol className="mt-4 space-y-4">
+                {HOW_IT_WORKS.map(([Icon, title, text]) => (
+                  <li key={title} className="flex gap-3">
+                    <span className="grid h-9 w-9 flex-none place-items-center rounded-xl bg-blue-50 text-[#004FCD] dark:bg-blue-950 dark:text-blue-300"><Icon className="h-4 w-4" aria-hidden="true" /></span>
+                    <span className="min-w-0 text-sm">
+                      <span className="block font-semibold text-slate-900 dark:text-white">{title}</span>
+                      <span className="mt-0.5 block leading-6 text-slate-500">{text}</span>
+                    </span>
+                  </li>
+                ))}
               </ol>
+              <Link to="/help/prepare-your-extract" className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-[#004FCD] hover:underline dark:text-blue-400">How to prepare your extract <ArrowRight className="h-3.5 w-3.5" /></Link>
             </div>
             {sheets.length > 0 && (
               <div className={`${card} lg:col-span-2`}>
@@ -462,7 +502,7 @@ export default function Migration() {
 
       {sheets.length > 0 && stepIdx < STEPS.length - 1 && step !== 'upload' && (
         <div className="mt-6 flex justify-end">
-          <Button onClick={() => setStep(STEPS[stepIdx + 1][0])}>
+          <Button className="h-11 bg-[#004FCD] px-5 hover:bg-[#0043ad]" onClick={() => setStep(STEPS[stepIdx + 1][0])}>
             Next: {STEPS[stepIdx + 1][1]} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>

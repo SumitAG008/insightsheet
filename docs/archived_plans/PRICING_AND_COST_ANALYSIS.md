@@ -1,4 +1,4 @@
-# Meldra — Pricing & Cost Analysis
+# meldra — Pricing & Cost Analysis
 
 **Effective: Mid‑February 2025 — application fully paid, no promotional offers.**
 
@@ -93,9 +93,9 @@ All amounts in **USD per month**, before any tax you may need to add.
 
 ---
 
-## 7. developer.meldra.ai and Meldra API key
+## 7. developer.meldra.ai and meldra API key
 
-- File conversion (PDF↔DOC, etc.) and ZIP Cleaner via **developer.meldra.ai** require a **paid Meldra API key**.
+- File conversion (PDF↔DOC, etc.) and ZIP Cleaner via **developer.meldra.ai** require a **paid meldra API key**.
 - You can:
   - **Bundle** a certain usage in Pro/Team (you pay the developer.meldra.ai cost and price it into the plan), or  
   - **Charge separately** for API access (e.g. add‑on or higher tier).

@@ -1,13 +1,13 @@
-# developer.meldra.ai — API Endpoints for Meldra App
+# developer.meldra.ai — API Endpoints for meldra App
 
 The app calls **developer.meldra.ai** (or `VITE_MELDRA_DEVELOPER_API_URL`) for:
 
 - **PDF → DOC**, **DOC → PDF**, **PPT → PDF**, **PDF → PPT**
 - **ZIP Cleaner** (optional; app also supports in-browser ZIP processing)
 
-These endpoints require a **Meldra API key** (paid). Users set the key in **Security → Meldra API Key**.
+These endpoints require a **meldra API key** (paid). Users set the key in **Security → meldra API Key**.
 
-**Developer portal:** Documentation, API key management, and a short **test** flow are available at [developer.meldra.ai](https://developer.meldra.ai). Customers who want to consume the logic programmatically use the Meldra API with an API key; everything is documented and testable on the portal.
+**Developer portal:** Documentation, API key management, and a short **test** flow are available at [developer.meldra.ai](https://developer.meldra.ai). Customers who want to consume the logic programmatically use the meldra API with an API key; everything is documented and testable on the portal.
 
 ---
 
@@ -78,14 +78,14 @@ X-API-Key: <meldra_api_key>
 - **Response:** `200` with body = processed ZIP (binary).
 - **Errors:** same as above.
 
-The Meldra app’s **ZIP Cleaner** page can use this when “Meldra API” is enabled and a key is set. The in-browser implementation remains the default.
+The meldra app’s **ZIP Cleaner** page can use this when “meldra API” is enabled and a key is set. The in-browser implementation remains the default.
 
 ---
 
 ## Client usage
 
 - **PDF↔DOC, DOC↔PDF, PPT↔PDF, PDF↔PPT:** `src/api/meldraDeveloperApi.js` → `convertPdfToDoc`, `convertDocToPdf`, `convertPptToPdf`, `convertPdfToPpt`.
-- **ZIP:** `zipClean(file, options, apiKey)` — used when/if the FilenameCleaner “Meldra API” mode is implemented.
+- **ZIP:** `zipClean(file, options, apiKey)` — used when/if the FilenameCleaner “meldra API” mode is implemented.
 
 ---
 

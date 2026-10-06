@@ -1,5 +1,5 @@
 /**
- * Unified Reporting ↔ Meldra lakehouse.
+ * Unified Reporting ↔ meldra lakehouse.
  *
  * The server is the source of truth for stored sources: on load the list of
  * Iceberg tables in the account's namespace replaces whatever this browser

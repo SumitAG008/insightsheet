@@ -1,5 +1,5 @@
 """
-Meldra lakehouse: ingest (CSV / Excel / Parquet / JSON rows) into Apache Iceberg,
+meldra lakehouse: ingest (CSV / Excel / Parquet / JSON rows) into Apache Iceberg,
 typing and profiling, tenant isolation, and server-side aggregation with the
 browser engine's semantics.
 

@@ -4,7 +4,7 @@
 
 A solid Commercial terms / Disclaimer & Terms page should include:
 
-| # | Section | Status in Meldra |
+| # | Section | Status in meldra |
 |---|---------|------------------|
 | 1 | **General disclaimer** — "AS IS", "AS AVAILABLE"; no warranties | ✅ Present |
 | 2 | **Data accuracy & responsibility** — User verifies; not professional advice | ✅ Present |
@@ -13,7 +13,7 @@ A solid Commercial terms / Disclaimer & Terms page should include:
 | 5 | **Third‑party services** — Not responsible for Google, AI, payments | ✅ Present |
 | 6 | **Not professional advice** — No financial, legal, medical, tax advice | ✅ Present |
 | 7 | **API and commercial use** — Key confidentiality, no uptime warranty, acceptable use, suspension | ✅ Present |
-| 8 | **Indemnification** — User indemnifies Meldra for their use, breach, content | ✅ Present |
+| 8 | **Indemnification** — User indemnifies meldra for their use, breach, content | ✅ Present |
 | 9 | **Governing law & courts** — Law of England and Wales; courts of England and Wales | ✅ Present |
 | 10 | **Changes to terms** — Right to modify; continued use = acceptance | ✅ Present |
 | 11 | **Term and termination** — Right to suspend/terminate accounts or API | ✅ Added |
@@ -48,13 +48,13 @@ A solid Commercial terms / Disclaimer & Terms page should include:
   - **the courts of Singapore**
   - **New Delhi, India** (if you want to pin to a city)
 
-**Typical pairing:** Jurisdiction and courts are often the **same** place (e.g. laws of England and Wales → courts of England and Wales). Meldra is UK-based, so **England and Wales** for both. If you move or incorporate elsewhere, change both to that jurisdiction and those courts.
+**Typical pairing:** Jurisdiction and courts are often the **same** place (e.g. laws of England and Wales → courts of England and Wales). meldra is UK-based, so **England and Wales** for both. If you move or incorporate elsewhere, change both to that jurisdiction and those courts.
 
 ---
 
 ## 2. Commercial terms — “Disclaimer & Terms on insight.meldra.ai”
 
-The **Commercial terms** for Meldra (including API use) are the Disclaimer & Terms page:  
+The **Commercial terms** for meldra (including API use) are the Disclaimer & Terms page:  
 `insight.meldra.ai/disclaimer`.
 
 ### What we’ve included (and that helps protect you)
@@ -65,7 +65,7 @@ The **Commercial terms** for Meldra (including API use) are the Disclaimer & Ter
 | **Data accuracy & responsibility** | User is responsible for checking results; not a substitute for professional advice. |
 | **Limitation of liability** | Caps on indirect/consequential damages; 12‑month fees or $100 for free users. |
 | **Your responsibilities** | Lawful use, no illegal content, verify results, no misuse. |
-| **Indemnification** | User indemnifies Meldra for their use, breach, and content. |
+| **Indemnification** | User indemnifies meldra for their use, breach, and content. |
 | **Governing law & courts** | Law of England and Wales; disputes in the courts of England and Wales. |
 | **API and commercial use** | API key confidentiality, no uptime warranty, acceptable use, suspension/revocation. |
 
@@ -84,7 +84,7 @@ The **Commercial terms** for Meldra (including API use) are the Disclaimer & Ter
 
 ## 3. Changing jurisdiction or courts
 
-Meldra is currently set to **England and Wales** (UK-based). If you later move or incorporate elsewhere, edit `src/pages/Disclaimer.jsx` and replace:
+meldra is currently set to **England and Wales** (UK-based). If you later move or incorporate elsewhere, edit `src/pages/Disclaimer.jsx` and replace:
 
 - **Jurisdiction:**  
   `the laws of **England and Wales**` → e.g. `the laws of **India**` or `the laws of the **State of Delaware, United States**`.

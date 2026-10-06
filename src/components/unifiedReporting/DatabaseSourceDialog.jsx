@@ -175,7 +175,7 @@ export default function DatabaseSourceDialog({ open, onOpenChange, onAdd, refres
                 </select>
               </div>
             )}
-            <p className="flex items-center gap-1.5 text-xs text-slate-500 sm:col-span-2"><Lock className="h-3.5 w-3.5" />The server must be reachable from Meldra’s backend. Use a read-only database user.</p>
+            <p className="flex items-center gap-1.5 text-xs text-slate-500 sm:col-span-2"><Lock className="h-3.5 w-3.5" />The server must be reachable from meldra’s backend. Use a read-only database user.</p>
             <div className="sm:col-span-2">
               <Button onClick={connect} disabled={busy === 'connect' || !form.host || !form.database || !form.username}>
                 {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}{origin ? 'Connect and refresh' : 'Connect'}

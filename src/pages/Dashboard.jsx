@@ -616,7 +616,7 @@ export default function Dashboard() {
         <div className="container mx-auto px-4 py-12">
           <section aria-labelledby="ask-meldra-title" className="mx-auto mb-10 max-w-3xl">
             <h2 id="ask-meldra-title" className="mb-1 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">What do you want to get done?</h2>
-            <p className="mb-4 text-sm text-slate-500">Ask in your own words. Meldra picks the right tools, sets them up with your files and instructions, and you review before anything runs. Press Ctrl/⌘ + K to ask from any page.</p>
+            <p className="mb-4 text-sm text-slate-500">Ask in your own words. meldra picks the right tools, sets them up with your files and instructions, and you review before anything runs. Press Ctrl/⌘ + K to ask from any page.</p>
             <AskMeldra compact />
           </section>
           <SuggestedTools />

@@ -50,7 +50,7 @@ SMTP_USER=noreply@meldra.ai  (or meldra.app@gmail.com)
 
 - **FROM:** `noreply@meldra.ai` (your `SMTP_USER`)
 - **TO:** `saurabh@gmail.com` (the user who requested reset)
-- **Subject:** "Reset Your Password - Meldra"
+- **Subject:** "Reset Your Password - meldra"
 - **Body:** Contains reset link
 
 ### **Step 3: User Receives Email**

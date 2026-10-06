@@ -39,9 +39,9 @@ export default function Pricing() {
 
   const openPricingEmail = () => {
     const to = 'pricing@meldra.ai';
-    const subject = encodeURIComponent('Meldra pricing request');
+    const subject = encodeURIComponent('meldra pricing request');
     const lines = [
-      'Hello Meldra Team,',
+      'Hello meldra Team,',
       '',
       'Please share pricing for the following:',
       '',
@@ -109,7 +109,7 @@ export default function Pricing() {
             <div>
               <h3 className="text-2xl font-bold text-slate-900 mb-2">Plans and limits</h3>
               <p className="text-slate-600">
-                Every plan includes all tools. Plans differ in how much you can process. Team and Business are billed per user, yearly.
+                Every plan includes all tools. Plans differ in how much you can process. Pro is for one person; Team is per user, from 3 users. Pay yearly and get 2 months free.
               </p>
             </div>
             <RegionNote region={region} />
@@ -281,7 +281,7 @@ export default function Pricing() {
             </div>
 
             <p className="text-xs text-slate-500 mt-3">
-              If you want, we can include a short ROI estimate and offer a quick onboarding call to help you evaluate Meldra.
+              If you want, we can include a short ROI estimate and offer a quick onboarding call to help you evaluate meldra.
             </p>
           </div>
         </section>

@@ -1,4 +1,4 @@
-// Delivers an Ask Meldra handoff into the tool page it was meant for: the attached files go into
+// Delivers an Ask meldra handoff into the tool page it was meant for: the attached files go into
 // the page's own file inputs and the planner's instruction into its instruction box, then a small
 // banner says what was done. Nothing is run automatically; the user reviews and presses the
 // page's own button.
@@ -69,7 +69,7 @@ export default function HandoffRunner() {
       <div className="flex items-start gap-3">
         <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
         <div className="min-w-0 flex-1 space-y-1">
-          <div className="font-semibold">Ask Meldra · {banner.tool}</div>
+          <div className="font-semibold">Ask meldra · {banner.tool}</div>
           {banner.state === 'working' && <div className="text-slate-500">Setting up your request…</div>}
           {banner.state === 'done' && (
             <>

@@ -6,6 +6,74 @@
   "framework": "vite",
   "rewrites": [
     {
+      "source": "/pricing",
+      "destination": "/seo/pricing.html"
+    },
+    {
+      "source": "/Pricing",
+      "destination": "/seo/pricing.html"
+    },
+    {
+      "source": "/faq",
+      "destination": "/seo/faq.html"
+    },
+    {
+      "source": "/Faq",
+      "destination": "/seo/faq.html"
+    },
+    {
+      "source": "/developers",
+      "destination": "/seo/developers.html"
+    },
+    {
+      "source": "/Developers",
+      "destination": "/seo/developers.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/seo/terms.html"
+    },
+    {
+      "source": "/Terms",
+      "destination": "/seo/terms.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/seo/privacy.html"
+    },
+    {
+      "source": "/Privacy",
+      "destination": "/seo/privacy.html"
+    },
+    {
+      "source": "/security",
+      "destination": "/seo/security.html"
+    },
+    {
+      "source": "/Security",
+      "destination": "/seo/security.html"
+    },
+    {
+      "source": "/disclaimer",
+      "destination": "/seo/disclaimer.html"
+    },
+    {
+      "source": "/Disclaimer",
+      "destination": "/seo/disclaimer.html"
+    },
+    {
+      "source": "/help",
+      "destination": "/seo/help.html"
+    },
+    {
+      "source": "/Help",
+      "destination": "/seo/help.html"
+    },
+    {
+      "source": "/help/:slug",
+      "destination": "/seo/help/:slug.html"
+    },
+    {
       "source": "/((?!assets/).*)",
       "destination": "/index.html"
     }

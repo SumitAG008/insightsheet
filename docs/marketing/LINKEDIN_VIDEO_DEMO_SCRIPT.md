@@ -38,4 +38,4 @@ Stop wrestling with manual slides.
 
 👉 **Try it free right now:** https://meldra.ai
 
-#FPandA #FinanceTech #ExcelToPPT #Productivity #AIInFinance #EnterpriseSecurity #Meldra
+#FPandA #FinanceTech #ExcelToPPT #Productivity #AIInFinance #EnterpriseSecurity #meldra

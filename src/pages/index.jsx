@@ -52,6 +52,7 @@ import Reconciliation from "./Reconciliation";
 import PlaywrightConnector from "./PlaywrightConnector";
 import InvoiceExtractor from "./InvoiceExtractor";
 import HelpGuide from "./HelpGuide";
+import HelpCenter from "./HelpCenter";
 
 import UnifiedReporting from "./UnifiedReporting";
 import Migration from "./Migration";
@@ -64,7 +65,9 @@ import AdminLicenses from "./AdminLicenses";
 import Terms from "./Terms";
 import Faq from "./Faq";
 
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { descriptionFor, titleFor } from '@/lib/seo';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 
 const PAGES = {
@@ -156,6 +159,14 @@ const INSIGHT_BASE = 'https://insight.meldra.ai';
 // Create a wrapper component that uses useLocation inside the Router context
 function PagesContent() {
     const location = useLocation();
+
+    // Tab title and description for every page (the build also writes them into public pages' HTML).
+    useEffect(() => {
+        if (/^\/help(\/|$)/i.test(location.pathname)) return; // the Help Center sets its own title per article
+        document.title = titleFor(location.pathname);
+        const meta = document.querySelector('meta[name="description"]');
+        if (meta) meta.setAttribute('content', descriptionFor(location.pathname));
+    }, [location.pathname]);
     const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
     const isDeveloperDomain = hostname === 'developer.meldra.ai';
     const isApiDeveloperDomain = hostname === 'api.developer.meldra.ai';
@@ -183,7 +194,7 @@ function PagesContent() {
     const currentPage = _getCurrentPage(location.pathname);
 
     // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword/VerifyEmail, Blog)
-    const noLayoutRoutes = ['/', '/pricing', '/developers', '/faq', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
+    const noLayoutRoutes = ['/', '/pricing', '/developers', '/faq', '/help', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
     const isNoLayoutRoute = noLayoutRoutes.some(route => {
         const path = location.pathname.toLowerCase();
         const routeLower = route.toLowerCase();
@@ -201,6 +212,8 @@ function PagesContent() {
                 <Route path="/Developers" element={<Developers />} />
                 <Route path="/faq" element={<Faq />} />
                 <Route path="/Faq" element={<Faq />} />
+                <Route path="/help" element={<HelpCenter />} />
+                <Route path="/help/:slug" element={<HelpCenter />} />
                 <Route path="/developers/blog" element={<DevelopersBlog />} />
                 <Route path="/developers/blog/:slugOrId" element={<BlogPost />} />
                 <Route path="/login" element={<Login />} />
@@ -308,8 +321,6 @@ function PagesContent() {
                 <Route path="/InvoiceExtractor" element={<ProtectedRoute><InvoiceExtractor /></ProtectedRoute>} />
                 <Route path="/invoiceextractor" element={<ProtectedRoute><InvoiceExtractor /></ProtectedRoute>} />
 
-                <Route path="/Help" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
-                <Route path="/help" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
                 <Route path="/HelpGuide" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
                 <Route path="/helpguide" element={<ProtectedRoute><HelpGuide /></ProtectedRoute>} />
 

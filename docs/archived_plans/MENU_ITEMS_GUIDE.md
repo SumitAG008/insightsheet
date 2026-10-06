@@ -1,8 +1,8 @@
-# 📋 Meldra Menu Items - Complete Guide
+# 📋 meldra Menu Items - Complete Guide
 
 ## 🎯 Overview
 
-This document explains what each menu item does in the Meldra application, their current status, and how they connect to the backend.
+This document explains what each menu item does in the meldra application, their current status, and how they connect to the backend.
 
 ---
 

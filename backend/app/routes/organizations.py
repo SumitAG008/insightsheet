@@ -1,7 +1,7 @@
 """
 Organisations and licences.
 
-/api/admin/orgs...   Meldra staff: set up a customer, record the deal (seats, term, limits, money),
+/api/admin/orgs...   meldra staff: set up a customer, record the deal (seats, term, limits, money),
                      and see renewals, seat use and contract value in one report.
 /api/org/...         The customer's own admins: add and remove people, see seat and usage figures,
                      export usage, and see who changed what.
@@ -159,11 +159,11 @@ def _add_member(db: Session, org: Organization, email: str, role: str, actor: st
     if enforce_seats:
         lic = orgsvc.current_license(db, org.id)
         if not orgsvc.license_gives_access(lic):
-            raise HTTPException(status_code=402, detail="This organisation has no active licence. Contact Meldra to renew.")
+            raise HTTPException(status_code=402, detail="This organisation has no active licence. Contact meldra to renew.")
         if orgsvc.seats_used(db, org.id) >= int(lic.seats or 0):
             raise HTTPException(
                 status_code=402,
-                detail=f"All {int(lic.seats or 0)} seats are in use. Remove someone or contact Meldra to add seats.",
+                detail=f"All {int(lic.seats or 0)} seats are in use. Remove someone or contact meldra to add seats.",
             )
     if existing:  # re-adding someone removed earlier (from this or another organisation)
         existing.organization_id = org.id
@@ -264,7 +264,7 @@ def _usage_csv(rows: List[Dict[str, Any]]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Meldra admin: organisations, licences and the licence report
+# meldra admin: organisations, licences and the licence report
 # ---------------------------------------------------------------------------
 
 class OrgCreate(BaseModel):
@@ -509,7 +509,7 @@ def admin_update_license(license_id: int, payload: LicenseUpdate, current_user: 
 @router.post("/api/admin/orgs/{org_id}/members")
 def admin_add_member(org_id: int, payload: MemberAdd, current_user: dict = Depends(get_current_admin_user), db: Session = Depends(get_db)):
     org = _org_or_404(db, org_id)
-    # Meldra staff can add people beyond the seat count (e.g. before the licence is recorded); the report shows it.
+    # meldra staff can add people beyond the seat count (e.g. before the licence is recorded); the report shows it.
     _add_member(db, org, str(payload.email), payload.role, current_user["email"], "admin", enforce_seats=False)
     return {"members": _members_payload(db, org)}
 

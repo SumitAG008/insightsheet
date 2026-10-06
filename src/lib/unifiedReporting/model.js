@@ -386,7 +386,7 @@ export const isLake = (s) => s?.kind === 'lake';
 export const rowCountOf = (s) => (isLake(s) ? s.rowCount || 0 : s.rows?.length || 0);
 
 /**
- * A source stored in the Meldra lakehouse (an Iceberg table). It carries the
+ * A source stored in the meldra lakehouse (an Iceberg table). It carries the
  * table's profile (columns, known values, month range) but no rows.
  * keepId lets a browser source keep its id when it moves to the lakehouse, so
  * links and dashboard tiles that point at it keep working.

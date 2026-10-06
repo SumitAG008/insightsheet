@@ -327,7 +327,7 @@ describe('migration profile (reuse mappings across mock loads)', () => {
 
   it('rejects files that are not profiles', async () => {
     const { applyProfile } = await import('./profile');
-    expect(() => applyProfile({ foo: 1 }, [], {}, {})).toThrow(/not a Meldra migration profile/);
+    expect(() => applyProfile({ foo: 1 }, [], {}, {})).toThrow(/not a meldra migration profile/);
   });
 });
 

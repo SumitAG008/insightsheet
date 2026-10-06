@@ -1,5 +1,5 @@
 /**
- * Meldra UI - Formatting Utilities
+ * meldra UI - Formatting Utilities
  *
  * This module provides formatting utilities for displaying data in user interfaces,
  * including number formatting, date formatting, and data visualization helpers.

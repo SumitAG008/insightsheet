@@ -22,7 +22,7 @@ function getToken() {
 
 export default function PlaywrightConnector() {
   const apiBase = useMemo(() => getApiBase(), []);
-  // Ask Meldra hands over a website URL: start on the custom-URL connector so it can be filled in.
+  // Ask meldra hands over a website URL: start on the custom-URL connector so it can be filled in.
   const [connector, setConnector] = useState(() => (/^https?:\/\//i.test(peekHandoff('/PlaywrightConnector')?.instruction || '') ? 'custom' : 'books'));
   const [maxPages, setMaxPages] = useState('2');
   const [timeoutMs, setTimeoutMs] = useState('25000');

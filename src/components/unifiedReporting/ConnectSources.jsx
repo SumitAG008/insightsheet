@@ -127,11 +127,11 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
   return (
     <div className={card}>
       <h3 className="m-0 flex items-center gap-2 text-[15px] font-semibold"><Plug className="h-4 w-4 text-blue-600" />{initial ? `Refresh ${initial.name || 'API source'}` : 'Connect an API'}</h3>
-      <p className="mt-1 flex items-start gap-1.5 text-xs text-slate-500"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-none text-emerald-600" />Meldra fetches over HTTPS from public addresses only. Credentials are used for this request and never stored; the records stay in this browser.</p>
+      <p className="mt-1 flex items-start gap-1.5 text-xs text-slate-500"><ShieldCheck className="mt-0.5 h-3.5 w-3.5 flex-none text-emerald-600" />meldra fetches over HTTPS from public addresses only. Credentials are used for this request and never stored; the records stay in this browser.</p>
       <p className="mt-1 flex items-start gap-1.5 text-xs text-slate-500">
         <KeyRound className="mt-0.5 h-3.5 w-3.5 flex-none text-emerald-600" />
         {egress?.static_ip
-          ? `Prefer OAuth or SAML sign-in, so no IP allowlisting is needed. If your system still requires it, Meldra calls from: ${egress.ips.join(', ')}.`
+          ? `Prefer OAuth or SAML sign-in, so no IP allowlisting is needed. If your system still requires it, meldra calls from: ${egress.ips.join(', ')}.`
           : 'Use OAuth 2.0 or SAML 2.0 bearer sign-in (certificate or client secret): access is granted by token, so no IP allowlisting is needed.'}
       </p>
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -214,7 +214,7 @@ export function ApiConnector({ initial, onAdd, onCancel }) {
       )}
       {rotated && (
         <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm dark:border-amber-800 dark:bg-amber-950" role="alert">
-          <p className="m-0 font-medium">The system issued a new refresh token. Save it now: the old one no longer works and Meldra does not keep it.</p>
+          <p className="m-0 font-medium">The system issued a new refresh token. Save it now: the old one no longer works and meldra does not keep it.</p>
           <div className="mt-2 flex items-center gap-2">
             <code className="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 text-xs dark:bg-slate-900" data-testid="new-refresh-token">{rotated.token}</code>
             <Button size="sm" variant="outline" onClick={() => navigator.clipboard?.writeText(rotated.token).catch(() => {})}><Copy className="mr-1 h-3.5 w-3.5" />Copy</Button>

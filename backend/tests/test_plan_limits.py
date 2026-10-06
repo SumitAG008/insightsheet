@@ -17,13 +17,13 @@ from app.services.plan_limits import (
 
 def test_plans_match_the_published_table():
     free, pro, team = plan_limits("free", env={}), plan_limits("pro", env={}), plan_limits("team", env={})
-    assert (free["file_size_mb"], pro["file_size_mb"], team["file_size_mb"]) == (10, 50, 100)
+    assert (free["file_size_mb"], pro["file_size_mb"], team["file_size_mb"]) == (10, 100, 100)
     assert (free["spreadsheet_rows"], pro["spreadsheet_rows"], team["spreadsheet_rows"]) == (50_000, 300_000, 1_000_000)
     assert (free["pdf_pages"], free["ocr_pages"]) == (50, 5)
-    assert (pro["pdf_pages"], pro["ocr_pages"]) == (300, 50)
+    assert (pro["pdf_pages"], pro["ocr_pages"]) == (500, 100)
     assert (team["pdf_pages"], team["ocr_pages"]) == (1_000, 100)
-    assert (free["conversions_per_month"], pro["conversions_per_month"], team["conversions_per_month"]) == (20, 500, 2_000)
-    assert (free["ai_queries_per_month"], pro["ai_queries_per_month"], team["ai_queries_per_month"]) == (20, 300, 1_000)
+    assert (free["conversions_per_month"], pro["conversions_per_month"], team["conversions_per_month"]) == (20, 1_000, 2_000)
+    assert (free["ai_queries_per_month"], pro["ai_queries_per_month"], team["ai_queries_per_month"]) == (20, 500, 1_000)
     # Every higher plan is at least as generous as the one below it.
     order = ["free", "pro", "team", "business"]
     for lower, higher in zip(order, order[1:]):

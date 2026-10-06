@@ -1,5 +1,5 @@
 """
-Load test: many simulated users browsing Meldra and converting files at the same time.
+Load test: many simulated users browsing meldra and converting files at the same time.
 
 Run it against a separate copy of the backend (a Railway "staging" environment with its own
 database), never against the live site while customers use it: it creates real load and real rows.

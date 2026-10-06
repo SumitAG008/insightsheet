@@ -8,7 +8,8 @@ import { REGIONS, useRegion } from '@/lib/region';
 export default function PlanLimitsTable({ currentPlan = null, keys = HEADLINE_KEYS, region: regionProp = null }) {
   const [table, setTable] = useState(FALLBACK_LIMITS);
   const [detectedRegion] = useRegion();
-  const prices = REGIONS[regionProp || detectedRegion]?.prices || null; // null until the region is known
+  const regionInfo = REGIONS[regionProp || detectedRegion] || null; // null until the region is known
+  const prices = regionInfo?.prices || null;
 
   useEffect(() => {
     let alive = true;
@@ -42,6 +43,11 @@ export default function PlanLimitsTable({ currentPlan = null, keys = HEADLINE_KE
                 </div>
                 <div className="text-slate-700 dark:text-slate-300 font-medium">{prices ? prices[p] : ' '}</div>
                 {PLAN_PRICE_UNITS[p] && <div className="text-xs text-slate-500 dark:text-slate-400">{PLAN_PRICE_UNITS[p]}</div>}
+                {regionInfo?.yearly?.[p] && (
+                  <div className="text-xs text-emerald-700 dark:text-emerald-400">
+                    or {regionInfo.yearly[p]} a year{p === 'team' ? ' per user' : ''} (2 months free)
+                  </div>
+                )}
               </th>
             ))}
           </tr>

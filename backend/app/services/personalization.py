@@ -1,5 +1,5 @@
 """
-Search and suggestions that improve as people use Meldra.
+Search and suggestions that improve as people use meldra.
 
 Learns only from usage signals already recorded as user activity: which tool pages people open and
 when, and which tool they pick after searching. File contents are never used. Signals are deleted by
@@ -282,13 +282,13 @@ def suggestions(db: Session, email: str, limit: int = 6, now: Optional[datetime]
         for tid, _ in popular.most_common(limit):
             if tid not in scores:
                 scores[tid] = 0.01
-                reasons[tid] = "Popular with Meldra users"
+                reasons[tid] = "Popular with meldra users"
         for default in ("excel_to_ppt", "filename_cleaner", "unified_reporting", "pdf_doc_converter", "reconciliation", "pl_builder"):
             if len(scores) >= limit:
                 break
             if default not in scores:
                 scores[default] = 0.0
-                reasons[default] = "Popular with Meldra users"
+                reasons[default] = "Popular with meldra users"
     ranked = sorted(scores.items(), key=lambda kv: -kv[1])[:limit]
     return [_as_result(TOOLS_BY_ID[tid], s, reasons.get(tid)) for tid, s in ranked if tid in TOOLS_BY_ID]
 

@@ -234,7 +234,7 @@ export default function InvoiceExtractor() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-blue-700 dark:text-blue-300">Invoices & Receipts</h1>
         <p className="text-sm text-blue-700/80 dark:text-blue-300/80 mt-1">
-          Upload a PDF/image invoice or receipt. Meldra extracts structured fields and line items and exports CSV/JSON.
+          Upload a PDF/image invoice or receipt. meldra extracts structured fields and line items and exports CSV/JSON.
         </p>
       </div>
 

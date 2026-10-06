@@ -75,7 +75,7 @@ After redeploy:
 
 **Vercel Environment Variables:**
 - ✅ `VITE_API_URL` = `https://insightsheet-production.up.railway.app`
-- ✅ `VITE_APP_NAME` = `Meldra` (optional)
+- ✅ `VITE_APP_NAME` = `meldra` (optional)
 - ✅ `VITE_APP_DOMAIN` = `insight.meldra.ai` (optional)
 
 **Railway Environment Variables:**

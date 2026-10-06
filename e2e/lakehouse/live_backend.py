@@ -1,5 +1,5 @@
 """
-Run the real Meldra backend against a real Apache Polaris catalog for the lakehouse
+Run the real meldra backend against a real Apache Polaris catalog for the lakehouse
 end-to-end test. Only two things are replaced: sign-in (everyone is e2e@example.com)
 and the AI model's reply for the report builder (a fixed design, as the model would
 return it), so the test does not need an OpenAI key. Prompts containing "without AI"

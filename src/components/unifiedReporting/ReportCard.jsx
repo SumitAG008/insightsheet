@@ -40,7 +40,7 @@ ReportTile.propTypes = {
   spec: PropTypes.object.isRequired, m: PropTypes.object.isRequired, index: PropTypes.number.isRequired, onChart: PropTypes.func.isRequired, onUseSql: PropTypes.func.isRequired, onResetSql: PropTypes.func.isRequired,
 };
 
-const USED = { ai: 'Designed by Meldra AI from your column names.', rules: 'Built from your data with built-in rules (AI was not available).' };
+const USED = { ai: 'Designed by meldra AI from your column names.', rules: 'Built from your data with built-in rules (AI was not available).' };
 
 /** A report built from one prompt: several live charts, addable to the dashboard or downloadable as PDF, PowerPoint, Word or Excel. */
 export default function ReportCard({ item, m, onChart, onPinAll, onDownload, onUseSql, onResetSql }) {

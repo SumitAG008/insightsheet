@@ -23,7 +23,7 @@ export function fileRows(file, settings) {
 export function readme(result, target, settings) {
   const lines = [
     `Migration package for ${target.label}`,
-    `Generated ${new Date().toISOString().slice(0, 16).replace('T', ' ')} by Meldra Next-Gen Migration.`,
+    `Generated ${new Date().toISOString().slice(0, 16).replace('T', ' ')} by meldra Next-Gen Migration.`,
     '',
     `Result: ${result.counts.error} errors, ${result.counts.warning} warnings.`,
     result.counts.error ? 'Resolve the errors in issues.csv before loading.' : 'No blocking errors were found.',
@@ -77,7 +77,7 @@ export async function buildReviewWorkbook({ result, settings }) {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), n);
   };
   add('Summary', [
-    ['Meldra Next-Gen Migration', ''],
+    ['meldra Next-Gen Migration', ''],
     ['Errors', result.counts.error],
     ['Warnings', result.counts.warning],
     ['Files', result.files.length],

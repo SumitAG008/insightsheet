@@ -350,7 +350,7 @@ export const backendApi = {
     search: async (q) => jsonOrThrow(await apiCall(`/api/assist/search?q=${encodeURIComponent(q)}`), 'Search failed'),
     suggestions: async () => jsonOrThrow(await apiCall('/api/assist/suggestions'), 'Could not load suggestions'),
     plan: async ({ request, files = [], page }) =>
-      jsonOrThrow(await apiCall('/api/assist/plan', { method: 'POST', body: { request, files, page }, timeoutMs: 45000 }), 'Ask Meldra is unavailable right now'),
+      jsonOrThrow(await apiCall('/api/assist/plan', { method: 'POST', body: { request, files, page }, timeoutMs: 45000 }), 'Ask meldra is unavailable right now'),
     choose: async (q, toolId) =>
       jsonOrThrow(await apiCall('/api/assist/search/choose', { method: 'POST', body: { q, tool_id: toolId } }), 'Could not save choice'),
   },
@@ -462,7 +462,7 @@ export const backendApi = {
     },
   },
 
-  // Meldra lakehouse: sources stored as Apache Iceberg tables (Polaris catalog), aggregated server-side.
+  // meldra lakehouse: sources stored as Apache Iceberg tables (Polaris catalog), aggregated server-side.
   lakehouse: {
     status: async () => {
       const response = await apiCall('/api/lakehouse/status', { timeoutMs: 15000 });
@@ -602,7 +602,7 @@ export const auth = {
   setToken,
 };
 
-// Meldra AI client - main export
+// meldra AI client - main export
 export const meldraAi = {
   auth: backendApi.auth,
   integrations: {

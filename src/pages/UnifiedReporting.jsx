@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowUp, Database, LayoutDashboard, MessageSquareText, Server, Sparkles } from 'lucide-react';
+import {
+  ArrowUp, BarChart3, Database, FileSpreadsheet, Globe, LayoutDashboard, Link2, MessageSquareText, Server, ShieldCheck, Sparkles,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ProductHeader, { StatTile, headerButtonPrimary } from '@/components/common/ProductHeader';
 import { backendApi } from '@/api/backendClient';
 import AnswerCard from '@/components/unifiedReporting/AnswerCard';
 import ReportCard from '@/components/unifiedReporting/ReportCard';
@@ -20,6 +23,16 @@ import * as store from '@/lib/unifiedReporting/storage';
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
+const START_STEPS = [
+  [Database, 'Bring your data', 'Upload exports from HR, finance, sales or procurement, connect a database, or pull from an API.'],
+  [Link2, 'meldra links it', 'Columns the systems share, such as employee or cost centre, are found and linked for you.'],
+  [MessageSquareText, 'Ask in plain English', 'Get a chart, a written answer and the source of every number. Pin the best to a dashboard.'],
+];
+const SOURCE_KINDS = [
+  [FileSpreadsheet, 'Excel and CSV'],
+  [Server, 'PostgreSQL, MySQL, SQL Server'],
+  [Globe, 'REST and OData APIs'],
+];
 
 export default function UnifiedReporting() {
   const [sources, setSources] = useState([]);
@@ -36,6 +49,7 @@ export default function UnifiedReporting() {
   const [sourcesReady, setSourcesReady] = useState(false); // true once stored sources (if any) have been loaded
   const [toastMsg, setToastMsg] = useState('');
   const [dbDialog, setDbDialog] = useState(null); // null | { refreshOf?: source }
+  const [openApiForm, setOpenApiForm] = useState(false); // open the API form when the Data sources tab next opens
   const inputRef = useRef(null);
   const toastTimer = useRef(null);
 
@@ -57,7 +71,6 @@ export default function UnifiedReporting() {
         setBoard(ui.board || []);
         setBoardFilters(ui.boardFilters || []);
       }
-      if (!data?.sources?.length) setView('data');
       setLoaded(true);
     })();
   }, []);
@@ -75,7 +88,7 @@ export default function UnifiedReporting() {
     toastTimer.current = setTimeout(() => setToastMsg(''), 3800);
   }, []);
 
-  /* ---------- Meldra lakehouse (Iceberg tables on the server) ---------- */
+  /* ---------- meldra lakehouse (Iceberg tables on the server) ---------- */
   const lakehouse = useLakehouse({ sources, setSources, toast });
   const { lake, active: toLake } = lakehouse;
   useEffect(() => {
@@ -141,7 +154,7 @@ export default function UnifiedReporting() {
         const stored = await lakehouse.moveToLake(src);
         setSources((ss) => ss.map((x) => (x.id === src.id ? stored : x)));
       }
-      toast(`Stored ${list.length === 1 ? list[0].name : `${list.length} sources`} in the Meldra lakehouse.`);
+      toast(`Stored ${list.length === 1 ? list[0].name : `${list.length} sources`} in the meldra lakehouse.`);
     } catch (e) {
       toast(e.message);
     } finally {
@@ -157,14 +170,14 @@ export default function UnifiedReporting() {
       const { added, errors } = await lakehouse.uploadFiles(files, (p) => setProgress({
         text: p.phase === 'upload'
           ? `Uploading ${p.file}${p.count > 1 ? ` (${p.index} of ${p.count})` : ''}… ${p.pct}%`
-          : `Storing ${p.file} in the Meldra lakehouse: checking types and building the table…`,
+          : `Storing ${p.file} in the meldra lakehouse: checking types and building the table…`,
         pct: p.phase === 'upload' ? p.pct : null,
       }));
       setProgress(null);
       setBusy(false);
       if (added.length) {
         appendSources(added);
-        toast(`Stored ${added.map((x) => x.name).join(', ')} in the Meldra lakehouse (${added.reduce((a, x) => a + x.rowCount, 0).toLocaleString()} rows).`);
+        toast(`Stored ${added.map((x) => x.name).join(', ')} in the meldra lakehouse (${added.reduce((a, x) => a + x.rowCount, 0).toLocaleString()} rows).`);
       }
       if (errors.length) toast(errors.join(' '));
       return;
@@ -234,7 +247,7 @@ export default function UnifiedReporting() {
   const addSource = async (src, msg) => {
     try {
       await addSources([src]);
-      toast(`Added ${src.name}: ${msg}${toLake ? ', stored in the Meldra lakehouse' : ''}. Check the suggested links on the right.`);
+      toast(`Added ${src.name}: ${msg}${toLake ? ', stored in the meldra lakehouse' : ''}. Check the suggested links on the right.`);
     } catch (e) {
       toast(e.message);
     }
@@ -275,7 +288,7 @@ export default function UnifiedReporting() {
     setSources((cur) => [...cur.filter((x) => x.kind !== 'sample' && x.storedKind !== 'sample'), ...list]);
     setRelationships((cur) => [...cur, ...rs]);
     setView('ask');
-    toast(`Loaded a sample company with six systems${toLake ? ', stored in the Meldra lakehouse' : ''}.`);
+    toast(`Loaded a sample company with six systems${toLake ? ', stored in the meldra lakehouse' : ''}.`);
   };
 
   const saveTimers = useRef({});
@@ -292,7 +305,7 @@ export default function UnifiedReporting() {
   const removeSource = async (id) => {
     const src = sources.find((x) => x.id === id);
     if (isLake(src)) {
-      if (!window.confirm(`Delete ${src.name} from the Meldra lakehouse? The stored data is removed permanently.`)) return;
+      if (!window.confirm(`Delete ${src.name} from the meldra lakehouse? The stored data is removed permanently.`)) return;
       try {
         await lakehouse.remove(src);
       } catch (e) {
@@ -332,7 +345,7 @@ export default function UnifiedReporting() {
 
   const clearAll = async () => {
     if (sources.some(isLake)) {
-      if (!window.confirm('Remove all data, including everything stored in the Meldra lakehouse? This cannot be undone.')) return;
+      if (!window.confirm('Remove all data, including everything stored in the meldra lakehouse? This cannot be undone.')) return;
       try {
         await lakehouse.removeAll();
       } catch (e) {
@@ -542,7 +555,7 @@ export default function UnifiedReporting() {
   const exportBoard = async (format) => {
     const items = board.map((b) => ({ spec: b.spec, node: document.querySelector(`[data-export-item="${b.id}"] [data-export-chart]`) }));
     try {
-      const n = await downloadReport(format, { title: `Meldra dashboard ${new Date().toISOString().slice(0, 10)}` }, items, m, { computeFn: computeAsync, extraFilters: boardFilters });
+      const n = await downloadReport(format, { title: `meldra dashboard ${new Date().toISOString().slice(0, 10)}` }, items, m, { computeFn: computeAsync, extraFilters: boardFilters });
       toast(`Downloaded ${n} tile${n === 1 ? '' : 's'} as ${formatName(format)}.`);
     } catch {
       toast('Nothing on the dashboard could be downloaded.');
@@ -596,41 +609,49 @@ export default function UnifiedReporting() {
 
   return (
     <div className="mx-auto w-full max-w-[1440px] px-4 pb-6 pt-6 sm:px-6 lg:px-8">
-      {/* Page header */}
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-4 dark:border-slate-800">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="m-0 text-2xl font-semibold tracking-tight">AI/ML Unified Reporting Engine</h1>
-            <span className="rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 px-2.5 py-0.5 text-xs font-semibold text-white shadow-sm">
-              🤖 Natural Language SQL + Predictive ML
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {m.empty ? 'Platform-agnostic reporting across any system (Databases, APIs, Warehouses, Spreadsheets) powered by AI forecasting & anomaly detection.' : `${sources.length} active sources · ${totalRows.toLocaleString()} rows · unified on ${m.shared.length ? m.shared.join(', ') : 'common keys'}`}
-          </p>
-        </div>
-        <nav className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800" aria-label="Unified Reporting sections">
-          {TABS.map(([k, label, Icon, count]) => (
-            <button
-              key={k}
-              type="button"
-              onClick={() => setView(k)}
-              data-meldra-prompt-tab={k === 'ask' ? '' : undefined}
-              aria-current={view === k ? 'page' : undefined}
-              className={`flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${view === k ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-900 dark:text-white' : 'text-slate-600 hover:text-slate-900 dark:text-slate-300'}`}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-              {count ? <span className="rounded-full bg-blue-100 px-1.5 text-xs text-blue-700 dark:bg-blue-900 dark:text-blue-200">{count}</span> : null}
-            </button>
-          ))}
-        </nav>
-      </div>
+      <ProductHeader
+        icon={BarChart3}
+        eyebrow="Unified Reporting"
+        title="One answer across all your systems"
+        description={m.empty
+          ? 'Combine exports, databases and APIs, ask questions in plain English, and share board-ready dashboards. Every number shows the system it came from.'
+          : `Unified on ${m.shared.length ? m.shared.join(', ') : 'common keys'}. Ask a question or build a whole report from one prompt.`}
+        points={[[Link2, 'Sources linked automatically'], [ShieldCheck, 'Every number traced to its system'], [Sparkles, 'Report from one prompt']]}
+        guide="/help/unified-reporting-overview"
+        actions={m.empty ? <button type="button" className={headerButtonPrimary} onClick={loadSample}><Sparkles className="h-4 w-4" />Try the sample company</button> : null}
+        stats={!m.empty && (
+          <>
+            <StatTile label="Sources" value={sources.length.toLocaleString()} hint={[...new Set(sources.map((x) => x.system).filter(Boolean))].slice(0, 3).join(', ')} />
+            <StatTile label="Rows" value={totalRows.toLocaleString()} />
+            <StatTile label="Linked on" value={m.shared.length ? m.shared.length.toLocaleString() : '—'} hint={m.shared.slice(0, 3).join(', ') || 'Add a link on Data sources'} />
+            <StatTile label="Dashboard" value={board.length.toLocaleString()} hint={board.length === 1 ? 'tile' : 'tiles'} />
+          </>
+        )}
+      />
+
+      <nav className="mt-5 flex w-full overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm sm:w-fit dark:border-slate-800 dark:bg-slate-900" aria-label="Unified Reporting sections">
+        {TABS.map(([k, label, Icon, count]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setView(k)}
+            data-meldra-prompt-tab={k === 'ask' ? '' : undefined}
+            aria-current={view === k ? 'page' : undefined}
+            className={`flex flex-none items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${view === k ? 'bg-[#004FCD] text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800'}`}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+            {count ? <span className={`rounded-full px-1.5 text-xs ${view === k ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-200'}`}>{count}</span> : null}
+          </button>
+        ))}
+      </nav>
 
       <div className="pt-6">
         {view === 'data' && (
           <SourcesView
             m={m}
+            initialConnect={openApiForm ? { kind: 'api' } : null}
+            onConnectOpened={() => setOpenApiForm(false)}
             busy={busy}
             onFiles={addFiles}
             progress={progress}
@@ -667,15 +688,29 @@ export default function UnifiedReporting() {
         )}
 
         {view === 'ask' && m.empty && (
-          <div className="mx-auto max-w-3xl py-6">
-            <h2 className="text-center text-3xl font-semibold tracking-tight">Ask questions across all your systems</h2>
-            <p className="mx-auto mt-2 max-w-xl text-center text-slate-500">
-              Upload exports from HR, finance, sales or procurement. Meldra finds the columns they share, links them, and answers questions with a chart and the sources behind every number.
-            </p>
-            <div className="mt-8"><UploadZone onFiles={addFiles} busy={busy} progress={progress} lake={lake} storeInLake={lakehouse.storeInLake} onStoreInLake={lakehouse.setStoreInLake} /></div>
-            <div className="mt-4 text-center">
-              <Button variant="outline" onClick={() => setDbDialog({})}><Server className="mr-2 h-4 w-4" />Connect a database</Button>
-              <Button variant="outline" className="ml-2" onClick={loadSample}><Sparkles className="mr-2 h-4 w-4" />Try it with a sample company</Button>
+          <div className="mx-auto max-w-5xl py-2">
+            <ol className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              {START_STEPS.map(([Icon, title, text], i) => (
+                <li key={title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-center gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-[#004FCD] dark:bg-blue-950 dark:text-blue-300"><Icon className="h-5 w-5" aria-hidden="true" /></span>
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Step {i + 1}</span>
+                  </div>
+                  <h3 className="mt-3 text-base font-semibold text-slate-900 dark:text-white">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-500">{text}</p>
+                </li>
+              ))}
+            </ol>
+            <div className="mt-6 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <UploadZone onFiles={addFiles} busy={busy} progress={progress} lake={lake} storeInLake={lakehouse.storeInLake} onStoreInLake={lakehouse.setStoreInLake} />
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                <Button variant="outline" onClick={() => setDbDialog({})}><Server className="mr-2 h-4 w-4" />Connect a database</Button>
+                <Button variant="outline" onClick={() => { setOpenApiForm(true); setView('data'); }}><Globe className="mr-2 h-4 w-4" />Connect an API</Button>
+                <Button className="bg-[#004FCD] hover:bg-[#0043ad]" onClick={loadSample}><Sparkles className="mr-2 h-4 w-4" />Try it with a sample company</Button>
+              </div>
+              <ul className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 border-t border-slate-100 pt-5 text-xs font-medium text-slate-500 dark:border-slate-800">
+                {SOURCE_KINDS.map(([Icon, label]) => <li key={label} className="flex items-center gap-1.5"><Icon className="h-3.5 w-3.5 text-[#004FCD]" aria-hidden="true" />{label}</li>)}
+              </ul>
             </div>
           </div>
         )}
@@ -727,7 +762,7 @@ export default function UnifiedReporting() {
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm dark:border-amber-900 dark:bg-amber-950">
                   <span>
                     <strong>You have one source.</strong> Unified reporting combines systems: add another export (for example expenses, budgets or CRM
-                    opportunities) and Meldra links them so you can ask questions across both.
+                    opportunities) and meldra links them so you can ask questions across both.
                   </span>
                   <Button size="sm" variant="outline" onClick={() => setView('data')}><Database className="mr-1.5 h-4 w-4" />Add another source</Button>
                 </div>

@@ -82,7 +82,7 @@ export async function buildWorkbook(items, m, extraFilters = [], computeFn = com
     sheets.push([name, ws]);
     contents.push([spec.title, name, [...new Set(res.series.map((s) => s.sys))].join(', '), describeSpec(spec)]);
   }
-  const cws = XLSX.utils.aoa_to_sheet([...contents, [], [`Exported from Meldra Unified Reporting on ${new Date().toISOString().slice(0, 10)}`]]);
+  const cws = XLSX.utils.aoa_to_sheet([...contents, [], [`Exported from meldra Unified Reporting on ${new Date().toISOString().slice(0, 10)}`]]);
   cws['!cols'] = [{ wch: 48 }, { wch: 30 }, { wch: 36 }, { wch: 60 }];
   XLSX.utils.book_append_sheet(wb, cws, 'Contents');
   sheets.forEach(([name, ws]) => XLSX.utils.book_append_sheet(wb, ws, name));

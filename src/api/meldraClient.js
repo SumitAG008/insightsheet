@@ -1,13 +1,13 @@
 /**
- * Meldra AI Client
+ * meldra AI Client
  *
- * Custom implementation using FastAPI backend for Meldra platform.
+ * Custom implementation using FastAPI backend for meldra platform.
  * This provides a compatible interface while using our own backend.
  */
 
 import { clearAllAppSessionData } from '@/utils/clearAppData';
 
-// Meldra AI client - placeholder for SDK features
+// meldra AI client - placeholder for SDK features
 // TODO: Implement full SDK when @meldra-ai/sdk is published
 export const meldraAi = {
   appId: "68dec14952c191b56537bc60",
@@ -64,7 +64,7 @@ export const meldraAi = {
 };
 
 /**
- * Backend API Client for InsightSheet-lite
+ * Backend API Client for meldra Insight
  * Connects to Python FastAPI backend
  */
 // SECURITY: Require HTTPS API URL - no localhost fallback in production
@@ -1020,7 +1020,7 @@ export const backendApi = {
       return response.json();
     },
 
-    // Organisations, licences and the licence report (Meldra staff only)
+    // Organisations, licences and the licence report (meldra staff only)
     orgs: {
       list: async () => jsonOrThrow(await apiCall('/api/admin/orgs'), 'Could not load organisations'),
       get: async (id) => jsonOrThrow(await apiCall(`/api/admin/orgs/${id}`), 'Could not load organisation'),
@@ -1037,6 +1037,9 @@ export const backendApi = {
       report: async () => jsonOrThrow(await apiCall('/api/admin/licenses/report'), 'Could not load licence report'),
       reportCsv: async () => blobOrThrow(await apiCall('/api/admin/licenses/report.csv'), 'Could not export licence report'),
     },
+
+    // Share of new signups who got a finished file within 24 hours / 7 days
+    activation: async (days = 30) => jsonOrThrow(await apiCall(`/api/admin/metrics/activation?days=${days}`), 'Could not load activation'),
   },
 
   // Health check

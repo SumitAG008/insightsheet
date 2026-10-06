@@ -42,6 +42,7 @@ const selectCls = 'w-full rounded-md border border-slate-300 dark:border-slate-6
 
 export default function AdminLicenses() {
   const [report, setReport] = useState(null);
+  const [activation, setActivation] = useState(null);
   const [orgs, setOrgs] = useState([]);
   const [selected, setSelected] = useState(null);
   const [error, setError] = useState('');
@@ -58,8 +59,9 @@ export default function AdminLicenses() {
   const load = async () => {
     setError('');
     try {
-      const [r, o] = await Promise.all([meldraAi.admin.orgs.report(), meldraAi.admin.orgs.list()]);
+      const [r, o, a] = await Promise.all([meldraAi.admin.orgs.report(), meldraAi.admin.orgs.list(), meldraAi.admin.activation(30).catch(() => null)]);
       setReport(r);
+      setActivation(a);
       setOrgs(o.organizations || []);
       if (selected) setSelected(await meldraAi.admin.orgs.get(selected.organization.id));
     } catch (e) {
@@ -160,6 +162,26 @@ export default function AdminLicenses() {
             </Card>
           ))}
         </div>
+      )}
+
+      {activation && (
+        <Card>
+          <CardContent className="pt-5 flex flex-wrap items-center gap-x-8 gap-y-2">
+            <div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">Activation: new signups (30 days) who got a finished file within 24 hours</div>
+              <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                {activation.result_within_24h_pct}%{' '}
+                <span className="text-sm font-normal text-slate-500">({activation.result_within_24h} of {activation.signups})</span>
+              </div>
+            </div>
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              Within 7 days: {activation.result_within_7d_pct}%
+              {activation.first_result_tools?.length > 0 && (
+                <> · First results most often from {activation.first_result_tools.slice(0, 3).map((t) => t.tool.replace('/api/', '')).join(', ')}</>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {report && report.renewals.length > 0 && (

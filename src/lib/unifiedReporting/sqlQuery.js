@@ -6,7 +6,7 @@
  * linked source, and the totals are then joined on the shared dimension.
  * It is written against one table per source (named like the source, with
  * its own column names, numbers as numbers and "month" from the date column),
- * using only SQL that both SQLite (in the browser) and DuckDB (in the Meldra
+ * using only SQL that both SQLite (in the browser) and DuckDB (in the meldra
  * lakehouse) understand, so the customer can read it, edit it and run it.
  *
  * runSql() runs SQL where the data is: in the browser for sources kept there,
@@ -397,7 +397,7 @@ export async function runSql(sql, m, opts = {}) {
   if (!keys.length) throw new Error('Name one of your sources in FROM (see "Tables you can query").');
   const remote = keys.filter((k) => m.views[k].remote);
   if (remote.length && remote.length < keys.length) {
-    throw new Error('This query uses sources kept in your browser and sources stored in the Meldra lakehouse. SQL runs where the data is, so store them in the same place (Data sources) to query them together.');
+    throw new Error('This query uses sources kept in your browser and sources stored in the meldra lakehouse. SQL runs where the data is, so store them in the same place (Data sources) to query them together.');
   }
   if (remote.length) {
     const call = opts.remoteRun || (async (body) => (await import('@/api/backendClient')).backendApi.lakehouse.sql(body));

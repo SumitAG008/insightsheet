@@ -48,7 +48,7 @@ Since you just pushed to GitHub, manually trigger a redeploy:
 
 4. **Verify:**
    - Visit your site: `https://insight.meldra.ai` or your Vercel URL
-   - Should show the Landing page with "Meldra" and "Data Made Simple"
+   - Should show the Landing page with "meldra" and "Data Made Simple"
 
 ---
 
@@ -80,11 +80,11 @@ After deployment completes:
 1. **Visit Your Site:**
    - Go to: `https://insight.meldra.ai` or your Vercel URL
    - Should show:
-     - ✅ "Meldra" title (large, gradient text)
+     - ✅ "meldra" title (large, gradient text)
      - ✅ "Data Made Simple" tagline
      - ✅ "Privacy-First Data Analysis Platform" badge
      - ✅ "Get Started Free" and "View Pricing" buttons
-     - ✅ "What Can Meldra Do?" section with feature cards
+     - ✅ "What Can meldra Do?" section with feature cards
      - ✅ Dark purple gradient background
 
 2. **If Still Shows Login Page:**
@@ -119,7 +119,7 @@ After deployment completes:
 │                                     │
 │  [Get Started Free →] [View Pricing]│
 │                                     │
-│  What Can Meldra Do?                │
+│  What Can meldra Do?                │
 │  [Feature Cards...]                  │
 └─────────────────────────────────────┘
 ```

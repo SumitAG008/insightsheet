@@ -1,5 +1,5 @@
 /**
- * Meldra Backend - API Utilities
+ * meldra Backend - API Utilities
  *
  * This module provides backend API utilities for handling HTTP requests,
  * authentication, and data transformation.

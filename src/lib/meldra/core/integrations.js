@@ -1,7 +1,7 @@
 /**
- * Meldra Core Integrations Library
+ * meldra Core Integrations Library
  *
- * This module provides core integration functionalities for the Meldra platform,
+ * This module provides core integration functionalities for the meldra platform,
  * including LLM invocations, email sending, file operations, and more.
  *
  * @module meldra/core/integrations
@@ -35,7 +35,7 @@ export const Core = meldraAi.integrations.Core;
 export const InvokeLLM = meldraAi.integrations.Core.InvokeLLM;
 
 /**
- * Send email through Meldra platform
+ * Send email through meldra platform
  *
  * @param {Object} params - Email parameters
  * @param {string} params.to - Recipient email address
@@ -54,7 +54,7 @@ export const InvokeLLM = meldraAi.integrations.Core.InvokeLLM;
 export const SendEmail = meldraAi.integrations.Core.SendEmail;
 
 /**
- * Upload file to Meldra platform storage
+ * Upload file to meldra platform storage
  *
  * @param {Object} params - Upload parameters
  * @param {File|Blob} params.file - The file to upload

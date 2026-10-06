@@ -337,3 +337,15 @@ button:focus-visible {
     @apply bg-slate-900/90 border-slate-800/80;
   }
 }
+
+/* Help Center: numbered steps in articles */
+.help-steps { counter-reset: help-step; list-style: none; padding-left: 0; }
+.help-steps > li { position: relative; padding-left: 2.5rem; counter-increment: help-step; }
+.help-steps > li::before {
+  content: counter(help-step);
+  position: absolute; left: 0; top: 0.2rem;
+  width: 1.6rem; height: 1.6rem; border-radius: 9999px;
+  display: grid; place-items: center;
+  background: #e6eeff; color: #004FCD; font-size: 0.8rem; font-weight: 600;
+}
+.dark .help-steps > li::before { background: #0b2a66; color: #bcd2ff; }

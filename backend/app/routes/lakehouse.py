@@ -32,7 +32,7 @@ def _tenant(user: dict) -> str:
 
 def _require():
     if not config.enabled():
-        raise HTTPException(status_code=503, detail="The Meldra lakehouse is not configured on this server.")
+        raise HTTPException(status_code=503, detail="The meldra lakehouse is not configured on this server.")
 
 
 def _fail(e: Exception, what: str):
@@ -96,7 +96,7 @@ class RowsRequest(BaseModel):
 
 @router.post("/rows")
 async def store_rows(req: RowsRequest, current_user: dict = Depends(get_current_user)):
-    """Store rows already in the browser (an API pull, a database query, or a source moved to Meldra)."""
+    """Store rows already in the browser (an API pull, a database query, or a source moved to meldra)."""
     _require()
     origin = req.origin if isinstance(req.origin, dict) else None
     if origin:

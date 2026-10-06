@@ -39,6 +39,7 @@ export default function Layout({ children, currentPageName }) {
   const [brandPrefs, setBrandPrefs] = React.useState({ brandName: null, logoUrl: null });
   const [loginTime, setLoginTime] = React.useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [mobileSection, setMobileSection] = React.useState(null);
   const [showLogoutWarning, setShowLogoutWarning] = React.useState(false);
   const [pendingLogout, setPendingLogout] = React.useState(false);
   const [showOnboarding, setShowOnboarding] = React.useState(false);
@@ -274,6 +275,50 @@ export default function Layout({ children, currentPageName }) {
   }, [user]);
   
   const isActive = (path) => location.pathname === path;
+
+  // Mobile menu: groups collapse so the list fits on a phone; the group holding the current page opens.
+  const mobileGroups = {
+    dashboard: [createPageUrl('Dashboard'), createPageUrl('AgenticAI'), createPageUrl('AgenticWorkflows')],
+    analysis: [createPageUrl('FileAnalyzer'), createPageUrl('AutoStandardize'), createPageUrl('Reconciliation'), createPageUrl('PLBuilder'), '/unified-reporting', '/migration'],
+    data: [createPageUrl('DataModelCreator'), createPageUrl('DatabaseConnection'), createPageUrl('PlaywrightConnector')],
+    conversion: [createPageUrl('FileToPPT'), createPageUrl('OCRConverter'), createPageUrl('PdfDocConverter'), '/pdfeditor', createPageUrl('FilenameCleaner'), '/developers'],
+    account: [createPageUrl('Usage'), createPageUrl('Settings'), '/help', createPageUrl('Security')],
+  };
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const here = location.pathname.toLowerCase();
+    const current = Object.keys(mobileGroups).find((k) => mobileGroups[k].some((path) => path.toLowerCase() === here));
+    setMobileSection(current || 'dashboard');
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobileMenuOpen]);
+
+  const MobileSection = ({ id, title, children }) => {
+    const open = mobileSection === id;
+    return (
+      <div className="border-b border-slate-200 dark:border-slate-800">
+        <button
+          type="button"
+          onClick={() => setMobileSection(open ? null : id)}
+          aria-expanded={open}
+          className="w-full flex items-center justify-between px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider"
+        >
+          <span>{title}</span>
+          <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && <div className="pb-2 space-y-1">{children}</div>}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen app-premium-bg dark:bg-slate-950">
@@ -686,11 +731,10 @@ export default function Layout({ children, currentPageName }) {
 
           {/* Mobile menu */}
           {mobileMenuOpen && (
-            <div className="xl:hidden border-t border-slate-200 dark:border-slate-800 py-4 space-y-1">
+            <div className="xl:hidden absolute left-0 right-0 top-full h-[calc(100dvh-4rem)] z-50 overflow-y-auto overscroll-contain bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-2 pb-6">
               {user && user.email ? (
                 <>
-                  <p className="px-4 pt-1 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_dashboard')}</p>
-                  <Link 
+                                    <MobileSection id="dashboard" title={t('nav_dashboard')}>                  <Link 
                     to={createPageUrl('Dashboard')}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${
@@ -713,8 +757,9 @@ export default function Layout({ children, currentPageName }) {
                     </Link>
                   )}
 
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_file_analysis')}</p>
-                  <Link to={createPageUrl('FileAnalyzer')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FileAnalyzer')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                                    </MobileSection>
+
+                  <MobileSection id="analysis" title={t('nav_file_analysis')}>                  <Link to={createPageUrl('FileAnalyzer')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FileAnalyzer')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <BarChart3 className="w-4 h-4" /> <span>{t('nav_analyzer')}</span>
                   </Link>
                   <Link to={createPageUrl('AutoStandardize')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('AutoStandardize')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
@@ -734,8 +779,9 @@ export default function Layout({ children, currentPageName }) {
                     <ArrowRightLeft className="w-4 h-4" /> <span>{t('nav_migration')}</span>
                   </Link>
 
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_data_schema')}</p>
-                  <Link to={createPageUrl('DataModelCreator')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('DataModelCreator')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                                    </MobileSection>
+
+                  <MobileSection id="data" title={t('nav_data_schema')}>                  <Link to={createPageUrl('DataModelCreator')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('DataModelCreator')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <Database className="w-4 h-4" /> <span>{t('nav_db_schema')}</span>
                   </Link>
                   <Link to={createPageUrl('DatabaseConnection')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('DatabaseConnection')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
@@ -745,8 +791,9 @@ export default function Layout({ children, currentPageName }) {
                     <Globe className="w-4 h-4" /> <span>{t('nav_web_data')}</span>
                   </Link>
 
-                  <p className="px-4 pt-3 pb-1 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{t('nav_file_conversion')}</p>
-                  <Link to={createPageUrl('FileToPPT')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FileToPPT')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                                    </MobileSection>
+
+                  <MobileSection id="conversion" title={t('nav_file_conversion')}>                  <Link to={createPageUrl('FileToPPT')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('FileToPPT')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                     <FileText className="w-4 h-4" /> <span>{t('nav_excel_to_ppt')}</span>
                   </Link>
                   <Link to={createPageUrl('OCRConverter')} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm ${isActive(createPageUrl('OCRConverter')) ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg font-semibold' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
@@ -764,7 +811,9 @@ export default function Layout({ children, currentPageName }) {
                   <Link to="/developers" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all font-medium text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800">
                     <Code className="w-4 h-4" /> <span>{t('nav_developers')}</span>
                   </Link>
-                  <div className="pt-2 border-t border-slate-200 dark:border-slate-800 mt-2 space-y-2">
+                  </MobileSection>
+
+                  <MobileSection id="account" title="Account">
                     <Link
                       to={createPageUrl('Usage')}
                       onClick={() => setMobileMenuOpen(false)}
@@ -808,6 +857,8 @@ export default function Layout({ children, currentPageName }) {
                       <Shield className="w-4 h-4" />
                       <span>{t('nav_security')}</span>
                     </Link>
+                  </MobileSection>
+                  <div className="pt-4 px-2">
                     <button
                       onClick={() => {
                         setMobileMenuOpen(false);

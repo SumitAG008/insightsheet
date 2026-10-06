@@ -14,7 +14,7 @@ import { InvokeLLM } from '../core/integrations';
  *
  * @param {string} description - Natural language description of the database
  * @param {Object} options - Generation options
- * @param {string} [options.model='gpt-4o-mini'] - LLM model to use
+ * @param {string} [options.model] - Claude model id; omit to use the server's configured model
  * @param {number} [options.temperature=0.7] - Response temperature
  * @returns {Promise<Object>} - Generated schema object
  *
@@ -25,7 +25,7 @@ import { InvokeLLM } from '../core/integrations';
  */
 export async function generateDatabaseSchema(description, options = {}) {
   const {
-    model = 'gpt-4o-mini',
+    model = null,
     temperature = 0.7
   } = options;
 
@@ -104,7 +104,7 @@ Guidelines:
  */
 export async function analyzeData(data, question, options = {}) {
   const {
-    model = 'gpt-4o-mini',
+    model = null,
     temperature = 0.5
   } = options;
 
@@ -140,7 +140,7 @@ Provide a concise, data-driven answer with specific insights and recommendations
  */
 export async function generateSQL(request, schema, options = {}) {
   const {
-    model = 'gpt-4o-mini',
+    model = null,
     dialect = 'postgresql'
   } = options;
 
@@ -178,7 +178,7 @@ Return ONLY the SQL query, nothing else. No explanations, no markdown, just the 
  */
 export async function summarizeText(text, options = {}) {
   const {
-    model = 'gpt-4o-mini',
+    model = null,
     maxLength = 150
   } = options;
 
@@ -223,7 +223,7 @@ Return ONLY a valid JSON object matching the schema. No additional text.`;
 
   const result = await InvokeLLM({
     prompt,
-    model: 'gpt-4o-mini',
+    model: null,
     temperature: 0.3,
     max_tokens: 1000
   });

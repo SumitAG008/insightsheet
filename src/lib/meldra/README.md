@@ -20,7 +20,7 @@ Core platform integrations for LLM, email, file operations, and more.
 // Invoke LLM
 const response = await core.InvokeLLM({
   prompt: 'Generate a database schema',
-  model: 'gpt-4o-mini',
+  model: 'claude-opus-5-5', // optional; the server's configured model is used if omitted
   temperature: 0.7,
   max_tokens: 2000
 });

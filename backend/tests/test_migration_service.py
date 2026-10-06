@@ -30,13 +30,15 @@ def test_prompt_asks_for_tab_purposes_and_protects_dependents():
 
 def test_explain_ai_error_is_safe_and_specific(monkeypatch):
     from app.services.ai_service import explain_ai_error, assistant_model
-    assert "model" in explain_ai_error(Exception("OpenAI Error: The model `gpt-4-turbo-preview` does not exist"))
-    assert "API key" in explain_ai_error(Exception("Error code: 401 - Incorrect API key provided: sk-abc"))
-    assert "sk-abc" not in explain_ai_error(Exception("Error code: 401 - Incorrect API key provided: sk-abc"))
+    assert "model" in explain_ai_error(Exception("not_found_error: model: claude-unknown does not exist"))
+    assert "API key" in explain_ai_error(Exception("Error code: 401 - invalid x-api-key: sk-ant-abc"))
+    assert "sk-ant-abc" not in explain_ai_error(Exception("Error code: 401 - invalid x-api-key: sk-ant-abc"))
     monkeypatch.delenv("AI_ASSISTANT_MODEL", raising=False)
-    assert assistant_model() == "gpt-4o-mini"
-    monkeypatch.setenv("AI_ASSISTANT_MODEL", "gpt-4.1-mini")
-    assert assistant_model() == "gpt-4.1-mini"
+    assert assistant_model() == "claude-opus-5-5"
+    monkeypatch.setenv("AI_ASSISTANT_MODEL", "claude-sonnet-5-5")
+    assert assistant_model() == "claude-sonnet-5-5"
+    monkeypatch.setenv("AI_ASSISTANT_MODEL", "gpt-4.1-mini")  # a leftover OpenAI name is ignored
+    assert assistant_model() == "claude-opus-5-5"
 
 
 from app.services.migration_service import build_values_prompt, filter_value_suggestions

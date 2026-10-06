@@ -176,7 +176,7 @@ bank account from day one.
 | Cash | Bank balance, money in, money out, monthly burn, months of runway | Accounting |
 | Receivables | Invoiced but unpaid, and how old | Licences report (`unpaid_by_currency`) |
 | Customers | Paying customers, pilots, seats sold vs used | Licences report |
-| Costs per customer | Hosting, AI and OCR cost ÷ active seats → gross margin | Cloud and OpenAI bills ÷ usage counts per organisation (`/api/org/usage.csv` per customer) |
+| Costs per customer | Hosting, AI and OCR cost ÷ active seats → gross margin | Cloud and Anthropic (Claude API) bills ÷ usage counts per organisation (`/api/org/usage.csv` per customer) |
 | Pipeline | Weighted pipeline (value × probability), win rate by sector, average sales cycle | CRM |
 
 Export the customer list with **Export CSV** on the Licences page

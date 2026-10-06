@@ -119,7 +119,6 @@ Guidelines:
 
       const result = await InvokeLLM({
         prompt: `${systemPrompt}\n\nUser Request: ${prompt}`,
-        model: 'gpt-4o-mini',
         temperature: 0.7,
         max_tokens: 3000
       });

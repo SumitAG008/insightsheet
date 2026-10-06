@@ -216,7 +216,6 @@ Return JSON:
 
       const planResponse = await backendApi.llm.invoke(planPrompt, {
         addContext: false,
-        model: 'gpt-4o-mini',
         max_tokens: 900,
         responseSchema: {
           type: "object",
@@ -313,7 +312,6 @@ Create a clear, executive summary in markdown format with:
 
       const finalReportResponse = await backendApi.llm.invoke(reportPrompt, {
         addContext: false,
-        model: 'gpt-4o-mini',
         max_tokens: 900,
       });
       const finalReport = finalReportResponse.response;
@@ -366,7 +364,6 @@ Provide specific, actionable insights.`;
 
     const insightsResponse = await backendApi.llm.invoke(analysisPrompt, {
       addContext: false,
-      model: 'gpt-4o-mini',
       max_tokens: 900,
     });
 

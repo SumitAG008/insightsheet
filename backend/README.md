@@ -93,8 +93,8 @@ JWT_SECRET_KEY=your-super-secret-key-change-this
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# OpenAI API
-OPENAI_API_KEY=sk-your-openai-api-key-here
+# Anthropic (Claude) API: every AI feature
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key-here
 
 # Server
 HOST=0.0.0.0
@@ -427,7 +427,7 @@ Response:
 
 ### Zero Data Storage
 1. **Files**: Processed in-memory, never saved to disk
-2. **AI Prompts/Responses**: Sent to OpenAI but not stored locally
+2. **AI Prompts/Responses**: Sent to Anthropic (Claude) but not stored locally
 3. **Temporary Files**: Automatically cleaned up after processing
 4. **Activity Logs**: NO sensitive content stored
 
@@ -486,7 +486,7 @@ heroku login
 heroku create insightsheet-backend
 
 # Set environment variables
-heroku config:set OPENAI_API_KEY=sk-...
+heroku config:set ANTHROPIC_API_KEY=sk-ant-...
 heroku config:set JWT_SECRET_KEY=your-secret
 heroku config:set DATABASE_URL=postgresql://...
 
@@ -516,7 +516,7 @@ railway init
 railway add postgres
 
 # Set environment variables
-railway variables set OPENAI_API_KEY=sk-...
+railway variables set ANTHROPIC_API_KEY=sk-ant-...
 railway variables set JWT_SECRET_KEY=your-secret
 
 # Deploy

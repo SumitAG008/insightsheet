@@ -32,7 +32,7 @@ Server logs (Railway) contain no file names or contents. They do contain e-mail 
 | Neon | The records in section 1 | Database; has its own restore history (see section 4) |
 | Vercel | Website requests | Frontend hosting |
 | Resend | E-mail address, sign-in codes | E-mail delivery |
-| OpenAI | Text sent by AI features (question, column names, sample rows, document text for invoice/AI ingestion) | Not used for training; kept up to 30 days for abuse monitoring. For zero retention, apply to OpenAI for Zero Data Retention |
+| Anthropic (Claude) | Text sent by AI features (question, column names, sample rows, document text for invoice/AI ingestion) | Not used for training under Anthropic's commercial terms; kept for a limited period under Anthropic's retention policy. For zero retention, ask Anthropic about Zero Data Retention (note: some models, such as Claude Fable, are not offered under it) |
 | OCR.space | Images, only if `OCR_SPACE_API_KEY` is set and our own OCR fails | Remove the key to keep all OCR on our server |
 
 ## 3. Deleting an account (right to erasure)
@@ -80,6 +80,6 @@ and delete it afterwards.
 - Set the two backup secrets and run the workflow once.
 - Check Neon's history retention.
 - Decide on OCR.space: keep `OCR_SPACE_API_KEY` unset if no file should leave our server for OCR.
-- If customers must have zero retention at OpenAI too, request Zero Data Retention from OpenAI, or turn AI
+- If customers must have zero retention at the AI provider too, ask Anthropic about Zero Data Retention, or turn AI
   features off for those customers.
 - Keep the lakehouse (`LAKEHOUSE_CATALOG`) unset unless you want customers to be able to store data on purpose.

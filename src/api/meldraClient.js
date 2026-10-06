@@ -350,7 +350,7 @@ export const backendApi = {
         method: 'POST',
         body: {
           prompt,
-          model: options.model || 'gpt-4o-mini',
+          model: options.model || null, // the server's configured Claude model unless a claude-* id is given
           temperature: options.temperature || 0.7,
           max_tokens: options.max_tokens || 1000,
           add_context_from_internet: options.addContext || false,

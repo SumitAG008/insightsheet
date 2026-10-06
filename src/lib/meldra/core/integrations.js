@@ -19,7 +19,7 @@ export const Core = meldraAi.integrations.Core;
  *
  * @param {Object} params - LLM invocation parameters
  * @param {string} params.prompt - The prompt to send to the LLM
- * @param {string} [params.model='gpt-4o-mini'] - The model to use
+ * @param {string} [params.model] - Claude model id; omit to use the server's configured model
  * @param {number} [params.temperature=0.7] - Temperature for response randomness (0-1)
  * @param {number} [params.max_tokens=1000] - Maximum tokens in response
  * @returns {Promise<string>} - The LLM response
@@ -27,7 +27,7 @@ export const Core = meldraAi.integrations.Core;
  * @example
  * const response = await InvokeLLM({
  *   prompt: 'Generate a database schema for an e-commerce platform',
- *   model: 'gpt-4o-mini',
+ *   model: 'claude-opus-5-5',
  *   temperature: 0.7,
  *   max_tokens: 2000
  * });

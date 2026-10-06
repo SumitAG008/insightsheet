@@ -66,7 +66,7 @@ Full table: [benchmark-results.md](benchmark-results.md). (Excel → PowerPoint 
 **What this means:** the server cost of the work itself is tiny, under $0.20 for 1,000 even of the largest jobs. Your costs come from:
 
 1. **The always-on server**: one worker holds about 0.3 GB of RAM and some CPU even when idle, around $3–10 a month on Railway per worker. Add the database (Neon) and the website (Vercel).
-2. **AI calls (OpenAI)**: AI Assistant, Unified Reporting, Migration mapping, invoice extraction and AI summaries are charged by OpenAI per token. These are usually the biggest cost per user, so AI queries per month are the right thing to limit per plan. Check actual spend in the OpenAI usage dashboard after a test day.
+2. **AI calls (Anthropic Claude API)**: AI Assistant, Unified Reporting, Migration mapping, invoice extraction and AI summaries are charged by Anthropic per token. These are usually the biggest cost per user, so AI queries per month are the right thing to limit per plan. Check actual spend in the Claude Console usage page after a test day.
 3. **Capacity**: a CPU can only do one heavy conversion at a time (see the load test below). To serve more people at once you pay for more CPU, not for the work itself.
 
 ## 4. Load test: how many users at once
@@ -109,7 +109,7 @@ locust -f locustfile.py --host https://... --headless -u 25 -r 2 -t 5m --csv res
 
 1. **Fixed monthly cost** = server (Railway) + database (Neon) + website (Vercel) + email (Resend) + domain.
 2. **Capacity per server** from the load test, e.g. "25 people converting at the same time with acceptable waits". Most subscribers are not active at the same moment; 20–50 subscribers per concurrently active user is a common starting assumption for business tools.
-3. **AI cost per user per month** from the OpenAI usage dashboard after a test day, divided by active test users, times expected monthly use.
+3. **AI cost per user per month** from the Claude Console usage page after a test day, divided by active test users, times expected monthly use.
 4. **Price per plan** ≥ (fixed cost ÷ expected subscribers) + AI cost per user + payment fees (Stripe ≈ 1.5–3% + fixed fee) + margin.
 5. Keep plan limits that protect you: AI queries per month (costly), file size per plan (memory), conversions per month (CPU). With the numbers above, file conversions are cheap enough to be generous; AI is where limits matter.
 

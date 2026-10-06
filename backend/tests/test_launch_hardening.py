@@ -30,21 +30,20 @@ def test_slow_ai_call_does_not_block_other_requests(monkeypatch):
     import httpx
     from app.services import ai_service
 
-    class _Msg:
-        content = "ok"
-
-    class _Resp:
-        choices = [type("C", (), {"message": _Msg()})()]
-        usage = None
-
-    def slow_create(**kwargs):
-        time.sleep(1.5)  # the real OpenAI client blocks like this while waiting
-        return _Resp()
+    async def slow_create(**kwargs):
+        await asyncio.sleep(1.5)  # a slow answer from Claude
+        return SimpleNamespace(
+            content=[SimpleNamespace(type="text", text="ok")],
+            stop_reason="end_turn",
+            usage=SimpleNamespace(input_tokens=1, output_tokens=1),
+            model="claude-opus-5-5",
+        )
 
     from types import SimpleNamespace
 
-    fake_openai = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=slow_create)))
-    monkeypatch.setattr(ai_service, "openai", fake_openai)
+    messages = SimpleNamespace(create=slow_create)
+    fake_client = SimpleNamespace(messages=messages, beta=SimpleNamespace(messages=messages))
+    monkeypatch.setattr(ai_service, "_get_client", lambda: fake_client)
 
     async def run():
         transport = httpx.ASGITransport(app=main.app)

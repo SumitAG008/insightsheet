@@ -299,7 +299,40 @@ def today(day: Optional[str] = Query(None, alias="date"), mine: bool = False, c:
     pending = [m for m in ms if m["status"] == "open" and m.get("next_hearing") and m["next_hearing"] < d.isoformat()]
     upcoming = sorted([m for m in ms if m["status"] == "open" and m.get("next_hearing") and d.isoformat() < m["next_hearing"] <= (d + timedelta(days=7)).isoformat()],
                       key=lambda m: m["next_hearing"])
-    return {**board, "tasks_due": due, "needs_update": pending[:50], "upcoming": upcoming[:50]}
+    future = sorted(m["next_hearing"] for m in ms if m["status"] == "open" and m.get("next_hearing") and m["next_hearing"] > d.isoformat())
+    return {**board, "tasks_due": due, "needs_update": pending[:50], "upcoming": upcoming[:50], "next_listed": future[0] if future else None}
+
+
+@router.get("/overview")
+def overview(mine: bool = False, c: Ctx = Depends(ctx), db: Session = Depends(get_db)):
+    """The numbers at the top of Today: what is listed, what is overdue, what is due, what is owed."""
+    ms, hs, ts = _all(db, c)
+    if mine:
+        ms = [m for m in ms if m.get("lawyer_email") == c.email]
+        ids = {m["id"] for m in ms}
+        ts = [t for t in ts if t.get("assignee_email") == c.email or t.get("matter_id") in ids]
+    d = date.today()
+    t_iso, week = d.isoformat(), (d + timedelta(days=7)).isoformat()
+    open_m = [m for m in ms if m["status"] == "open"]
+    open_t = [t for t in ts if not t["done"]]
+    decided = [h for h in hs if h.get("outcome")]
+    adjourned = [h for h in decided if h["outcome"] in ("adjourned", "not_reached")]
+    billed = sum(float(m.get("fees_billed") or 0) for m in ms)
+    collected = sum(float(m.get("fees_collected") or 0) for m in ms)
+    return {
+        "open_matters": len(open_m),
+        "hearings_today": sum(1 for m in open_m if m.get("next_hearing") == t_iso),
+        "hearings_week": sum(1 for m in open_m if m.get("next_hearing") and t_iso <= m["next_hearing"] <= week),
+        "needs_update": sum(1 for m in open_m if m.get("next_hearing") and m["next_hearing"] < t_iso),
+        "no_next_date": sum(1 for m in open_m if not m.get("next_hearing")),
+        "overdue_tasks": sum(1 for t in open_t if t.get("due_date") and t["due_date"] < t_iso),
+        "due_week": sum(1 for t in open_t if t.get("due_date") and t_iso <= t["due_date"] <= week),
+        "unconfirmed_deadlines": sum(1 for t in open_t if t["kind"] == "deadline" and not t.get("confirmed_by")),
+        "adjournment_rate": round(len(adjourned) / len(decided), 2) if decided else None,
+        "fees_outstanding": round(billed - collected, 2),
+        "has_sample": any(m.get("is_sample") for m in ms),
+        "country": c.country,
+    }
 
 
 # --- tasks and deadlines -----------------------------------------------------------------------
@@ -691,8 +724,12 @@ def load_sample(body: SampleIn, c: Ctx = Depends(ctx), db: Session = Depends(get
         else:
             db.add(LegalTask(tenant=c.tenant, matter_id=mid, kind="task", due_date=store.to_dt((today_ + timedelta(days=t["due"])).isoformat()),
                              assignee_email=c.email, created_by=c.email, data_enc=store.seal(c.tenant, {"title": t["title"]})))
-    if not store.settings_dict(c.settings).get("firm_name"):
+    current = store.settings_dict(c.settings)
+    if not current.get("firm_name") or current["firm_name"] in (sample.IN_FIRM, sample.GB_FIRM):
         store.save_settings_data(db, c.settings, firm_name=pack["firm_name"])
+    has_real = db.query(LegalMatter.id).filter(LegalMatter.tenant == c.tenant, LegalMatter.is_sample.is_(False)).first() is not None
+    if not has_real:
+        c.settings.country = cc  # a firm trying the sample sees the sample's country profile
     db.commit()
     return {"loaded": len(ids), "country": cc, "firm_name": pack["firm_name"]}
 

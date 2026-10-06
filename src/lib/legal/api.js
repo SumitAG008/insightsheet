@@ -36,6 +36,18 @@ async function request(path, { method = 'GET', body, form, raw } = {}) {
     payload = JSON.stringify(body);
   }
   const res = await fetch(`${base}/api/legal${path}`, { method, headers, body: payload });
+  if (res.status === 401) {
+    // The sign-in has expired, like everywhere else in meldra: sign in again and come back here.
+    try {
+      localStorage.removeItem('auth_token');
+    } catch {
+      /* private mode */
+    }
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+      window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+    }
+    throw new LegalApiError('Your sign-in has expired. Please sign in again.', 401);
+  }
   if (raw) {
     if (!res.ok) throw new LegalApiError(`HTTP ${res.status}`, res.status);
     return res;
@@ -66,6 +78,7 @@ export const legalApi = {
   addHearing: (id, body) => request(`/matters/${id}/hearings`, { method: 'POST', body }),
   deleteHearing: (id) => request(`/hearings/${id}`, { method: 'DELETE' }),
   today: (params = {}) => request(`/today?${new URLSearchParams(params)}`),
+  overview: (mine = false) => request(`/overview?mine=${mine}`),
   tasks: (open = true) => request(`/tasks?open=${open}`),
   createTask: (body) => request('/tasks', { method: 'POST', body }),
   updateTask: (id, body) => request(`/tasks/${id}`, { method: 'PUT', body }),

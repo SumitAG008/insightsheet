@@ -299,3 +299,18 @@ def test_order_extraction_falls_back_to_rules_without_ai(monkeypatch):
     assert r.status_code == 200
     out = r.json()
     assert out["next_date"] == "2027-01-12" and out["method"] == "rules" and out["outcome"] in ("adjourned", "part_heard")
+
+
+def test_overview_and_sample_sets_country():
+    p = _person()
+    _grant(p["email"])
+    c = _as(p)
+    c.post("/api/legal/sample", json={"country": "GB"})
+    assert c.get("/api/legal/bootstrap").json()["profile"]["country"] == "GB"
+    c.post("/api/legal/sample", json={"country": "IN"})
+    b = c.get("/api/legal/bootstrap").json()
+    assert b["profile"]["country"] == "IN" and "Mehra" in b["settings"]["firm_name"]
+    o = c.get("/api/legal/overview").json()
+    assert o["open_matters"] >= 8 and o["hearings_today"] >= 1 and o["needs_update"] >= 1
+    assert o["fees_outstanding"] > 0 and o["has_sample"] is True and 0 < o["adjournment_rate"] < 1
+    assert "next_listed" in c.get("/api/legal/today").json()

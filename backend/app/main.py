@@ -4156,6 +4156,35 @@ def predict_anomalies(
 # AI/LLM ENDPOINTS
 # ============================================================================
 
+_AI_STATUS_CACHE: Dict[str, Any] = {"at": 0.0, "result": None}
+
+
+@app.get("/api/ai/status")
+async def ai_status(fresh: bool = False, current_user: dict = Depends(get_current_user)):
+    """Is Claude reachable from this server? A tiny real call, cached for 5 minutes (fresh=true re-checks).
+    Says why not in plain words (missing key, wrong model, rate limit…); never returns the key."""
+    from app.services import ai_service as _ai
+
+    now = time.time()
+    cached = _AI_STATUS_CACHE.get("result")
+    if cached and not fresh and now - _AI_STATUS_CACHE["at"] < 300:
+        return {**cached, "cached": True}
+    configured = bool((os.getenv("ANTHROPIC_API_KEY") or "").strip())
+    result: Dict[str, Any] = {"configured": configured, "model": _ai.assistant_model(), "ok": False, "reason": None, "checked_at": datetime.utcnow().isoformat() + "Z"}
+    if not configured:
+        result["reason"] = "ANTHROPIC_API_KEY is not set on the server. Add it in Railway > your backend service > Variables, then redeploy."
+    else:
+        started = time.monotonic()
+        try:
+            reply = await _ai.invoke_llm("Reply with the single word OK.", max_tokens=200)
+            result["ok"] = bool(str(reply).strip())
+            result["latency_ms"] = int((time.monotonic() - started) * 1000)
+        except Exception as e:  # noqa: BLE001 - report the reason, never the key
+            result["reason"] = f"Claude could not be reached: {_ai.explain_ai_error(e)}."
+    _AI_STATUS_CACHE.update(at=now, result=result)
+    return {**result, "cached": False}
+
+
 @app.post("/api/integrations/llm/invoke")
 async def invoke_llm_endpoint(
     request: LLMRequest,

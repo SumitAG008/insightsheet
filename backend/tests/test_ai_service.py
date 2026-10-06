@@ -99,3 +99,19 @@ def test_refusals_and_api_errors_give_safe_messages(fake):
 def test_image_generation_is_reported_unavailable():
     with pytest.raises(ai_service.AIServiceError):
         asyncio.run(ai_service.generate_image("a cat"))
+
+
+def test_ai_status_reports_a_missing_key_in_plain_words(monkeypatch):
+    import os as _os
+    import pytest as _pytest
+    main = _pytest.importorskip("app.main")
+    from fastapi.testclient import TestClient
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    main.app.dependency_overrides[main.get_current_user] = lambda: {"email": "x@y.z", "role": "user"}
+    try:
+        out = TestClient(main.app).get("/api/ai/status?fresh=true").json()
+    finally:
+        main.app.dependency_overrides.clear()
+    assert out["configured"] is False and out["ok"] is False
+    assert "ANTHROPIC_API_KEY" in out["reason"] and "Railway" in out["reason"]

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { backendApi } from '@/api/backendClient';
 import { applyPreferences, applyPrimaryColor, applyTheme, getUserPreferences, setUserPreferences } from '@/lib/userPreferences';
 import { useI18n } from '@/lib/i18n';
+import AiStatusCard from '@/components/AiStatusCard';
 
 const LANG_KEY = 'app:language';
 
@@ -175,6 +176,8 @@ export default function Settings() {
           <h1 className="text-4xl font-bold text-slate-900 dark:text-white">{t('settings_title')}</h1>
           <p className="text-slate-600 dark:text-slate-400 mt-2">{t('settings_subtitle')}</p>
         </div>
+
+        <AiStatusCard />
 
         <Card className="bg-white dark:bg-slate-900/80 backdrop-blur-xl border-slate-200 dark:border-slate-700/50 shadow-lg">
           <CardHeader>

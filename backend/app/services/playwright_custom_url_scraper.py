@@ -78,7 +78,7 @@ def scrape_custom_url_list_csv(
         browser.close()
 
     fieldnames = list(fields.keys())
-    with open(output_csv_path, "w", newline="", encoding="utf-8") as f:
+    with open(output_csv_path, "w", newline="", encoding="utf-8-sig") as f:  # BOM so Excel reads £ and ₹ correctly
         w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
         for r in rows:

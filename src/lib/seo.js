@@ -66,6 +66,14 @@ export const PUBLIC_PAGES = {
     body: () =>
       `<h1>${PRODUCT}: frequently asked questions</h1><p>How spreadsheets are analysed, why a chart may be blocked when a workbook's formulas were not calculated, how reconciliation and standardisation work, and what is stored (file contents are not).</p>${toolsHtml()}${startFree}`,
   },
+  '/legal-diary': {
+    file: 'legal-diary',
+    title: `meldra Legal: case and hearing diary for law firms | ${PRODUCT}`,
+    description:
+      'Matters, hearings, deadlines and partner reports for law firms in India and the UK. Import your Excel diary, run the day from the phone, in English or Hindi.',
+    body: () =>
+      `<h1>meldra Legal: the case diary for law firms</h1><p>A daily hearing list by court, a 15-second update after each hearing, deadlines a person confirms (Limitation Act and CPC in India; CPR and Employment Tribunal limits in the UK), judgments one click away, citation checks, IPC to BNS conversion, partner reports, and the whole diary in English or Hindi. A paid add-on, enabled per firm. Case diaries are stored encrypted and kept separately for each firm.</p><p><a href="mailto:sales@meldra.ai">Request access</a></p>`,
+  },
   '/developers': {
     file: 'developers',
     title: `Developers and API | ${PRODUCT}`,

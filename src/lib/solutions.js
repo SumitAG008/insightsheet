@@ -11,6 +11,13 @@ export const SOLUTIONS = [
       'The operations, finance and paperwork of running a firm: checked, repeatable and with every value traced to its page. meldra does not give legal advice.',
     useCases: [
       {
+        title: 'Matter and hearing diary (meldra Legal)',
+        problem: 'Hearing dates kept in an Excel diary, copied by clerks, with deadlines tracked by memory.',
+        delivers: 'Daily hearing list, 15-second update after court, deadlines a person confirms, judgments one click away and partner reports, for India and the UK, in English or Hindi. A paid add-on.',
+        status: 'available',
+        to: '/legal-diary',
+      },
+      {
         title: 'Court and hearing bundles',
         problem: 'Hours spent merging, ordering and paginating documents before a deadline.',
         delivers: 'Merge, order, split and page-number PDFs; OCR scanned pages so the bundle is searchable.',

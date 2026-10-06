@@ -66,6 +66,8 @@ import Organization from "./Organization";
 import AdminLicenses from "./AdminLicenses";
 import Terms from "./Terms";
 import Faq from "./Faq";
+import Legal from "./Legal";
+import LegalProduct from "./LegalProduct";
 
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
@@ -138,6 +140,8 @@ const PAGES = {
 
     Solutions: Solutions,
 
+    Legal: Legal,
+
 }
 
 function _getCurrentPage(url) {
@@ -198,7 +202,7 @@ function PagesContent() {
     const currentPage = _getCurrentPage(location.pathname);
 
     // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword/VerifyEmail, Blog)
-    const noLayoutRoutes = ['/', '/pricing', '/showcase', '/developers', '/faq', '/help', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
+    const noLayoutRoutes = ['/', '/pricing', '/showcase', '/legal-diary', '/developers', '/faq', '/help', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
     const isNoLayoutRoute = noLayoutRoutes.some(route => {
         const path = location.pathname.toLowerCase();
         const routeLower = route.toLowerCase();
@@ -213,6 +217,7 @@ function PagesContent() {
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/Pricing" element={<Pricing />} />
                 <Route path="/showcase" element={<Showcase />} />
+                <Route path="/legal-diary" element={<LegalProduct />} />
                 <Route path="/developers" element={<Developers />} />
                 <Route path="/Developers" element={<Developers />} />
                 <Route path="/faq" element={<Faq />} />
@@ -342,6 +347,10 @@ function PagesContent() {
                 <Route path="/solutions" element={<ProtectedRoute><Solutions /></ProtectedRoute>} />
                 <Route path="/Solutions" element={<ProtectedRoute><Solutions /></ProtectedRoute>} />
                 <Route path="/solutions/:sector" element={<ProtectedRoute><Solutions /></ProtectedRoute>} />
+
+                {/* meldra Legal: licensed add-on; the page itself shows "request access" without the licence. */}
+                <Route path="/legal" element={<ProtectedRoute><Legal /></ProtectedRoute>} />
+                <Route path="/Legal" element={<ProtectedRoute><Legal /></ProtectedRoute>} />
             </Routes>
         </Layout>
     );

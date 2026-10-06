@@ -518,6 +518,81 @@ class AIConfiguration(Base):
     )
 
 
+# ---------------------------------------------------------------------------------------------
+# meldra Legal (licensed add-on): matter and hearing diary.
+# Kept per tenant (the organisation, or the person when they have none). Names, parties, references
+# and notes are encrypted in data_enc (app/services/legal/store.py); only the columns needed to
+# filter and report (dates, court code, stage, status, assigned lawyer, fee totals) are plain.
+# ---------------------------------------------------------------------------------------------
+class LegalSettings(Base):
+    __tablename__ = "legal_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant = Column(String(255), unique=True, index=True, nullable=False)
+    country = Column(String(2), default="IN")  # IN, GB
+    language = Column(String(5), default="en")  # en, hi
+    data_enc = Column(Text, nullable=True)  # firm name, team roles
+    created_date = Column(DateTime, default=datetime.utcnow)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class LegalMatter(Base):
+    __tablename__ = "legal_matters"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant = Column(String(255), index=True, nullable=False)
+    country = Column(String(2), default="IN")
+    court_code = Column(String(50), index=True, nullable=True)
+    stage = Column(String(50), index=True, nullable=True)
+    status = Column(String(20), index=True, default="open")  # open, disposed, closed
+    lawyer_email = Column(String(255), index=True, nullable=True)
+    next_hearing = Column(DateTime, index=True, nullable=True)
+    filed_on = Column(DateTime, nullable=True)
+    fees_billed = Column(Float, default=0.0)
+    fees_collected = Column(Float, default=0.0)
+    is_sample = Column(Boolean, default=False)
+    data_enc = Column(Text, nullable=True)  # title, client, parties, references, notes
+    created_by = Column(String(255), nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class LegalHearing(Base):
+    __tablename__ = "legal_hearings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant = Column(String(255), index=True, nullable=False)
+    matter_id = Column(Integer, index=True, nullable=False)
+    hearing_date = Column(DateTime, index=True, nullable=False)
+    outcome = Column(String(30), nullable=True)  # adjourned, heard, part_heard, reserved, disposed, not_reached
+    next_date = Column(DateTime, nullable=True)
+    data_enc = Column(Text, nullable=True)  # purpose, judge, item number, notes
+    created_by = Column(String(255), nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class LegalTask(Base):
+    """A task or a deadline. A deadline suggested by a rule records who confirmed the date."""
+    __tablename__ = "legal_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tenant = Column(String(255), index=True, nullable=False)
+    matter_id = Column(Integer, index=True, nullable=True)
+    kind = Column(String(20), default="task")  # task, deadline
+    rule_id = Column(String(50), nullable=True)
+    due_date = Column(DateTime, index=True, nullable=True)
+    suggested_date = Column(DateTime, nullable=True)
+    confirmed_by = Column(String(255), nullable=True)
+    confirmed_at = Column(DateTime, nullable=True)
+    assignee_email = Column(String(255), index=True, nullable=True)
+    done = Column(Boolean, default=False)
+    data_enc = Column(Text, nullable=True)  # title, notes
+    created_by = Column(String(255), nullable=True)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 # Create all tables
 def init_db():
     """Initialize database tables and add missing columns"""

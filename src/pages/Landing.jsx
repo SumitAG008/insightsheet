@@ -142,6 +142,16 @@ export default function Landing() {
           </div>
         </div>
 
+        {/* meldra Legal (paid add-on for law firms) */}
+        <div className="rounded-2xl p-8 md:p-10 mb-5 border border-blue-200 bg-blue-50 flex flex-col md:flex-row md:items-center gap-6">
+          <div className="flex-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-blue-700 mb-2">New · meldra Legal</div>
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight mb-2" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>The case diary for law firms, on every lawyer&apos;s phone</h2>
+            <p className="text-slate-600">Daily hearing list, a 15-second update after court, deadlines a person confirms and partner reports. For India and the UK, in English or हिन्दी.</p>
+          </div>
+          <Link to="/legal-diary" className="inline-flex items-center justify-center rounded-lg px-5 py-3 font-semibold bg-blue-700 text-white shrink-0">See meldra Legal</Link>
+        </div>
+
         {/* Key Benefits — royal blue */}
         <div className="rounded-2xl p-10 md:p-16 mb-5 border border-slate-200 bg-slate-50">
           <div className="max-w-5xl mx-auto">

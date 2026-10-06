@@ -84,6 +84,7 @@ export default function Privacy() {
                   <li>Cookie consent choices: kept for 2 years as proof of consent.</li>
                   <li>Results of document extraction jobs: deleted when the job expires, within hours.</li>
                   <li>Processing history: the type and size of each file you process (never its name or contents), deleted when you sign out or within 7 days.</li>
+                  <li>meldra Legal case diaries (only for firms that use meldra Legal): matters, parties, hearings, deadlines and notes your firm enters or imports. Files are processed in memory; your case diary is stored, encrypted and kept separately for your firm, until your firm deletes it or its licence ends.</li>
                 </ul>
               </div>
               <div>

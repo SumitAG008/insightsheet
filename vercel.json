@@ -22,6 +22,10 @@
       "destination": "/seo/faq.html"
     },
     {
+      "source": "/legal-diary",
+      "destination": "/seo/legal-diary.html"
+    },
+    {
       "source": "/developers",
       "destination": "/seo/developers.html"
     },

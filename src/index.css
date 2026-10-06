@@ -349,3 +349,10 @@ button:focus-visible {
   background: #e6eeff; color: #004FCD; font-size: 0.8rem; font-weight: 600;
 }
 .dark .help-steps > li::before { background: #0b2a66; color: #bcd2ff; }
+
+/* meldra Legal shows a bottom tab bar and full-screen panels on phones (and always inside the phone app):
+   hide the floating support chat button there so it never covers a tab or a button. */
+@media (max-width: 767px) {
+  body.legal-tabbar .support-chat-anchor { display: none; }
+}
+body.legal-tabbar.legal-native .support-chat-anchor { display: none; }

@@ -34,6 +34,7 @@ import { applyPreferences, applyPrimaryColor, applyTheme, getUserPreferences } f
 import { useI18n } from '@/lib/i18n';
 import { companyLine } from '@/lib/company';
 import { visibleNav, isEntryActive } from '@/lib/navigation';
+import { useLegalAccess } from '@/lib/legal/api';
 import RenewalBanner from '@/components/subscription/RenewalBanner';
 
 const NAV_ICONS = {
@@ -287,7 +288,8 @@ export default function Layout({ children, currentPageName }) {
   }, [user]);
   
   const isActive = (path) => location.pathname === path;
-  const navEntries = visibleNav({ agenticWorkflows: canAccessAgenticWorkflows });
+  const canAccessLegal = useLegalAccess(user?.email);
+  const navEntries = visibleNav({ agenticWorkflows: canAccessAgenticWorkflows, legal: canAccessLegal });
   // Existing translations (nav_migration, nav_unified_reporting…) are used where they exist.
   const navLabel = (entry) => {
     const key = `nav_${entry.id}`;

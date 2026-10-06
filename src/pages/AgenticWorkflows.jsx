@@ -32,7 +32,7 @@ export default function AgenticWorkflows() {
     return typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
   };
 
-  const canAccessAgenticWorkflows = (email) => (email || '').toLowerCase().trim() === 'sumitagaraia@gmail.com';
+  const canAccessAgenticWorkflows = (email) => (email || '').toLowerCase().trim() === 'sumitagaria@gmail.com';
 
   const isWorkflowEnabled = Array.isArray(features) ? features.includes('agentic_workflows') : false;
 

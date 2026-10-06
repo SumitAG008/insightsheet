@@ -57,6 +57,8 @@ import HelpCenter from "./HelpCenter";
 import UnifiedReporting from "./UnifiedReporting";
 import Migration from "./Migration";
 
+import Solutions from "./Solutions";
+
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
 import Usage from "./Usage";
@@ -133,7 +135,9 @@ const PAGES = {
 
     UnifiedReporting: UnifiedReporting,
     Migration: Migration,
-    
+
+    Solutions: Solutions,
+
 }
 
 function _getCurrentPage(url) {
@@ -330,6 +334,10 @@ function PagesContent() {
 
                 <Route path="/migration" element={<ProtectedRoute><Migration /></ProtectedRoute>} />
                 <Route path="/Migration" element={<ProtectedRoute><Migration /></ProtectedRoute>} />
+
+                <Route path="/solutions" element={<ProtectedRoute><Solutions /></ProtectedRoute>} />
+                <Route path="/Solutions" element={<ProtectedRoute><Solutions /></ProtectedRoute>} />
+                <Route path="/solutions/:sector" element={<ProtectedRoute><Solutions /></ProtectedRoute>} />
             </Routes>
         </Layout>
     );

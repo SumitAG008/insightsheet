@@ -11,13 +11,15 @@ No file names or contents are stored or shown here; usage is counts only.
 from __future__ import annotations
 
 import csv
+import hmac
 import io
 import json
+import os
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Response
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -34,6 +36,7 @@ from app.database import (
 )
 from app.services import organizations as orgsvc
 from app.services import server_guard
+from app.services.email_service import send_simple_email
 from app.services.plan_limits import LIMIT_KEYS, merge_overrides, normalize_plan, plan_limits
 from app.utils.auth import get_current_admin_user, get_current_user
 
@@ -343,6 +346,11 @@ class MemberRole(BaseModel):
     role: str = Field(..., pattern="^(owner|admin|member)$")
 
 
+class RenewalRequest(BaseModel):
+    seats: Optional[int] = Field(None, ge=1, le=100000)
+    message: Optional[str] = Field(None, max_length=2000)
+
+
 def _check_sector(sector: Optional[str]) -> None:
     if sector is not None and sector not in orgsvc.SECTORS:
         raise HTTPException(status_code=400, detail=f"sector must be one of {', '.join(orgsvc.SECTORS)}")
@@ -587,6 +595,7 @@ def _licence_report(db: Session, now: Optional[datetime] = None) -> Dict[str, An
             "currency": lic.currency,
             "seats": int(lic.seats or 0),
             "seats_used": orgsvc.seats_used(db, org.id),
+            "renewed": orgsvc.is_renewed(db, lic),
         })
     return {
         "generated_at": _iso(now),
@@ -727,3 +736,95 @@ def org_events(days: int = 90, current_user: dict = Depends(get_current_user), d
         .all()
     )
     return {"events": [_event_dict(e) for e in rows]}
+
+
+# ---------------------------------------------------------------------------
+# Renewals: the customer's admins ask for a renewal quote; reminders go out at 90, 60, 30 and 7 days
+# before the end date and once in the grace period.
+
+def _sales_email() -> str:
+    return (os.getenv("MELDRA_SALES_EMAIL") or "sales@meldra.ai").strip()
+
+
+@router.post("/api/org/renewal-request")
+async def org_renewal_request(payload: RenewalRequest, current_user: dict = Depends(get_current_user),
+                              db: Session = Depends(get_db)):
+    org, _ = _my_org(db, current_user, admin_only=True)
+    lic = orgsvc.current_license(db, org.id)
+    summary = orgsvc.license_summary(db, org, lic)
+    since = datetime.utcnow() - timedelta(days=1)
+    recent = (
+        db.query(OrganizationEvent)
+        .filter(OrganizationEvent.organization_id == org.id, OrganizationEvent.event_type == "renewal_requested",
+                OrganizationEvent.created_date >= since)
+        .count()
+    )
+    details = {"license_id": summary.get("license_id"), "seats": payload.seats, "message": payload.message}
+    orgsvc.log_event(db, org.id, current_user["email"], "renewal_requested", details)
+    db.commit()
+    emailed = False
+    if not recent:
+        body = (
+            f"Renewal requested by {current_user['email']} for {org.name} (organisation {org.id}).\n\n"
+            f"Plan: {summary.get('plan')}  Seats: {summary.get('seats')} (used {summary.get('seats_used')})\n"
+            f"Ends: {summary.get('end_date')}  State: {summary.get('state')}\n"
+            f"Seats wanted: {payload.seats or 'same'}\n"
+            f"CRM reference: {org.crm_ref or '-'}\n\n"
+            f"Message:\n{payload.message or '-'}\n"
+        )
+        emailed = await send_simple_email([_sales_email()], f"Renewal request: {org.name}", body)
+    return {"ok": True, "emailed": emailed}
+
+
+_STAGE_LINES = {
+    "d90": "Your meldra licence ends in about three months.",
+    "d60": "Your meldra licence ends in about two months.",
+    "d30": "Your meldra licence ends in 30 days or less.",
+    "d7": "Your meldra licence ends in 7 days or less.",
+    "grace": "Your meldra licence has ended. Your team keeps access during the grace period only.",
+}
+
+
+def _reminder_text(org: Organization, stage: str, summary: Dict[str, Any]) -> str:
+    end = (summary.get("end_date") or "")[:10]
+    grace = (summary.get("grace_ends") or "")[:10]
+    lines = [
+        "Hello,",
+        "",
+        f"{_STAGE_LINES.get(stage, '')} Organisation: {org.name}.",
+        f"End date: {end}." + (f" Access continues until {grace}." if stage == "grace" and grace else ""),
+        f"Seats: {summary.get('seats_used')} of {summary.get('seats')} in use.",
+        "",
+        "Your saved mappings, templates, members and history stay in place when you renew.",
+        "To renew or change seats, open Organisation in meldra and choose Request renewal,",
+        f"or reply to {_sales_email()}.",
+        "",
+        "The meldra team",
+    ]
+    return "\n".join(lines)
+
+
+@router.post("/api/cron/renewal-reminders")
+async def cron_renewal_reminders(dry_run: bool = False, x_cron_secret: Optional[str] = Header(None),
+                                 db: Session = Depends(get_db)):
+    """Called daily by the scheduled GitHub workflow. Needs the CRON_SECRET header."""
+    expected = os.getenv("CRON_SECRET", "")
+    if not expected:
+        raise HTTPException(status_code=503, detail="CRON_SECRET is not set on the server.")
+    if not x_cron_secret or not hmac.compare_digest(x_cron_secret, expected):
+        raise HTTPException(status_code=403, detail="Wrong cron secret.")
+    due = orgsvc.renewal_reminders_due(db)
+    results = []
+    for item in due:
+        org, lic, stage = item["organization"], item["license"], item["stage"]
+        sent = False
+        if not dry_run:
+            subject = f"meldra licence renewal: {org.name}"
+            sent = await send_simple_email(item["recipients"], subject, _reminder_text(org, stage, item["summary"]))
+            if sent:
+                # Logged only once sent, so a mail outage means a retry tomorrow, not a lost reminder.
+                orgsvc.log_event(db, org.id, None, "renewal_reminder",
+                                 {"license_id": lic.id, "stage": stage, "recipients": len(item["recipients"])})
+                db.commit()
+        results.append({"organization_id": org.id, "stage": stage, "recipients": len(item["recipients"]), "sent": sent})
+    return {"due": len(due), "sent": sum(1 for r in results if r["sent"]), "dry_run": dry_run, "results": results}

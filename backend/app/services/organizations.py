@@ -46,6 +46,28 @@ def license_state(lic: Optional[License], now: Optional[datetime] = None) -> str
     return "active"
 
 
+# Days before the end date when the customer's admins are reminded to renew (in app and by email).
+RENEWAL_NOTICE_DAYS = (90, 60, 30, 7)
+
+
+def renewal_stage(lic: Optional[License], now: Optional[datetime] = None) -> Optional[str]:
+    """Which renewal notice applies now: d90, d60, d30, d7, grace or expired; None when no notice is due.
+
+    Each stage starts on its day and runs until the next one, so a licence 45 days from its end is
+    in d60. Suspended, cancelled and not-yet-started licences get no renewal notice.
+    """
+    state = license_state(lic, now)
+    if state in ("grace", "expired"):
+        return state
+    if state != "active" or not lic.end_date:
+        return None
+    days_left = ((lic.end_date - (now or datetime.utcnow())).total_seconds()) / 86400.0
+    for days in sorted(RENEWAL_NOTICE_DAYS):
+        if days_left <= days:
+            return f"d{days}"
+    return None
+
+
 def license_gives_access(lic: Optional[License], now: Optional[datetime] = None) -> bool:
     return license_state(lic, now) in ("active", "grace")
 
@@ -120,6 +142,8 @@ def license_summary(db: Session, org: Organization, lic: Optional[License], now:
             "end_date": lic.end_date.isoformat() if lic.end_date else None,
             "state": license_state(lic, now),
             "days_left": days_left,
+            "grace_ends": (lic.end_date + timedelta(days=int(lic.grace_days or 0))).isoformat() if lic.end_date else None,
+            "renewal_stage": None if is_renewed(db, lic) else renewal_stage(lic, now),
         })
     else:
         out.update({"license_id": None, "plan": None, "seats": 0, "state": "none"})
@@ -202,6 +226,73 @@ def renewals_due(db: Session, within_days: int = 90, now: Optional[datetime] = N
     )
 
 
+def is_renewed(db: Session, lic: License) -> bool:
+    """True when a later licence (the renewal) is already recorded for the same organisation."""
+    if lic is None or not lic.end_date:
+        return False
+    return (
+        db.query(License)
+        .filter(License.organization_id == lic.organization_id, License.id != lic.id)
+        .filter(License.end_date > lic.end_date)
+        .filter(License.status.in_(("active", "pilot")))
+        .count()
+        > 0
+    )
+
+
+def admin_emails(db: Session, organization_id: int) -> List[str]:
+    rows = (
+        db.query(OrganizationMember)
+        .filter(OrganizationMember.organization_id == organization_id, OrganizationMember.status == "active",
+                OrganizationMember.role.in_(("owner", "admin")))
+        .order_by(OrganizationMember.created_date.asc())
+        .all()
+    )
+    return [m.user_email for m in rows]
+
+
+def _reminders_sent(db: Session, organization_id: int) -> set:
+    """(licence id, stage) pairs already emailed for this organisation."""
+    sent = set()
+    rows = (
+        db.query(OrganizationEvent)
+        .filter(OrganizationEvent.organization_id == organization_id, OrganizationEvent.event_type == "renewal_reminder")
+        .all()
+    )
+    for e in rows:
+        try:
+            d = json.loads(e.details or "{}")
+        except ValueError:
+            continue
+        sent.add((d.get("license_id"), d.get("stage")))
+    return sent
+
+
+def renewal_reminders_due(db: Session, now: Optional[datetime] = None) -> List[Dict[str, Any]]:
+    """Renewal emails to send now: one per licence and stage, never twice, skipped once renewed.
+
+    Only the latest stage is sent, so a licence first seen 20 days from its end gets the 30-day
+    email, not the 90- and 60-day ones as well.
+    """
+    now = now or datetime.utcnow()
+    out: List[Dict[str, Any]] = []
+    for org in db.query(Organization).all():
+        lic = current_license(db, org.id, now)
+        stage = renewal_stage(lic, now)
+        if stage is None or stage == "expired" or is_renewed(db, lic):
+            continue
+        if (lic.id, stage) in _reminders_sent(db, org.id):
+            continue
+        recipients = admin_emails(db, org.id)
+        if org.billing_email and org.billing_email.lower() not in recipients:
+            recipients.append(org.billing_email.lower())
+        if not recipients:
+            continue
+        out.append({"organization": org, "license": lic, "stage": stage, "recipients": recipients,
+                    "summary": license_summary(db, org, lic, now)})
+    return out
+
+
 def annualised_value(lic: License) -> float:
     """Contract value per year (ARR contribution); a 2-year deal of 20,000 counts 10,000."""
     if not lic.start_date or not lic.end_date:
@@ -218,6 +309,8 @@ __all__ = [
     "PUBLIC_EMAIL_DOMAINS",
     "email_domain",
     "license_state",
+    "RENEWAL_NOTICE_DAYS",
+    "renewal_stage",
     "license_gives_access",
     "current_license",
     "seats_used",
@@ -227,5 +320,8 @@ __all__ = [
     "try_domain_auto_join",
     "resolve_entitlements",
     "renewals_due",
+    "is_renewed",
+    "admin_emails",
+    "renewal_reminders_due",
     "annualised_value",
 ]

@@ -16,11 +16,13 @@ const STAGE_TONE = {
 
 const maskValue = (v) => (v.length <= 4 ? v : `${'•'.repeat(Math.min(8, v.length - 4))}${v.slice(-4)}`);
 
-function Preview({ file, settings }) {
-  const rows = fileRows(file, settings);
+function Preview({ file, settings, target }) {
+  const rows = fileRows(file, settings, target);
+  // fileRows adds the label row only when the target uses one.
+  const skip = rows.length - file.rows.length;
   const head = rows[0];
   const sensitive = file.entity.fields.map((f) => !!f.sensitive);
-  const body = rows.slice(settings.labelRow ? 2 : 1, (settings.labelRow ? 2 : 1) + 8);
+  const body = rows.slice(skip, skip + 8);
   return (
     <div className="overflow-auto rounded-xl border border-slate-200 dark:border-slate-800">
       <table className="w-full border-collapse font-mono text-xs">
@@ -38,9 +40,15 @@ function Preview({ file, settings }) {
     </div>
   );
 }
-Preview.propTypes = { file: PropTypes.object.isRequired, settings: PropTypes.object.isRequired };
+Preview.propTypes = { file: PropTypes.object.isRequired, settings: PropTypes.object.isRequired, target: PropTypes.object.isRequired };
 
-export default function ExportStep({ result, settings, onDownload, onDownloadWorkbook, busy }) {
+const PACKAGE_TEXT = {
+  csv: 'one CSV per file',
+  eib: 'one EIB workbook (.xlsx) per Workday web service, with a tab per record type linked by Spreadsheet Key',
+  hdl: 'the HDL .dat files in load order (hdl_upload/), plus a second load for terminations',
+};
+
+export default function ExportStep({ result, settings, target, onDownload, onDownloadWorkbook, busy }) {
   const [selected, setSelected] = useState(result.files[0]?.entity.id);
   const current = result.files.find((f) => f.entity.id === selected) || result.files[0];
   const errorsFor = (label) => result.issues.filter((i) => i.severity === 'error' && i.entity === label).length;
@@ -83,13 +91,13 @@ export default function ExportStep({ result, settings, onDownload, onDownloadWor
             <div className="flex-1">
               <h3 className="m-0 text-lg font-semibold">Migration package</h3>
               <p className="mt-1 text-sm text-slate-500">
-                {result.files.length} files in load order. SuccessFactors imports take CSV, so the ZIP holds one CSV per file plus a README and reports. The review workbook puts everything in one Excel file for checking with the business.
+                {result.files.length} files in load order. The ZIP holds {PACKAGE_TEXT[target.format] || PACKAGE_TEXT.csv}, plus a README with the load sequence and reports. The review workbook puts everything in one Excel file for checking with the business.
               </p>
             </div>
             <div className="flex flex-col items-stretch gap-2">
               <Button size="lg" onClick={onDownload} disabled={busy}>
                 {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                Download ZIP for SuccessFactors
+                Download ZIP for {target.short || target.label}
               </Button>
               <Button variant="outline" onClick={onDownloadWorkbook} disabled={busy}><FileText className="mr-2 h-4 w-4" />Review workbook (.xlsx)</Button>
             </div>
@@ -101,7 +109,12 @@ export default function ExportStep({ result, settings, onDownload, onDownloadWor
             </p>
           )}
           <p className="mt-3 text-xs text-slate-500">
-            Column IDs follow the standard Employee Central import templates. Templates are generated per instance, so compare with the ones from Admin Center › Import Employee Data before loading. Direct push through the SuccessFactors OData API, with a dry-run first, comes with the API connector.
+            {{
+              successfactors: 'Column IDs follow the standard Employee Central import templates. Templates are generated per instance, so compare with the ones from Admin Center › Import Employee Data before loading.',
+              workday: 'Column names follow the Workday web service elements. Workday generates the exact EIB template per tenant: copy each tab into the template from Create EIB before loading, and check reference IDs against your tenant.',
+              oracle: 'Attribute names follow the standard HDL business objects. Compare with View Business Objects in your pod (and add flexfields) before loading. SourceSystemIds are fixed per person, so reloads update rather than duplicate.',
+              salesforce: 'Preview: field API names differ between orgs. Check them in Setup › Object Manager › Employee and rename the headers before loading with Bulk API (upsert on the external ID).',
+            }[target.id]}
           </p>
         </div>
 
@@ -113,9 +126,9 @@ export default function ExportStep({ result, settings, onDownload, onDownloadWor
               <span className="text-sm text-slate-500">· {current.entity.label} · {current.rows.length} rows{current.entity.dependsOn.length ? ` · needs ${current.entity.dependsOn.filter((d) => result.files.some((f) => f.entity.id === d)).join(', ')}` : ''}</span>
             </div>
             {current.entity.mdf && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200">Payment Information is an MDF object: download its template from Import and Export Data in your instance and match these columns to it. Bank numbers are masked here and complete in the download.</p>}
-            {current.entity.custom && <p className="mb-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">No standard SuccessFactors file for this data yet ({current.entity.reason?.toLowerCase()}). It is carried as-is so nothing is lost: load it into a custom MDF object, or hand it to payroll or benefits.</p>}
+            {current.entity.custom && <p className="mb-3 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700 dark:bg-slate-800 dark:text-slate-200">No standard {target.short || target.label} file for this data yet ({current.entity.reason?.toLowerCase()}). It is carried as-is so nothing is lost: load it into a custom object, or hand it to payroll or benefits.</p>}
             {current.entity.payroll && <p className="mb-3 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:bg-rose-950 dark:text-rose-200">Year-to-date balances are loaded by payroll (Employee Central Payroll or your payroll provider), not by an Employee Central import. Map the wage types to your payroll’s codes on the Cleanse step.</p>}
-            <Preview file={current} settings={settings} />
+            <Preview file={current} settings={settings} target={target} />
           </div>
         )}
       </section>
@@ -126,6 +139,7 @@ export default function ExportStep({ result, settings, onDownload, onDownloadWor
 ExportStep.propTypes = {
   result: PropTypes.object.isRequired,
   settings: PropTypes.object.isRequired,
+  target: PropTypes.object.isRequired,
   onDownload: PropTypes.func.isRequired,
   onDownloadWorkbook: PropTypes.func.isRequired,
   busy: PropTypes.bool,

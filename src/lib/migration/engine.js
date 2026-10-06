@@ -16,7 +16,7 @@ import { PICKLISTS, suggestCode, toCountry, toCurrency } from './dictionaries';
 
 /* ======================= 1. mapping ======================= */
 
-const norm = (s) => String(s ?? '').toLowerCase().replace(/[_\-./#()%]+/g, ' ').replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+const norm = (s) => String(s ?? '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase().replace(/[_\-./#()%]+/g, ' ').replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 const tokens = (s) => norm(s).split(' ').filter(Boolean);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const BIC_RE = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
@@ -460,7 +460,7 @@ export function assemble(sheets, mapping, settings, picklists = {}, tabPurposes 
       for (let k = issues.length - 1; k >= 0; k--) if (issues[k].entity === sheet.name && issues[k].severity === 'info') issues.splice(k, 1);
       sheetRoles[sheet.id] = 'detail';
       carried.push({ sheet, employeeCol: conceptCol.employee_id, reason: purpose ? `AI identified it as ${purpose.replace('_', ' ')}` : 'Several rows per employee and no effective date' });
-      issues.push({ severity: 'info', entity: sheet.name, key: '', field: '', message: 'Several rows per employee (such as dependents) with no standard SuccessFactors file here: carried as its own file, not merged into the employee record.' });
+      issues.push({ severity: 'info', entity: sheet.name, key: '', field: '', message: 'Several rows per employee (such as dependents) with no standard target file here: carried as its own file, not merged into the employee record.' });
       continue;
     }
     if (sheetRoles[sheet.id] === 'employee') {
@@ -614,7 +614,21 @@ export function assemble(sheets, mapping, settings, picklists = {}, tabPurposes 
 
 /* ======================= 3. outputs & validation ======================= */
 
-const COUNTRY_A2 = { GBR: 'GB', DEU: 'DE', USA: 'US', FRA: 'FR', ESP: 'ES', ITA: 'IT', NLD: 'NL', IRL: 'IE', BEL: 'BE', CHE: 'CH', AUT: 'AT', IND: 'IN', SWE: 'SE', NOR: 'NO', DNK: 'DK', POL: 'PL', PRT: 'PT', CAN: 'CA', AUS: 'AU' };
+export const COUNTRY_A2 = { GBR: 'GB', DEU: 'DE', USA: 'US', FRA: 'FR', ESP: 'ES', ITA: 'IT', NLD: 'NL', IRL: 'IE', BEL: 'BE', CHE: 'CH', AUT: 'AT', IND: 'IN', SWE: 'SE', NOR: 'NO', DNK: 'DK', POL: 'PL', PRT: 'PT', CAN: 'CA', AUS: 'AU' };
+
+/** Two-letter country code (GB) from a three-letter one (GBR) or a two-letter one. */
+export function countryA2(code) {
+  const c = String(code || '').toUpperCase();
+  return COUNTRY_A2[c] || (c.length === 2 ? c : c.slice(0, 2));
+}
+
+/** The day before an ISO date (2026-03-01 -> 2026-02-28). */
+export function dayBefore(iso) {
+  if (!iso) return '';
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+}
 
 /**
  * Group an employee's payroll result lines into payroll runs (one per period
@@ -669,7 +683,8 @@ export function jobEventKind(prev, cur) {
  * Control totals: the same measure summed from the raw source tabs and from
  * the files we produce. A difference means rows were dropped or merged.
  */
-export function reconcile(sheets, mapping, files) {
+export function reconcile(sheets, mapping, files, target = {}) {
+  const rec = target.reconcile || {};
   const rows = [];
   const fileOf = (id) => files.find((f) => f.entity.id === id);
 
@@ -680,7 +695,7 @@ export function reconcile(sheets, mapping, files) {
     if (!col) continue;
     s.rows.forEach((r) => { const v = cleanValue('employee_id', r[col], {}).value; if (v) ids.add(v); });
   }
-  if (ids.size) rows.push({ label: 'Employees', source: ids.size, target: fileOf('User')?.rows.length || 0, unit: 'count' });
+  if (ids.size && rec.employees) rows.push({ label: 'Employees', source: ids.size, target: new Set((fileOf(rec.employees)?.rows || []).map((r) => r[rec.employeeField] || JSON.stringify(r))).size, unit: 'count' });
 
   const sumSource = (concept, roleOk) => {
     const out = {};
@@ -716,15 +731,17 @@ export function reconcile(sheets, mapping, files) {
     const src = sumSource(concept, () => true);
     if (!src.n || !fileOf(fileId)) return;
     const tgt = sumTarget(fileId, amountField, currencyField);
+    if (currencyField === '__none') {
+      // The target file has no currency column (it comes from setup, e.g. Oracle's salary basis): compare the totals.
+      const total = (o) => Math.round(Object.values(o).reduce((a, b) => a + b, 0) * 100) / 100;
+      rows.push({ label, source: total(src.totals), target: total(tgt), unit: 'money' });
+      return;
+    }
     for (const c of new Set([...Object.keys(src.totals), ...Object.keys(tgt)])) {
       rows.push({ label: `${label} (${c})`, source: Math.round((src.totals[c] || 0) * 100) / 100, target: Math.round((tgt[c] || 0) * 100) / 100, unit: 'money' });
     }
   };
-  money('Recurring pay', 'salary_amount', 'EmpPayCompRecurring', 'paycompvalue', 'currency-code');
-  money('One-time payments', 'one_time_amount', 'EmpPayCompNonRecurring', 'value', 'currency-code');
-  money('Payroll YTD balances', 'ytd_amount', 'PayrollYTD', 'amount', 'currency');
-  money('Pension payouts', 'pension_payout_amount', 'PensionPayout', 'amount', 'currency');
-  money('Payroll results → SAP T558C', 'payroll_amount', 'SAP_T558C', 'BETRG', '__currency');
+  (rec.money || []).forEach((m) => money(...m));
   return rows.map((r) => ({ ...r, ok: Math.abs(r.source - r.target) < 0.005 }));
 }
 
@@ -759,14 +776,22 @@ export function buildOutputs(target, data, settings) {
   }
 
   const orgExtra = (list, code, key) => (code && data.org[list].get(code)?.extra[key]) || '';
+  const orgName = (list, code) => (code && data.org[list].get(code)?.name) || '';
+  // Workday EIB: one spreadsheet key per worker, shared by every tab of that worker's transaction.
+  const personKey = new Map(data.people.map((p, i) => [p.id, String(i + 1)]));
   const makeCtx = (p, extra = {}) => {
     const jobs = data.jobsFor.get(p.id) || [];
     const latest = jobs.length ? jobs[jobs.length - 1].values : {};
+    const first = jobs.length ? jobs[0].values : {};
     return {
       settings,
       orgExtra,
+      orgName,
+      personKey: personKey.get(p.id),
       get: (k) => (k === 'employee_id' ? p.id : p.values[k] || ''),
       job: (k) => latest[k] || p.values[k] || '',
+      firstJob: (k) => first[k] || p.values[k] || '',
+      latestJobDate: (jobs.length && latest.job_effective_date) || p.values.hire_date || '',
       ...extra,
     };
   };
@@ -796,14 +821,20 @@ export function buildOutputs(target, data, settings) {
         case 'employee':
           out.push({ key: p.id, ctx: makeCtx(p) });
           break;
-        case 'job': {
+        case 'job':
+        case 'jobChange': {
           const jobs = data.jobsFor.get(p.id) || [];
           const seqOn = {};
+          const dateOf = (j) => j.values.job_effective_date || p.values.hire_date || '';
           jobs.forEach((j, i) => {
-            const date = j.values.job_effective_date || p.values.hire_date || '';
+            const date = dateOf(j);
             seqOn[date] = (seqOn[date] || 0) + 1;
+            if (entity.grain === 'jobChange' && i === 0) return; // the hire carries the first job
             const kind = i === 0 ? 'hire' : jobEventKind({ ...p.values, ...jobs[i - 1].values }, { ...p.values, ...j.values });
-            out.push({ key: `${p.id} @ ${date || '?'}`, person: p.id, ctx: withRow(p, j.values, { isFirstJob: i === 0, eventKind: kind, eventReason: settings[EVENT_SETTING[kind]], seq: seqOn[date] }) });
+            // Effective-dated targets (Oracle HDL) need each row to end the day before the next one starts.
+            const next = jobs.slice(i + 1).map(dateOf).find((d) => d && d > date) || '';
+            const endDate = next ? dayBefore(next) : (p.values.termination_date || '');
+            out.push({ key: `${p.id} @ ${date || '?'}`, person: p.id, ctx: withRow(p, j.values, { isFirstJob: i === 0, isLastJob: i === jobs.length - 1, eventKind: kind, eventReason: settings[EVENT_SETTING[kind]], seq: seqOn[date], effectiveDate: date, endDate, rowKey: String(out.length + 1) }) });
           });
           break;
         }
@@ -818,11 +849,21 @@ export function buildOutputs(target, data, settings) {
           }
           break;
         }
-        case 'comp':
-          (data.compsFor.get(p.id) || []).forEach((c) => out.push({ key: `${p.id} @ ${c.values.comp_effective_date || '?'} ${c.values.pay_component || ''}`.trim(), person: p.id, ctx: withRow(p, c.values) }));
+        case 'comp': {
+          const comps = data.compsFor.get(p.id) || [];
+          const dateOf = (c) => c.values.comp_effective_date || c.values.job_effective_date || p.values.hire_date || '';
+          comps.forEach((c, i) => {
+            const date = dateOf(c);
+            const next = comps.slice(i + 1).map(dateOf).find((d) => d && d > date) || '';
+            out.push({ key: `${p.id} @ ${c.values.comp_effective_date || '?'} ${c.values.pay_component || ''}`.trim(), person: p.id, ctx: withRow(p, c.values, { effectiveDate: date, endDate: next ? dayBefore(next) : '', isFirstComp: i === 0, rowKey: String(out.length + 1) }) });
+          });
           break;
+        }
         case 'onetime':
-          (data.oneTimeFor.get(p.id) || []).forEach((c) => out.push({ key: `${p.id} @ ${c.values.one_time_date || '?'}`, person: p.id, ctx: withRow(p, c.values) }));
+          (data.oneTimeFor.get(p.id) || []).forEach((c) => out.push({ key: `${p.id} @ ${c.values.one_time_date || '?'}`, person: p.id, ctx: withRow(p, c.values, { rowKey: String(out.length + 1) }) }));
+          break;
+        case 'fte':
+          if (p.values.fte || (data.jobsFor.get(p.id) || []).some((j) => j.values.fte)) out.push({ key: p.id, ctx: makeCtx(p) });
           break;
         case 'ytd':
           (data.ytdFor.get(p.id) || []).forEach((c) => out.push({ key: `${p.id} ${c.values.tax_year || ''} ${c.values.wage_type || ''}`.trim(), person: p.id, ctx: withRow(p, c.values) }));
@@ -869,11 +910,15 @@ export function buildOutputs(target, data, settings) {
   };
 
   const orgCodes = Object.fromEntries(Object.entries(data.org).map(([k, v]) => [k, new Set(v.keys())]));
-  const refSet = { employee: personIds, FOCostCenter: orgCodes.cost_center, FOCompany: orgCodes.company, FOBusinessUnit: orgCodes.business_unit, FODivision: orgCodes.division, FODepartment: orgCodes.department, FOLocation: orgCodes.location, FOJobCode: orgCodes.job };
+  // Which file each reference points to: the target names its org files (FOCompany, Location, Org_Supervisory…).
+  const refSet = { employee: personIds, ...Object.fromEntries(Object.entries(target.orgRefs || {}).map(([ref, list]) => [ref, orgCodes[list]])) };
 
   const files = [];
+  // A required value that comes from a setting with no default (e.g. Oracle's business unit) is one
+  // thing to fix, not one error per record.
+  const missingSetting = new Set();
   for (const entity of target.entities) {
-    const records = recordsFor(entity);
+    const records = recordsFor(entity).filter((rec) => !entity.onlyIf || entity.onlyIf(rec.ctx));
     if (!records.length) continue;
     const rows = records.map(({ key, ctx, meta }) => {
       const row = { ...(meta || {}) };
@@ -884,12 +929,18 @@ export function buildOutputs(target, data, settings) {
         if (f.sapDate && v) v = formatDate(v, settings.sapDateFormat);
         row[f.id] = v;
         const missingTermination = entity.grain === 'termination' && !ctx.get('termination_date');
-        if (f.required && !v && !missingTermination) {
+        if (f.required && !v && f.setting && !settings[f.setting]) {
+          if (!missingSetting.has(f.setting)) {
+            missingSetting.add(f.setting);
+            issues.push({ severity: 'error', entity: 'Settings', key: '', field: f.setting, message: `Set “${f.label}” in Settings: ${target.short || target.label} needs it on every record and there is no safe default.` });
+          }
+        } else if (f.required && !v && !missingTermination) {
           const concept = f.from ? CONCEPT_BY_ID[f.from]?.label : null;
           issues.push({ severity: 'error', entity: entity.label, key, field: f.id, message: `Required${concept ? ` (${concept})` : ''} is empty` });
         }
-        if (f.ref && v && !['NO_MANAGER', 'NO_HR'].includes(v) && refSet[f.ref] && !refSet[f.ref].has(v)) {
-          issues.push({ severity: 'error', entity: entity.label, key, field: f.id, message: f.ref === 'employee' ? `Manager ${v} is not in this migration` : `${v} does not exist in ${f.ref}` });
+        const refValue = f.refValue ? f.refValue(ctx) : v;
+        if (f.ref && refValue && !['NO_MANAGER', 'NO_HR'].includes(refValue) && refSet[f.ref] && !refSet[f.ref].has(refValue)) {
+          issues.push({ severity: 'error', entity: entity.label, key, field: f.id, message: f.ref === 'employee' ? `Manager ${refValue} is not in this migration` : `${refValue} does not exist in ${f.ref}` });
         }
       }
       return row;
@@ -900,12 +951,12 @@ export function buildOutputs(target, data, settings) {
   // Cross-record rules the templates can't express.
   for (const p of data.people) {
     const v = p.values;
-    if (v.status === 'inactive' && !v.termination_date) issues.push({ severity: 'error', entity: 'Termination Details', key: p.id, field: 'end-date', message: 'Marked terminated, but no termination date or reason was found in any tab' });
-    if (v.termination_date && v.hire_date && v.termination_date < v.hire_date) issues.push({ severity: 'error', entity: 'Termination Details', key: p.id, field: 'end-date', message: `Termination date ${v.termination_date} is before hire date ${v.hire_date}` });
-    if (v.status === 'active' && v.termination_date && v.termination_date < settings.asOf) issues.push({ severity: 'warning', entity: 'Basic User Import', key: p.id, field: 'STATUS', message: `Active, but has a past termination date (${v.termination_date})` });
+    if (v.status === 'inactive' && !v.termination_date) issues.push({ severity: 'error', entity: 'Terminations', key: p.id, field: 'end-date', message: 'Marked terminated, but no termination date or reason was found in any tab' });
+    if (v.termination_date && v.hire_date && v.termination_date < v.hire_date) issues.push({ severity: 'error', entity: 'Terminations', key: p.id, field: 'end-date', message: `Termination date ${v.termination_date} is before hire date ${v.hire_date}` });
+    if (v.status === 'active' && v.termination_date && v.termination_date < settings.asOf) issues.push({ severity: 'warning', entity: 'Workers', key: p.id, field: 'STATUS', message: `Active, but has a past termination date (${v.termination_date})` });
     if (v.date_of_birth && v.hire_date) {
       const age = (Date.parse(v.hire_date) - Date.parse(v.date_of_birth)) / (365.25 * 864e5);
-      if (age < 14 || age > 90) issues.push({ severity: 'warning', entity: 'Biographical Information', key: p.id, field: 'date-of-birth', message: `Age at hire would be ${Math.floor(age)}; check the date order` });
+      if (age < 14 || age > 90) issues.push({ severity: 'warning', entity: 'Workers', key: p.id, field: 'date-of-birth', message: `Age at hire would be ${Math.floor(age)}; check the date order` });
     }
   }
   for (const p of data.people) {
@@ -917,17 +968,17 @@ export function buildOutputs(target, data, settings) {
       const cc = ccCode && data.org.cost_center.get(ccCode);
       const ccCompany = cc?.extra.cost_center_company;
       if (ccCompany && row.company_code && ccCompany !== row.company_code) {
-        issues.push({ severity: 'warning', entity: 'Job History', key: `${p.id} @ ${row.job_effective_date || '?'}`, field: 'cost-center', message: `Cost center ${ccCode} belongs to ${ccCompany}, but the employee is in ${row.company_code}` });
+        issues.push({ severity: 'warning', entity: 'Job history', key: `${p.id} @ ${row.job_effective_date || '?'}`, field: 'cost-center', message: `Cost center ${ccCode} belongs to ${ccCompany}, but the employee is in ${row.company_code}` });
       }
     }
     if (v.iban && v.bank_country && v.iban.slice(0, 2) !== (COUNTRY_A2[v.bank_country] || v.bank_country.slice(0, 2))) {
-      issues.push({ severity: 'warning', entity: 'Payment Information', key: p.id, field: 'iban', message: `IBAN country ${v.iban.slice(0, 2)} differs from bank country ${v.bank_country}` });
+      issues.push({ severity: 'warning', entity: 'Bank details', key: p.id, field: 'iban', message: `IBAN country ${v.iban.slice(0, 2)} differs from bank country ${v.bank_country}` });
     }
     if (v.bank_country === 'GBR' && v.bank_routing && !/^\d{6}$/.test(v.bank_routing)) {
-      issues.push({ severity: 'error', entity: 'Payment Information', key: p.id, field: 'routing', message: `UK sort code must be 6 digits (has ${v.bank_routing.length})` });
+      issues.push({ severity: 'error', entity: 'Bank details', key: p.id, field: 'routing', message: `UK sort code must be 6 digits (has ${v.bank_routing.length})` });
     }
     if (v.bank_country === 'USA' && v.bank_routing && !/^\d{9}$/.test(v.bank_routing)) {
-      issues.push({ severity: 'error', entity: 'Payment Information', key: p.id, field: 'routing', message: 'US routing number must be 9 digits' });
+      issues.push({ severity: 'error', entity: 'Bank details', key: p.id, field: 'routing', message: 'US routing number must be 9 digits' });
     }
   }
 
@@ -943,11 +994,12 @@ export function buildOutputs(target, data, settings) {
 
   const emails = new Map();
   for (const p of data.people) if (p.values.email_work) emails.set(p.values.email_work, [...(emails.get(p.values.email_work) || []), p.id]);
-  for (const [e, ids] of emails) if (ids.length > 1) issues.push({ severity: 'warning', entity: 'Email Information', key: ids.join(', '), field: 'email-address', message: `${e} is shared by ${ids.length} employees` });
+  for (const [e, ids] of emails) if (ids.length > 1) issues.push({ severity: 'warning', entity: 'Emails', key: ids.join(', '), field: 'email-address', message: `${e} is shared by ${ids.length} employees` });
 
   const ordered = loadOrder(files.map((f) => f.entity)).map((e, i) => {
     const f = files.find((x) => x.entity.id === e.id);
-    return { ...f, order: i + 1, fileName: `${String(i + 1).padStart(2, '0')}_${e.id}.${e.format === 'tsv' ? 'txt' : 'csv'}` };
+    const ext = { tsv: 'txt', hdl: 'dat', eib: 'xlsx' }[e.format || target.format] || 'csv';
+    return { ...f, order: i + 1, fileName: `${String(i + 1).padStart(2, '0')}_${e.id}.${ext}` };
   });
 
   const counts = { error: 0, warning: 0, info: 0 };
@@ -961,7 +1013,7 @@ export function runMigration(target, sheets, mapping, settings, picklists, tabPu
   const out = buildOutputs(target, data, settings);
   const custom = carryOverFiles(data, out.files.length);
   const files = [...out.files, ...custom];
-  const reconciliation = [...reconcile(sheets, mapping, files), ...resultsVsYtd(data)];
+  const reconciliation = [...reconcile(sheets, mapping, files, target), ...resultsVsYtd(data)];
   return { data, ...out, files, reconciliation, coverage: coverage(sheets, mapping, data, tabPurposes) };
 }
 
@@ -1008,7 +1060,7 @@ export function carryOverFiles(data, start) {
     const rows = [...data.carryValues.entries()]
       .filter(([, v]) => Object.keys(v).length)
       .map(([id, v]) => ({ 'employee-id': id, ...v }));
-    if (rows.length) add({ id: 'Custom_Unmapped_Fields', label: 'Unmapped worker fields', stage: 'Carry-over', custom: true, reason: 'Columns on worker tabs with no SuccessFactors field chosen', dependsOn: [], fields }, rows);
+    if (rows.length) add({ id: 'Custom_Unmapped_Fields', label: 'Unmapped worker fields', stage: 'Carry-over', custom: true, reason: 'Columns on worker tabs with no target field chosen', dependsOn: [], fields }, rows);
   }
   return files;
 }

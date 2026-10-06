@@ -1,0 +1,321 @@
+/**
+ * Workday HCM: inbound EIB (Enterprise Interface Builder) spreadsheets.
+ *
+ * Each `workbook` is one EIB, named after the Workday web service operation it
+ * calls (Hire_Employee, Change_Job, Maintain_Contact_Information…). Entities that
+ * share a workbook become tabs of that workbook. Every tab starts with
+ * "Spreadsheet Key": rows with the same key belong to the same transaction, so a
+ * worker's email, phone and address tabs carry the worker's key and Workday
+ * links them during the load.
+ *
+ * Workday generates the exact EIB template per tenant (Create EIB > Get Data >
+ * web service). Column names here follow the web service element names; copy
+ * the data into the template generated from your tenant before loading.
+ * Reference IDs (organisations, job profiles, locations, reasons) must match the
+ * reference ID types configured in the tenant.
+ */
+
+const timeType = (c) => {
+  const fte = parseFloat(c.job('fte') || c.get('fte'));
+  if (!Number.isFinite(fte)) return '';
+  return fte >= 1 || fte >= 100 ? 'Full_time' : 'Part_time';
+};
+const key = { id: 'Spreadsheet Key*', label: 'Spreadsheet Key', derive: (c) => c.rowKey || c.personKey, required: true };
+const personKey = { id: 'Spreadsheet Key*', label: 'Spreadsheet Key', derive: (c) => c.personKey, required: true };
+const orgKey = { id: 'Spreadsheet Key*', label: 'Spreadsheet Key', derive: (c) => c.code, required: true };
+
+const organization = (id, label, list, type, extra = [], dependsOn = []) => ({
+  id,
+  label,
+  stage: 'Foundation data',
+  grain: `org:${list}`,
+  workbook: 'Add_Update_Organization',
+  dependsOn,
+  fields: [
+    orgKey,
+    { id: 'Organization_Reference_ID', label: 'Organization Reference ID', derive: (c) => c.code, required: true },
+    { id: 'Effective_Date', label: 'Effective Date', derive: (c) => c.settings.foundationStartDate, date: true, required: true },
+    { id: 'Organization_Name', label: 'Name', derive: (c) => c.name || c.code, required: true },
+    { id: 'Organization_Type_Reference', label: 'Organization Type', derive: () => type, required: true },
+    ...extra,
+  ],
+});
+
+export const WORKDAY = {
+  id: 'workday',
+  label: 'Workday HCM (EIB)',
+  short: 'Workday',
+  format: 'eib',
+  orgRefs: { Org_Company: 'company', Org_CostCenter: 'cost_center', Org_Supervisory: 'department', Put_Location: 'location', Put_Job_Profile: 'job' },
+  reconcile: {
+    employees: 'Hire_Employee',
+    employeeField: 'Employee_ID',
+    money: [
+      ['Recurring pay', 'salary_amount', 'Request_Compensation_Change', 'Amount', 'Currency'],
+      ['One-time payments', 'one_time_amount', 'Request_One_Time_Payment', 'Amount', 'Currency'],
+    ],
+  },
+  defaultSettings: {
+    dateFormat: 'yyyy-MM-dd',
+    wdHireReason: 'Hire_Employee_Hire_Employee_New_Hire',
+    wdJobChangeReason: 'Change_Job_Job_Change',
+    wdTransferReason: 'Change_Job_Transfer',
+    wdDataChangeReason: 'Change_Job_Data_Change',
+    wdCompReason: 'Request_Compensation_Change_Adjustment',
+    wdOneTimeReason: 'One_Time_Payment_One_Time_Payment',
+    wdEmployeeType: 'Regular',
+    wdBasePlan: 'Base_Salary',
+    wdLocationUsage: 'BUSINESS SITE',
+  },
+  settingsFields: [
+    ['wdHireReason', 'Hire reason ID', 'General_Event_Subcategory_ID for new hires.'],
+    ['wdJobChangeReason', 'Job change reason ID', 'Change_Job when the job, title or grade changed.'],
+    ['wdTransferReason', 'Transfer reason ID', 'Change_Job when the org, location or cost centre changed.'],
+    ['wdDataChangeReason', 'Data change reason ID', 'Any other job change.'],
+    ['wdCompReason', 'Compensation change reason ID', 'Request_Compensation_Change.'],
+    ['wdOneTimeReason', 'One-time payment reason ID', 'Request_One_Time_Payment.'],
+    ['wdEmployeeType', 'Default employee type ID', 'When the extract has no worker type.'],
+    ['wdBasePlan', 'Base pay plan ID', 'Compensation plan for base salary.'],
+  ],
+  readmeNotes: () => [
+    'Each .xlsx is one inbound EIB, named after the Workday web service it calls.',
+    'Tabs of the same workbook are linked by Spreadsheet Key: keep the keys as they are.',
+    'Workday generates the exact template per tenant (Create EIB > Get Data > web service):',
+    'copy each tab into the template generated from your tenant before loading.',
+    'Reference IDs (organisations, job profiles, locations, reasons, plans) must match your',
+    'tenant\'s reference ID types. Managers are assigned through the supervisory',
+    'organisation\'s Manager role (Assign Roles), not on the hire.',
+  ],
+  entities: [
+    organization('Org_Company', 'Companies', 'company', 'Company', [
+      { id: 'Country_Reference', label: 'Country (ISO)', derive: (c) => c.extra.company_country },
+      { id: 'Currency_Reference', label: 'Currency', derive: (c) => c.extra.company_currency },
+    ]),
+    organization('Org_CostCenter', 'Cost centres', 'cost_center', 'Cost_Center', [
+      { id: 'Superior_Organization_Reference', label: 'Superior Organization', derive: (c) => c.extra.cost_center_parent, ref: 'Org_CostCenter' },
+    ]),
+    {
+      id: 'Put_Location',
+      label: 'Locations',
+      stage: 'Foundation data',
+      grain: 'org:location',
+      workbook: 'Put_Location',
+      dependsOn: [],
+      fields: [
+        orgKey,
+        { id: 'Location_ID', label: 'Location ID', derive: (c) => c.code, required: true },
+        { id: 'Location_Name', label: 'Location Name', derive: (c) => c.name || c.code, required: true },
+        { id: 'Location_Usage_Reference', label: 'Location Usage', derive: (c) => c.settings.wdLocationUsage, required: true },
+        { id: 'Time_Profile_Reference', label: 'Time Zone', derive: (c) => c.extra.timezone || c.settings.defaultTimezone },
+        { id: 'Country_Reference', label: 'Country (ISO)', derive: (c) => c.extra.location_country },
+      ],
+    },
+    {
+      id: 'Put_Job_Profile',
+      label: 'Job profiles',
+      stage: 'Foundation data',
+      grain: 'org:job',
+      workbook: 'Put_Job_Profile',
+      dependsOn: [],
+      fields: [
+        orgKey,
+        { id: 'Job_Profile_ID', label: 'Job Profile ID', derive: (c) => c.code, required: true },
+        { id: 'Effective_Date', label: 'Effective Date', derive: (c) => c.settings.foundationStartDate, date: true, required: true },
+        { id: 'Job_Code', label: 'Job Code', derive: (c) => c.code },
+        { id: 'Job_Title', label: 'Job Title', derive: (c) => c.name || c.code, required: true },
+        { id: 'Inactive', label: 'Inactive', derive: () => '0' },
+      ],
+    },
+    organization('Org_Supervisory', 'Supervisory organisations', 'department', 'Supervisory', [
+      { id: 'Location_Reference', label: 'Primary Location', derive: () => '' },
+      { id: 'Cost_Center_Reference', label: 'Default Cost Center', derive: (c) => c.extra.cost_center, ref: 'Org_CostCenter' },
+    ], ['Org_CostCenter']),
+    {
+      id: 'Hire_Employee',
+      label: 'Hire Employee',
+      stage: 'People',
+      grain: 'employee',
+      workbook: 'Hire_Employee',
+      dependsOn: ['Org_Supervisory', 'Put_Job_Profile', 'Put_Location', 'Org_Company'],
+      fields: [
+        personKey,
+        { id: 'Employee_ID', label: 'Employee ID', from: 'employee_id', required: true },
+        { id: 'Hire_Date', label: 'Hire Date', from: 'hire_date', date: true, required: true },
+        { id: 'Original_Hire_Date', label: 'Original Hire Date', derive: (c) => c.get('original_hire_date'), date: true },
+        { id: 'Continuous_Service_Date', label: 'Continuous Service Date', derive: (c) => c.get('seniority_date'), date: true },
+        { id: 'Reason_Reference', label: 'Hire Reason', derive: (c) => c.settings.wdHireReason, required: true },
+        { id: 'Organization_Reference', label: 'Supervisory Organization', derive: (c) => c.firstJob('department_code'), ref: 'Org_Supervisory', required: true },
+        { id: 'Employee_Type_Reference', label: 'Employee Type', derive: (c) => c.firstJob('employee_class') || c.settings.wdEmployeeType, required: true },
+        { id: 'Job_Profile_Reference', label: 'Job Profile', derive: (c) => c.firstJob('job_code'), ref: 'Put_Job_Profile', required: true },
+        { id: 'Position_Title', label: 'Business Title', derive: (c) => c.firstJob('job_title') || c.firstJob('job_name') },
+        { id: 'Location_Reference', label: 'Location', derive: (c) => c.firstJob('location_code'), ref: 'Put_Location', required: true },
+        { id: 'Position_Time_Type_Reference', label: 'Time Type', derive: timeType },
+        { id: 'Scheduled_Weekly_Hours', label: 'Scheduled Weekly Hours', derive: (c) => c.firstJob('standard_hours') },
+        { id: 'Company_Reference', label: 'Company', derive: (c) => c.firstJob('company_code'), ref: 'Org_Company' },
+        { id: 'Cost_Center_Reference', label: 'Cost Center', derive: (c) => c.firstJob('cost_center') || c.orgExtra('department', c.firstJob('department_code'), 'cost_center'), ref: 'Org_CostCenter' },
+        { id: 'Pay_Grade_Reference', label: 'Compensation Grade', derive: (c) => c.firstJob('pay_grade') },
+        { id: 'Legal_Name_Country_Reference', label: 'Legal Name Country', derive: (c) => c.get('address_country') || c.get('nationality'), required: true },
+        { id: 'First_Name', label: 'Legal First Name', from: 'first_name', required: true },
+        { id: 'Middle_Name', label: 'Legal Middle Name', from: 'middle_name' },
+        { id: 'Last_Name', label: 'Legal Last Name', from: 'last_name', required: true },
+        { id: 'Preferred_First_Name', label: 'Preferred First Name', from: 'preferred_name' },
+        { id: 'Birth_Date', label: 'Date of Birth', from: 'date_of_birth', date: true },
+        { id: 'Gender_Reference', label: 'Gender', from: 'gender' },
+        { id: 'Marital_Status_Reference', label: 'Marital Status', from: 'marital_status' },
+        { id: 'Citizenship_Reference', label: 'Nationality', from: 'nationality' },
+      ],
+    },
+    {
+      id: 'Contact_Email',
+      label: 'Email addresses',
+      stage: 'Contact',
+      grain: 'email',
+      workbook: 'Maintain_Contact_Information',
+      dependsOn: ['Hire_Employee'],
+      fields: [
+        personKey,
+        { id: 'Worker_Reference', label: 'Worker (Employee ID)', from: 'employee_id', required: true },
+        { id: 'Effective_Date', label: 'Effective Date', from: 'hire_date', date: true, required: true },
+        { id: 'Email_Address', label: 'Email Address', derive: (c) => c.email, required: true },
+        { id: 'Usage_Type', label: 'Usage Type', derive: (c) => (c.emailType === c.settings.personalEmailType ? 'HOME' : 'WORK'), required: true },
+        { id: 'Primary', label: 'Primary', derive: (c) => (c.isPrimary ? 'Y' : 'N'), required: true },
+        { id: 'Public', label: 'Public', derive: (c) => (c.emailType === c.settings.personalEmailType ? 'N' : 'Y') },
+      ],
+    },
+    {
+      id: 'Contact_Phone',
+      label: 'Phone numbers',
+      stage: 'Contact',
+      grain: 'phone',
+      workbook: 'Maintain_Contact_Information',
+      dependsOn: ['Hire_Employee'],
+      fields: [
+        personKey,
+        { id: 'Worker_Reference', label: 'Worker (Employee ID)', from: 'employee_id', required: true },
+        { id: 'Effective_Date', label: 'Effective Date', from: 'hire_date', date: true, required: true },
+        { id: 'Phone_Number', label: 'Phone Number', from: 'phone_work', required: true },
+        { id: 'Phone_Device_Type', label: 'Device Type', derive: () => 'Landline' },
+        { id: 'Usage_Type', label: 'Usage Type', derive: () => 'WORK', required: true },
+        { id: 'Primary', label: 'Primary', derive: () => 'Y', required: true },
+      ],
+    },
+    {
+      id: 'Contact_Address',
+      label: 'Addresses',
+      stage: 'Contact',
+      grain: 'address',
+      workbook: 'Maintain_Contact_Information',
+      dependsOn: ['Hire_Employee'],
+      fields: [
+        personKey,
+        { id: 'Worker_Reference', label: 'Worker (Employee ID)', from: 'employee_id', required: true },
+        { id: 'Effective_Date', label: 'Effective Date', from: 'hire_date', date: true, required: true },
+        { id: 'Country_Reference', label: 'Country (ISO)', from: 'address_country', required: true },
+        { id: 'Address_Line_1', label: 'Address Line 1', from: 'address_line1', required: true },
+        { id: 'Address_Line_2', label: 'Address Line 2', from: 'address_line2' },
+        { id: 'Municipality', label: 'City', from: 'city' },
+        { id: 'Country_Region_Reference', label: 'Region / State', from: 'state' },
+        { id: 'Postal_Code', label: 'Postal Code', from: 'postal_code' },
+        { id: 'Usage_Type', label: 'Usage Type', derive: () => 'HOME', required: true },
+        { id: 'Primary', label: 'Primary', derive: () => 'Y', required: true },
+      ],
+    },
+    {
+      id: 'Change_Job',
+      label: 'Job changes (history after the hire)',
+      stage: 'Employment',
+      grain: 'jobChange',
+      workbook: 'Change_Job',
+      dependsOn: ['Hire_Employee'],
+      fields: [
+        key,
+        { id: 'Worker_Reference', label: 'Worker (Employee ID)', from: 'employee_id', required: true },
+        { id: 'Effective_Date', label: 'Effective Date', derive: (c) => c.effectiveDate, date: true, required: true },
+        { id: 'Reason_Reference', label: 'Reason', derive: (c) => ({ jobChange: c.settings.wdJobChangeReason, transfer: c.settings.wdTransferReason }[c.eventKind] || c.settings.wdDataChangeReason), required: true },
+        { id: 'Supervisory_Organization_Reference', label: 'Supervisory Organization', from: 'department_code', ref: 'Org_Supervisory' },
+        { id: 'Job_Profile_Reference', label: 'Job Profile', from: 'job_code', ref: 'Put_Job_Profile' },
+        { id: 'Position_Title', label: 'Business Title', derive: (c) => c.get('job_title') || c.get('job_name') },
+        { id: 'Location_Reference', label: 'Location', from: 'location_code', ref: 'Put_Location' },
+        { id: 'Position_Time_Type_Reference', label: 'Time Type', derive: timeType },
+        { id: 'Scheduled_Weekly_Hours', label: 'Scheduled Weekly Hours', from: 'standard_hours' },
+        { id: 'Company_Reference', label: 'Company', from: 'company_code', ref: 'Org_Company' },
+        { id: 'Cost_Center_Reference', label: 'Cost Center', derive: (c) => c.get('cost_center') || c.orgExtra('department', c.get('department_code'), 'cost_center'), ref: 'Org_CostCenter' },
+      ],
+    },
+    {
+      id: 'Request_Compensation_Change',
+      label: 'Compensation',
+      stage: 'Compensation',
+      grain: 'comp',
+      workbook: 'Request_Compensation_Change',
+      dependsOn: ['Hire_Employee'],
+      fields: [
+        key,
+        { id: 'Employee_Reference', label: 'Worker (Employee ID)', from: 'employee_id', required: true },
+        { id: 'Compensation_Change_Date', label: 'Effective Date', derive: (c) => c.effectiveDate, date: true, required: true },
+        { id: 'Reason_Reference', label: 'Reason', derive: (c) => c.settings.wdCompReason, required: true },
+        { id: 'Compensation_Plan_Reference', label: 'Compensation Plan', derive: (c) => c.get('pay_component') || c.settings.wdBasePlan, required: true },
+        { id: 'Amount', label: 'Amount', from: 'salary_amount', required: true },
+        { id: 'Currency', label: 'Currency', from: 'currency', required: true },
+        { id: 'Frequency_Reference', label: 'Frequency', from: 'pay_frequency', required: true },
+        { id: 'Compensation_Grade_Reference', label: 'Compensation Grade', derive: (c) => c.job('pay_grade') },
+      ],
+    },
+    {
+      id: 'Request_One_Time_Payment',
+      label: 'One-time payments',
+      stage: 'Compensation',
+      grain: 'onetime',
+      workbook: 'Request_One_Time_Payment',
+      dependsOn: ['Hire_Employee'],
+      fields: [
+        key,
+        { id: 'Employee_Reference', label: 'Worker (Employee ID)', from: 'employee_id', required: true },
+        { id: 'Effective_Date', label: 'Effective Date', from: 'one_time_date', date: true, required: true },
+        { id: 'Reason_Reference', label: 'Reason', derive: (c) => c.settings.wdOneTimeReason, required: true },
+        { id: 'One_Time_Payment_Plan_Reference', label: 'One-Time Payment Plan', from: 'one_time_component', required: true },
+        { id: 'Amount', label: 'Amount', from: 'one_time_amount', required: true },
+        { id: 'Currency', label: 'Currency', from: 'currency', required: true },
+      ],
+    },
+    {
+      id: 'Submit_Payment_Election',
+      label: 'Payment elections (bank details)',
+      stage: 'Payroll',
+      grain: 'bank',
+      workbook: 'Submit_Payment_Election_Enrollment',
+      dependsOn: ['Hire_Employee'],
+      fields: [
+        personKey,
+        { id: 'Worker_Reference', label: 'Worker (Employee ID)', from: 'employee_id', required: true },
+        { id: 'Country_Reference', label: 'Country', derive: (c) => c.get('bank_country') || c.get('address_country'), required: true },
+        { id: 'Currency_Reference', label: 'Currency', derive: (c) => c.get('currency') || c.job('company_currency') },
+        { id: 'Payment_Type_Reference', label: 'Payment Type', derive: (c) => c.get('payment_method') || 'Direct_Deposit', required: true },
+        { id: 'Account_Nickname', label: 'Account Nickname', derive: (c) => c.get('bank_name') },
+        { id: 'Bank_Account_Name', label: 'Account Holder', derive: (c) => c.get('account_holder') || [c.get('first_name'), c.get('last_name')].filter(Boolean).join(' ') },
+        { id: 'IBAN', label: 'IBAN', from: 'iban', sensitive: true },
+        { id: 'Bank_Account_Number', label: 'Account Number', from: 'account_number', sensitive: true },
+        { id: 'Bank_ID_Number', label: 'Routing / Sort Code', from: 'bank_routing', sensitive: true },
+        { id: 'BIC', label: 'BIC / SWIFT', from: 'bic' },
+        { id: 'Bank_Name', label: 'Bank Name', from: 'bank_name' },
+        { id: 'Distribution_Percentage', label: 'Distribution %', derive: () => '1' },
+      ],
+    },
+    {
+      id: 'Terminate_Employee',
+      label: 'Terminations',
+      stage: 'Employment',
+      grain: 'termination',
+      workbook: 'Terminate_Employee',
+      dependsOn: ['Change_Job', 'Hire_Employee'],
+      fields: [
+        personKey,
+        { id: 'Employee_Reference', label: 'Worker (Employee ID)', from: 'employee_id', required: true },
+        { id: 'Termination_Date', label: 'Termination Date', from: 'termination_date', date: true, required: true },
+        { id: 'Last_Day_of_Work', label: 'Last Day of Work', derive: (c) => c.get('last_day_worked') || c.get('termination_date'), date: true },
+        { id: 'Primary_Reason_Reference', label: 'Primary Reason', from: 'termination_reason', required: true },
+        { id: 'Eligible_for_Hire_Reference', label: 'Eligible for Rehire', from: 'rehire_eligible' },
+      ],
+    },
+  ],
+};

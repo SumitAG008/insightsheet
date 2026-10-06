@@ -10,10 +10,10 @@ On the **Map fields** step you confirm which target field each column of your ex
 
 ## How matching works
 
-When you upload an extract, Meldra maps every column in two passes:
+When you upload an extract, meldra maps every column in two passes:
 
-1. **Rules.** Meldra matches column names, known synonyms (for example "Given Name" or "Forename" for First name) and the shape of the values. This runs in your browser.
-2. **AI.** Meldra's AI then reads your tab and column names. It identifies what each tab holds and maps columns the rules could not place confidently. The AI sees only tab and column names, never employee values.
+1. **Rules.** meldra matches column names, known synonyms (for example "Given Name" or "Forename" for First name) and the shape of the values. This runs in your browser.
+2. **AI.** meldra's AI then reads your tab and column names. It identifies what each tab holds and maps columns the rules could not place confidently. The AI sees only tab and column names, never employee values.
 
 The AI never overwrites your own choices, choices from a profile, or confident rule matches.
 
@@ -33,7 +33,7 @@ Each tab has a card. The header shows:
 
 - the tab name;
 - **AI:** and what the AI thinks the tab is, such as **AI: Job history** or **AI: Bank details**;
-- how Meldra will use the tab, such as **Worker data (one row per employee)**, **Job history (several rows per employee)** or **Department list**;
+- how meldra will use the tab, such as **Worker data (one row per employee)**, **Job history (several rows per employee)** or **Department list**;
 - how many columns are mapped, and the row count.
 
 Select the header to collapse or expand the card.

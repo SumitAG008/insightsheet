@@ -1,9 +1,9 @@
 """
-Ask Meldra: one prompt for the whole platform.
+Ask meldra: one prompt for the whole platform.
 
 The user says what they want in plain words (and may attach files). The planner
-turns that into a short plan of Meldra tools, with the instruction to hand each
-tool, or asks one clarifying question, or answers a question about Meldra.
+turns that into a short plan of meldra tools, with the instruction to hand each
+tool, or asks one clarifying question, or answers a question about meldra.
 
 The model sees the request, file NAMES and types, and spreadsheet column
 HEADERS only, never file contents. Every tool id it returns is checked against
@@ -70,7 +70,7 @@ def _files_text(files: List[Dict[str, Any]]) -> str:
 
 
 def build_plan_prompt(request: str, files: List[Dict[str, Any]], page: Optional[str] = None) -> str:
-    return f"""You are the command engine of Meldra (insight.meldra.ai), a privacy-first data platform.
+    return f"""You are the command engine of meldra (insight.meldra.ai), a privacy-first data platform.
 Turn the user's request into a plan using ONLY these tools:
 {catalog_text()}
 
@@ -86,8 +86,8 @@ Decide ONE kind:
   rewritten to be specific and complete (keep the user's names, periods and numbers; never invent data). Use "" when the tool has no instruction box.
   Add "why": at most 15 words on what this step does for the user.
 - "clarify": the request is too vague to pick a tool, or needs a file that is missing. Ask ONE short question.
-- "answer": a question about Meldra itself (what it can do, privacy, how a tool works). Answer in at most 4 sentences using the tool list.
-Never suggest tools outside the list. If nothing fits, use "answer" and say what Meldra can do instead.
+- "answer": a question about meldra itself (what it can do, privacy, how a tool works). Answer in at most 4 sentences using the tool list.
+Never suggest tools outside the list. If nothing fits, use "answer" and say what meldra can do instead.
 Return ONLY JSON:
 {{"kind": "plan"|"clarify"|"answer", "summary": at most 15 words restating the goal,
  "steps": [{{"tool": tool id, "files": [indexes], "instruction": text, "why": text}}],

@@ -31,12 +31,12 @@ A profile is a small JSON file named like `migration_profile_2026-10-05.json`.
 
 1. Select **Start over** if an old extract is still loaded.
 2. Select **Load profile** and choose the profile file.
-3. Meldra confirms: "Profile loaded: it will be applied to the extract you upload next."
-4. Upload the new extract. Meldra reports how many column choices it applied, on how many tabs.
+3. meldra confirms: "Profile loaded: it will be applied to the extract you upload next."
+4. Upload the new extract. meldra reports how many column choices it applied, on how many tabs.
 
 ### On an extract that is already loaded
 
-Select **Load profile** and choose the file. Meldra applies the column choices, value translations and settings straight away.
+Select **Load profile** and choose the file. meldra applies the column choices, value translations and settings straight away.
 
 ## How a profile is matched
 
@@ -61,5 +61,5 @@ Select **Load profile** and choose the file. Meldra applies the column choices, 
 
 | Message | What to do |
 |---|---|
-| The profile could not be loaded: This file is not a Meldra migration profile. | Choose a file saved with **Save profile**. |
+| The profile could not be loaded: This file is not a meldra migration profile. | Choose a file saved with **Save profile**. |
 | Profile applied: 0 column choices on 0 of … tabs | The tab names in the new extract differ from the profile. Rename the tabs to match, or map again and save a new profile. |

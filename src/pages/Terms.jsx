@@ -38,8 +38,8 @@ export default function Terms() {
         <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 p-6 md:p-10 space-y-8">
           <Section id="agreement" title="1. The agreement">
             <p>
-              These terms are an agreement between you and Meldra (&quot;Meldra&quot;, &quot;we&quot;, &quot;us&quot;), the company named on your
-              invoice or order form, for the use of meldra.ai, its apps, and the Meldra API (the &quot;Service&quot;). Our{' '}
+              These terms are an agreement between you and meldra (&quot;meldra&quot;, &quot;we&quot;, &quot;us&quot;), the company named on your
+              invoice or order form, for the use of meldra.ai, its apps, and the meldra API (the &quot;Service&quot;). Our{' '}
               <Link className="text-blue-700 underline" to="/privacy">Privacy Policy</Link> and{' '}
               <Link className="text-blue-700 underline" to="/disclaimer">Disclaimer</Link> form part of these terms.
             </p>
@@ -76,7 +76,7 @@ export default function Terms() {
             <ul className="list-disc ml-6 space-y-1">
               <li>opening several free accounts for one person or organisation;</li>
               <li>sharing one account or seat between people;</li>
-              <li>using scripts, bots or automated access other than the documented Meldra API with your own key;</li>
+              <li>using scripts, bots or automated access other than the documented meldra API with your own key;</li>
               <li>splitting work to evade per-file limits in a way that overloads the Service.</li>
             </ul>
             <p>
@@ -102,7 +102,7 @@ export default function Terms() {
               </li>
               <li>
                 When a licence ends, members keep access for a grace period (normally 14 days) and then move to their own plan. Data
-                that members chose to store in Meldra stays available to them under their own plan&apos;s terms.
+                that members chose to store in meldra stays available to them under their own plan&apos;s terms.
               </li>
               <li>
                 Licences renew only by a new order or invoice. Seats added during a term are charged pro rata for the rest of the term.
@@ -128,7 +128,7 @@ export default function Terms() {
             <p>
               You own the files and data you upload. You give us permission to process them only to provide the Service to you.
               Files processed on our servers are held in memory only while the result is produced and are not stored, except for
-              data you choose to save (for example in the Meldra lakehouse), which you can delete at any time. We do not use your
+              data you choose to save (for example in the meldra lakehouse), which you can delete at any time. We do not use your
               files to train AI models.
             </p>
             <p>

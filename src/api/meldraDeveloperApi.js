@@ -1,9 +1,9 @@
 /**
  * developer.meldra.ai API client — for external/API use only.
  *
- * Used when calling Meldra from your own apps (requires Meldra API key via developer.meldra.ai).
+ * Used when calling meldra from your own apps (requires meldra API key via developer.meldra.ai).
  * The in-app Document Converter and FileName Cleaner do NOT use this module; they use the main
- * backend with your Meldra login (JWT) and require no API key.
+ * backend with your meldra login (JWT) and require no API key.
  * Base URL: VITE_MELDRA_DEVELOPER_API_URL or https://api.developer.meldra.ai
  */
 
@@ -35,66 +35,66 @@ async function _postFile(path, form, apiKey) {
 }
 
 /**
- * PDF → DOC (Word). Requires developer.meldra.ai and Meldra API key (paid).
+ * PDF → DOC (Word). Requires developer.meldra.ai and meldra API key (paid).
  * @param {File} file - .pdf
  * @param {string} [apiKey] - defaults to localStorage meldra_api_key
  * @returns {Promise<Blob>} - .docx
  */
 export async function convertPdfToDoc(file, apiKey = getApiKey()) {
-  if (!apiKey) throw new Error('Meldra API key required. Add it in Security → Meldra API Key. Get your key at developer.meldra.ai (paid).');
+  if (!apiKey) throw new Error('meldra API key required. Add it in Security → meldra API Key. Get your key at developer.meldra.ai (paid).');
   const form = new FormData();
   form.append('file', file);
   return _postFile('/v1/convert/pdf-to-doc', form, apiKey);
 }
 
 /**
- * DOC/DOCX → PDF. Requires developer.meldra.ai and Meldra API key (paid).
+ * DOC/DOCX → PDF. Requires developer.meldra.ai and meldra API key (paid).
  * @param {File} file - .doc or .docx
  * @param {string} [apiKey] - defaults to localStorage meldra_api_key
  * @returns {Promise<Blob>} - .pdf
  */
 export async function convertDocToPdf(file, apiKey = getApiKey()) {
-  if (!apiKey) throw new Error('Meldra API key required. Add it in Security → Meldra API Key. Get your key at developer.meldra.ai (paid).');
+  if (!apiKey) throw new Error('meldra API key required. Add it in Security → meldra API Key. Get your key at developer.meldra.ai (paid).');
   const form = new FormData();
   form.append('file', file);
   return _postFile('/v1/convert/doc-to-pdf', form, apiKey);
 }
 
 /**
- * PPT/PPTX → PDF. Requires developer.meldra.ai and Meldra API key (paid).
+ * PPT/PPTX → PDF. Requires developer.meldra.ai and meldra API key (paid).
  * @param {File} file - .ppt or .pptx
  * @param {string} [apiKey] - defaults to localStorage meldra_api_key
  * @returns {Promise<Blob>} - .pdf
  */
 export async function convertPptToPdf(file, apiKey = getApiKey()) {
-  if (!apiKey) throw new Error('Meldra API key required. Add it in Security → Meldra API Key. Get your key at developer.meldra.ai (paid).');
+  if (!apiKey) throw new Error('meldra API key required. Add it in Security → meldra API Key. Get your key at developer.meldra.ai (paid).');
   const form = new FormData();
   form.append('file', file);
   return _postFile('/v1/convert/ppt-to-pdf', form, apiKey);
 }
 
 /**
- * PDF → PPT/PPTX. Requires developer.meldra.ai and Meldra API key (paid).
+ * PDF → PPT/PPTX. Requires developer.meldra.ai and meldra API key (paid).
  * @param {File} file - .pdf
  * @param {string} [apiKey] - defaults to localStorage meldra_api_key
  * @returns {Promise<Blob>} - .pptx
  */
 export async function convertPdfToPpt(file, apiKey = getApiKey()) {
-  if (!apiKey) throw new Error('Meldra API key required. Add it in Security → Meldra API Key. Get your key at developer.meldra.ai (paid).');
+  if (!apiKey) throw new Error('meldra API key required. Add it in Security → meldra API Key. Get your key at developer.meldra.ai (paid).');
   const form = new FormData();
   form.append('file', file);
   return _postFile('/v1/convert/pdf-to-ppt', form, apiKey);
 }
 
 /**
- * FileName Cleaner via developer.meldra.ai. Requires Meldra API key (paid).
+ * FileName Cleaner via developer.meldra.ai. Requires meldra API key (paid).
  * @param {File} file - .zip
  * @param {object} [options] - { allowedCharacters, replacementCharacter, ... }
  * @param {string} [apiKey] - defaults to localStorage meldra_api_key
  * @returns {Promise<Blob>} - processed .zip
  */
 export async function zipClean(file, options = {}, apiKey = getApiKey()) {
-  if (!apiKey) throw new Error('Meldra API key required. Add it in Security → Meldra API Key. Get your key at developer.meldra.ai (paid).');
+  if (!apiKey) throw new Error('meldra API key required. Add it in Security → meldra API Key. Get your key at developer.meldra.ai (paid).');
   const form = new FormData();
   form.append('file', file);
   if (options && typeof options === 'object') {

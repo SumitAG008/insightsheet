@@ -1,9 +1,9 @@
 """
-Tables in the Meldra lakehouse.
+Tables in the meldra lakehouse.
 
 Every customer (tenant) gets its own Iceberg namespace, derived on the server
 from the signed-in account, never from the request. A table is one source (one
-CSV, one Excel sheet, one API pull, one database query). Its Meldra profile
+CSV, one Excel sheet, one API pull, one database query). Its meldra profile
 (display names, column roles, known values, date range, non-secret origin) is a
 JSON file written next to the table's data through the table's own FileIO, and
 the table property "meldra.profile" points at the current version.
@@ -44,7 +44,7 @@ class LakehouseError(ValueError):
 def get_catalog():
     global _catalog
     if not config.enabled():
-        raise LakehouseError("The Meldra lakehouse is not configured on this server.")
+        raise LakehouseError("The meldra lakehouse is not configured on this server.")
     with _catalog_lock:
         if _catalog is None:
             from pyiceberg.catalog import load_catalog
@@ -402,7 +402,7 @@ def ingest_file(tenant: str, path: str, filename: str, system: Optional[str] = N
 
 def ingest_rows(tenant: str, name: str, system: str, columns: List[str], rows: List[Dict[str, Any]], kind: str,
                 origin: Optional[Dict[str, Any]] = None, replace_table: Optional[str] = None) -> Dict[str, Any]:
-    """Store rows that arrived as JSON (an API pull, a database query, or a browser source moved to Meldra)."""
+    """Store rows that arrived as JSON (an API pull, a database query, or a browser source moved to meldra)."""
     names = _clean_headers(columns or (list(rows[0].keys()) if rows else []))
     if not rows or not names:
         raise LakehouseError(f"{name} has no rows.")
@@ -510,7 +510,7 @@ def table_files(tbl) -> List[str]:
 
 def _purge(cat, ident) -> None:
     """
-    Delete a table and every file it owns. Meldra removes the files itself rather than
+    Delete a table and every file it owns. meldra removes the files itself rather than
     relying on the catalog's purge (Polaris runs purge as a background task that can fail),
     so erasure is complete and verifiable whichever catalog is used.
     """

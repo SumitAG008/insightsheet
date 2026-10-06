@@ -1,19 +1,19 @@
-# 🧠 Meldra Intelligent AI Engine: Master Platform Architecture & Enterprise Pitch Strategy
+# 🧠 meldra Intelligent AI Engine: Master Platform Architecture & Enterprise Pitch Strategy
 
 ---
 
 ## 🎯 1. Executive Vision & Selling Strategy
 
-**Product Name:** InsightSheet by Meldra AI  
+**Product Name:** InsightSheet by meldra AI  
 **Core Positioning:** *"The World's First Privacy-First Autonomous AI Engine for Enterprise Slide Automation, Unified Analytics, and System Migration."*
 
 ### 💡 **How You Sell This to Enterprise & B2B Customers:**
 Most software platforms sell individual single-purpose tools (an Excel converter, a CSV cleaner, or a database reporting widget). 
 
-**Meldra AI takes a revolutionary approach:**
-You are selling an **Autonomous Enterprise Intelligence Suite** controlled by the central **Meldra Intelligent AI Engine**. 
+**meldra AI takes a revolutionary approach:**
+You are selling an **Autonomous Enterprise Intelligence Suite** controlled by the central **meldra Intelligent AI Engine**. 
 
-Every module in the application operates as an **Intelligent Service** coordinated by the central Meldra AI Core:
+Every module in the application operates as an **Intelligent Service** coordinated by the central meldra AI Core:
 - **Intelligent Presentation Service:** 5-Second raw Excel/CSV to board-ready PowerPoint deck creation with AI slide styling.
 - **Intelligent Web Extraction Service:** Ephemeral RAM web scraping of public financial data.
 - **Intelligent Unified Analytics Engine:** Natural Language SQL queries and ML predictive forecasting across any data source.
@@ -22,7 +22,7 @@ Every module in the application operates as an **Intelligent Service** coordinat
 
 ---
 
-## 🏗️ 2. The 4-Layer Architecture of Meldra Intelligent AI Engine
+## 🏗️ 2. The 4-Layer Architecture of meldra Intelligent AI Engine
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -75,7 +75,7 @@ Every module in the application operates as an **Intelligent Service** coordinat
 
 ## 📈 4. Scalability & Technical Blueprint
 
-To scale the **Meldra Intelligent AI Engine** for global enterprise customers:
+To scale the **meldra Intelligent AI Engine** for global enterprise customers:
 
 1. **Async Worker Queues (Celery + Redis):** Offload high-throughput web scraping jobs and 100,000+ row Excel parsing from HTTP threads to background worker pools.
 2. **Container Auto-Scaling (AWS Fargate / App Runner):** Dynamically scale API instances based on CPU utilization during end-of-month financial reporting windows.
@@ -85,4 +85,4 @@ To scale the **Meldra Intelligent AI Engine** for global enterprise customers:
 
 ## 🎯 5. The Ultimate Enterprise Pitch Pitchdeck Hook
 
-> *"Most AI tools force enterprises to make a dangerous choice: accept privacy risk or miss out on AI efficiency. With the **Meldra Intelligent AI Engine**, your enterprise gets autonomous slide creation, live web data scraping, and system migration—powered by AI, executed in RAM, and backed by a 100% Zero File Storage Guarantee."*
+> *"Most AI tools force enterprises to make a dangerous choice: accept privacy risk or miss out on AI efficiency. With the **meldra Intelligent AI Engine**, your enterprise gets autonomous slide creation, live web data scraping, and system migration—powered by AI, executed in RAM, and backed by a 100% Zero File Storage Guarantee."*

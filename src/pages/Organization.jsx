@@ -65,7 +65,7 @@ export default function Organization() {
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <Alert>
           <AlertDescription>
-            You are not part of an organisation. If your university, hospital or company has a Meldra licence, sign in with
+            You are not part of an organisation. If your university, hospital or company has a meldra licence, sign in with
             your work email or ask your IT admin to add you.
           </AlertDescription>
         </Alert>
@@ -154,7 +154,7 @@ export default function Organization() {
                     run(async () => {
                       await meldraAi.org.addMember(email.trim(), role);
                       setEmail('');
-                    }, `${email.trim()} has a seat. They sign in to Meldra with this email to use it.`)
+                    }, `${email.trim()} has a seat. They sign in to meldra with this email to use it.`)
                   }
                 >
                   <UserPlus className="w-4 h-4 mr-2" /> Add
@@ -231,7 +231,7 @@ export default function Organization() {
                 </TableBody>
               </Table>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
-                Usage is counts only. Meldra never stores or shows file names or file contents.
+                Usage is counts only. meldra never stores or shows file names or file contents.
               </p>
             </CardContent>
           </Card>

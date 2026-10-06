@@ -26,7 +26,7 @@ Above the prompt box on the **Ask** tab there are two options:
 
 > **Tip:** Not sure where to start? Select one of the suggested questions. They are built from your own columns. After your first question, more appear under **Try asking**.
 
-If your question could mean more than one thing, Meldra asks one short question and offers options. Select the option that fits.
+If your question could mean more than one thing, meldra asks one short question and offers options. Select the option that fits.
 
 ### Read the answer
 
@@ -39,7 +39,7 @@ Each answer shows:
 
 ### Ask a follow-up
 
-Select one of the follow-up questions under the answer, or type a new one. Meldra takes your previous question into account, so short follow-ups such as "and by month?" work.
+Select one of the follow-up questions under the answer, or type a new one. meldra takes your previous question into account, so short follow-ups such as "and by month?" work.
 
 ## Change the chart
 
@@ -86,7 +86,7 @@ Select **Query: SQL, columns, joins** under an answer. You see:
 3. Check the result table.
 4. Select **Use this result in the chart**.
 
-To return to Meldra's query, select **Back to Meldra's query**. To discard unsaved changes, select **Undo edits**.
+To return to meldra's query, select **Back to meldra's query**. To discard unsaved changes, select **Undo edits**.
 
 > **Note:** Only SELECT queries can be run, one at a time. They read your data and never change it. The result preview shows the first 5,000 rows.
 
@@ -96,14 +96,14 @@ To return to Meldra's query, select **Back to Meldra's query**. To discard unsav
 2. Describe the report, for example "Board pack on workforce cost and revenue by department, last 12 months".
 3. Press Enter.
 
-Meldra designs up to six charts with a title and summary. Each chart has its own chart buttons and **Query** panel.
+meldra designs up to six charts with a title and summary. Each chart has its own chart buttons and **Query** panel.
 
 - Select **Add all to dashboard** to pin every chart.
 - Select **Download report** to save it as PDF, PowerPoint, Word or Excel.
 
 ## How answers are made
 
-Meldra's AI plans each chart from your column names and a description of your data. It does not read your rows. If the AI is not available, built-in rules answer instead. Open **Query: SQL, columns, joins** to see which method was used. See [Your data and privacy](/help/your-data-and-privacy).
+meldra's AI plans each chart from your column names and a description of your data. It does not read your rows. If the AI is not available, built-in rules answer instead. Open **Query: SQL, columns, joins** to see which method was used. See [Your data and privacy](/help/your-data-and-privacy).
 
 ## Next steps
 

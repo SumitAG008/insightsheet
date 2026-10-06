@@ -25,7 +25,7 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 const MAX_FILE_BYTES = 50 * 1024 * 1024;
 const START_STEPS = [
   [Database, 'Bring your data', 'Upload exports from HR, finance, sales or procurement, connect a database, or pull from an API.'],
-  [Link2, 'Meldra links it', 'Columns the systems share, such as employee or cost centre, are found and linked for you.'],
+  [Link2, 'meldra links it', 'Columns the systems share, such as employee or cost centre, are found and linked for you.'],
   [MessageSquareText, 'Ask in plain English', 'Get a chart, a written answer and the source of every number. Pin the best to a dashboard.'],
 ];
 const SOURCE_KINDS = [
@@ -88,7 +88,7 @@ export default function UnifiedReporting() {
     toastTimer.current = setTimeout(() => setToastMsg(''), 3800);
   }, []);
 
-  /* ---------- Meldra lakehouse (Iceberg tables on the server) ---------- */
+  /* ---------- meldra lakehouse (Iceberg tables on the server) ---------- */
   const lakehouse = useLakehouse({ sources, setSources, toast });
   const { lake, active: toLake } = lakehouse;
   useEffect(() => {
@@ -154,7 +154,7 @@ export default function UnifiedReporting() {
         const stored = await lakehouse.moveToLake(src);
         setSources((ss) => ss.map((x) => (x.id === src.id ? stored : x)));
       }
-      toast(`Stored ${list.length === 1 ? list[0].name : `${list.length} sources`} in the Meldra lakehouse.`);
+      toast(`Stored ${list.length === 1 ? list[0].name : `${list.length} sources`} in the meldra lakehouse.`);
     } catch (e) {
       toast(e.message);
     } finally {
@@ -170,14 +170,14 @@ export default function UnifiedReporting() {
       const { added, errors } = await lakehouse.uploadFiles(files, (p) => setProgress({
         text: p.phase === 'upload'
           ? `Uploading ${p.file}${p.count > 1 ? ` (${p.index} of ${p.count})` : ''}… ${p.pct}%`
-          : `Storing ${p.file} in the Meldra lakehouse: checking types and building the table…`,
+          : `Storing ${p.file} in the meldra lakehouse: checking types and building the table…`,
         pct: p.phase === 'upload' ? p.pct : null,
       }));
       setProgress(null);
       setBusy(false);
       if (added.length) {
         appendSources(added);
-        toast(`Stored ${added.map((x) => x.name).join(', ')} in the Meldra lakehouse (${added.reduce((a, x) => a + x.rowCount, 0).toLocaleString()} rows).`);
+        toast(`Stored ${added.map((x) => x.name).join(', ')} in the meldra lakehouse (${added.reduce((a, x) => a + x.rowCount, 0).toLocaleString()} rows).`);
       }
       if (errors.length) toast(errors.join(' '));
       return;
@@ -247,7 +247,7 @@ export default function UnifiedReporting() {
   const addSource = async (src, msg) => {
     try {
       await addSources([src]);
-      toast(`Added ${src.name}: ${msg}${toLake ? ', stored in the Meldra lakehouse' : ''}. Check the suggested links on the right.`);
+      toast(`Added ${src.name}: ${msg}${toLake ? ', stored in the meldra lakehouse' : ''}. Check the suggested links on the right.`);
     } catch (e) {
       toast(e.message);
     }
@@ -288,7 +288,7 @@ export default function UnifiedReporting() {
     setSources((cur) => [...cur.filter((x) => x.kind !== 'sample' && x.storedKind !== 'sample'), ...list]);
     setRelationships((cur) => [...cur, ...rs]);
     setView('ask');
-    toast(`Loaded a sample company with six systems${toLake ? ', stored in the Meldra lakehouse' : ''}.`);
+    toast(`Loaded a sample company with six systems${toLake ? ', stored in the meldra lakehouse' : ''}.`);
   };
 
   const saveTimers = useRef({});
@@ -305,7 +305,7 @@ export default function UnifiedReporting() {
   const removeSource = async (id) => {
     const src = sources.find((x) => x.id === id);
     if (isLake(src)) {
-      if (!window.confirm(`Delete ${src.name} from the Meldra lakehouse? The stored data is removed permanently.`)) return;
+      if (!window.confirm(`Delete ${src.name} from the meldra lakehouse? The stored data is removed permanently.`)) return;
       try {
         await lakehouse.remove(src);
       } catch (e) {
@@ -345,7 +345,7 @@ export default function UnifiedReporting() {
 
   const clearAll = async () => {
     if (sources.some(isLake)) {
-      if (!window.confirm('Remove all data, including everything stored in the Meldra lakehouse? This cannot be undone.')) return;
+      if (!window.confirm('Remove all data, including everything stored in the meldra lakehouse? This cannot be undone.')) return;
       try {
         await lakehouse.removeAll();
       } catch (e) {
@@ -555,7 +555,7 @@ export default function UnifiedReporting() {
   const exportBoard = async (format) => {
     const items = board.map((b) => ({ spec: b.spec, node: document.querySelector(`[data-export-item="${b.id}"] [data-export-chart]`) }));
     try {
-      const n = await downloadReport(format, { title: `Meldra dashboard ${new Date().toISOString().slice(0, 10)}` }, items, m, { computeFn: computeAsync, extraFilters: boardFilters });
+      const n = await downloadReport(format, { title: `meldra dashboard ${new Date().toISOString().slice(0, 10)}` }, items, m, { computeFn: computeAsync, extraFilters: boardFilters });
       toast(`Downloaded ${n} tile${n === 1 ? '' : 's'} as ${formatName(format)}.`);
     } catch {
       toast('Nothing on the dashboard could be downloaded.');
@@ -762,7 +762,7 @@ export default function UnifiedReporting() {
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm dark:border-amber-900 dark:bg-amber-950">
                   <span>
                     <strong>You have one source.</strong> Unified reporting combines systems: add another export (for example expenses, budgets or CRM
-                    opportunities) and Meldra links them so you can ask questions across both.
+                    opportunities) and meldra links them so you can ask questions across both.
                   </span>
                   <Button size="sm" variant="outline" onClick={() => setView('data')}><Database className="mr-1.5 h-4 w-4" />Add another source</Button>
                 </div>

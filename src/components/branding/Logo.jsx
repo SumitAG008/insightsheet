@@ -1,4 +1,4 @@
-// components/branding/Logo.jsx - Meldra logo, traced block by block from the brand file (meldraweb/meldra.png):
+// components/branding/Logo.jsx - meldra logo, traced block by block from the brand file (meldraweb/meldra.png):
 // a blue rounded square with a lime block "m", and the "meldra" wordmark. The mark is drawn inline (no image to load), so it
 // is sharp at every size and never shows a broken image. public/meldra-mark.svg is the same mark as a file.
 import PropTypes from 'prop-types';
@@ -43,7 +43,7 @@ const SIZES = {
 export default function Logo({ className = '', size = 'medium', showText = true, style = {}, tagline, brandName: brandNameProp, logoUrl: logoUrlProp }) {
   const s = SIZES[size] || SIZES.medium;
   const brandName = brandNameProp && String(brandNameProp).trim() ? String(brandNameProp).trim() : 'meldra';
-  // A logo chosen in Settings (white-label) replaces the Meldra mark.
+  // A logo chosen in Settings (white-label) replaces the meldra mark.
   const customLogo = logoUrlProp && String(logoUrlProp).trim() ? String(logoUrlProp).trim() : null;
 
   return (

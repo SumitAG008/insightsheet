@@ -15,7 +15,7 @@ export default function Disclaimer() {
             Disclaimer & Terms of Use
           </h1>
           <p className="text-lg text-slate-600">
-            Please read carefully before using Meldra
+            Please read carefully before using meldra
           </p>
           <p className="text-sm text-slate-500 mt-2">
             Last Updated: {new Date().toLocaleDateString()}
@@ -34,7 +34,7 @@ export default function Disclaimer() {
             </div>
             <div className="space-y-3 text-slate-700 leading-relaxed">
               <p>
-                Meldra ("the Service") is provided "AS IS" and "AS AVAILABLE" without warranties of any kind, 
+                meldra ("the Service") is provided "AS IS" and "AS AVAILABLE" without warranties of any kind, 
                 either express or implied, including but not limited to:
               </p>
               <ul className="list-disc list-inside space-y-2 ml-4">
@@ -128,7 +128,7 @@ export default function Disclaimer() {
           <section>
             <h2 className="text-2xl font-bold text-slate-800 mb-3">Your Responsibilities</h2>
             <div className="space-y-3 text-slate-700">
-              <p className="font-semibold text-slate-900">By using Meldra, you agree to:</p>
+              <p className="font-semibold text-slate-900">By using meldra, you agree to:</p>
               <ol className="list-decimal list-inside space-y-2 ml-4">
                 <li>Use the Service for lawful purposes only</li>
                 <li>Not upload files containing illegal content</li>
@@ -162,7 +162,7 @@ export default function Disclaimer() {
             <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
               <h2 className="text-xl font-bold text-blue-900 mb-3">Not Professional Advice</h2>
               <p className="text-blue-800 leading-relaxed">
-                Meldra provides <strong>data analysis tools only</strong>. The Service does NOT provide:
+                meldra provides <strong>data analysis tools only</strong>. The Service does NOT provide:
               </p>
               <ul className="list-disc list-inside space-y-1 mt-2 ml-4 text-blue-800">
                 <li>Financial advice or investment recommendations</li>
@@ -182,8 +182,8 @@ export default function Disclaimer() {
             <h2 className="text-2xl font-bold text-slate-800 mb-3">API and Commercial Use</h2>
             <div className="text-slate-700 space-y-2">
               <p>
-                Use of the <strong>Meldra API</strong> (developer.meldra.ai / insight.meldra.ai/developers) is governed by these terms. 
-                By using an API key or integrating Meldra into your product, you agree to:
+                Use of the <strong>meldra API</strong> (developer.meldra.ai / insight.meldra.ai/developers) is governed by these terms. 
+                By using an API key or integrating meldra into your product, you agree to:
               </p>
               <ul className="list-disc list-inside space-y-1 ml-4">
                 <li><strong>Confidentiality:</strong> Your API key is confidential. You are responsible for any use or misuse.</li>
@@ -217,7 +217,7 @@ export default function Disclaimer() {
             <h2 className="text-2xl font-bold text-slate-800 mb-3">Indemnification</h2>
             <div className="text-slate-700 space-y-2">
               <p>
-                You agree to indemnify and hold harmless Meldra, its officers, directors, employees, and agents from:
+                You agree to indemnify and hold harmless meldra, its officers, directors, employees, and agents from:
               </p>
               <ul className="list-disc list-inside space-y-1 ml-4">
                 <li>Any claims arising from your use of the Service</li>
@@ -275,7 +275,7 @@ export default function Disclaimer() {
             <div className="text-slate-700">
               <p>
                 These terms, together with our Privacy Policy and any other policies or guidelines we publish, 
-                constitute the entire agreement between you and Meldra regarding the Service and supersede any 
+                constitute the entire agreement between you and meldra regarding the Service and supersede any 
                 prior agreements, communications, or understandings.
               </p>
             </div>
@@ -327,7 +327,7 @@ export default function Disclaimer() {
           {/* Acceptance */}
           <section className="bg-purple-50 border-2 border-purple-200 rounded-lg p-6">
             <p className="text-purple-900 font-semibold text-center text-lg">
-              By using Meldra, you acknowledge that you have read, understood, 
+              By using meldra, you acknowledge that you have read, understood, 
               and agree to be bound by these terms and our Privacy Policy.
             </p>
           </section>

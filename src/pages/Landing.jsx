@@ -185,7 +185,7 @@ export default function Landing() {
             Turn data into reports and slides—without formulas or IT
           </p>
 
-          {/* What Meldra does for you — business-oriented, no jargon */}
+          {/* What meldra does for you — business-oriented, no jargon */}
           <div className="bg-slate-50 border border-slate-200 rounded-2xl p-10 md:p-12 mb-10">
             <h3 className="text-3xl md:text-4xl font-bold text-slate-900 mb-8 flex items-center gap-3 tracking-tight" style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: '-0.02em' }}>
               <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600">
@@ -259,7 +259,7 @@ export default function Landing() {
             </h3>
             <p className="text-slate-600 text-lg md:text-xl leading-relaxed mb-6 font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
               We believe everyone should be able to turn data into reports and slides—without formulas, without IT, and without handing over their files. 
-              Meldra gives you strong analysis and clear output while keeping your data on your side.
+              meldra gives you strong analysis and clear output while keeping your data on your side.
             </p>
             <p className="text-slate-600 text-lg md:text-xl leading-relaxed font-light" style={{ letterSpacing: '-0.01em', lineHeight: '1.8' }}>
               We don&apos;t store your data. It runs on your device and is gone when you&apos;re done. You get the insights you need and keep full control.
@@ -299,7 +299,7 @@ export default function Landing() {
                 <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
                 <div>
                   <h4 className="font-semibold text-slate-900 mb-1">No Formulas or Tech Jargon</h4>
-                  <p className="text-sm text-slate-600">Say what you need in normal language. Meldra does the rest.</p>
+                  <p className="text-sm text-slate-600">Say what you need in normal language. meldra does the rest.</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">

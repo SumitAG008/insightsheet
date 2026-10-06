@@ -39,9 +39,9 @@ export default function Pricing() {
 
   const openPricingEmail = () => {
     const to = 'pricing@meldra.ai';
-    const subject = encodeURIComponent('Meldra pricing request');
+    const subject = encodeURIComponent('meldra pricing request');
     const lines = [
-      'Hello Meldra Team,',
+      'Hello meldra Team,',
       '',
       'Please share pricing for the following:',
       '',
@@ -281,7 +281,7 @@ export default function Pricing() {
             </div>
 
             <p className="text-xs text-slate-500 mt-3">
-              If you want, we can include a short ROI estimate and offer a quick onboarding call to help you evaluate Meldra.
+              If you want, we can include a short ROI estimate and offer a quick onboarding call to help you evaluate meldra.
             </p>
           </div>
         </section>

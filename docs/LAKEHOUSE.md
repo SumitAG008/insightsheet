@@ -1,7 +1,7 @@
-# Meldra lakehouse (Unified Reporting)
+# meldra lakehouse (Unified Reporting)
 
 Unified Reporting can keep every source (uploads, database queries, API pulls) in the
-**Meldra lakehouse** instead of the browser:
+**meldra lakehouse** instead of the browser:
 
 ```
  Files / PostgreSQL / MySQL / SQL Server / REST, OData, GraphQL, SOAP APIs
@@ -24,7 +24,7 @@ The AI only ever sees column names and a few example values, never rows.
 Kubernetes) with a persistent metastore (Postgres) and object storage (S3, Cloudflare R2, GCS or ADLS).
 Create a catalog (e.g. `meldra`) and a service principal whose role has
 `CATALOG_MANAGE_CONTENT` on it. Polaris vends short-lived storage credentials per table, so
-the Meldra backend never holds bucket keys.
+the meldra backend never holds bucket keys.
 
 ```
 LAKEHOUSE_CATALOG=rest
@@ -60,7 +60,7 @@ API connector settings (see CONNECTOR_SECURITY.md): `CONNECTOR_EGRESS_PROXY`,
   derived on the server from the signed-in account, never taken from the request. Table and column
   names are validated against the stored profile, and filter values are bound parameters.
 - **Deletion:** deleting a source, or "Remove all data", removes every file the table owns: data
-  files of all snapshots, manifests, metadata history and the profile. Meldra deletes them itself
+  files of all snapshots, manifests, metadata history and the profile. meldra deletes them itself
   because Polaris 1.3's background purge task was found to fail. Tested: zero files remain.
 - **Secrets:** connector credentials are never stored. Only non-secret settings (address, token URL,
   client ID) are kept with the source, for refresh.

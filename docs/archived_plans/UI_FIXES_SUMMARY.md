@@ -3,8 +3,8 @@
 ## 🎯 Issues Fixed
 
 ### **1. Copyright Year** ✅
-- **Before:** © 2024 Meldra
-- **After:** © 2026 Meldra
+- **Before:** © 2024 meldra
+- **After:** © 2026 meldra
 - **File:** `src/pages/Layout.jsx`
 
 ---

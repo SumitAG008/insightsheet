@@ -1,7 +1,7 @@
--- Remove the leftover ESG / EHS tables from the Meldra production database (Neon).
+-- Remove the leftover ESG / EHS tables from the meldra production database (Neon).
 --
 -- Why: ESG was removed from the application on 29 Sep 2026 (commit 293a0f5). Its 13 esg_* tables
--- were left in the database on purpose because dropping them cannot be undone. No Meldra code
+-- were left in the database on purpose because dropping them cannot be undone. No meldra code
 -- reads or writes them.
 --
 -- How to run (Neon console → SQL Editor, on the production branch):

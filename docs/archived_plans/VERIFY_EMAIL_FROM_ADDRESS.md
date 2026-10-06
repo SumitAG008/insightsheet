@@ -71,13 +71,13 @@ Attempting to use verified domain email: noreply@meldra.ai
 
 **✅ Correct (Using noreply@meldra.ai):**
 ```
-From: Meldra <noreply@meldra.ai>
+From: meldra <noreply@meldra.ai>
 Return-Path: noreply@meldra.ai
 ```
 
 **❌ Wrong (Still using test email):**
 ```
-From: Meldra <onboarding@resend.dev>
+From: meldra <onboarding@resend.dev>
 Return-Path: onboarding@resend.dev
 ```
 
@@ -85,7 +85,7 @@ Return-Path: onboarding@resend.dev
 
 **Gmail:**
 - Look at the **"From"** field in the email
-- Should show: `Meldra <noreply@meldra.ai>` or `noreply@meldra.ai`
+- Should show: `meldra <noreply@meldra.ai>` or `noreply@meldra.ai`
 
 **Outlook:**
 - Look at the **"From"** field
@@ -101,9 +101,9 @@ Return-Path: onboarding@resend.dev
 
 The email should:
 - ✅ Come from `noreply@meldra.ai` (not `onboarding@resend.dev`)
-- ✅ Have subject: "Reset Your Password - Meldra"
+- ✅ Have subject: "Reset Your Password - meldra"
 - ✅ Contain the password reset link
-- ✅ Show "Meldra" branding
+- ✅ Show "meldra" branding
 
 ---
 
@@ -168,7 +168,7 @@ The email should:
 - Resend Dashboard: `meldra.ai` = **"Verified"** ✅
 - Railway Logs: `Attempting to use verified domain email: noreply@meldra.ai` ✅
 - Email From: `noreply@meldra.ai` ✅
-- Email Headers: `From: Meldra <noreply@meldra.ai>` ✅
+- Email Headers: `From: meldra <noreply@meldra.ai>` ✅
 
 ### ⚠️ Still Using Test Email:
 - Resend Dashboard: `meldra.ai` = **"Pending"** or **"Failed"** ⚠️

@@ -19,25 +19,25 @@ export function slugify(title) {
 export const DEVELOPERS_BLOG_POSTS = [
   {
     id: 1,
-    title: 'Getting Started with Meldra API: Your First Document Conversion',
-    slug: slugify('Getting Started with Meldra API: Your First Document Conversion'),
+    title: 'Getting Started with meldra API: Your First Document Conversion',
+    slug: slugify('Getting Started with meldra API: Your First Document Conversion'),
     date: '2026-01-25',
-    author: 'Meldra Team',
+    author: 'meldra Team',
     category: 'tutorials',
     summary:
-      'Learn how to convert PDF to DOC, DOC to PDF, and more using the Meldra API. This guide walks you through authentication, making your first API call, and handling responses.',
+      'Learn how to convert PDF to DOC, DOC to PDF, and more using the meldra API. This guide walks you through authentication, making your first API call, and handling responses.',
     image: '/api-blog-1.jpg',
     readMore: true,
     content: `
-# Getting Started with Meldra API: Your First Document Conversion
+# Getting Started with meldra API: Your First Document Conversion
 
-The Meldra API lets you convert documents (PDF, DOC/DOCX, PPT/PPTX) and clean ZIP archives programmatically.
+The meldra API lets you convert documents (PDF, DOC/DOCX, PPT/PPTX) and clean ZIP archives programmatically.
 
 In this tutorial, you’ll make your first conversion request (PDF → DOCX) and learn the response handling pattern you’ll reuse across endpoints.
 
 ## Prerequisites
 
-- A Meldra API key (request one at support@meldra.ai)
+- A meldra API key (request one at support@meldra.ai)
 - A file to convert (PDF, DOC/DOCX, PPT/PPTX)
 - Basic HTTP knowledge
 
@@ -66,25 +66,25 @@ The API returns the converted file as binary. Save it to disk or stream it direc
   },
   {
     id: 2,
-    title: 'How to Generate and Use Your Meldra API Key',
-    slug: slugify('How to Generate and Use Your Meldra API Key'),
+    title: 'How to Generate and Use Your meldra API Key',
+    slug: slugify('How to Generate and Use Your meldra API Key'),
     date: '2026-01-24',
-    author: 'Meldra Team',
+    author: 'meldra Team',
     category: 'tutorials',
     summary:
       'Step-by-step guide to obtaining your API key, authenticating requests, and following best practices for key storage, rotation, and usage monitoring.',
     image: '/api-blog-2.jpg',
     readMore: true,
     content: `
-# How to Generate and Use Your Meldra API Key
+# How to Generate and Use Your meldra API Key
 
-All Meldra API requests use API-key authentication.
+All meldra API requests use API-key authentication.
 
 ## Getting your API key
 
 ### Step 1: Contact support
 
-Email **support@meldra.ai** with the subject: **Meldra API Key Request**.
+Email **support@meldra.ai** with the subject: **meldra API Key Request**.
 
 Include:
 
@@ -128,19 +128,19 @@ curl -X POST "https://api.developer.meldra.ai/v1/convert/pdf-to-doc" \\
   },
   {
     id: 3,
-    title: 'What Can the Meldra API Do? Complete Feature Overview',
-    slug: slugify('What Can the Meldra API Do? Complete Feature Overview'),
+    title: 'What Can the meldra API Do? Complete Feature Overview',
+    slug: slugify('What Can the meldra API Do? Complete Feature Overview'),
     date: '2026-01-23',
-    author: 'Meldra Team',
+    author: 'meldra Team',
     category: 'api-docs',
     summary:
-      'Discover Meldra API capabilities: document conversion (PDF, DOC, PPT), FileName Cleaner, and platform features like authentication, rate limits, and usage tracking.',
+      'Discover meldra API capabilities: document conversion (PDF, DOC, PPT), FileName Cleaner, and platform features like authentication, rate limits, and usage tracking.',
     image: '/api-blog-3.jpg',
     readMore: true,
     content: `
-# What Can the Meldra API Do? Complete Feature Overview
+# What Can the meldra API Do? Complete Feature Overview
 
-Meldra API provides document conversion and file-processing endpoints designed for production use.
+meldra API provides document conversion and file-processing endpoints designed for production use.
 
 ## Document conversion
 
@@ -178,16 +178,16 @@ Clean and sanitize file names inside ZIP archives by:
     title: 'API v1.0 Released: Document Conversion and ZIP Cleaning Now Available',
     slug: slugify('API v1.0 Released: Document Conversion and ZIP Cleaning Now Available'),
     date: '2026-01-20',
-    author: 'Meldra Team',
+    author: 'meldra Team',
     category: 'updates',
     summary:
-      "We're excited to announce Meldra API v1.0—document conversion endpoints (PDF↔DOCX, PPTX↔PDF, PDF→PPTX) plus FileName Cleaner. Here's what shipped and what's next.",
+      "We're excited to announce meldra API v1.0—document conversion endpoints (PDF↔DOCX, PPTX↔PDF, PDF→PPTX) plus FileName Cleaner. Here's what shipped and what's next.",
     image: '/api-blog-4.jpg',
     readMore: true,
     content: `
 # API v1.0 Released: Document Conversion and ZIP Cleaning Now Available
 
-We’re shipping **Meldra API v1.0**—a set of endpoints that help teams automate document conversion and ZIP normalization in pipelines, internal tools, and customer-facing workflows.
+We’re shipping **meldra API v1.0**—a set of endpoints that help teams automate document conversion and ZIP normalization in pipelines, internal tools, and customer-facing workflows.
 
 ## What’s included in v1.0
 
@@ -227,17 +227,17 @@ If you want early access to upcoming endpoints, email **support@meldra.ai**.
   },
   {
     id: 5,
-    title: 'Building a Document Processing Pipeline with Meldra API',
-    slug: slugify('Building a Document Processing Pipeline with Meldra API'),
+    title: 'Building a Document Processing Pipeline with meldra API',
+    slug: slugify('Building a Document Processing Pipeline with meldra API'),
     date: '2026-01-18',
-    author: 'Meldra Team',
+    author: 'meldra Team',
     category: 'engineering',
     summary:
       'An engineering deep-dive on building reliable pipelines: batching, retries, timeouts, job orchestration, and performance optimization for high-volume document conversion.',
     image: '/api-blog-5.jpg',
     readMore: true,
     content: `
-# Building a Document Processing Pipeline with Meldra API
+# Building a Document Processing Pipeline with meldra API
 
 If you’re converting documents at scale, the hard part isn’t the single request—it’s the operational reliability: retries, batching, observability, and predictable failure handling.
 
@@ -245,7 +245,7 @@ If you’re converting documents at scale, the hard part isn’t the single requ
 
 1. Ingest user files
 2. Validate type and size
-3. Convert via Meldra API
+3. Convert via meldra API
 4. Store results in your object store
 5. Emit events for downstream steps (indexing, signing, notifications)
 
@@ -279,17 +279,17 @@ Track:
   },
   {
     id: 6,
-    title: 'How Company X Automated Their Document Workflow with Meldra',
-    slug: slugify('How Company X Automated Their Document Workflow with Meldra'),
+    title: 'How Company X Automated Their Document Workflow with meldra',
+    slug: slugify('How Company X Automated Their Document Workflow with meldra'),
     date: '2026-01-15',
-    author: 'Meldra Team',
+    author: 'meldra Team',
     category: 'success-stories',
     summary:
       'A practical case study: how a team standardized messy customer ZIPs and automated conversion to DOCX/PDF, reducing manual work and turnaround time dramatically.',
     image: '/api-blog-6.jpg',
     readMore: true,
     content: `
-# How Company X Automated Their Document Workflow with Meldra
+# How Company X Automated Their Document Workflow with meldra
 
 A services company was spending hours per week on:
 
@@ -306,7 +306,7 @@ Customer uploads were inconsistent: long filenames, invalid characters, and mixe
 They implemented a small pipeline:
 
 1. Receive ZIP from customer
-2. Clean ZIP filenames via Meldra
+2. Clean ZIP filenames via meldra
 3. Convert PDFs → DOCX for editing
 4. Convert final DOCX → PDF for signing
 

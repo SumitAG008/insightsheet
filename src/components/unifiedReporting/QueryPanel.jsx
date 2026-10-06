@@ -74,7 +74,7 @@ function TablesList({ m, highlight }) {
       {Object.values(m.views).map((v) => (
         <div key={v.key} className={`rounded-lg border p-2 text-xs ${highlight.includes(v.key) ? 'border-blue-300 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/30' : 'border-slate-200 dark:border-slate-700'}`}>
           <div className="font-mono font-semibold">{v.key}</div>
-          <div className="text-slate-500">{v.sys} · {v.rowCount.toLocaleString()} rows{v.remote ? ' · in the Meldra lakehouse' : ' · in this browser'}</div>
+          <div className="text-slate-500">{v.sys} · {v.rowCount.toLocaleString()} rows{v.remote ? ' · in the meldra lakehouse' : ' · in this browser'}</div>
           <div className="mt-1 flex flex-wrap gap-1">
             {tableColumns(m, v.key).map((c) => (
               <span key={c.key} title={c.name} className="rounded bg-slate-100 px-1.5 py-0.5 font-mono dark:bg-slate-800">
@@ -161,7 +161,7 @@ export default function QueryPanel({ spec, m, onUseSql, onReset }) {
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <Button size="sm" onClick={go} disabled={busy}><Play className="mr-1.5 h-3.5 w-3.5" />{busy ? 'Running…' : 'Run SQL'}</Button>
           {canUse && <Button size="sm" variant="outline" onClick={() => onUseSql(sql, metaFits ? generated.meta : null)}><Table2 className="mr-1.5 h-3.5 w-3.5" />Use this result in the chart</Button>}
-          {spec.sql && onReset && <Button size="sm" variant="ghost" onClick={onReset}><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Back to Meldra&apos;s query</Button>}
+          {spec.sql && onReset && <Button size="sm" variant="ghost" onClick={onReset}><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Back to meldra&apos;s query</Button>}
           <span className="text-xs text-slate-400">Read-only: SELECT queries only. Ctrl+Enter runs.</span>
         </div>
       </div>
@@ -169,7 +169,7 @@ export default function QueryPanel({ spec, m, onUseSql, onReset }) {
       {run?.out && (
         <div>
           <p className="mb-1 text-xs text-slate-500">
-            {run.out.rows.length.toLocaleString()} row{run.out.rows.length === 1 ? '' : 's'}{run.out.truncated ? ' (first 5,000)' : ''} · {run.out.where === 'lakehouse' ? 'ran in the Meldra lakehouse' : 'ran in this browser'} · {run.ms} ms
+            {run.out.rows.length.toLocaleString()} row{run.out.rows.length === 1 ? '' : 's'}{run.out.truncated ? ' (first 5,000)' : ''} · {run.out.where === 'lakehouse' ? 'ran in the meldra lakehouse' : 'ran in this browser'} · {run.ms} ms
           </p>
           <div className="max-h-72 overflow-auto rounded-lg border border-slate-200 dark:border-slate-700">
             <table className="w-full border-collapse text-xs">

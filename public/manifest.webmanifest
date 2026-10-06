@@ -1,6 +1,6 @@
 {
   "name": "meldra Insight",
-  "short_name": "Meldra",
+  "short_name": "meldra",
   "description": "Data made simple: spreadsheets and PDFs to charts, P&L and board-ready slides",
   "start_url": "/",
   "scope": "/",

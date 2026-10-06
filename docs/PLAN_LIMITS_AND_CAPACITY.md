@@ -1,6 +1,6 @@
 # Plan limits and capacity
 
-How Meldra stops one person, one file or a busy hour from slowing down or crashing the service, and how
+How meldra stops one person, one file or a busy hour from slowing down or crashing the service, and how
 to change any limit without a code change.
 
 ## 1. The plan table
@@ -99,14 +99,14 @@ Endpoints (`backend/app/routes/organizations.py`):
 
 | Who | Endpoint | Purpose |
 |---|---|---|
-| Meldra admin | `GET/POST /api/admin/orgs`, `GET/PATCH /api/admin/orgs/{id}` | Customers |
-| Meldra admin | `POST /api/admin/orgs/{id}/licenses`, `PATCH /api/admin/licenses/{id}` | Record the deal, mark invoices paid, extend, suspend |
-| Meldra admin | `POST/DELETE /api/admin/orgs/{id}/members` | Add people (seat count not enforced for staff) |
-| Meldra admin | `GET /api/admin/licenses/report` (+ `.csv`) | ARR, unpaid invoices, seat use, renewals in 90 days, low-use customers |
+| meldra admin | `GET/POST /api/admin/orgs`, `GET/PATCH /api/admin/orgs/{id}` | Customers |
+| meldra admin | `POST /api/admin/orgs/{id}/licenses`, `PATCH /api/admin/licenses/{id}` | Record the deal, mark invoices paid, extend, suspend |
+| meldra admin | `POST/DELETE /api/admin/orgs/{id}/members` | Add people (seat count not enforced for staff) |
+| meldra admin | `GET /api/admin/licenses/report` (+ `.csv`) | ARR, unpaid invoices, seat use, renewals in 90 days, low-use customers |
 | Customer admin | `GET /api/org/me`, `GET/POST/PATCH/DELETE /api/org/members` | Seats and people (seat count enforced) |
 | Customer admin | `GET /api/org/usage.csv`, `GET /api/org/events` | Usage per person (counts only) and change history |
 
-Website pages: **Licences** (`/adminlicenses`, Meldra staff), **Organisation** (`/organization`,
+Website pages: **Licences** (`/adminlicenses`, meldra staff), **Organisation** (`/organization`,
 customer admins), **Plan and usage** (`/usage`, everyone).
 
 ## 4. What happens under load

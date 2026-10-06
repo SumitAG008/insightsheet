@@ -1,5 +1,5 @@
 // Real multi-source test: an Excel workbook, a real PostgreSQL database and a live public API
-// (the npm registry) brought into Meldra through the UI, stored in the lakehouse (Iceberg on
+// (the npm registry) brought into meldra through the UI, stored in the lakehouse (Iceberg on
 // Apache Polaris), linked, and asked cross-system questions. Every number is checked against an
 // independent calculation straight from the sources. See README.md.
 import fs from 'fs';
@@ -10,7 +10,7 @@ import XLSX from 'xlsx';
 
 // Storing in the lakehouse is opt-in: tick the box before uploading.
 const optInToLakehouse = async (page) => {
-  const box = page.getByLabel(/Store in the Meldra lakehouse/);
+  const box = page.getByLabel(/Store in the meldra lakehouse/);
   if (await box.count()) await box.first().check();
 };
 
@@ -72,7 +72,7 @@ const open = async () => {
   await page.getByRole('button', { name: 'Reject all' }).click({ timeout: 3000 }).catch(() => {});
   await page.locator('h1', { hasText: 'Unified Reporting' }).waitFor();
 };
-const lakeCards = () => page.locator('div.rounded-2xl').filter({ has: page.getByText('Meldra lakehouse', { exact: true }) });
+const lakeCards = () => page.locator('div.rounded-2xl').filter({ has: page.getByText('meldra lakehouse', { exact: true }) });
 
 /** Ask a question and return its answer as exact numbers, from the answer's own CSV download. */
 const askCsv = async (q) => {
@@ -211,7 +211,7 @@ await page.evaluate(() => new Promise((res) => { const r = indexedDB.deleteDatab
 await open();
 await nav().getByRole('button', { name: /Data sources/ }).click();
 await lakeCards().first().waitFor({ timeout: 60000 });
-check('a fresh browser gets all four sources back from Meldra', await lakeCards().count() === 4);
+check('a fresh browser gets all four sources back from meldra', await lakeCards().count() === 4);
 check('no browser errors', errors.length === 0, errors.slice(0, 3).join(' | '));
 
 await browser.close();

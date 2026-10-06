@@ -12,7 +12,7 @@ This article shows every way to add data to Unified Reporting and how to link so
 
 1. Open **Unified Reporting** and select the **Data sources** tab.
 2. Drag your exports onto the area that says **Drop exports from several systems here**, or select **Choose files**.
-3. Wait while Meldra reads each file. A message confirms which sources were added.
+3. Wait while meldra reads each file. A message confirms which sources were added.
 
 What you can upload:
 
@@ -27,7 +27,7 @@ Select several files at once with Ctrl or ⌘ + click, or add them one after ano
 
 ## Connect a database
 
-Meldra connects read-only. Only single SELECT queries run, in a read-only transaction.
+meldra connects read-only. Only single SELECT queries run, in a read-only transaction.
 
 1. On **Data sources**, select **Connect a database**.
 2. Choose the **Database**: **PostgreSQL**, **MySQL / MariaDB** or **SQL Server / Azure SQL**.
@@ -39,9 +39,9 @@ Meldra connects read-only. Only single SELECT queries run, in a read-only transa
 6. Optionally set **System name (shown on answers)** and **Row limit per source** (50,000 by default, 200,000 at most).
 7. Select **Add 2 tables** (the number matches your selection) or **Run and add**.
 
-If the tables you pick have foreign keys between them, Meldra adds those links automatically.
+If the tables you pick have foreign keys between them, meldra adds those links automatically.
 
-> **Important:** The database server must be reachable from Meldra's backend. Use a read-only database user. The password is used once to connect and is never stored.
+> **Important:** The database server must be reachable from meldra's backend. Use a read-only database user. The password is used once to connect and is never stored.
 
 To refresh a database source later, select the refresh icon on its card, enter the password again and select **Connect and refresh**. Your column choices are kept.
 
@@ -65,25 +65,25 @@ Pull records from a business system over HTTPS.
 3. Enter the **System name (shown on answers)** and the **Address (HTTPS)**. Replace anything in {braces} with your own values.
 4. Choose the **Method** (**GET** or **POST**). For POST, choose the **Body type** and enter the **Body**.
 5. Choose the **Authentication** and fill in its fields. Options are OAuth 2.0 client credentials, OAuth 2.0 SAML 2.0 bearer (certificate), OAuth 2.0 JWT bearer (certificate), OAuth 2.0 refresh token, User name and password, Bearer token / access token, API key, or None.
-6. Optional: open **Records, paging and headers** to set **Records at (path to the list)**, **Paging**, **Maximum rows**, **Source name** and **Extra headers (JSON)**. Meldra finds the records and paging automatically if you leave them.
+6. Optional: open **Records, paging and headers** to set **Records at (path to the list)**, **Paging**, **Maximum rows**, **Source name** and **Extra headers (JSON)**. meldra finds the records and paging automatically if you leave them.
 7. Select **Fetch and add**.
 
 Credentials are used for this request and never stored. To refresh, select the refresh icon on the source card, enter the credentials again and select **Fetch again**.
 
-> **Important:** If the system issues a new refresh token, Meldra shows it once. Copy it and select **I saved it, continue**. The old token no longer works and Meldra does not keep the new one.
+> **Important:** If the system issues a new refresh token, meldra shows it once. Copy it and select **I saved it, continue**. The old token no longer works and meldra does not keep the new one.
 
 ## Load the sample company
 
 Select **Try the sample company** at the top of Unified Reporting (shown until you add data), or **Load a sample company** on **Data sources**. It adds six linked systems: SAP S/4, Billing, Salesforce, SuccessFactors, Concur and Ariba.
 
-## Store data in the Meldra lakehouse
+## Store data in the meldra lakehouse
 
-If the lakehouse is available on your account, the upload area shows a **Store in the Meldra lakehouse** tick box.
+If the lakehouse is available on your account, the upload area shows a **Store in the meldra lakehouse** tick box.
 
-- Ticked: new files, database tables and API pulls are stored as Apache Iceberg tables on Meldra's servers. You can then use them from any device. Files can be CSV, Excel or Parquet, up to the size shown under the upload area.
+- Ticked: new files, database tables and API pulls are stored as Apache Iceberg tables on meldra's servers. You can then use them from any device. Files can be CSV, Excel or Parquet, up to the size shown under the upload area.
 - Not ticked (the default): data stays in this browser.
 
-To move existing sources, select **Store all in the Meldra lakehouse**, or the warehouse icon on one source card. Stored sources show a **Meldra lakehouse** label.
+To move existing sources, select **Store all in the meldra lakehouse**, or the warehouse icon on one source card. Stored sources show a **meldra lakehouse** label.
 
 > **Important:** Deleting a lakehouse source removes the stored data permanently.
 

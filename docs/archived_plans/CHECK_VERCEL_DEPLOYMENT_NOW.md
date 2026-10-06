@@ -5,7 +5,7 @@
 **Latest commits:**
 - `945a47b` - Add Contact & Support section with support@meldra.ai email
 - `2f21f1a` - Add logo to landing page and contact section
-- `6023dc0` - Further reduce spacing between Key Benefits and About Meldra sections
+- `6023dc0` - Further reduce spacing between Key Benefits and About meldra sections
 - `52f600d` - Improve landing page spacing and button readability
 
 **All changes are in GitHub `main` branch!** ✅
@@ -83,7 +83,7 @@
 
 1. **Logo at top:**
    - Go to: `https://insight.meldra.ai`
-   - Should see Meldra logo at the very top of the page
+   - Should see meldra logo at the very top of the page
    - Logo should be above "Privacy-First Data Analysis Platform" badge
 
 2. **Contact section at bottom:**
@@ -97,7 +97,7 @@
    - Not the old aqua background
 
 4. **Spacing:**
-   - Gap above "About Meldra" should be reduced
+   - Gap above "About meldra" should be reduced
    - Sections should be closer together
 
 ---
@@ -146,7 +146,7 @@
 2. Commit and push:
    ```bash
    git add public/meldra.png
-   git commit -m "Add Meldra logo image"
+   git commit -m "Add meldra logo image"
    git push origin main
    ```
 3. Vercel will auto-deploy

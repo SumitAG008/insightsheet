@@ -1,5 +1,5 @@
 """
-Server protection: keeps Meldra up when many people use it at once.
+Server protection: keeps meldra up when many people use it at once.
 
 Three rules, applied to every API request by the middleware in app/main.py:
 
@@ -284,7 +284,7 @@ class HeavyJob:
             self._release_user()
             raise GuardRejection(
                 503,
-                "Meldra is busy processing other files. Your file was not processed; please try again in a few seconds.",
+                "meldra is busy processing other files. Your file was not processed; please try again in a few seconds.",
                 5,
             )
         self._server_slot = True

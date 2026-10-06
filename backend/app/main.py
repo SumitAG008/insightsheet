@@ -209,7 +209,7 @@ def _finance_fast_answer(message: str) -> Optional[str]:
             "- Net Revenue Retention (NRR) = (StartMRR + Expansion - Churn - Contraction) / StartMRR\n"
             "- Churn % (logo) = Lost_Customers / Start_Customers\n"
             "- Churn % (revenue) = Lost_MRR / Start_MRR\n\n"
-            "In Meldra (fast workflow):\n"
+            "In meldra (fast workflow):\n"
             "Step 1: Upload your sheet (monthly revenue, customers, COGS).\n"
             "Step 2: Transform Data → create derived columns (ARR, GrossMargin).\n"
             "Step 3: Analysis & Cleaning → Charts → line chart by Month.\n"
@@ -223,7 +223,7 @@ def _finance_fast_answer(message: str) -> Optional[str]:
             "Formulas:\n"
             "- Dividend Yield = Annual_Dividends_Per_Share / Current_Price\n"
             "- Payout Ratio = Dividends / Net_Income\n\n"
-            "In Meldra:\n"
+            "In meldra:\n"
             "Step 1: Upload a table with Price, Dividend (annual or per period).\n"
             "Step 2: Transform Data → create column dividend_yield.\n"
             "Step 3: Charts → plot yield by date or by ticker."
@@ -237,7 +237,7 @@ def _finance_fast_answer(message: str) -> Optional[str]:
             "- Total Return = (End_Value - Start_Value + Cash_Flows) / Start_Value\n"
             "- CAGR = (End_Value / Start_Value)^(1/Years) - 1\n"
             "- Annualized Volatility (approx) = STDEV(Daily_Returns) * SQRT(252)\n\n"
-            "In Meldra:\n"
+            "In meldra:\n"
             "Step 1: Upload values by date.\n"
             "Step 2: Transform Data → create daily_return = (value/lag(value)) - 1 (tell me your column names and I will give exact steps).\n"
             "Step 3: Charts → line chart for value, histogram for returns."
@@ -252,7 +252,7 @@ def _finance_fast_answer(message: str) -> Optional[str]:
             "- IRR = IRR(cashflows_range)\n\n"
             "Notes:\n"
             "- Cashflows typically include the initial investment as a negative number, followed by inflows/outflows by period.\n\n"
-            "In Meldra:\n"
+            "In meldra:\n"
             "Step 1: Upload a cashflow table (Period, Cashflow).\n"
             "Step 2: If you want a computed NPV column, tell me your discount rate and cashflow column; I will generate an operation plan for you."
         )
@@ -265,7 +265,7 @@ def _finance_fast_answer(message: str) -> Optional[str]:
             "- Average Cost Basis = Total_Cost / Total_Units\n"
             "- Unrealized P&L = (Current_Price - Avg_Cost) * Units\n"
             "- ROI % = (Current_Value - Total_Cost) / Total_Cost\n\n"
-            "In Meldra:\n"
+            "In meldra:\n"
             "Step 1: Upload trades with Date, Asset, Side, Units, Price, Fees.\n"
             "Step 2: Transform Data → compute Cost = Units*Price + Fees and group by Asset.\n"
             "Step 3: If you share your column names, I’ll provide an exact step plan to compute average cost and P&L."
@@ -295,7 +295,7 @@ def _support_keyword_answer(message: str) -> Optional[str]:
 
     if key in ("vlookup", "xlookup", "lookup"):
         return (
-            "Here are the fastest ways to do a VLOOKUP/XLOOKUP-style task in Meldra. Pick one:\n\n"
+            "Here are the fastest ways to do a VLOOKUP/XLOOKUP-style task in meldra. Pick one:\n\n"
             "Option A (Recommended): Excel Ops (server-side transformation)\n"
             "- Use a lookup join between your main sheet and a lookup sheet.\n"
             "- Best when you want a clean output file (CSV) + preview rows.\n"
@@ -312,7 +312,7 @@ def _support_keyword_answer(message: str) -> Optional[str]:
 
     if key == "join":
         return (
-            "Join/Merge in Meldra (quick guide):\n\n"
+            "Join/Merge in meldra (quick guide):\n\n"
             "Option A: Excel Ops join (Recommended)\n"
             "- Left join / inner join between two inputs (two sheets or two files).\n"
             "- Use it for lookups, enriching data, and combining datasets.\n\n"
@@ -1024,7 +1024,7 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-# Meldra lakehouse (Apache Iceberg tables via Apache Polaris, Arrow + DuckDB queries)
+# meldra lakehouse (Apache Iceberg tables via Apache Polaris, Arrow + DuckDB queries)
 from app.routes.lakehouse import router as lakehouse_router  # noqa: E402
 app.include_router(lakehouse_router)
 
@@ -1032,7 +1032,7 @@ app.include_router(lakehouse_router)
 from app.routes.organizations import router as organizations_router  # noqa: E402
 app.include_router(organizations_router)
 
-# Growth numbers for Meldra staff (activation)
+# Growth numbers for meldra staff (activation)
 from app.routes.metrics import router as metrics_router  # noqa: E402
 app.include_router(metrics_router)
 
@@ -2359,7 +2359,7 @@ def register(user_data: UserRegister, db: Session = Depends(get_db)):
             if user_data.email.strip().lower() not in allowed:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Meldra is in private beta. To request access, email support@meldra.ai."
+                    detail="meldra is in private beta. To request access, email support@meldra.ai."
                 )
 
         # Check if user exists
@@ -3413,7 +3413,7 @@ async def support_chat(
 
     if _is_disallowed_support_question(message):
         return {
-            "answer": "I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.",
+            "answer": "I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact meldra support.",
             "refused": True,
         }
 
@@ -3431,7 +3431,7 @@ async def support_chat(
         kb_text = _load_kb_text()
     except Exception:
         return {
-            "answer": "I can help with product usage and account/API onboarding, but the knowledge base is currently unavailable. Please contact Meldra support.",
+            "answer": "I can help with product usage and account/API onboarding, but the knowledge base is currently unavailable. Please contact meldra support.",
             "refused": False,
         }
 
@@ -3439,13 +3439,13 @@ async def support_chat(
     kb_context = "\n\n".join([s["content"] for s in picked])
 
     prompt = (
-        f"You are Meldra's customer-facing Support Assistant.\n\n"
+        f"You are meldra's customer-facing Support Assistant.\n\n"
         f"RULES:\n"
         f"- Primary goal: help users succeed with the product (API usage, onboarding, endpoints, parameters, error messages, limits) and explain workflows step-by-step.\n"
-        f"- When the user asks about finance, forecasting, FP&A, CFO/CFA topics, stocks, dividends, or crypto calculations: prioritize spreadsheet-ready formulas and short step-by-step workflows inside Meldra.\n"
+        f"- When the user asks about finance, forecasting, FP&A, CFO/CFA topics, stocks, dividends, or crypto calculations: prioritize spreadsheet-ready formulas and short step-by-step workflows inside meldra.\n"
         f"- You MAY answer general spreadsheet questions (Excel/Google Sheets) like VLOOKUP/XLOOKUP/INDEX-MATCH, joins/merges, data cleaning, and how to express them in this product.\n"
         f"- Use the provided Knowledge Base excerpts when relevant, but do NOT refuse just because the KB doesn't mention something.\n"
-        f"- If the user asks for sensitive internal implementation details (source code, repos, secrets, deployment, logs, environment variables, database credentials), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"
+        f"- If the user asks for sensitive internal implementation details (source code, repos, secrets, deployment, logs, environment variables, database credentials), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact meldra support.\"\n"
         f"- If you are unsure, ask 1 clarifying question.\n"
         f"- Formatting: do NOT use Markdown headings (no '#', '##', '###'). Use short label lines like 'Step 1:', 'Next:', 'Note:' instead.\n"
         f"- If the user asks about pricing, subscription, limits, quotas, or missing access, ask what plan/environment they are on (Free/Standard/Premium, Sandbox vs Production) and whether their email is verified; then give the next steps.\n\n"
@@ -3502,7 +3502,7 @@ def support_chat_with_file(
 
     if _is_disallowed_support_question(msg):
         return {
-            "answer": "I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.",
+            "answer": "I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact meldra support.",
             "refused": True,
         }
 
@@ -3520,7 +3520,7 @@ def support_chat_with_file(
         kb_text = _load_kb_text()
     except Exception:
         return {
-            "answer": "I can help with product usage and account/API onboarding, but the knowledge base is currently unavailable. Please contact Meldra support.",
+            "answer": "I can help with product usage and account/API onboarding, but the knowledge base is currently unavailable. Please contact meldra support.",
             "refused": False,
         }
 
@@ -3548,13 +3548,13 @@ def support_chat_with_file(
     file_context = build_ingestion_prompt_block(ingested)
 
     prompt = (
-        f"You are Meldra's customer-facing Support Assistant.\n\n"
+        f"You are meldra's customer-facing Support Assistant.\n\n"
         f"RULES:\n"
         f"- Primary goal: help users succeed with the product (API usage, onboarding, endpoints, parameters, error messages, limits) and explain workflows step-by-step.\n"
-        f"- When the user asks about finance, forecasting, FP&A, CFO/CFA topics, stocks, dividends, or crypto calculations: prioritize spreadsheet-ready formulas and short step-by-step workflows inside Meldra.\n"
+        f"- When the user asks about finance, forecasting, FP&A, CFO/CFA topics, stocks, dividends, or crypto calculations: prioritize spreadsheet-ready formulas and short step-by-step workflows inside meldra.\n"
         f"- You MAY answer general spreadsheet questions (Excel/Google Sheets) like VLOOKUP/XLOOKUP/INDEX-MATCH, joins/merges, data cleaning, and how to express them in this product.\n"
         f"- Use the provided Knowledge Base excerpts and uploaded file context when relevant, but do NOT refuse just because the KB doesn't mention something.\n"
-        f"- If the user asks for sensitive internal implementation details (source code, repos, secrets, deployment, logs, environment variables, database credentials), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact Meldra support.\"\n"
+        f"- If the user asks for sensitive internal implementation details (source code, repos, secrets, deployment, logs, environment variables, database credentials), refuse and say: \"I can help with product usage and account/API onboarding. For internal/backend implementation details, please contact meldra support.\"\n"
         f"- If you are unsure, ask 1 clarifying question.\n"
         f"- Formatting: do NOT use Markdown headings (no '#', '##', '###'). Use short label lines like 'Step 1:', 'Next:', 'Note:' instead.\n"
         f"- If the user asks about pricing, subscription, limits, quotas, or missing access, ask what plan/environment they are on (Free/Standard/Premium, Sandbox vs Production) and whether their email is verified; then give the next steps.\n\n"
@@ -5154,7 +5154,7 @@ async def developer_api_proxy(
 
         headers = {"Content-Disposition": f"attachment; filename={out_name}"}
         if ocr_mode_header:
-            headers["X-Meldra-OCR-Mode"] = ocr_mode_header
+            headers["X-meldra-OCR-Mode"] = ocr_mode_header
 
         return StreamingResponse(
             io.BytesIO(data),
@@ -5745,7 +5745,7 @@ def excel_to_ppt(
                 ppt_data = run_coro(ppt_service.convert_excel_to_ppt(
                     io.BytesIO(file_content),
                     file.filename,
-                    author_name="Meldra",
+                    author_name="meldra",
                     last_modified_by=gen_name,
                 ))
 
@@ -6567,7 +6567,7 @@ def upgrade_subscription(current_user: dict = Depends(get_current_user)):
     """
     raise HTTPException(
         status_code=status.HTTP_402_PAYMENT_REQUIRED,
-        detail="Online payment is not available yet. Contact Meldra to upgrade your plan.",
+        detail="Online payment is not available yet. Contact meldra to upgrade your plan.",
     )
 
 
@@ -6766,7 +6766,7 @@ class AssistPlanIn(BaseModel):
 
 @app.post("/api/assist/plan")
 async def assist_plan(payload: AssistPlanIn, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Ask Meldra: turn a plain-words request into a plan of Meldra tools (file names and headers only, never contents)."""
+    """Ask meldra: turn a plain-words request into a plan of meldra tools (file names and headers only, never contents)."""
     from app.services.meldra_engine import fallback_plan, plan_request
     from app.services.personalization import search
 
@@ -6774,7 +6774,7 @@ async def assist_plan(payload: AssistPlanIn, current_user: dict = Depends(get_cu
     try:
         plan = await plan_request(payload.request, files, payload.page)
     except Exception as e:
-        logger.warning(f"Ask Meldra planner unavailable, using search: {explain_ai_error(e)}")
+        logger.warning(f"Ask meldra planner unavailable, using search: {explain_ai_error(e)}")
         plan = fallback_plan(payload.request, search(db, current_user["email"], payload.request, limit=3), len(files))
     db.add(UserActivity(user_email=current_user["email"], activity_type="ask_meldra"))
     db.commit()

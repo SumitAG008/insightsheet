@@ -5,7 +5,7 @@ The real Unified Reporting UI and the real backend. It checks, in 30 steps:
   the lookup (`expenses.employee_id → employees.employee_id`) and the join on department; the SQL.
 - **Running the SQL** gives the numbers shown in the answer, in the browser (SQLite) or in the lakehouse (DuckDB).
 - **Editing the SQL**: an edited query runs, its result replaces the chart and downloads with its own columns;
-  a non-SELECT is refused; a wrong column gives the database's error; "Back to Meldra's query" restores the answer.
+  a non-SELECT is refused; a wrong column gives the database's error; "Back to meldra's query" restores the answer.
 - **Downloads** of a report built from one prompt as **PDF, PowerPoint, Word and Excel**, opened with PyMuPDF,
   python-pptx, python-docx, openpyxl and LibreOffice (`check_files.py`): pages/slides per chart, titles,
   native editable charts in PowerPoint, data tables in Word, one sheet per chart in Excel. The dashboard as PowerPoint.

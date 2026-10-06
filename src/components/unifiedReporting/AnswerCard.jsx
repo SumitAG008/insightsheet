@@ -84,7 +84,7 @@ export function LakeLoading() {
   return (
     <div className="flex items-center gap-2.5 py-6 text-sm text-slate-500">
       <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-emerald-600" aria-hidden="true" />
-      Calculating in the Meldra lakehouse…
+      Calculating in the meldra lakehouse…
     </div>
   );
 }
@@ -138,7 +138,7 @@ function describe(res, m, sp) {
   return parts;
 }
 
-const USED_LABEL = { ai: 'Planned by Meldra AI from your column names.', rules: 'Read with built-in rules (AI was not needed or not available).', edited: 'Run from your edited definition.', suggested: 'Suggested from your data.' };
+const USED_LABEL = { ai: 'Planned by meldra AI from your column names.', rules: 'Read with built-in rules (AI was not needed or not available).', edited: 'Run from your edited definition.', suggested: 'Suggested from your data.' };
 
 export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onDownload, onRunSpec, onRefine, onUseSql, onResetSql }) {
   const [open, setOpen] = useState(false);
@@ -221,7 +221,7 @@ export default function AnswerCard({ item, m, pinned, onAsk, onPin, onChart, onD
         <ChartSwitcher spec={sp} onChange={(c) => onChart(item.id, c)} />
       </div>
       {sp.sql ? (
-        <p className="mt-2 text-xs text-slate-500">From your own SQL. Open <strong>Query</strong> below to change it, or go back to Meldra&apos;s query.</p>
+        <p className="mt-2 text-xs text-slate-500">From your own SQL. Open <strong>Query</strong> below to change it, or go back to meldra&apos;s query.</p>
       ) : (
         <div className="mt-3 space-y-2 rounded-xl bg-slate-50 px-3 py-2.5 dark:bg-slate-950">
           <FilterBar m={m} viewKeys={[...new Set(sp.series.map((s) => s.view))]} filters={sp.filters || []} onChange={(filters) => onRefine(item.id, { filters })} />

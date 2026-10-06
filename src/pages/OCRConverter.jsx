@@ -373,7 +373,7 @@ export default function OCRConverter() {
                   {fillResult.scannedPages ? ` (${fillResult.scannedPages} scanned, now also searchable)` : ''}.
                   Open it in Edge, Chrome or Adobe Reader, click a blank and type. Need text somewhere else? Use your reader&apos;s &quot;Add text&quot; tool.
                   {fillResult.fields + fillResult.checkboxes === 0 && ' No blanks were found: use “Add text” in your PDF reader to type anywhere on the page.'}
-                  {' '}<Link to="/pdfeditor" className="underline font-semibold text-emerald-300">Or fill and edit it here in Meldra’s PDF Editor.</Link>
+                  {' '}<Link to="/pdfeditor" className="underline font-semibold text-emerald-300">Or fill and edit it here in meldra’s PDF Editor.</Link>
                 </AlertDescription>
               </Alert>
             )}
@@ -488,9 +488,9 @@ export default function OCRConverter() {
           <h3 className="text-lg font-bold text-white mb-4">How it works</h3>
           <div className="space-y-3 text-sm text-slate-200">
             <p><strong className="text-white">1. Upload</strong> the form: a PDF you can&apos;t type into (locked or scanned), or a photo or scan (JPG, JPEG, PNG, WebP, BMP, TIFF, GIF).</p>
-            <p><strong className="text-white">2. Make fillable PDF</strong>: Meldra finds the blanks (lines, empty boxes and table cells, &quot;Label:&quot; gaps, tick boxes) and adds boxes you can type into. The page keeps its original look, so hospitals, insurers and banks accept it.</p>
+            <p><strong className="text-white">2. Make fillable PDF</strong>: meldra finds the blanks (lines, empty boxes and table cells, &quot;Label:&quot; gaps, tick boxes) and adds boxes you can type into. The page keeps its original look, so hospitals, insurers and banks accept it.</p>
             <p><strong className="text-white">3. Fill, print once, sign.</strong> Any PDF reader works (Edge, Chrome, Adobe Reader, Preview). Your typed answers can be saved and edited again later.</p>
-            <p><strong className="text-white">Read form data</strong> pulls the values out of a filled form, statement or letter, for spreadsheets or other systems. Developers: the same tools are in the Meldra API.</p>
+            <p><strong className="text-white">Read form data</strong> pulls the values out of a filled form, statement or letter, for spreadsheets or other systems. Developers: the same tools are in the meldra API.</p>
             <p className="text-slate-400">Your file is processed in memory and never stored.</p>
           </div>
         </div>

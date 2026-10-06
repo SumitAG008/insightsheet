@@ -1,5 +1,5 @@
 """
-Plan limits: one table for every allowance Meldra enforces, and the rule for which one applies.
+Plan limits: one table for every allowance meldra enforces, and the rule for which one applies.
 
 A user's limits come from their organisation's licence when they hold a seat on an active one,
 and from their own plan otherwise. Every figure can be changed without a code change:

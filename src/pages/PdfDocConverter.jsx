@@ -1,5 +1,5 @@
 // pages/PdfDocConverter.jsx - Document Converter: PDF, DOC, PPT (in-app, no API key)
-// In-app: uses your Meldra login (JWT) only. API key is only for external/developer.meldra.ai.
+// In-app: uses your meldra login (JWT) only. API key is only for external/developer.meldra.ai.
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -209,7 +209,7 @@ export default function PdfDocConverter() {
         <Alert className="bg-blue-500/10 border-blue-500/30">
           <Shield className="h-5 w-5 text-blue-500" />
           <AlertDescription className="text-slate-700 dark:text-slate-300">
-            Conversions run on our servers. Your file is not stored. Uses your Meldra login only; <strong>no API key required</strong>.
+            Conversions run on our servers. Your file is not stored. Uses your meldra login only; <strong>no API key required</strong>.
           </AlertDescription>
         </Alert>
 

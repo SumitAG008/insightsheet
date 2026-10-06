@@ -68,7 +68,7 @@ Select **Refresh** to update the figures. Meters turn amber at 70% and red at 90
 | Monthly AI questions used | "You have used all … AI questions for this month. They reset on the 1st, or upgrade for more." |
 | Monthly uploads used | "Monthly upload limit exceeded (… MB/month)." |
 
-> **Tip:** When Meldra is very busy, a file may wait a few seconds for its turn. The page retries by itself.
+> **Tip:** When meldra is very busy, a file may wait a few seconds for its turn. The page retries by itself.
 
 ## Upgrade your plan
 

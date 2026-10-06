@@ -1,4 +1,4 @@
-// Search every Meldra tool in plain words (Ctrl/⌘ + K). Ranking comes from the server and learns
+// Search every meldra tool in plain words (Ctrl/⌘ + K). Ranking comes from the server and learns
 // from what people pick; with an empty box it shows the tools suggested for you.
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -10,7 +10,7 @@ import { DEFAULT_ICON, TOOLS, TOOLS_BY_ID, searchLocally } from './toolCatalog';
 import AskMeldra from './AskMeldra';
 
 // With an empty box and no history yet, show the most-used tools.
-// A request in a sentence goes to Ask Meldra first; a few words go to the best tool.
+// A request in a sentence goes to Ask meldra first; a few words go to the best tool.
 const ASK = '__ask_meldra';
 const isSentence = (q) => q.trim().split(/\s+/).length >= 4;
 const STARTERS = ['excel_to_ppt', 'filename_cleaner', 'pdf_doc_converter', 'reconciliation', 'file_analyzer', 'unified_reporting'].map((id) => TOOLS_BY_ID[id]);
@@ -59,7 +59,7 @@ export default function ToolSearch({ open, onOpenChange }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="top-[20%] translate-y-0 overflow-hidden p-0 sm:max-w-xl gap-0 [&>button]:hidden">
-        <DialogTitle className="sr-only">{asking ? 'Ask Meldra' : 'Search Meldra tools'}</DialogTitle>
+        <DialogTitle className="sr-only">{asking ? 'Ask meldra' : 'Search meldra tools'}</DialogTitle>
         {asking ? (
           <div className="max-h-[80vh] overflow-y-auto p-4">
             <button type="button" onClick={() => setAsking(false)} className="mb-3 flex items-center gap-1 text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200">
@@ -89,8 +89,8 @@ export default function ToolSearch({ open, onOpenChange }) {
             >
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white"><Sparkles className="h-4 w-4" /></span>
               <span className="min-w-0 flex-1">
-                <span className="block font-medium">{query.trim() ? <>Ask Meldra: “{query.trim()}”</> : 'Ask Meldra'}</span>
-                <span className="block truncate text-xs text-slate-500 dark:text-slate-400">Describe the whole task, attach files; Meldra picks the tools and sets them up</span>
+                <span className="block font-medium">{query.trim() ? <>Ask meldra: “{query.trim()}”</> : 'Ask meldra'}</span>
+                <span className="block truncate text-xs text-slate-500 dark:text-slate-400">Describe the whole task, attach files; meldra picks the tools and sets them up</span>
               </span>
               <CornerDownLeft className="h-4 w-4 shrink-0 text-slate-400 opacity-0 group-aria-selected:opacity-100" />
             </CommandPrimitive.Item>

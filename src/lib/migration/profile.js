@@ -33,7 +33,7 @@ export function exportProfile({ sheets, mapping, settings, picklists, tabInfo, s
  * automatic mapping; columns the profile doesn't know keep their new mapping.
  */
 export function applyProfile(profile, sheets, currentMapping, currentSettings) {
-  if (!profile || profile.kind !== 'meldra-migration-profile') throw new Error('This file is not a Meldra migration profile.');
+  if (!profile || profile.kind !== 'meldra-migration-profile') throw new Error('This file is not a meldra migration profile.');
   const mapping = { ...currentMapping };
   const tabInfo = {};
   let applied = 0;

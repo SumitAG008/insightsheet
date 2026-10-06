@@ -104,7 +104,7 @@ def generate_2fa_secret() -> str:
     return pyotp.random_base32()
 
 
-def generate_2fa_qr_code(secret: str, email: str, issuer: str = "Meldra") -> bytes:
+def generate_2fa_qr_code(secret: str, email: str, issuer: str = "meldra") -> bytes:
     """
     Generate QR code for 2FA setup
     

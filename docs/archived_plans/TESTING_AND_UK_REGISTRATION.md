@@ -7,7 +7,7 @@ You can’t really “hide” the URL—if insight.meldra.ai is live, people can
 ### How it works
 
 - **BETA_MODE** = turn on “private beta”: registration is restricted.
-- **BETA_ALLOWED_EMAILS** = comma‑separated list of emails that *can* register. Anyone else gets: *“Meldra is in private beta. To request access, email support@meldra.ai.”*
+- **BETA_ALLOWED_EMAILS** = comma‑separated list of emails that *can* register. Anyone else gets: *“meldra is in private beta. To request access, email support@meldra.ai.”*
 
 Existing accounts (e.g. yours) keep working. Only *new* sign‑ups are blocked for non‑allowed emails.
 
@@ -52,7 +52,7 @@ If you want to avoid random people even trying to register:
 
 ---
 
-## 2. Registering Meldra as a company in the UK
+## 2. Registering meldra as a company in the UK
 
 Below is an overview. For your exact case (e.g. visa, residency, liability), use **gov.uk**, an **accountant**, or a **solicitor**.
 
@@ -61,7 +61,7 @@ Below is an overview. For your exact case (e.g. visa, residency, liability), use
 | Type | Best if | Liability | Setup |
 |------|---------|-----------|--------|
 | **Sole trader** | Just you, simple start | You’re personally liable | Register for Self Assessment (HMRC) |
-| **Limited company (Ltd)** | You want a company, limited liability, “Meldra Ltd” | Limited to the company | Register with Companies House (+ HMRC) |
+| **Limited company (Ltd)** | You want a company, limited liability, “meldra Ltd” | Limited to the company | Register with Companies House (+ HMRC) |
 
 ### Limited company (Ltd) – practical steps
 
@@ -69,7 +69,7 @@ Below is an overview. For your exact case (e.g. visa, residency, liability), use
    - gov.uk: [Set up a limited company](https://www.gov.uk/limited-company-formation)
    - Or: [Companies House: Incorporate a company](https://www.gov.uk/incorporate-a-company-online)
    - You need:
-     - Company name (e.g. “Meldra Ltd” — check it’s not taken)
+     - Company name (e.g. “meldra Ltd” — check it’s not taken)
      - Registered office address (England/Wales/Scotland/NI)
      - At least one director (you)
      - At least one shareholder (you)
@@ -101,7 +101,7 @@ Below is an overview. For your exact case (e.g. visa, residency, liability), use
 
 ### After you have a UK company
 
-- You can put the company name and registered number in the Disclaimer/Terms and in the footer (e.g. “Meldra Ltd, registered in England and Wales, no. 12345678”).
+- You can put the company name and registered number in the Disclaimer/Terms and in the footer (e.g. “meldra Ltd, registered in England and Wales, no. 12345678”).
 - Governing law and courts in your terms are already set to England and Wales; they stay the same.
 
 ---
@@ -111,4 +111,4 @@ Below is an overview. For your exact case (e.g. visa, residency, liability), use
 | Goal | What to do |
 |------|------------|
 | **Limit who can use the app during testing** | Set `BETA_MODE=true` and `BETA_ALLOWED_EMAILS=your@email.com,tester@email.com` in the **backend** (.env locally, Railway Variables in production). Redeploy/restart. |
-| **Register Meldra in the UK** | Choose sole trader or limited company. For Ltd: incorporate via gov.uk/Companies House, then register for Corporation Tax (and VAT if needed) with HMRC. Use an accountant/solicitor for your specific situation. |
+| **Register meldra in the UK** | Choose sole trader or limited company. For Ltd: incorporate via gov.uk/Companies House, then register for Corporation Tax (and VAT if needed) with HMRC. Use an accountant/solicitor for your specific situation. |

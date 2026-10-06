@@ -18,7 +18,7 @@ An organisation licence gives your people seats on the Team or Business plan for
 - A data processing agreement.
 - A grace period after the end date (14 days by default) while the renewal is processed.
 
-To buy or change a licence, contact Meldra. See [Plans and limits](/help/plans-and-limits).
+To buy or change a licence, contact meldra. See [Plans and limits](/help/plans-and-limits).
 
 ## Open the Organisation page
 
@@ -46,7 +46,7 @@ The **Licence** card shows:
 2. Choose a role: **Member** or **Admin**. Owners can also choose **Owner**.
 3. Select **Add**.
 
-Meldra confirms that the person has a seat. They sign in to Meldra with that email to use it. Until they create an account, the members list shows "(not signed up yet)" next to their email.
+meldra confirms that the person has a seat. They sign in to meldra with that email to use it. Until they create an account, the members list shows "(not signed up yet)" next to their email.
 
 > **Note:** When all seats are in use, **Add** is unavailable. Remove someone, or contact sales@meldra.ai to add seats.
 
@@ -56,7 +56,7 @@ In **Members and usage this month**, choose a new role in the **Role** column. O
 
 | Role | Can do |
 |---|---|
-| **Member** | Use Meldra with the licence's limits. |
+| **Member** | Use meldra with the licence's limits. |
 | **Admin** | Everything a member can, plus manage seats and members. |
 | **Owner** | Everything an admin can, plus give or change the owner role. |
 
@@ -74,7 +74,7 @@ Nothing in their account is deleted.
 
 Select **Export CSV** to download the figures as `meldra-usage.csv`.
 
-> **Note:** Usage is counts only. Meldra never stores or shows file names or file contents.
+> **Note:** Usage is counts only. meldra never stores or shows file names or file contents.
 
 ## See the change history
 
@@ -82,7 +82,7 @@ Select **Export CSV** to download the figures as `meldra-usage.csv`.
 
 ## Sign-up by email domain
 
-Your licence can include domain sign-up. Anyone who signs in with your organisation's email domain then gets a seat automatically while seats remain. Public email domains, such as gmail.com, cannot be used. Ask Meldra to switch it on or off when you set up or change your licence.
+Your licence can include domain sign-up. Anyone who signs in with your organisation's email domain then gets a seat automatically while seats remain. Public email domains, such as gmail.com, cannot be used. Ask meldra to switch it on or off when you set up or change your licence.
 
 ## How limits work for members
 

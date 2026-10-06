@@ -1,6 +1,6 @@
 {
   "appId": "com.meldra.insightsheet",
-  "appName": "Meldra",
+  "appName": "meldra",
   "webDir": "dist",
   "server": {
     "url": "https://meldra.ai",

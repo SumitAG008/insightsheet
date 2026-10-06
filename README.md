@@ -1,6 +1,6 @@
 # InsightSheet-lite
 
-**Privacy-first data analysis and database design platform powered by Meldra AI**
+**Privacy-first data analysis and database design platform powered by meldra AI**
 
 A comprehensive React application built with Vite that provides data analysis, AI-powered insights, database schema design, and file management tools.
 
@@ -18,8 +18,8 @@ A comprehensive React application built with Vite that provides data analysis, A
 
 - **Frontend**: React 18 + Vite 6
 - **UI**: Tailwind CSS + Radix UI
-- **Backend**: Meldra SDK + FastAPI
-- **AI/ML**: Custom Meldra Library (`src/lib/meldra`)
+- **Backend**: meldra SDK + FastAPI
+- **AI/ML**: Custom meldra Library (`src/lib/meldra`)
 
 ## Running the App
 
@@ -37,7 +37,7 @@ npm run build
 npm run preview
 ```
 
-## Meldra Library
+## meldra Library
 
 The application includes a comprehensive utility library at `src/lib/meldra/`:
 
@@ -54,10 +54,10 @@ See `src/lib/meldra/README.md` for complete documentation.
 ```
 src/
 ├── api/                    # API client and entities
-│   ├── meldraClient.js    # Meldra SDK client
+│   ├── meldraClient.js    # meldra SDK client
 │   ├── entities.js        # Database entities
 │   └── integrations.js    # Core integrations
-├── lib/meldra/            # Meldra utility library
+├── lib/meldra/            # meldra utility library
 ├── components/            # React components
 ├── pages/                 # Page components
 └── main.jsx              # Application entry point
@@ -99,4 +99,4 @@ Set these as environment variables on your backend deployment (e.g., Railway pro
 
 For issues and support, please visit: https://github.com/SumitAG008/insightsheet
 
-Built with ❤️ using Meldra Platform
+Built with ❤️ using meldra Platform

@@ -42,14 +42,14 @@ export default function Privacy() {
             </div>
             <div className="space-y-3 text-slate-700">
               <p className="leading-relaxed">
-                <strong className="text-slate-900">Meldra</strong> is designed with privacy as the foundation.
+                <strong className="text-slate-900">meldra</strong> is designed with privacy as the foundation.
                 Spreadsheet analysis runs in your browser. Tools that need our server (such as conversions, OCR and PowerPoint) process your file in memory and discard it when the result is ready.
               </p>
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 space-y-2">
                 <p className="font-semibold text-emerald-900">✓ What this means for you:</p>
                 <ul className="list-disc list-inside space-y-1 text-emerald-800">
                   <li>The contents of your files are never kept on our servers</li>
-                  <li>Data is saved only if you choose to store it in the Meldra lakehouse, and you can delete it at any time</li>
+                  <li>Data is saved only if you choose to store it in the meldra lakehouse, and you can delete it at any time</li>
                   <li>No advertising, and no third-party or cross-site tracking</li>
                   <li>The account and usage data we do keep, and for how long, is listed below</li>
                 </ul>
@@ -80,7 +80,7 @@ export default function Privacy() {
                 <ul className="list-disc list-inside space-y-1 ml-4">
                   <li>Signed-in devices: browser and device type, IP address and approximate location (city, country), used to keep your account secure and to limit a subscription to 2 devices at once. Deleted 30 days after the device signs out.</li>
                   <li>Sign-in history (the same details): deleted after 90 days.</li>
-                  <li>Which pages and tools you use and the words you search for in Meldra (never file contents), used to improve your suggestions: deleted after 90 days.</li>
+                  <li>Which pages and tools you use and the words you search for in meldra (never file contents), used to improve your suggestions: deleted after 90 days.</li>
                   <li>Cookie consent choices: kept for 2 years as proof of consent.</li>
                   <li>Results of document extraction jobs: deleted when the job expires, within hours.</li>
                   <li>Processing history: the type and size of each file you process (never its name or contents), deleted when you sign out or within 7 days.</li>
@@ -89,7 +89,7 @@ export default function Privacy() {
               <div>
                 <h3 className="font-semibold text-slate-900 mb-2">Data We DO NOT Collect:</h3>
                 <ul className="list-disc list-inside space-y-1 ml-4 text-red-700">
-                  <li>❌ Your uploaded files (processed in memory and discarded), unless you choose to store data in the Meldra lakehouse, where it stays until you delete it</li>
+                  <li>❌ Your uploaded files (processed in memory and discarded), unless you choose to store data in the meldra lakehouse, where it stays until you delete it</li>
                   <li>❌ Content of your spreadsheets</li>
                   <li>❌ Any sensitive business data</li>
                   <li>❌ Personal information from your files</li>
@@ -130,7 +130,7 @@ export default function Privacy() {
           <section>
             <h2 className="text-2xl font-bold text-slate-800 mb-3">Service Providers and Backups</h2>
             <div className="space-y-3 text-slate-700">
-              <p className="leading-relaxed">We use these providers to run Meldra. Each processes data only to provide its service to us:</p>
+              <p className="leading-relaxed">We use these providers to run meldra. Each processes data only to provide its service to us:</p>
               <ul className="list-disc list-inside space-y-1 ml-4">
                 <li><strong>Railway:</strong> runs our server (files are processed in memory there and discarded)</li>
                 <li><strong>Neon:</strong> our database (account, billing and the records listed above)</li>
@@ -255,7 +255,7 @@ export default function Privacy() {
               <p><strong>General Privacy Questions:</strong> privacy@meldra.ai</p>
               <p><strong>Security Concerns:</strong> security@meldra.ai</p>
               <p className="text-sm text-slate-600 mt-4">
-                Meldra<br />
+                meldra<br />
                 Privacy Department
               </p>
             </div>

@@ -1,5 +1,5 @@
 """
-Run the real Meldra backend with only the outside world (identity providers and
+Run the real meldra backend with only the outside world (identity providers and
 business APIs) simulated. The simulated IdPs verify SAML signatures and JWTs with
 a freshly generated test certificate, exactly as SuccessFactors / Entra ID would.
 Test use only: it signs everyone in as e2e@example.com.

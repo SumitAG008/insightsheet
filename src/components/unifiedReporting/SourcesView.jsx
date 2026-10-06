@@ -26,7 +26,7 @@ export function UploadZone({ onFiles, busy, compact, lake, storeInLake, onStoreI
         {busy ? <Loader2 className="h-6 w-6 animate-spin" /> : <Upload className="h-6 w-6" />}
       </span>
       <p className={`mt-3 font-semibold text-slate-900 dark:text-white ${compact ? '' : 'text-lg'}`} role="status" aria-live="polite">
-        {busy ? progress?.text || (toLake ? 'Storing in the Meldra lakehouse…' : 'Reading your files…') : 'Drop exports from several systems here'}
+        {busy ? progress?.text || (toLake ? 'Storing in the meldra lakehouse…' : 'Reading your files…') : 'Drop exports from several systems here'}
       </p>
       {busy && (
         <div className="mx-auto mt-2 h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700" aria-hidden="true">
@@ -35,7 +35,7 @@ export function UploadZone({ onFiles, busy, compact, lake, storeInLake, onStoreI
       )}
       <p className="mt-1 text-sm text-slate-500">
         {toLake
-          ? `CSV, Excel or Parquet, up to ${lake.max_upload_mb || 1024} MB each. Stored as Apache Iceberg tables in your Meldra lakehouse, available on every device.`
+          ? `CSV, Excel or Parquet, up to ${lake.max_upload_mb || 1024} MB each. Stored as Apache Iceberg tables in your meldra lakehouse, available on every device.`
           : 'CSV or Excel. One file (or sheet) per system, e.g. an HR export, an expenses export, a sales export. Files stay in this browser.'}
       </p>
       <Button className={`mt-4 ${compact ? '' : 'bg-[#004FCD] hover:bg-[#0043ad]'}`} variant={compact ? 'outline' : 'default'} disabled={busy} onClick={() => input.current?.click()}>Choose files</Button>
@@ -47,7 +47,7 @@ export function UploadZone({ onFiles, busy, compact, lake, storeInLake, onStoreI
         <label className="mx-auto mt-3 flex w-fit cursor-pointer items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
           <input type="checkbox" className="h-4 w-4 accent-emerald-600" checked={Boolean(storeInLake)} onChange={(e) => onStoreInLake(e.target.checked)} />
           <Warehouse className="h-4 w-4 text-emerald-600" />
-          Store in the Meldra lakehouse (kept on Meldra's servers until you delete it; for large data and access from any device)
+          Store in the meldra lakehouse (kept on meldra's servers until you delete it; for large data and access from any device)
         </label>
       )}
     </div>
@@ -78,7 +78,7 @@ function SourceCard({ s, onUpdate, onRemove, onRenameColumn, onRefresh, onMoveTo
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="m-0 truncate text-[15px] font-semibold">{s.name}</h3>
             {stored && (
-              <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white" title="Stored as an Apache Iceberg table in your Meldra lakehouse">Meldra lakehouse</span>
+              <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white" title="Stored as an Apache Iceberg table in your meldra lakehouse">meldra lakehouse</span>
             )}
             {from === 'sample' && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-950 dark:text-amber-300">Sample</span>}
             {from === 'api' && (
@@ -110,7 +110,7 @@ function SourceCard({ s, onUpdate, onRemove, onRenameColumn, onRefresh, onMoveTo
           <Button variant="ghost" size="icon" aria-label={`Refresh ${s.name}`} title={from === 'api' ? 'Fetch again from the API' : 'Refresh from database'} onClick={onRefresh}><RefreshCw className="h-4 w-4" /></Button>
         )}
         {onMoveToLake && !stored && (
-          <Button variant="ghost" size="icon" aria-label={`Store ${s.name} in the Meldra lakehouse`} title="Store in the Meldra lakehouse" onClick={onMoveToLake}><Warehouse className="h-4 w-4" /></Button>
+          <Button variant="ghost" size="icon" aria-label={`Store ${s.name} in the meldra lakehouse`} title="Store in the meldra lakehouse" onClick={onMoveToLake}><Warehouse className="h-4 w-4" /></Button>
         )}
         <Button variant="ghost" size="icon" aria-label={`Remove ${s.name}`} onClick={onRemove}><Trash2 className="h-4 w-4" /></Button>
       </div>
@@ -230,13 +230,13 @@ export default function SourcesView({
         <UploadZone onFiles={onFiles} busy={busy} compact={!m.empty} lake={lake} storeInLake={storeInLake} onStoreInLake={onStoreInLake} progress={progress} />
         {m.sources.length === 1 && (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm dark:border-amber-900 dark:bg-amber-950">
-            One source so far. Add exports from other systems that share something with it (an employee ID, a department, a customer, a date) and Meldra will link them for cross-system questions.
+            One source so far. Add exports from other systems that share something with it (an employee ID, a department, a customer, a date) and meldra will link them for cross-system questions.
           </p>
         )}
         {lake?.enabled && inBrowser.length > 0 && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-sm dark:border-emerald-900 dark:bg-emerald-950">
             <span>{inBrowser.length} source{inBrowser.length === 1 ? ' is' : 's are'} only in this browser.</span>
-            <Button size="sm" variant="outline" disabled={busy} onClick={() => onMoveToLake(inBrowser.map((s) => s.id))}><Warehouse className="mr-1.5 h-4 w-4" />Store all in the Meldra lakehouse</Button>
+            <Button size="sm" variant="outline" disabled={busy} onClick={() => onMoveToLake(inBrowser.map((s) => s.id))}><Warehouse className="mr-1.5 h-4 w-4" />Store all in the meldra lakehouse</Button>
           </div>
         )}
         {!connect && (

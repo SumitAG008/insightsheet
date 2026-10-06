@@ -1,4 +1,4 @@
-// Writes backend/tests/fixtures/unified_sql.json: the sample sources, the SQL Meldra generates for a set of
+// Writes backend/tests/fixtures/unified_sql.json: the sample sources, the SQL meldra generates for a set of
 // answers, and the numbers the browser engine gives. The backend test runs that SQL in the lakehouse (DuckDB)
 // and checks it gives the same numbers, so the SQL shown to customers is correct in both places.
 // Run: npx vite-node e2e/sql/make_fixture.mjs

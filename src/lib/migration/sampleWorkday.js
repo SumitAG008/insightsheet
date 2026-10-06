@@ -36,9 +36,9 @@ export function buildWorkdaySample() {
   const usShort = (y, m, d) => `${pad(m)}/${pad(d)}/${String(y).slice(2)}`;
 
   const companies = [
-    { Company_ID: 'GB01', Company_Name: 'Meldra Demo UK Ltd', Country: 'United Kingdom', Currency: 'GBP' },
-    { Company_ID: 'DE01', Company_Name: 'Meldra Demo GmbH', Country: 'DE', Currency: 'EUR' },
-    { Company_ID: 'US01', Company_Name: 'Meldra Demo Inc.', Country: '', Currency: 'USD' },
+    { Company_ID: 'GB01', Company_Name: 'meldra Demo UK Ltd', Country: 'United Kingdom', Currency: 'GBP' },
+    { Company_ID: 'DE01', Company_Name: 'meldra Demo GmbH', Country: 'DE', Currency: 'EUR' },
+    { Company_ID: 'US01', Company_Name: 'meldra Demo Inc.', Country: '', Currency: 'USD' },
   ];
   const locations = [
     { Location_ID: 'LON', Location_Name: 'London HQ', Location_Country: 'GB', Time_Zone: 'Europe/London', company: 'GB01' },
@@ -156,11 +156,11 @@ export function buildWorkdaySample() {
     if (events > 1) compRow(us(Math.min(2026, hy + 2), 4, 1), 'Base Salary', Math.round(salary * 1.08), 'Annual');
 
     if (retired) {
-      retirees.push({ Employee_ID: `${id}`, Retirement_Date: us(2025, 6 + (i % 6), 30), Pension_Scheme: cur === 'GBP' ? 'Meldra UK Pension Plan' : cur === 'EUR' ? 'Meldra Betriebsrente' : 'Meldra US 401(k)', Monthly_Pension: Math.round(salary * 0.015), Currency: cur });
+      retirees.push({ Employee_ID: `${id}`, Retirement_Date: us(2025, 6 + (i % 6), 30), Pension_Scheme: cur === 'GBP' ? 'meldra UK Pension Plan' : cur === 'EUR' ? 'meldra Betriebsrente' : 'meldra US 401(k)', Monthly_Pension: Math.round(salary * 0.015), Currency: cur });
     } else if (!terminated) {
       pension.push({
         Employee_ID: `${id}`,
-        Pension_Scheme: cur === 'GBP' ? 'Meldra UK Pension Plan' : cur === 'EUR' ? 'Meldra Betriebsrente' : 'Meldra US 401(k)',
+        Pension_Scheme: cur === 'GBP' ? 'meldra UK Pension Plan' : cur === 'EUR' ? 'meldra Betriebsrente' : 'meldra US 401(k)',
         Member_Number: `PN${String(id).slice(-4)}`,
         Enrolment_Date: us(hy, hm, hd),
         Employee_Contribution_Pct: cur === 'USD' ? 6 : 5,

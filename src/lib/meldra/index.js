@@ -1,12 +1,12 @@
 /**
- * Meldra Library
+ * meldra Library
  *
  * A comprehensive library for AI, ML, UI, and backend utilities
- * built specifically for the Meldra platform and InsightSheet application.
+ * built specifically for the meldra platform and InsightSheet application.
  *
  * @module meldra
  * @version 1.0.0
- * @author Meldra Team
+ * @author meldra Team
  *
  * @example
  * import { core, ai, ml, ui, backend } from '@/lib/meldra';
@@ -43,7 +43,7 @@ import * as uiFormatters from './ui/formatters';
 import * as backendAPI from './backend/api';
 
 /**
- * Core integrations for Meldra platform
+ * Core integrations for meldra platform
  * Includes: InvokeLLM, SendEmail, UploadFile, GenerateImage, etc.
  */
 export const core = coreIntegrations;
@@ -73,7 +73,7 @@ export const ui = uiFormatters;
 export const backend = backendAPI;
 
 /**
- * Meldra client instance
+ * meldra client instance
  */
 export { meldraAi } from '@/api/meldraClient';
 

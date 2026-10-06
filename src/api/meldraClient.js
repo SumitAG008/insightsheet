@@ -1,13 +1,13 @@
 /**
- * Meldra AI Client
+ * meldra AI Client
  *
- * Custom implementation using FastAPI backend for Meldra platform.
+ * Custom implementation using FastAPI backend for meldra platform.
  * This provides a compatible interface while using our own backend.
  */
 
 import { clearAllAppSessionData } from '@/utils/clearAppData';
 
-// Meldra AI client - placeholder for SDK features
+// meldra AI client - placeholder for SDK features
 // TODO: Implement full SDK when @meldra-ai/sdk is published
 export const meldraAi = {
   appId: "68dec14952c191b56537bc60",
@@ -1020,7 +1020,7 @@ export const backendApi = {
       return response.json();
     },
 
-    // Organisations, licences and the licence report (Meldra staff only)
+    // Organisations, licences and the licence report (meldra staff only)
     orgs: {
       list: async () => jsonOrThrow(await apiCall('/api/admin/orgs'), 'Could not load organisations'),
       get: async (id) => jsonOrThrow(await apiCall(`/api/admin/orgs/${id}`), 'Could not load organisation'),

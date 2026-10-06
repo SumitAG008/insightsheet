@@ -16,7 +16,7 @@ Run 2026-09-27 20:50 UTC against http://localhost:5173; data kept in the browser
 | 9 | the custom SQL answer downloads with its own columns | PASS | level,headcount,avg_salary |
 | 10 | a non-SELECT statement is refused with a clear message | PASS |  |
 | 11 | a wrong column gives the database error | PASS | no such column: nope |
-| 12 | "Back to Meldra's query" restores the original answer | PASS |  |
+| 12 | "Back to meldra's query" restores the original answer | PASS |  |
 | 13 | report built from one prompt | PASS | 6 charts |
 | 14 | each report chart has its Query panel with SQL | PASS |  |
 | 15 | report downloads as PDF | PASS | browser-workforce-cost-and-revenue.pdf, 220 KB, 6.5s |

@@ -13,7 +13,7 @@ Use this article when Unified Reporting shows a message you do not expect. Messa
 | Message | Why it happens | What to do |
 |---|---|---|
 | Add some data first: upload an export from any system, or load the sample company. | There are no sources yet. | Go to **Data sources** and add data. See [Add your data](/help/add-your-data). |
-| That question could not be matched to your data. Try naming a column and a breakdown, like "amount by region". | Meldra could not find a number or breakdown in your question. | Use the column names shown on **Data sources**, for example "amount by department". |
+| That question could not be matched to your data. Try naming a column and a breakdown, like "amount by region". | meldra could not find a number or breakdown in your question. | Use the column names shown on **Data sources**, for example "amount by department". |
 | No report could be built from this data. Try naming the numbers and breakdowns you want. | **Build a report** found nothing to chart. | Name the numbers and breakdowns, for example "headcount and salary cost by department and month". |
 | No rows matched. | The filters remove every row. | Remove or change a filter on the answer. |
 | This answer used data that has since been removed. | A source used by the answer was deleted. | Add the data again and ask the question again. |
@@ -44,14 +44,14 @@ If renaming fails with "… already has a column named …", that source already
 | *file* is larger than 50 MB. | Split the file, or export fewer columns or a shorter period. |
 | *file* has no rows with a header line. | Make sure the first row holds column names and there is data below it. |
 | *file* has no sheets with data. | Check the workbook has at least one sheet with a header row and data. |
-| *file*: upload a .csv, .tsv, .xlsx or .xls file. | Save the file in one of these formats. Parquet is accepted only when storing in the Meldra lakehouse. |
+| *file*: upload a .csv, .tsv, .xlsx or .xls file. | Save the file in one of these formats. Parquet is accepted only when storing in the meldra lakehouse. |
 | row limit reached: first 200,000 kept (on the source card) | Only the first 200,000 rows were kept. Split the export, for example by year. |
 
 ## Connecting a database
 
 | Message | What to do |
 |---|---|
-| Connection failed | Check the host, port, database name, user name and password. The server must be reachable from Meldra's backend. |
+| Connection failed | Check the host, port, database name, user name and password. The server must be reachable from meldra's backend. |
 | No tables found in the default schema. Use a custom query instead. | Select the **Custom query** tab and write a SELECT query that names the schema. |
 | Choose at least one table. | Tick at least one table before selecting add. |
 
@@ -74,7 +74,7 @@ If renaming fails with "… already has a column named …", that source already
 | Run one query at a time. | Remove the semicolon and any second query. |
 | That query is too long. | Shorten the query. |
 | Name one of your sources in FROM (see "Tables you can query"). | Use a table name listed under **Tables you can query**. |
-| This query uses sources kept in your browser and sources stored in the Meldra lakehouse… | Store both sources in the same place on **Data sources**, then run the query again. |
+| This query uses sources kept in your browser and sources stored in the meldra lakehouse… | Store both sources in the same place on **Data sources**, then run the query again. |
 | That definition could not be run… | When editing **Report definition (JSON)**, check the JSON and use source, column and measure names from **Data sources**. |
 
 ## Dashboard and downloads
@@ -83,4 +83,4 @@ See the troubleshooting table in [Dashboards and downloads](/help/dashboards-and
 
 ## Data missing after you return
 
-Data in Unified Reporting is kept in the browser you used. It is cleared when you sign out or use **Remove all data**, and it is not on other devices or in private windows. Data stored in the Meldra lakehouse is available on any device.
+Data in Unified Reporting is kept in the browser you used. It is cleared when you sign out or use **Remove all data**, and it is not on other devices or in private windows. Data stored in the meldra lakehouse is available on any device.

@@ -1,8 +1,8 @@
-# Logo Setup Guide - Meldra
+# Logo Setup Guide - meldra
 
 ## ✅ Logo Updated!
 
-Your Meldra logo has been integrated into the application!
+Your meldra logo has been integrated into the application!
 
 ---
 
@@ -25,7 +25,7 @@ public/meldra.png
 
 ### 1. **Navigation Bar (Top)**
 - Left side of navigation
-- Shows logo + "Meldra" text
+- Shows logo + "meldra" text
 - Appears on all pages
 
 ### 2. **Footer**
@@ -134,7 +134,7 @@ Edit `src/pages/Layout.jsx` footer section
 1. **Add your logo file** to `public/meldra.png`
 2. **Test** - Refresh browser and check navigation
 3. **Customize** - Update text, colors, or styling if needed
-4. **Update website name** - Change "Meldra" to your actual website name if different
+4. **Update website name** - Change "meldra" to your actual website name if different
 
 ---
 

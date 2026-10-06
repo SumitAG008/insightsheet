@@ -1,4 +1,4 @@
-# LinkedIn Post Drafts for Meldra
+# LinkedIn Post Drafts for meldra
 
 Here are two high-impact LinkedIn posts tailored to your Finance and Security audiences.
 
@@ -15,7 +15,7 @@ Here are two high-impact LinkedIn posts tailored to your Finance and Security au
 
 The end-of-month close is stressful enough. You shouldn't have to spend half of it wrestling with CSV formatting, fixing broken formulas, or manually copy-pasting into PowerPoint.
 
-I built the **P&L Builder** in Meldra to solve exactly this.
+I built the **P&L Builder** in meldra to solve exactly this.
 
 Here is the workflow:
 
@@ -29,7 +29,7 @@ We’re building the tool I wish I had for financial reporting.
 
 👉 Try it yourself (it's free to start): [Link to your app]
 
-#FinanceTech #FPandA #Excel #AI #Productivity #Meldra
+#FinanceTech #FPandA #Excel #AI #Productivity #meldra
 
 ---
 
@@ -46,19 +46,19 @@ We’re building the tool I wish I had for financial reporting.
 
 For most enterprises, the answer is "No" – because they can't risk their data being stored on third-party servers or used to train public models.
 
-When I built **Meldra**, I made a radical architectural decision: **Zero Data Storage.**
+When I built **meldra**, I made a radical architectural decision: **Zero Data Storage.**
 
-Unlike other AI tools that act like a "black box" (ingesting and keeping your files), Meldra acts like a "glass pipe."
+Unlike other AI tools that act like a "black box" (ingesting and keeping your files), meldra acts like a "glass pipe."
 
 Here is how it works under the hood:
 1.  **Local First:** Processing happens right in your browser whenever possible.
 2.  **Ephemeral AI:** When we do need to use an LLM for analysis, the data is sent, processed, reduced to the answer, and then **immediately evaporated**.
 3.  **No Persistence:** We don't have a "User Data" database. If you refresh the page, your file is gone. We can't see it, and we definitely can't train on it.
 
-This makes Meldra the only AI analyst that is compliant by design for industries like Finance, Healthcare, and Legal.
+This makes meldra the only AI analyst that is compliant by design for industries like Finance, Healthcare, and Legal.
 
 You shouldn't have to choose between **Intelligence** and **Privacy**. You can have both.
 
 Read more about our security model here: [Link to your security page]
 
-#CyberSecurity #DataPrivacy #EnterpriseAI #CISO #PrivacyFirst #Meldra
+#CyberSecurity #DataPrivacy #EnterpriseAI #CISO #PrivacyFirst #meldra

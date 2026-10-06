@@ -1,8 +1,8 @@
-# 📱 Complete App Store Deployment Guide for Meldra
+# 📱 Complete App Store Deployment Guide for meldra
 
 ## 🎯 Overview
 
-You already have **Capacitor** set up! This guide will walk you through deploying your Meldra app to the iOS App Store step-by-step.
+You already have **Capacitor** set up! This guide will walk you through deploying your meldra app to the iOS App Store step-by-step.
 
 ---
 
@@ -70,7 +70,7 @@ npx cap sync ios
 
 ```xml
 <key>CFBundleDisplayName</key>
-<string>Meldra</string>
+<string>meldra</string>
 
 <key>CFBundleIdentifier</key>
 <string>com.meldra.app</string>
@@ -87,7 +87,7 @@ npx cap sync ios
 ```json
 {
   "appId": "com.meldra.app",
-  "appName": "Meldra",
+  "appName": "meldra",
   "webDir": "../../dist",
   "server": {
     "url": "https://meldra.ai",
@@ -210,7 +210,7 @@ Add required permissions in `Info.plist`:
 2. **Click "My Apps" → "+" → "New App"**
 3. **Fill in:**
    - **Platform:** iOS
-   - **Name:** Meldra
+   - **Name:** meldra
    - **Primary Language:** English
    - **Bundle ID:** com.meldra.app (select from dropdown)
    - **SKU:** meldra-ios-001 (unique identifier)
@@ -254,7 +254,7 @@ Create screenshots for these sizes:
 #### **App Description**
 
 ```
-Meldra - Data Made Simple
+meldra - Data Made Simple
 
 Transform your Excel workflow with AI-powered tools. Create, analyze, and convert spreadsheets effortlessly.
 
@@ -330,7 +330,7 @@ https://meldra.ai/privacy
 4. **Fill in:**
 
    **App Information:**
-   - [ ] Name: Meldra
+   - [ ] Name: meldra
    - [ ] Subtitle: Data Made Simple
    - [ ] Category: Productivity
    - [ ] Secondary Category: Business
@@ -342,7 +342,7 @@ https://meldra.ai/privacy
 
    **Version Information:**
    - [ ] Version: 1.0.0
-   - [ ] Copyright: © 2025 Meldra
+   - [ ] Copyright: © 2025 meldra
    - [ ] Description: (paste from Step 11)
    - [ ] Keywords: (paste from Step 11)
    - [ ] Support URL

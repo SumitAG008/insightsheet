@@ -1,5 +1,5 @@
 """
-Growth numbers for Meldra staff. The one to watch first: activation, the share of new signups who
+Growth numbers for meldra staff. The one to watch first: activation, the share of new signups who
 get a finished file back (a converted, analysed or exported file) soon after signing up.
 """
 from __future__ import annotations

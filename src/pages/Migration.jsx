@@ -432,7 +432,7 @@ export default function Migration() {
               </span>
               <h2 className="mt-5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Drop your system extract here</h2>
               <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">
-                One workbook with several tabs, or several CSV files: people, jobs, pay, addresses, bank details and org lists. Meldra recognises each tab and maps it for you.
+                One workbook with several tabs, or several CSV files: people, jobs, pay, addresses, bank details and org lists. meldra recognises each tab and maps it for you.
               </p>
               <label className="mx-auto mt-5 flex max-w-sm items-center justify-center gap-2 text-sm">
                 <span className="font-medium text-slate-600 dark:text-slate-300">Source system</span>

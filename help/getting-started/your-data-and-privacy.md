@@ -12,7 +12,7 @@ This article explains where your files go, what is kept and what is sent to the 
 
 - File contents are processed in memory and discarded when the result is ready. They are not kept.
 - Data is stored only if you choose to save it, and you can delete it at any time.
-- Connections to Meldra are encrypted.
+- Connections to meldra are encrypted.
 - Sign-in can require a one-time login code, and an account can be signed in on at most two devices.
 - Records backups are encrypted.
 - There is no advertising, and no third-party or cross-site tracking.
@@ -24,14 +24,14 @@ This article explains where your files go, what is kept and what is sent to the 
 
 | How you add data | Where it is kept |
 |---|---|
-| Upload a CSV or Excel file | Read in your browser and kept in this browser's storage. The file is not uploaded to Meldra. |
-| **Connect a database** | Rows are read through Meldra's server and kept in this browser. The password is used once to connect and is never stored. |
-| **Connect an API** | Records are fetched through Meldra's server and kept in this browser. Credentials are used for that request and never stored. |
-| **Store in the Meldra lakehouse** (only if offered on your account) | Stored on Meldra's servers until you delete it, so you can use it from any device. |
+| Upload a CSV or Excel file | Read in your browser and kept in this browser's storage. The file is not uploaded to meldra. |
+| **Connect a database** | Rows are read through meldra's server and kept in this browser. The password is used once to connect and is never stored. |
+| **Connect an API** | Records are fetched through meldra's server and kept in this browser. Credentials are used for that request and never stored. |
+| **Store in the meldra lakehouse** (only if offered on your account) | Stored on meldra's servers until you delete it, so you can use it from any device. |
 
 Your data, answers and dashboard stay in the browser until you remove them. To remove them, go to **Data sources** and select **Remove all data**. Signing out also clears what Unified Reporting and Migration kept in that browser.
 
-> **Important:** Data you store in the Meldra lakehouse is kept on Meldra's servers until you delete it. Delete a source with its bin icon, or use **Remove all data**.
+> **Important:** Data you store in the meldra lakehouse is kept on meldra's servers until you delete it. Delete a source with its bin icon, or use **Remove all data**.
 
 ### What the AI sees
 
@@ -43,7 +43,7 @@ When you ask a question or build a report, the AI plans the chart from a descrip
 
 To write the short answer under a chart, the AI receives the question and the summarised result: the totals shown in the chart, at most 25 rows.
 
-If the AI is not available, Meldra answers with built-in rules instead.
+If the AI is not available, meldra answers with built-in rules instead.
 
 ## Migration
 

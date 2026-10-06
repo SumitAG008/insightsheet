@@ -1,4 +1,4 @@
-# 🚀 Meldra Features Roadmap & Important Features
+# 🚀 meldra Features Roadmap & Important Features
 
 ## ✅ Completed Features
 

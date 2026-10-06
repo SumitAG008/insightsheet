@@ -1,12 +1,12 @@
 # Unified Reporting test pack: results (lakehouse mode)
 
-Run 2026-09-27 20:49 UTC against http://localhost:5173, data stored in the Meldra lakehouse (Iceberg SQL catalog).
+Run 2026-09-27 20:49 UTC against http://localhost:5173, data stored in the meldra lakehouse (Iceberg SQL catalog).
 **17 of 17 checks passed.** Files: employees.csv, expenses.csv, budget.xlsx, opportunities.xlsx (public/unified-reporting-test-pack).
 
 | # | Check | Result | Detail |
 |---|---|---|---|
 | 1 | with one source, the Ask tab says unified reporting needs another system | PASS |  |
-| 2 | progress is shown while files load | PASS | Storing in the Meldra lakehouse… → Storing employees.csv in the Meldra lakehouse: checking types and building the table… → Storing expenses.csv in the Meldra lakehouse: checking types and building the table… |
+| 2 | progress is shown while files load | PASS | Storing in the meldra lakehouse… → Storing employees.csv in the meldra lakehouse: checking types and building the table… → Storing expenses.csv in the meldra lakehouse: checking types and building the table… |
 | 3 | source employees: 24 rows | PASS | 24 rows |
 | 4 | source expenses: 90 rows | PASS | 90 rows |
 | 5 | source budget: 30 rows | PASS | 30 rows |
@@ -28,7 +28,7 @@ Run 2026-09-27 20:49 UTC against http://localhost:5173, data stored in the Meldr
 ### Q1. `expenses amount by department` (Concur + SuccessFactors (link)): identical
 Expenses only have an employee ID; the department comes from HR through the link.
 
-|  | amount: expected | amount: Meldra |
+|  | amount: expected | amount: meldra |
 | --- | --- | --- |
 | Engineering | £7,702.42 | £7,702.42 |
 | Finance | £6,880.92 | £6,880.92 |
@@ -39,7 +39,7 @@ Expenses only have an employee ID; the department comes from HR through the link
 ### Q2. `expenses amount vs budget amount by department` (Concur + SuccessFactors + Finance): identical
 Actual spend (via the HR link) against the budget file, joined on department.
 
-|  | expenses: expected | budget: expected | expenses: Meldra | budget: Meldra |
+|  | expenses: expected | budget: expected | expenses: meldra | budget: meldra |
 | --- | --- | --- | --- | --- |
 | Sales | £10,530.39 | £17,100.00 | £10,530.39 | £17,100.00 |
 | Engineering | £7,702.42 | £20,100.00 | £7,702.42 | £20,100.00 |
@@ -50,7 +50,7 @@ Actual spend (via the HR link) against the budget file, joined on department.
 ### Q3. `expenses amount vs budget amount by month` (Concur + Finance): identical
 Two systems on a shared calendar: claim dates (dd/mm/yyyy) and budget months line up as months.
 
-|  | expenses: expected | budget: expected | expenses: Meldra | budget: Meldra |
+|  | expenses: expected | budget: expected | expenses: meldra | budget: meldra |
 | --- | --- | --- | --- | --- |
 | 2026-01 | £6,169.93 | £18,000.00 | £6,169.93 | £18,000.00 |
 | 2026-02 | £4,623.97 | £18,500.00 | £4,623.97 | £18,500.00 |
@@ -62,7 +62,7 @@ Two systems on a shared calendar: claim dates (dd/mm/yyyy) and budget months lin
 ### Q4. `opportunities amount by department` (Salesforce + SuccessFactors (link)): identical
 Pipeline by the owner's department, looked up in HR.
 
-|  | amount: expected | amount: Meldra |
+|  | amount: expected | amount: meldra |
 | --- | --- | --- |
 | Finance | £871,000.00 | £871,000.00 |
 | Operations | £915,000.00 | £915,000.00 |
@@ -71,7 +71,7 @@ Pipeline by the owner's department, looked up in HR.
 ### Q5. `active employees salary by department` (SuccessFactors): identical
 One system, with a filter (Status is Active) taken from the question.
 
-|  | salary: expected | salary: Meldra |
+|  | salary: expected | salary: meldra |
 | --- | --- | --- |
 | Engineering | £285,000.00 | £285,000.00 |
 | Finance | £194,500.00 | £194,500.00 |

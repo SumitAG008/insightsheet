@@ -3,7 +3,7 @@ Customer SQL over their own lakehouse tables (the Query panel in Unified Reporti
 
 Each source the query names becomes a table called like the source, with the
 same columns the browser shows: its own column names, numbers as DOUBLE, text
-as VARCHAR and "month" from its date column. The SQL Meldra generates for an
+as VARCHAR and "month" from its date column. The SQL meldra generates for an
 answer therefore runs here unchanged, and the customer can edit it.
 
 Guard rails:

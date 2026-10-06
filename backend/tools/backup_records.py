@@ -1,5 +1,5 @@
 """
-Encrypted backup of the records Meldra must be able to produce for compliance and legal purposes:
+Encrypted backup of the records meldra must be able to produce for compliance and legal purposes:
 accounts, subscriptions and payments, sign-in and device records, consent records and API keys and
 billing. Customer files are never stored, so there is nothing of theirs to back up; lakehouse data
 (only when a customer chooses to store it) is not copied here.
@@ -59,7 +59,7 @@ def encrypt(data: bytes, passphrase: str) -> bytes:
 def decrypt(blob: bytes, passphrase: str) -> bytes:
     from cryptography.hazmat.primitives.ciphers.aead import AESGCM
     if not blob.startswith(MAGIC):
-        raise SystemExit("Not a Meldra records backup.")
+        raise SystemExit("Not a meldra records backup.")
     rest = blob[len(MAGIC):]
     salt, nonce, body = rest[:16], rest[16:28], rest[28:]
     try:

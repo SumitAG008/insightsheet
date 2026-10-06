@@ -1,5 +1,5 @@
 /**
- * Meldra ML - Data Processing Utilities
+ * meldra ML - Data Processing Utilities
  *
  * This module provides machine learning and data processing utilities,
  * including data cleaning, normalization, feature engineering, and statistical analysis.

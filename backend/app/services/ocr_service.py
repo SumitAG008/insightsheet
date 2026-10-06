@@ -1,5 +1,5 @@
 """
-OCR Service for InsightSheet-lite / Meldra. Generic: works with any form, invoice, or document image.
+OCR Service for InsightSheet-lite / meldra. Generic: works with any form, invoice, or document image.
 Extracts text from images (JPG, PNG, WebP, BMP, TIFF, GIF) and exports to editable DOC or PDF.
 - Form mode: structure (sections, labels, tables, checkboxes) in document flow. Form-agnostic.
 - Layout mode: places text at original (x,y) so output matches the image layout. Preserves format.

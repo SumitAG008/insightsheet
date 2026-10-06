@@ -71,7 +71,7 @@ def build_plan_prompt(question: str, previous_question: Optional[str], catalog: 
         else ""
     )
 
-    return f"""You are Meldra, an analytics assistant for business users. Turn the question into a query spec over Meldra's unified data model, which combines tables exported from several business systems. Data covers {_clip(catalog.get('data_range'), 40)}. Today is {_clip(catalog.get('today'), 20)}.{f" Money is in {currency}." if currency else ""}
+    return f"""You are meldra, an analytics assistant for business users. Turn the question into a query spec over meldra's unified data model, which combines tables exported from several business systems. Data covers {_clip(catalog.get('data_range'), 40)}. Today is {_clip(catalog.get('today'), 20)}.{f" Money is in {currency}." if currency else ""}
 Views (one per source table):
 {chr(10).join(view_lines)}
 Shared dimensions (present in two or more views, so views can be combined on them): {shared}.
@@ -137,7 +137,7 @@ def _catalog_text(catalog: Dict[str, Any]) -> str:
 
 def build_report_prompt(request: str, catalog: Dict[str, Any], tiles: int = 6) -> str:
     n = max(2, min(MAX_TILES, int(tiles or 6)))
-    return f"""You are Meldra, an analytics assistant. Design a report that answers the request below using ONLY the data described. Pick the {n} most useful charts at most: start with the headline numbers (chart "number" with groupBy null), then the breakdowns and trends that explain them, combining systems where they share a dimension.
+    return f"""You are meldra, an analytics assistant. Design a report that answers the request below using ONLY the data described. Pick the {n} most useful charts at most: start with the headline numbers (chart "number" with groupBy null), then the breakdowns and trends that explain them, combining systems where they share a dimension.
 {_catalog_text(catalog or {})}
 Return ONLY a JSON object:
 {{"title": report title, "summary": one or two sentences on what the report shows and for whom,

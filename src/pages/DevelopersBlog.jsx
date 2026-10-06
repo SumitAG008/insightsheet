@@ -194,7 +194,7 @@ export default function DevelopersBlog() {
             <a href="mailto:support@meldra.ai" className="text-blue-600 hover:text-blue-700">Support</a>
             <a href={INSIGHT} className="text-blue-600 hover:text-blue-700">meldra</a>
           </div>
-          <p className="text-center text-slate-500 text-sm">© {new Date().getFullYear()} Meldra. All rights reserved.</p>
+          <p className="text-center text-slate-500 text-sm">© {new Date().getFullYear()} meldra. All rights reserved.</p>
         </div>
       </footer>
 

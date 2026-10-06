@@ -33,9 +33,9 @@ meldra Insight turns spreadsheets, PDFs and system exports into answers, reports
 
 Every new account starts on the Free plan. See [Plans and limits](/help/plans-and-limits) for what each plan includes.
 
-> **Note:** An account can be signed in on two devices at a time. If you sign in on a third, Meldra lists your devices. Select **Sign out and continue here** next to the one you want to sign out.
+> **Note:** An account can be signed in on two devices at a time. If you sign in on a third, meldra lists your devices. Select **Sign out and continue here** next to the one you want to sign out.
 
-> **Tip:** If your organisation has a Meldra licence, sign up with your work email. You may be given a seat automatically. See [Organisations and team licences](/help/organisations-and-team-licences).
+> **Tip:** If your organisation has a meldra licence, sign up with your work email. You may be given a seat automatically. See [Organisations and team licences](/help/organisations-and-team-licences).
 
 ## Find your way around
 

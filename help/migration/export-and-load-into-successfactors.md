@@ -82,7 +82,7 @@ Files are numbered in the order of your own package, for example `01_FOCompany.c
 1. Select **Download ZIP for SuccessFactors**.
 2. Select **Review workbook (.xlsx)** to get one Excel file for checking with the business.
 
-If there are errors, Meldra tells you how many records would be rejected. You can still download.
+If there are errors, meldra tells you how many records would be rejected. You can still download.
 
 ### What is in the ZIP
 
@@ -107,7 +107,7 @@ If there are errors, Meldra tells you how many records would be rejected. You ca
 
 ## Load the files into SuccessFactors
 
-These steps are done in SuccessFactors, not in Meldra. Exact menu names depend on your instance and permissions.
+These steps are done in SuccessFactors, not in meldra. Exact menu names depend on your instance and permissions.
 
 1. **Compare templates.** Column IDs follow the standard Employee Central import templates, but templates are generated per instance. Download your templates from **Admin Center › Import Employee Data** and **Import Foundation Data**. Add any custom fields before loading.
 2. **Load foundation data** (FO files) through **Import Foundation Data**, in the order given.

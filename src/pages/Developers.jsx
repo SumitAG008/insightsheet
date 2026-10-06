@@ -1,5 +1,5 @@
 // developer.meldra.ai — Amadeus-style positioning: Products, API reference, changelog, pricing.
-// Meldra UI/UX only. On developer.meldra.ai: Pricing/Login/Register link to insight; only this page.
+// meldra UI/UX only. On developer.meldra.ai: Pricing/Login/Register link to insight; only this page.
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -171,11 +171,11 @@ export default function Developers({ isApiDeveloperDomain = false }) {
 
   useEffect(() => {
     if (isApiDev) {
-      document.title = 'api.developer.meldra.ai – Meldra API Documentation';
+      document.title = 'api.developer.meldra.ai – meldra API Documentation';
     } else {
-      document.title = 'developer.meldra.ai – Meldra API';
+      document.title = 'developer.meldra.ai – meldra API';
     }
-    return () => { document.title = 'Meldra'; };
+    return () => { document.title = 'meldra'; };
   }, [isApiDev]);
 
   useEffect(() => {
@@ -287,13 +287,13 @@ export default function Developers({ isApiDeveloperDomain = false }) {
       {/* Hero — title and intro only; rest of content shifted up */}
       <section className="container mx-auto px-4 py-8 md:py-10 max-w-4xl text-center">
         <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-          Build with Meldra APIs
+          Build with meldra APIs
         </h1>
         <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-4">
-          Document conversion (PDF, DOC, PPT) and FileName Cleaner. Use in your apps with a paid Meldra API key. Self-service and enterprise options.
+          Document conversion (PDF, DOC, PPT) and FileName Cleaner. Use in your apps with a paid meldra API key. Self-service and enterprise options.
         </p>
         <p className="text-slate-500 text-sm max-w-xl mx-auto">
-          Whether you are a developer, a startup, or an established product, Meldra APIs let you add conversion and file-cleaning to your stack quickly.
+          Whether you are a developer, a startup, or an established product, meldra APIs let you add conversion and file-cleaning to your stack quickly.
         </p>
       </section>
 
@@ -414,7 +414,7 @@ export default function Developers({ isApiDeveloperDomain = false }) {
               <div>
                 <h3 className="font-semibold text-slate-900 mb-2">How to Generate Your API Key</h3>
                 <ol className="list-decimal list-inside space-y-2 text-slate-600 text-sm">
-                  <li><strong>Contact Support:</strong> Send an email to <a href="mailto:support@meldra.ai?subject=Meldra%20API%20key%20request" className="text-blue-600 hover:text-blue-700">support@meldra.ai</a> with subject "Meldra API Key Request"</li>
+                  <li><strong>Contact Support:</strong> Send an email to <a href="mailto:support@meldra.ai?subject=meldra%20API%20key%20request" className="text-blue-600 hover:text-blue-700">support@meldra.ai</a> with subject "meldra API Key Request"</li>
                   <li><strong>Provide Information:</strong> Include your name, company, intended use case, and expected usage volume</li>
                   <li><strong>Receive Your Key:</strong> You'll receive an email containing:
                     <ul className="list-disc list-inside ml-4 mt-1 space-y-1">
@@ -433,7 +433,7 @@ export default function Developers({ isApiDeveloperDomain = false }) {
                 </p>
               </div>
               <div>
-                <a href="mailto:support@meldra.ai?subject=Meldra%20API%20key%20request" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
+                <a href="mailto:support@meldra.ai?subject=meldra%20API%20key%20request" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium">
                   <Mail className="w-5 h-5" /> Request API Key
                 </a>
               </div>
@@ -442,13 +442,13 @@ export default function Developers({ isApiDeveloperDomain = false }) {
                 <h3 className="font-semibold text-blue-600 mb-2 flex items-center gap-2"><Shield className="w-4 h-4" /> In-app vs API</h3>
                 <div className="grid sm:grid-cols-2 gap-4 text-slate-600 text-sm">
                   <div>
-                    <p className="font-medium text-slate-800">In the Meldra app</p>
-                    <p>Document Converter and FileName Cleaner work with your <strong>Meldra login</strong>. No API key.</p>
+                    <p className="font-medium text-slate-800">In the meldra app</p>
+                    <p>Document Converter and FileName Cleaner work with your <strong>meldra login</strong>. No API key.</p>
                     <span className="flex items-center gap-1 text-blue-600 mt-1"><CheckCircle className="w-4 h-4" /> No API key required</span>
                   </div>
                   <div>
                     <p className="font-medium text-slate-800">Via API</p>
-                    <p>Call Meldra from your apps. Requires a <strong>paid API key</strong>.</p>
+                    <p>Call meldra from your apps. Requires a <strong>paid API key</strong>.</p>
                     <span className="flex items-center gap-1 text-blue-600 mt-1"><Key className="w-4 h-4" /> X-API-Key header</span>
                   </div>
                 </div>
@@ -504,7 +504,7 @@ export default function Developers({ isApiDeveloperDomain = false }) {
               <div>
                 <h3 className="font-semibold text-slate-900 mb-2">API Key Header</h3>
                 <p className="text-slate-600 text-sm mb-3">
-                  All requests require an <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700">X-API-Key</code> header with your Meldra API key.
+                  All requests require an <code className="bg-slate-100 px-1.5 py-0.5 rounded text-blue-700">X-API-Key</code> header with your meldra API key.
                 </p>
                 <div className="bg-slate-900 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto">
                   <div>X-API-Key: your_api_key_here</div>
@@ -797,7 +797,7 @@ export default function Developers({ isApiDeveloperDomain = false }) {
           {!isApiDev && (
           <section id="commercial" className="scroll-mt-28">
             <h2 className="text-2xl font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Briefcase className="w-6 h-6 text-blue-600" /> Using the Meldra API commercially
+              <Briefcase className="w-6 h-6 text-blue-600" /> Using the meldra API commercially
             </h2>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
               <ul className="list-disc list-inside space-y-2 text-slate-600 mb-4">
@@ -805,7 +805,7 @@ export default function Developers({ isApiDeveloperDomain = false }) {
                 <li><strong className="text-slate-800">Commercial terms</strong> — <a href={`${INSIGHT}/disclaimer`} className="text-blue-600 hover:text-blue-700" target="_blank" rel="noopener noreferrer">Disclaimer &amp; Terms</a> on insight.meldra.ai.</li>
                 <li><strong className="text-slate-800">Base URL and X-API-Key</strong> — Use the values we provide with your key.</li>
               </ul>
-              <p className="text-slate-500 text-sm">For the full Meldra app (data analysis, file tools), go to <a href={INSIGHT} className="text-blue-600 hover:text-blue-700">insight.meldra.ai</a>.</p>
+              <p className="text-slate-500 text-sm">For the full meldra app (data analysis, file tools), go to <a href={INSIGHT} className="text-blue-600 hover:text-blue-700">insight.meldra.ai</a>.</p>
             </div>
           </section>
           )}
@@ -818,7 +818,7 @@ export default function Developers({ isApiDeveloperDomain = false }) {
               <p className="text-slate-600 mb-4">
                 To learn more about the fares of these APIs, see our <a href={`${INSIGHT}/pricing`} className="text-blue-600 hover:text-blue-700 underline">pricing</a> on insight.meldra.ai.
               </p>
-              <a href="mailto:support@meldra.ai?subject=Meldra%20Enterprise%20API">
+              <a href="mailto:support@meldra.ai?subject=meldra%20Enterprise%20API">
                 <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
                   Can&apos;t find the right API? Check out Enterprise
                 </Button>
@@ -855,7 +855,7 @@ export default function Developers({ isApiDeveloperDomain = false }) {
             <a href="mailto:support@meldra.ai" className="text-blue-600 hover:text-blue-700">Support</a>
             <a href={INSIGHT} className="text-blue-600 hover:text-blue-700">meldra</a>
           </div>
-          <p className="text-center text-slate-500 text-sm">© {new Date().getFullYear()} Meldra. All rights reserved.</p>
+          <p className="text-center text-slate-500 text-sm">© {new Date().getFullYear()} meldra. All rights reserved.</p>
         </div>
       </footer>
 

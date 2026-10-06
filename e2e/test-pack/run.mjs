@@ -1,5 +1,5 @@
 // Runs the Unified Reporting test pack script (public/unified-reporting-test-pack/README.html) in the real UI
-// and writes RESULTS-<mode>.md: every expected number next to what Meldra answered.
+// and writes RESULTS-<mode>.md: every expected number next to what meldra answered.
 // Mode "browser": the lakehouse is off (data stays in the browser). Mode "lakehouse": the backend has
 // LAKEHOUSE_CATALOG set and sources are stored as Iceberg tables. The backend decides; the runner reports it.
 import fs from 'fs';
@@ -9,7 +9,7 @@ import XLSX from 'xlsx';
 
 // Storing in the lakehouse is opt-in: tick the box before uploading.
 const optInToLakehouse = async (page) => {
-  const box = page.getByLabel(/Store in the Meldra lakehouse/);
+  const box = page.getByLabel(/Store in the meldra lakehouse/);
   if (await box.count()) await box.first().check();
 };
 
@@ -162,7 +162,7 @@ const passed = steps.filter((s) => s.ok).length;
 const md = [
   `# Unified Reporting test pack: results (${MODE} mode)`,
   '',
-  `Run ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC against ${APP}, ${MODE === 'lakehouse' ? `data stored in the Meldra lakehouse (${status.catalog})` : 'data kept in the browser (lakehouse off)'}.`,
+  `Run ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC against ${APP}, ${MODE === 'lakehouse' ? `data stored in the meldra lakehouse (${status.catalog})` : 'data kept in the browser (lakehouse off)'}.`,
   `**${passed} of ${steps.length} checks passed.** Files: ${EXPECTED.files.join(', ')} (public/unified-reporting-test-pack).`,
   '',
   '| # | Check | Result | Detail |', '|---|---|---|---|',
@@ -171,7 +171,7 @@ const md = [
   '## Answers compared with the expected numbers',
   ...answers.flatMap(({ q, got, ok }) => [
     '', `### ${q.id}. \`${q.ask}\` (${q.systems}): ${ok ? 'identical' : '**different**'}`, q.why, '',
-    `| ${['', ...q.columns.map((c) => `${c}: expected`), ...q.columns.map((c) => `${c}: Meldra`)].join(' | ')} |`,
+    `| ${['', ...q.columns.map((c) => `${c}: expected`), ...q.columns.map((c) => `${c}: meldra`)].join(' | ')} |`,
     `|${' --- |'.repeat(1 + q.columns.length * 2)}`,
     ...Object.entries(q.expected).map(([k, v]) => `| ${k} | ${v.map(gbp).join(' | ')} | ${(got[k] || []).map(gbp).join(' | ')} |`),
   ]),

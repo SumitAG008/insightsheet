@@ -109,9 +109,9 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
                     <div class="content">
                         {get_new_year_message()}
                         <p>Hello,</p>
-                        <p>We received a request to reset your password for your <strong>Meldra</strong> account (<strong>insight.meldra.ai</strong>).</p>
+                        <p>We received a request to reset your password for your <strong>meldra</strong> account (<strong>insight.meldra.ai</strong>).</p>
                         <div class="security-notice">
-                            <strong>🔒 Security Notice:</strong> This email is from Meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>.
+                            <strong>🔒 Security Notice:</strong> This email is from meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>.
                         </div>
                         <p>Click the button below to reset your password:</p>
                         <p style="text-align: center;">
@@ -121,10 +121,10 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
                         <div class="link-box">{reset_link}</div>
                         <p><strong>⏰ This link will expire in 1 hour for your security.</strong></p>
                         <p><strong>If you didn't request this:</strong> Please ignore this email. Your password will remain unchanged.</p>
-                        <p>Best regards,<br><strong>The Meldra Team</strong></p>
+                        <p>Best regards,<br><strong>The meldra Team</strong></p>
                     </div>
                     <div class="footer">
-                        <p><strong>Meldra</strong> - Privacy-First Data Analysis Platform</p>
+                        <p><strong>meldra</strong> - Privacy-First Data Analysis Platform</p>
                         <p>This is an automated email. Please do not reply.</p>
                     </div>
                 </div>
@@ -135,11 +135,11 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
             new_year_text = "🎉 Happy New Year 2026! 🎉\nWishing you a year filled with success, growth, and amazing data insights!\n\n" if datetime.now() <= datetime(2026, 1, 31, 23, 59, 59) else ""
             
             text_content = f"""
-            Password Reset Request - Meldra
+            Password Reset Request - meldra
             
             {new_year_text}Hello,
             
-            We received a request to reset your password for your Meldra account (insight.meldra.ai).
+            We received a request to reset your password for your meldra account (insight.meldra.ai).
             
             Click this secure link to reset your password:
             {reset_link}
@@ -149,7 +149,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
             If you didn't request this: Please ignore this email. Your password will remain unchanged.
             
             Best regards,
-            The Meldra Team
+            The meldra Team
             """
             
             # Send via Resend API
@@ -157,7 +157,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
                 result = await asyncio.to_thread(resend.Emails.send, {
                     "from": from_email,
                     "to": [email],
-                    "subject": "Reset Your Password - Meldra",
+                    "subject": "Reset Your Password - meldra",
                     "html": html_content,
                     "text": text_content,
                 })
@@ -174,7 +174,7 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
                         result = await asyncio.to_thread(resend.Emails.send, {
                             "from": from_email,
                             "to": [email],
-                            "subject": "Reset Your Password - Meldra",
+                            "subject": "Reset Your Password - meldra",
                             "html": html_content,
                             "text": text_content,
                         })
@@ -228,13 +228,13 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         
         # Create email message with proper headers for anti-phishing
         message = MIMEMultipart("alternative")
-        message["Subject"] = "Reset Your Password - Meldra"
-        message["From"] = f"Meldra <{smtp_from_email}>"
+        message["Subject"] = "Reset Your Password - meldra"
+        message["From"] = f"meldra <{smtp_from_email}>"
         message["To"] = email
         message["Reply-To"] = "hello@meldra.ai"
         message["List-Unsubscribe"] = "<https://insight.meldra.ai/unsubscribe>"
         # Add security headers
-        message["X-Mailer"] = "Meldra Email Service"
+        message["X-Mailer"] = "meldra Email Service"
         message["X-Entity-Ref-ID"] = "meldra-password-reset"
         
         # Email body (HTML) - Professional and anti-phishing compliant
@@ -268,10 +268,10 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
                 <div class="content">
                     {new_year_html}
                     <p>Hello,</p>
-                    <p>We received a request to reset your password for your <strong>Meldra</strong> account (<strong>insight.meldra.ai</strong>).</p>
+                    <p>We received a request to reset your password for your <strong>meldra</strong> account (<strong>insight.meldra.ai</strong>).</p>
                     
                     <div class="security-notice">
-                        <strong>🔒 Security Notice:</strong> This email is from Meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>. Never share your password reset link with anyone.
+                        <strong>🔒 Security Notice:</strong> This email is from meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>. Never share your password reset link with anyone.
                     </div>
                     
                     <p>Click the button below to reset your password:</p>
@@ -288,18 +288,18 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
                     
                     <p><strong>If you didn't request this:</strong> Please ignore this email. Your password will remain unchanged. If you're concerned about your account security, contact us at <a href="mailto:security@meldra.ai">security@meldra.ai</a>.</p>
                     
-                    <p>Best regards,<br><strong>The Meldra Team</strong></p>
+                    <p>Best regards,<br><strong>The meldra Team</strong></p>
                 </div>
                 <div class="footer">
-                    <p><strong>Meldra</strong> - Privacy-First Data Analysis Platform</p>
+                    <p><strong>meldra</strong> - Privacy-First Data Analysis Platform</p>
                     <p>
                         <a href="https://insight.meldra.ai">Visit our website</a> | 
                         <a href="https://insight.meldra.ai/privacy">Privacy Policy</a> | 
                         <a href="mailto:support@meldra.ai">Support</a>
                     </p>
                     <div class="company-info">
-                        <p>This is an automated email from Meldra. Please do not reply to this email.</p>
-                        <p>Meldra | insight.meldra.ai | © 2026 Meldra. All rights reserved.</p>
+                        <p>This is an automated email from meldra. Please do not reply to this email.</p>
+                        <p>meldra | insight.meldra.ai | © 2026 meldra. All rights reserved.</p>
                         <p>This email was sent to {email} because a password reset was requested for your account.</p>
                     </div>
                 </div>
@@ -310,13 +310,13 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         
         # Plain text version (for email clients that don't support HTML)
         text_body = f"""
-        Password Reset Request - Meldra
+        Password Reset Request - meldra
         
         {new_year_text}Hello,
         
-        We received a request to reset your password for your Meldra account (insight.meldra.ai).
+        We received a request to reset your password for your meldra account (insight.meldra.ai).
         
-        SECURITY NOTICE: This email is from Meldra. Always verify the sender is @meldra.ai and links go to https://insight.meldra.ai. Never share your password reset link with anyone.
+        SECURITY NOTICE: This email is from meldra. Always verify the sender is @meldra.ai and links go to https://insight.meldra.ai. Never share your password reset link with anyone.
         
         Click this secure link to reset your password:
         {reset_link}
@@ -326,17 +326,17 @@ async def send_password_reset_email(email: str, reset_link: str) -> bool:
         If you didn't request this: Please ignore this email. Your password will remain unchanged. If you're concerned about your account security, contact us at security@meldra.ai.
         
         Best regards,
-        The Meldra Team
+        The meldra Team
         
         ---
-        Meldra - Privacy-First Data Analysis Platform
+        meldra - Privacy-First Data Analysis Platform
         Website: https://insight.meldra.ai
         Privacy Policy: https://insight.meldra.ai/privacy
         Support: support@meldra.ai
         
-        This is an automated email from Meldra. Please do not reply to this email.
+        This is an automated email from meldra. Please do not reply to this email.
         This email was sent to {email} because a password reset was requested for your account.
-        © 2026 Meldra. All rights reserved.
+        © 2026 meldra. All rights reserved.
         """
         
         # Attach both versions
@@ -481,10 +481,10 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                     <div class="content">
                         {get_new_year_message()}
                         <p>Hello {full_name or 'there'},</p>
-                        <p>Thank you for registering with <strong>Meldra</strong>! To complete your registration and activate your account, please verify your email address.</p>
+                        <p>Thank you for registering with <strong>meldra</strong>! To complete your registration and activate your account, please verify your email address.</p>
                         
                         <div class="security-notice">
-                            <strong>🔒 Security Notice:</strong> This email is from Meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>.
+                            <strong>🔒 Security Notice:</strong> This email is from meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>.
                         </div>
                         
                         <p>Click the button below to verify your email:</p>
@@ -499,21 +499,21 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                         
                         <p><strong>⏰ This verification link will expire in 1 hour.</strong></p>
                         
-                        <p>If you didn't create an account with Meldra, please ignore this email. No account will be created.</p>
+                        <p>If you didn't create an account with meldra, please ignore this email. No account will be created.</p>
                         
-                        <p>Best regards,<br><strong>The Meldra Team</strong></p>
+                        <p>Best regards,<br><strong>The meldra Team</strong></p>
                     </div>
                     <div class="footer">
-                        <p><strong>Meldra</strong> - Privacy-First Data Analysis Platform</p>
+                        <p><strong>meldra</strong> - Privacy-First Data Analysis Platform</p>
                         <p>
                             <a href="https://insight.meldra.ai">Visit our website</a> | 
                             <a href="https://insight.meldra.ai/privacy">Privacy Policy</a> | 
                             <a href="mailto:support@meldra.ai">Support</a>
                         </p>
                         <div class="company-info">
-                            <p>This is an automated email from Meldra. Please do not reply to this email.</p>
-                            <p>Meldra | insight.meldra.ai | © 2026 Meldra. All rights reserved.</p>
-                            <p>This email was sent to {email} because you registered for a Meldra account.</p>
+                            <p>This is an automated email from meldra. Please do not reply to this email.</p>
+                            <p>meldra | insight.meldra.ai | © 2026 meldra. All rights reserved.</p>
+                            <p>This email was sent to {email} because you registered for a meldra account.</p>
                         </div>
                     </div>
                 </div>
@@ -524,33 +524,33 @@ async def send_verification_email(email: str, full_name: str, verification_link:
             new_year_text_verify = "🎉 Happy New Year 2026! 🎉\nWishing you a year filled with success, growth, and amazing data insights!\n\n" if datetime.now() <= datetime(2026, 1, 31, 23, 59, 59) else ""
             
             text_content = f"""
-            Verify Your Email Address - Meldra
+            Verify Your Email Address - meldra
             
             {new_year_text_verify}Hello {full_name or 'there'},
             
-            Thank you for registering with Meldra! To complete your registration and activate your account, please verify your email address.
+            Thank you for registering with meldra! To complete your registration and activate your account, please verify your email address.
             
-            SECURITY NOTICE: This email is from Meldra. Always verify the sender is @meldra.ai and links go to https://insight.meldra.ai.
+            SECURITY NOTICE: This email is from meldra. Always verify the sender is @meldra.ai and links go to https://insight.meldra.ai.
             
             Click this secure link to verify your email:
             {verification_link}
             
             This verification link will expire in 1 hour.
             
-            If you didn't create an account with Meldra, please ignore this email. No account will be created.
+            If you didn't create an account with meldra, please ignore this email. No account will be created.
             
             Best regards,
-            The Meldra Team
+            The meldra Team
             
             ---
-            Meldra - Privacy-First Data Analysis Platform
+            meldra - Privacy-First Data Analysis Platform
             Website: https://insight.meldra.ai
             Privacy Policy: https://insight.meldra.ai/privacy
             Support: support@meldra.ai
             
-            This is an automated email from Meldra. Please do not reply to this email.
-            This email was sent to {email} because you registered for a Meldra account.
-            © 2026 Meldra. All rights reserved.
+            This is an automated email from meldra. Please do not reply to this email.
+            This email was sent to {email} because you registered for a meldra account.
+            © 2026 meldra. All rights reserved.
             """
             
             # Send via Resend API
@@ -558,7 +558,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                 result = await asyncio.to_thread(resend.Emails.send, {
                     "from": from_email,
                     "to": [email],
-                    "subject": "Verify Your Email - Meldra",
+                    "subject": "Verify Your Email - meldra",
                     "html": html_content,
                     "text": text_content,
                 })
@@ -575,7 +575,7 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                         result = await asyncio.to_thread(resend.Emails.send, {
                             "from": from_email,
                             "to": [email],
-                            "subject": "Verify Your Email - Meldra",
+                            "subject": "Verify Your Email - meldra",
                             "html": html_content,
                             "text": text_content,
                         })
@@ -628,12 +628,12 @@ async def send_verification_email(email: str, full_name: str, verification_link:
             verification_link = verification_link.replace("http://", "https://")
         
         message = MIMEMultipart("alternative")
-        message["Subject"] = "Verify Your Email - Meldra"
-        message["From"] = f"Meldra <{smtp_from_email}>"
+        message["Subject"] = "Verify Your Email - meldra"
+        message["From"] = f"meldra <{smtp_from_email}>"
         message["To"] = email
         message["Reply-To"] = "hello@meldra.ai"
         message["List-Unsubscribe"] = "<https://insight.meldra.ai/unsubscribe>"
-        message["X-Mailer"] = "Meldra Email Service"
+        message["X-Mailer"] = "meldra Email Service"
         message["X-Entity-Ref-ID"] = "meldra-email-verification"
         
         html_body = f"""
@@ -665,10 +665,10 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                 </div>
                 <div class="content">
                     <p>Hello {full_name or 'there'},</p>
-                    <p>Thank you for registering with <strong>Meldra</strong>! To complete your registration and activate your account, please verify your email address.</p>
+                    <p>Thank you for registering with <strong>meldra</strong>! To complete your registration and activate your account, please verify your email address.</p>
                     
                     <div class="security-notice">
-                        <strong>🔒 Security Notice:</strong> This email is from Meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>.
+                        <strong>🔒 Security Notice:</strong> This email is from meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>.
                     </div>
                     
                     <p>Click the button below to verify your email:</p>
@@ -683,21 +683,21 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                     
                     <p><strong>⏰ This verification link will expire in 1 hour.</strong></p>
                     
-                    <p>If you didn't create an account with Meldra, please ignore this email. No account will be created.</p>
+                    <p>If you didn't create an account with meldra, please ignore this email. No account will be created.</p>
                     
-                    <p>Best regards,<br><strong>The Meldra Team</strong></p>
+                    <p>Best regards,<br><strong>The meldra Team</strong></p>
                 </div>
                 <div class="footer">
-                    <p><strong>Meldra</strong> - Privacy-First Data Analysis Platform</p>
+                    <p><strong>meldra</strong> - Privacy-First Data Analysis Platform</p>
                     <p>
                         <a href="https://insight.meldra.ai">Visit our website</a> | 
                         <a href="https://insight.meldra.ai/privacy">Privacy Policy</a> | 
                         <a href="mailto:support@meldra.ai">Support</a>
                     </p>
                     <div class="company-info">
-                        <p>This is an automated email from Meldra. Please do not reply to this email.</p>
-                        <p>Meldra | insight.meldra.ai | © 2026 Meldra. All rights reserved.</p>
-                        <p>This email was sent to {email} because you registered for a Meldra account.</p>
+                        <p>This is an automated email from meldra. Please do not reply to this email.</p>
+                        <p>meldra | insight.meldra.ai | © 2026 meldra. All rights reserved.</p>
+                        <p>This email was sent to {email} because you registered for a meldra account.</p>
                     </div>
                 </div>
             </div>
@@ -706,33 +706,33 @@ async def send_verification_email(email: str, full_name: str, verification_link:
         """
         
         text_body = f"""
-        Verify Your Email Address - Meldra
+        Verify Your Email Address - meldra
         
         Hello {full_name or 'there'},
         
-        Thank you for registering with Meldra! To complete your registration and activate your account, please verify your email address.
+        Thank you for registering with meldra! To complete your registration and activate your account, please verify your email address.
         
-        SECURITY NOTICE: This email is from Meldra. Always verify the sender is @meldra.ai and links go to https://insight.meldra.ai.
+        SECURITY NOTICE: This email is from meldra. Always verify the sender is @meldra.ai and links go to https://insight.meldra.ai.
         
         Click this secure link to verify your email:
         {verification_link}
         
         This verification link will expire in 1 hour.
         
-        If you didn't create an account with Meldra, please ignore this email. No account will be created.
+        If you didn't create an account with meldra, please ignore this email. No account will be created.
         
         Best regards,
-        The Meldra Team
+        The meldra Team
         
         ---
-        Meldra - Privacy-First Data Analysis Platform
+        meldra - Privacy-First Data Analysis Platform
         Website: https://insight.meldra.ai
         Privacy Policy: https://insight.meldra.ai/privacy
         Support: support@meldra.ai
         
-        This is an automated email from Meldra. Please do not reply to this email.
-        This email was sent to {email} because you registered for a Meldra account.
-        © 2026 Meldra. All rights reserved.
+        This is an automated email from meldra. Please do not reply to this email.
+        This email was sent to {email} because you registered for a meldra account.
+        © 2026 meldra. All rights reserved.
         """
         
         # SECURITY: Ensure verification_link uses HTTPS
@@ -741,12 +741,12 @@ async def send_verification_email(email: str, full_name: str, verification_link:
             verification_link = verification_link.replace("http://", "https://")
         
         message = MIMEMultipart("alternative")
-        message["Subject"] = "Verify Your Email - Meldra"
-        message["From"] = f"Meldra <{smtp_from_email}>"
+        message["Subject"] = "Verify Your Email - meldra"
+        message["From"] = f"meldra <{smtp_from_email}>"
         message["To"] = email
         message["Reply-To"] = "hello@meldra.ai"
         message["List-Unsubscribe"] = "<https://insight.meldra.ai/unsubscribe>"
-        message["X-Mailer"] = "Meldra Email Service"
+        message["X-Mailer"] = "meldra Email Service"
         message["X-Entity-Ref-ID"] = "meldra-email-verification"
         
         html_body = f"""
@@ -778,10 +778,10 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                 </div>
                 <div class="content">
                     <p>Hello {full_name or 'there'},</p>
-                    <p>Thank you for registering with <strong>Meldra</strong>! To complete your registration and activate your account, please verify your email address.</p>
+                    <p>Thank you for registering with <strong>meldra</strong>! To complete your registration and activate your account, please verify your email address.</p>
                     
                     <div class="security-notice">
-                        <strong>🔒 Security Notice:</strong> This email is from Meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>.
+                        <strong>🔒 Security Notice:</strong> This email is from meldra. Always verify the sender is <strong>@meldra.ai</strong> and links go to <strong>https://insight.meldra.ai</strong>.
                     </div>
                     
                     <p>Click the button below to verify your email:</p>
@@ -796,21 +796,21 @@ async def send_verification_email(email: str, full_name: str, verification_link:
                     
                     <p><strong>⏰ This verification link will expire in 1 hour.</strong></p>
                     
-                    <p>If you didn't create an account with Meldra, please ignore this email. No account will be created.</p>
+                    <p>If you didn't create an account with meldra, please ignore this email. No account will be created.</p>
                     
-                    <p>Best regards,<br><strong>The Meldra Team</strong></p>
+                    <p>Best regards,<br><strong>The meldra Team</strong></p>
                 </div>
                 <div class="footer">
-                    <p><strong>Meldra</strong> - Privacy-First Data Analysis Platform</p>
+                    <p><strong>meldra</strong> - Privacy-First Data Analysis Platform</p>
                     <p>
                         <a href="https://insight.meldra.ai">Visit our website</a> | 
                         <a href="https://insight.meldra.ai/privacy">Privacy Policy</a> | 
                         <a href="mailto:support@meldra.ai">Support</a>
                     </p>
                     <div class="company-info">
-                        <p>This is an automated email from Meldra. Please do not reply to this email.</p>
-                        <p>Meldra | insight.meldra.ai | © 2026 Meldra. All rights reserved.</p>
-                        <p>This email was sent to {email} because you registered for a Meldra account.</p>
+                        <p>This is an automated email from meldra. Please do not reply to this email.</p>
+                        <p>meldra | insight.meldra.ai | © 2026 meldra. All rights reserved.</p>
+                        <p>This email was sent to {email} because you registered for a meldra account.</p>
                     </div>
                 </div>
             </div>
@@ -819,33 +819,33 @@ async def send_verification_email(email: str, full_name: str, verification_link:
         """
         
         text_body = f"""
-        Verify Your Email Address - Meldra
+        Verify Your Email Address - meldra
         
         Hello {full_name or 'there'},
         
-        Thank you for registering with Meldra! To complete your registration and activate your account, please verify your email address.
+        Thank you for registering with meldra! To complete your registration and activate your account, please verify your email address.
         
-        SECURITY NOTICE: This email is from Meldra. Always verify the sender is @meldra.ai and links go to https://insight.meldra.ai.
+        SECURITY NOTICE: This email is from meldra. Always verify the sender is @meldra.ai and links go to https://insight.meldra.ai.
         
         Click this secure link to verify your email:
         {verification_link}
         
         This verification link will expire in 1 hour.
         
-        If you didn't create an account with Meldra, please ignore this email. No account will be created.
+        If you didn't create an account with meldra, please ignore this email. No account will be created.
         
         Best regards,
-        The Meldra Team
+        The meldra Team
         
         ---
-        Meldra - Privacy-First Data Analysis Platform
+        meldra - Privacy-First Data Analysis Platform
         Website: https://insight.meldra.ai
         Privacy Policy: https://insight.meldra.ai/privacy
         Support: support@meldra.ai
         
-        This is an automated email from Meldra. Please do not reply to this email.
-        This email was sent to {email} because you registered for a Meldra account.
-        © 2026 Meldra. All rights reserved.
+        This is an automated email from meldra. Please do not reply to this email.
+        This email was sent to {email} because you registered for a meldra account.
+        © 2026 meldra. All rights reserved.
         """
         
         message.attach(MIMEText(text_body, "plain"))
@@ -906,7 +906,7 @@ async def send_welcome_email(email: str, full_name: str) -> bool:
         return False
         
         message = MIMEMultipart("alternative")
-        message["Subject"] = "Welcome to Meldra! 🎉"
+        message["Subject"] = "Welcome to meldra! 🎉"
         message["From"] = smtp_from_email
         message["To"] = email
         
@@ -924,11 +924,11 @@ async def send_welcome_email(email: str, full_name: str) -> bool:
         <body>
             <div class="container">
                 <div class="header">
-                    <h1>Welcome to Meldra! 🎉</h1>
+                    <h1>Welcome to meldra! 🎉</h1>
                 </div>
                 <div class="content">
                     <p>Hello {full_name or 'there'},</p>
-                    <p>Thank you for joining Meldra - your privacy-first data analysis platform!</p>
+                    <p>Thank you for joining meldra - your privacy-first data analysis platform!</p>
                     <p>You can now:</p>
                     <ul>
                         <li>Upload and analyze your data</li>
@@ -937,7 +937,7 @@ async def send_welcome_email(email: str, full_name: str) -> bool:
                         <li>Build P&L statements</li>
                     </ul>
                     <p>Get started by visiting: <a href="https://insight.meldra.ai">insight.meldra.ai</a></p>
-                    <p>Best regards,<br>The Meldra Team</p>
+                    <p>Best regards,<br>The meldra Team</p>
                 </div>
             </div>
         </body>
@@ -945,16 +945,16 @@ async def send_welcome_email(email: str, full_name: str) -> bool:
         """
         
         text_body = f"""
-        Welcome to Meldra!
+        Welcome to meldra!
         
         Hello {full_name or 'there'},
         
-        Thank you for joining Meldra - your privacy-first data analysis platform!
+        Thank you for joining meldra - your privacy-first data analysis platform!
         
         Get started by visiting: https://insight.meldra.ai
         
         Best regards,
-        The Meldra Team
+        The meldra Team
         """
         
         message.attach(MIMEText(text_body, "plain"))
@@ -1007,7 +1007,7 @@ async def send_api_key_email(email: str, api_key: str, environment: str, base_ur
         <!DOCTYPE html>
         <html>
         <body style=\"font-family: Arial, sans-serif;\">
-            <h2>Your Meldra API Key ({environment})</h2>
+            <h2>Your meldra API Key ({environment})</h2>
             <p>Base URL: <strong>{base_url}</strong></p>
             <p>Use this header on every request:</p>
             <pre style=\"background:#f6f8fa;padding:12px;border-radius:6px;\">X-API-Key: {api_key}</pre>
@@ -1016,7 +1016,7 @@ async def send_api_key_email(email: str, api_key: str, environment: str, base_ur
         </body>
         </html>
         """
-        text_content = f"""Your Meldra API Key ({environment})
+        text_content = f"""Your meldra API Key ({environment})
 
 Base URL: {base_url}
 
@@ -1029,7 +1029,7 @@ X-API-Key: {api_key}
         await asyncio.to_thread(resend.Emails.send, {
             "from": from_email,
             "to": [email],
-            "subject": f"Your Meldra API Key ({environment})",
+            "subject": f"Your meldra API Key ({environment})",
             "html": html_content,
             "text": text_content,
         })
@@ -1054,7 +1054,7 @@ async def send_trial_deletion_warning_email(email: str, full_name: str, deletion
                 <p>Hello {full_name or 'there'},</p>
                 <p><strong>Your login credentials are scheduled to be deleted on {deletion_date_iso} (UTC).</strong></p>
                 <p>After deletion, you will not be able to log in again. If you need continued access, please upgrade.</p>
-                <p>The Meldra Team</p>
+                <p>The meldra Team</p>
             </body>
             </html>
             """
@@ -1063,12 +1063,12 @@ async def send_trial_deletion_warning_email(email: str, full_name: str, deletion
                 f"Hello {full_name or 'there'},\n\n"
                 f"Your login credentials are scheduled to be deleted on {deletion_date_iso} (UTC).\n\n"
                 f"After deletion, you will not be able to log in again. If you need continued access, please upgrade.\n\n"
-                f"The Meldra Team\n"
+                f"The meldra Team\n"
             )
             await asyncio.to_thread(resend.Emails.send, {
                 "from": from_email,
                 "to": [email],
-                "subject": "Meldra: account credentials deletion scheduled",
+                "subject": "meldra: account credentials deletion scheduled",
                 "html": html_content,
                 "text": text_content,
             })
@@ -1088,21 +1088,21 @@ async def send_trial_deletion_warning_email(email: str, full_name: str, deletion
 
     try:
         message = MIMEMultipart("alternative")
-        message["Subject"] = "Meldra: account credentials deletion scheduled"
-        message["From"] = f"Meldra <{smtp_from_email}>"
+        message["Subject"] = "meldra: account credentials deletion scheduled"
+        message["From"] = f"meldra <{smtp_from_email}>"
         message["To"] = email
 
         text_body = (
             f"Hello {full_name or 'there'},\n\n"
             f"Your login credentials are scheduled to be deleted on {deletion_date_iso} (UTC).\n\n"
             f"After deletion, you will not be able to log in again. If you need continued access, please upgrade.\n\n"
-            f"The Meldra Team\n"
+            f"The meldra Team\n"
         )
         html_body = (
             f"<p>Hello {full_name or 'there'},</p>"
             f"<p><strong>Your login credentials are scheduled to be deleted on {deletion_date_iso} (UTC).</strong></p>"
             f"<p>After deletion, you will not be able to log in again. If you need continued access, please upgrade.</p>"
-            f"<p>The Meldra Team</p>"
+            f"<p>The meldra Team</p>"
         )
         message.attach(MIMEText(text_body, "plain"))
         message.attach(MIMEText(html_body, "html"))
@@ -1135,7 +1135,7 @@ async def send_credentials_deleted_email(email: str, full_name: str) -> bool:
                 <p>Hello {full_name or 'there'},</p>
                 <p>Your login credentials have been deleted as part of our privacy-first security policy.</p>
                 <p>You will no longer be able to log in again with this account. If you need access, please create a new account or upgrade.</p>
-                <p>The Meldra Team</p>
+                <p>The meldra Team</p>
             </body>
             </html>
             """
@@ -1144,12 +1144,12 @@ async def send_credentials_deleted_email(email: str, full_name: str) -> bool:
                 f"Hello {full_name or 'there'},\n\n"
                 f"Your login credentials have been deleted as part of our privacy-first security policy.\n\n"
                 f"You will no longer be able to log in again with this account. If you need access, please create a new account or upgrade.\n\n"
-                f"The Meldra Team\n"
+                f"The meldra Team\n"
             )
             await asyncio.to_thread(resend.Emails.send, {
                 "from": from_email,
                 "to": [email],
-                "subject": "Meldra: account credentials deleted",
+                "subject": "meldra: account credentials deleted",
                 "html": html_content,
                 "text": text_content,
             })
@@ -1169,20 +1169,20 @@ async def send_credentials_deleted_email(email: str, full_name: str) -> bool:
 
     try:
         message = MIMEMultipart("alternative")
-        message["Subject"] = "Meldra: account credentials deleted"
-        message["From"] = f"Meldra <{smtp_from_email}>"
+        message["Subject"] = "meldra: account credentials deleted"
+        message["From"] = f"meldra <{smtp_from_email}>"
         message["To"] = email
         text_body = (
             f"Hello {full_name or 'there'},\n\n"
             f"Your login credentials have been deleted as part of our privacy-first security policy.\n\n"
             f"You will no longer be able to log in again with this account. If you need access, please create a new account or upgrade.\n\n"
-            f"The Meldra Team\n"
+            f"The meldra Team\n"
         )
         html_body = (
             f"<p>Hello {full_name or 'there'},</p>"
             f"<p>Your login credentials have been deleted as part of our privacy-first security policy.</p>"
             f"<p>You will no longer be able to log in again with this account. If you need access, please create a new account or upgrade.</p>"
-            f"<p>The Meldra Team</p>"
+            f"<p>The meldra Team</p>"
         )
         message.attach(MIMEText(text_body, "plain"))
         message.attach(MIMEText(html_body, "html"))
@@ -1203,7 +1203,7 @@ async def send_credentials_deleted_email(email: str, full_name: str) -> bool:
 
 async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) -> bool:
     resend_api_key = os.getenv("RESEND_API_KEY", "")
-    subject = "Your Meldra login code"
+    subject = "Your meldra login code"
 
     html_content = f"""
     <!DOCTYPE html>
@@ -1234,11 +1234,11 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
           <div class="code">{otp}</div>
           <p class="muted" style="margin-top: 14px;">This code expires in <strong>{int(expires_minutes)} minutes</strong>.</p>
           <div class="note">
-            <strong>Security tip:</strong> Never share this code. Meldra support will never ask for it.
+            <strong>Security tip:</strong> Never share this code. meldra support will never ask for it.
           </div>
         </div>
         <div class="footer">
-          <p><strong>Meldra</strong> • This is an automated email. Please do not reply.</p>
+          <p><strong>meldra</strong> • This is an automated email. Please do not reply.</p>
         </div>
       </div>
     </body>
@@ -1246,7 +1246,7 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
     """
 
     text_content = (
-        f"Your Meldra login code: {otp}\n\n"
+        f"Your meldra login code: {otp}\n\n"
         f"Use this code to complete your login to insight.meldra.ai.\n"
         f"This code expires in {int(expires_minutes)} minutes.\n\n"
         f"Security tip: Never share this code.\n"
@@ -1262,14 +1262,14 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
                 from_email = configured_from
             try:
                 await asyncio.to_thread(resend.Emails.send, {
-                    "from": f"Meldra <{from_email}>",
+                    "from": f"meldra <{from_email}>",
                     "to": [email],
                     "subject": subject,
                     "html": html_content,
                     "text": text_content,
                     "reply_to": "hello@meldra.ai",
                     "headers": {
-                        "X-Mailer": "Meldra Email Service",
+                        "X-Mailer": "meldra Email Service",
                         "X-Entity-Ref-ID": "meldra-login-otp",
                         "List-Unsubscribe": "<https://insight.meldra.ai/unsubscribe>",
                     },
@@ -1280,14 +1280,14 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
                 if "not verified" in str(resend_error).lower() and from_email != "onboarding@resend.dev":
                     from_email = "onboarding@resend.dev"
                     await asyncio.to_thread(resend.Emails.send, {
-                        "from": f"Meldra <{from_email}>",
+                        "from": f"meldra <{from_email}>",
                         "to": [email],
                         "subject": subject,
                         "html": html_content,
                         "text": text_content,
                         "reply_to": "hello@meldra.ai",
                         "headers": {
-                            "X-Mailer": "Meldra Email Service",
+                            "X-Mailer": "meldra Email Service",
                             "X-Entity-Ref-ID": "meldra-login-otp",
                             "List-Unsubscribe": "<https://insight.meldra.ai/unsubscribe>",
                         },
@@ -1310,11 +1310,11 @@ async def send_login_otp_email(email: str, otp: str, expires_minutes: int = 10) 
     try:
         message = MIMEMultipart("alternative")
         message["Subject"] = subject
-        message["From"] = f"Meldra <{smtp_from_email}>"
+        message["From"] = f"meldra <{smtp_from_email}>"
         message["To"] = email
         message["Reply-To"] = "hello@meldra.ai"
         message["List-Unsubscribe"] = "<https://insight.meldra.ai/unsubscribe>"
-        message["X-Mailer"] = "Meldra Email Service"
+        message["X-Mailer"] = "meldra Email Service"
         message["X-Entity-Ref-ID"] = "meldra-login-otp"
         message.attach(MIMEText(text_content, "plain"))
         message.attach(MIMEText(html_content, "html"))

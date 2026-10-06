@@ -1,4 +1,4 @@
-# Selling Meldra to organisations
+# Selling meldra to organisations
 
 How to price, record, track and report on deals with universities, hospitals, insurers,
 manufacturers and other companies. The technical side (limits, enforcement, servers) is in
@@ -86,9 +86,9 @@ The same product, with a landing section, starter templates and features switche
 the Terms (section 7) until there is a signed agreement covering it, plus NHS DSPT (UK) or DPDP
 Act consent handling (India).
 
-## 5. Recording a deal in Meldra
+## 5. Recording a deal in meldra
 
-On the website, signed in as Meldra admin: **Licences** (`/adminlicenses`).
+On the website, signed in as meldra admin: **Licences** (`/adminlicenses`).
 
 1. **New customer**: name, sector, country, email domain (if they want auto-join), their IT admin's
    email (becomes the organisation's owner), billing email, GSTIN/VAT number, and the CRM reference.
@@ -109,10 +109,10 @@ Pipeline stages: **Lead → Discovery call → Demo → Pilot → Proposal → S
 Won / Lost** (record the reason).
 
 Fields on each deal: organisation, sector, seats, annual contract value, probability, decision maker,
-budget holder, next step and date, expected close date, and the Meldra organisation id. Put the
-CRM's deal id in the customer's **CRM reference** in Meldra so the two connect.
+budget holder, next step and date, expected close date, and the meldra organisation id. Put the
+CRM's deal id in the customer's **CRM reference** in meldra so the two connect.
 
-Weekly, from Meldra's **Licences** page:
+Weekly, from meldra's **Licences** page:
 
 - **Renewals in the next 90 days**: start renewal conversations at 90 days, send the quote at 60.
 - **Seat use under 50%** (shown in amber): a renewal risk; offer training before the renewal.
@@ -129,7 +129,7 @@ bank account from day one.
 
 | Section | Figures | Source |
 |---|---|---|
-| Revenue | ARR and MRR (ARR ÷ 12); new, expansion and lost ARR this month; net revenue retention | Meldra Licences report (`arr_by_currency`) + Stripe |
+| Revenue | ARR and MRR (ARR ÷ 12); new, expansion and lost ARR this month; net revenue retention | meldra Licences report (`arr_by_currency`) + Stripe |
 | Bookings vs billing vs revenue | Signed this month · invoiced · earned. A £12,000 annual deal is **booked** once, **invoiced** once, and **earned** £1,000 a month; the unearned part is **deferred revenue** | Licences report + accounting |
 | Cash | Bank balance, money in, money out, monthly burn, months of runway | Accounting |
 | Receivables | Invoiced but unpaid, and how old | Licences report (`unpaid_by_currency`) |
@@ -140,7 +140,7 @@ bank account from day one.
 Export the customer list with **Export CSV** on the Licences page
 (`/api/admin/licenses/report.csv`) and paste it into the monthly sheet.
 
-**Annual value** in Meldra is the contract value spread over a year: a 2-year contract of £20,000
+**Annual value** in meldra is the contract value spread over a year: a 2-year contract of £20,000
 counts as £10,000 of ARR. Pilots are listed but are not counted in ARR.
 
 ## 8. Before the first enterprise contract

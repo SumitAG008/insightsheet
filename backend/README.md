@@ -1,4 +1,4 @@
-# InsightSheet Backend (Meldra AI)
+# InsightSheet Backend (meldra AI)
 
 FastAPI backend for InsightSheet-lite.
 
@@ -623,4 +623,4 @@ Proprietary - InsightSheet-lite
 
 ---
 
-## Meldra AI
+## meldra AI

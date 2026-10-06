@@ -6,7 +6,7 @@ order: 4
 updated: 2026-10-05
 ---
 
-The **Cleanse & validate** step shows what Meldra fixed, what still needs attention and how your values translate into SuccessFactors codes. Work through it before you export, so the load runs clean.
+The **Cleanse & validate** step shows what meldra fixed, what still needs attention and how your values translate into SuccessFactors codes. Work through it before you export, so the load runs clean.
 
 ## Check the summary
 
@@ -16,7 +16,7 @@ The cards at the top show:
 |---|---|
 | **Employees** | People found in the extract. |
 | **Files to load** | Output files that will be produced. |
-| **Automatic fixes** | Values Meldra corrected for you. |
+| **Automatic fixes** | Values meldra corrected for you. |
 | **Errors** | Records that would be rejected on import. |
 | **Warnings** | Records worth checking, which would still load. |
 
@@ -50,7 +50,7 @@ Every fix is also written to `change_log.csv` in the export.
 
 Examples of what you may see:
 
-- a date that can be read either way. Change **Source date order** in **Settings** if Meldra read it wrongly;
+- a date that can be read either way. Change **Source date order** in **Settings** if meldra read it wrongly;
 - an age at hire outside 14 to 90, which suggests the day and month are swapped;
 - a cost center that belongs to a different legal entity than the employee;
 - an email address shared by several employees.
@@ -86,7 +86,7 @@ The label next to each code shows where it came from: **suggested**, **AI sugges
 ### Translate with AI
 
 1. Select **Translate values with AI**.
-2. Meldra fills codes its dictionary does not know, and gives termination reasons and pay components one consistent code.
+2. meldra fills codes its dictionary does not know, and gives termination reasons and pay components one consistent code.
 3. Check every value marked **AI suggested** against your instance.
 
 The AI gets only the distinct values listed (for example "Resigned"), never employee IDs, names or counts. It runs only when you select the button.

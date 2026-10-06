@@ -1,8 +1,8 @@
-# 📱 Convert Meldra to Mobile App - Complete Guide
+# 📱 Convert meldra to Mobile App - Complete Guide
 
 ## 🎯 Overview
 
-Your Meldra app is already set up with **Capacitor**, which makes it easy to convert to iOS and Android apps!
+Your meldra app is already set up with **Capacitor**, which makes it easy to convert to iOS and Android apps!
 
 ---
 

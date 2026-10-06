@@ -18,7 +18,7 @@ This means the backend is using a placeholder API key instead of a real one.
 
 2. **Create a New API Key:**
    - Click **"Create new secret key"**
-   - Give it a name (e.g., "Meldra Production")
+   - Give it a name (e.g., "meldra Production")
    - Click **"Create secret key"**
    - **Copy the key immediately** (it starts with `sk-` and you won't see it again)
 

@@ -11,9 +11,9 @@ Unified Reporting lets you ask one question across data from several systems. Th
 ## How it works
 
 1. You add data: file exports, database tables, API pulls or the sample company. Each file, sheet or table becomes a **source**.
-2. Meldra finds columns that sources share, such as a department, an employee ID or a month. These are the **shared dimensions**.
-3. Meldra suggests **links** between sources. A link lets one source use another's columns. For example, expenses that only have an employee ID can be broken down by the employee's department.
-4. You ask a question in plain English. Meldra totals each source on its own, joins the totals and shows a chart, a short written answer and the systems each number came from.
+2. meldra finds columns that sources share, such as a department, an employee ID or a month. These are the **shared dimensions**.
+3. meldra suggests **links** between sources. A link lets one source use another's columns. For example, expenses that only have an employee ID can be broken down by the employee's department.
+4. You ask a question in plain English. meldra totals each source on its own, joins the totals and shows a chart, a short written answer and the systems each number came from.
 
 ## The three tabs
 
@@ -39,7 +39,7 @@ A finance team wants workforce cost against revenue by department.
 
 > **Tip:** No exports to hand? Select **Try the sample company** at the top of the page, or **Load a sample company** on **Data sources**. It loads six systems (SAP S/4, Billing, Salesforce, SuccessFactors, Concur and Ariba) that are already linked.
 
-> **Note:** Unified Reporting is built to combine systems. With one source you can still ask questions, but Meldra will remind you to add another.
+> **Note:** Unified Reporting is built to combine systems. With one source you can still ask questions, but meldra will remind you to add another.
 
 ## Next steps
 

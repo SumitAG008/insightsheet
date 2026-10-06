@@ -1,4 +1,4 @@
-// Ask Meldra hands a request to a tool page: the files the user attached and the instruction
+// Ask meldra hands a request to a tool page: the files the user attached and the instruction
 // the planner wrote for that tool. Kept in memory only (never stored), and consumed once by the
 // page it was meant for, so refreshing or opening the tool later starts clean.
 

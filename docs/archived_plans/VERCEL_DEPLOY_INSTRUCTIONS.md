@@ -1,4 +1,4 @@
-# 🚀 Deploy Meldra to Vercel - Step by Step
+# 🚀 Deploy meldra to Vercel - Step by Step
 
 ## ✅ You're Already on Vercel!
 

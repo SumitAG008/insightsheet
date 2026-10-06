@@ -1,4 +1,4 @@
-# Testing Meldra and working out what to charge
+# Testing meldra and working out what to charge
 
 Three kinds of testing, from cheapest to most realistic:
 
@@ -6,7 +6,7 @@ Three kinds of testing, from cheapest to most realistic:
 |---|---|---|---|
 | Integration and system tests | Every tool works end to end through the real API | `pytest` (153 backend tests), `npm test` (110 frontend tests) | On your computer; also run automatically on every pull request |
 | Cost benchmark | Time, CPU and memory per operation, and the server cost per 1,000 operations | `backend/tools/benchmark_costs.py` | On your computer |
-| Load test | How many people can use Meldra at once before it slows down or fails | `backend/tools/locustfile.py` (Locust) | Against a staging copy of the backend |
+| Load test | How many people can use meldra at once before it slows down or fails | `backend/tools/locustfile.py` (Locust) | Against a staging copy of the backend |
 
 ## 1. Switch off upload size limits while testing
 

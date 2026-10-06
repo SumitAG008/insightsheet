@@ -423,7 +423,7 @@ class ConsentLog(Base):
 
 
 class ApiKey(Base):
-    """Meldra API keys for developer.meldra.ai / api.developer.meldra.ai"""
+    """meldra API keys for developer.meldra.ai / api.developer.meldra.ai"""
     __tablename__ = "api_keys"
 
     id = Column(Integer, primary_key=True, index=True)

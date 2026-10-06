@@ -309,11 +309,11 @@ export default function FilenameCleaner() {
           </AlertDescription>
         </Alert>
 
-        {/* Meldra API — in-app works without it; API docs on main site */}
+        {/* meldra API — in-app works without it; API docs on main site */}
         <Alert className="mb-6 bg-slate-800/80 border-slate-600/50">
           <Lock className="h-5 w-5 text-slate-400" />
           <AlertDescription className="text-slate-300">
-            <strong className="text-slate-200">Meldra API:</strong> FileName Cleaner and PDF↔DOC can also run via the Meldra API with a paid key. In-app FileName Cleaner works without a key. For API access, add a key in <Link to="/security" className="underline text-blue-400 hover:text-blue-300">Security → Meldra API Key</Link>. <Link to="/developers" className="underline text-blue-400 hover:text-blue-300">developer.meldra.ai</Link>.
+            <strong className="text-slate-200">meldra API:</strong> FileName Cleaner and PDF↔DOC can also run via the meldra API with a paid key. In-app FileName Cleaner works without a key. For API access, add a key in <Link to="/security" className="underline text-blue-400 hover:text-blue-300">Security → meldra API Key</Link>. <Link to="/developers" className="underline text-blue-400 hover:text-blue-300">developer.meldra.ai</Link>.
           </AlertDescription>
         </Alert>
 

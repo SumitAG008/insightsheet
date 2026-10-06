@@ -52,7 +52,7 @@ open App/App.xcworkspace
 
 1. **Go to [App Store Connect](https://appstoreconnect.apple.com)**
 2. **Create New App:**
-   - Name: Meldra
+   - Name: meldra
    - Bundle ID: com.meldra.insightsheet
    - Platform: iOS
 3. **Fill in:**
@@ -85,7 +85,7 @@ Your config needs a small update. Update `mobile/ios/App/App/capacitor.config.js
 ```json
 {
   "appId": "com.meldra.insightsheet",
-  "appName": "Meldra",
+  "appName": "meldra",
   "webDir": "../../../dist",
   "bundledWebRuntime": false,
   "server": {
@@ -111,7 +111,7 @@ Your config needs a small update. Update `mobile/ios/App/App/capacitor.config.js
 ## 📝 App Store Description Template
 
 ```
-Meldra - Data Made Simple
+meldra - Data Made Simple
 
 Transform your Excel workflow with AI-powered tools.
 

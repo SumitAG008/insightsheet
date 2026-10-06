@@ -7,9 +7,9 @@ Unified Reporting test pack: four exports from four systems that only make sense
   opportunities.xlsx Salesforce (CRM)        Opportunity ID, Owner Employee ID, Customer, Stage, Close Date, Amount (£)
 
 Expenses and opportunities only carry an employee ID: the department comes from HR, through
-a link Meldra suggests (Employee ID / Owner Employee ID → HR Employee ID). The budget is by
+a link meldra suggests (Employee ID / Owner Employee ID → HR Employee ID). The budget is by
 department and month, so it lines up with expenses on both. The expected answers below are
-computed here from the same data, so anyone can check Meldra's numbers.
+computed here from the same data, so anyone can check meldra's numbers.
 
 Writes public/unified-reporting-test-pack/ (served by the app) and expected.json.
 """
@@ -85,7 +85,7 @@ write_csv("expenses.csv", expenses)
 write_xlsx("budget.xlsx", "Budget", budget)
 write_xlsx("opportunities.xlsx", "Opportunities", opps)
 
-# ---------- expected answers (independent of Meldra) ----------
+# ---------- expected answers (independent of meldra) ----------
 money = lambda s: float(str(s).replace("£", "").replace(",", ""))  # noqa: E731
 by = lambda rows, key, val: {k: round(v, 2) for k, v in sorted(_sum(rows, key, val).items())}  # noqa: E731
 
@@ -147,7 +147,7 @@ table{{border-collapse:collapse;margin:8px 0 18px}}td,th{{border:1px solid #e2e8
 .q{{border:1px solid #e2e8f0;border-radius:12px;padding:12px 16px;margin:14px 0}}a.f{{display:inline-block;margin:4px 8px 4px 0;padding:6px 12px;border:1px solid #2563eb;border-radius:8px;text-decoration:none}}</style></head><body>
 <h1>Unified Reporting test pack</h1>
 <p>Four exports from four systems. On their own, none of them can answer the questions below; together they can.
-That is what unified reporting means: Meldra links the systems and answers across them.</p>
+That is what unified reporting means: meldra links the systems and answers across them.</p>
 <p>{''.join(f'<a class="f" href="{f}" download>{f}</a>' for f in expected['files'])}</p>
 <h2>Test script</h2>
 <ol>

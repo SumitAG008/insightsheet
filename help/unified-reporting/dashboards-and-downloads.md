@@ -54,9 +54,9 @@ Every file carries the same numbers as the screen:
 3. Select **Download dashboard**.
 4. Choose **PDF**, **PowerPoint**, **Word** or **Excel**.
 
-The file is titled "Meldra dashboard" with today's date.
+The file is titled "meldra dashboard" with today's date.
 
-> **Note:** Your dashboard is kept in this browser. It does not follow you to another device, even when the data is in the Meldra lakehouse.
+> **Note:** Your dashboard is kept in this browser. It does not follow you to another device, even when the data is in the meldra lakehouse.
 
 ## Troubleshooting
 

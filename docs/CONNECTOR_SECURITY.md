@@ -1,16 +1,16 @@
-# Meldra connectors: authentication and security
+# meldra connectors: authentication and security
 
-How Meldra Unified Reporting connects to enterprise systems (SAP SuccessFactors, S/4HANA,
+How meldra Unified Reporting connects to enterprise systems (SAP SuccessFactors, S/4HANA,
 Microsoft 365, Workday, Salesforce, QuickBooks, Stripe, Kyriba and any REST/OData/GraphQL/SOAP API),
 written for customer security reviews.
 
 ## No IP allowlisting needed
 
-Meldra signs in with **tokens**, not network location. The customer grants access by registering
-Meldra as an OAuth client (usually with an X.509 certificate). Access can be scoped, rotated and
-revoked in the customer's own admin console, and does not depend on Meldra's server IP.
+meldra signs in with **tokens**, not network location. The customer grants access by registering
+meldra as an OAuth client (usually with an X.509 certificate). Access can be scoped, rotated and
+revoked in the customer's own admin console, and does not depend on meldra's server IP.
 
-| Method | Standard | Typical systems | Secret held by Meldra |
+| Method | Standard | Typical systems | Secret held by meldra |
 |---|---|---|---|
 | OAuth 2.0 SAML 2.0 bearer | RFC 7522 | SAP SuccessFactors, SAP BTP, S/4HANA | None stored: assertion signed per request with the customer's key |
 | OAuth 2.0 JWT bearer | RFC 7523 §2.1 | Salesforce, Google service accounts | None stored: JWT signed per request |
@@ -20,7 +20,7 @@ revoked in the customer's own admin console, and does not depend on Meldra's ser
 | Bearer token / API key / Basic | RFC 6750 / RFC 7617 | Stripe restricted keys, legacy APIs | None stored |
 
 A pre-signed SAML assertion from the customer's own IdP can also be passed in, so the private key
-never has to be given to Meldra.
+never has to be given to meldra.
 
 If a system still requires a fixed source IP, set `CONNECTOR_EGRESS_PROXY` (an outbound proxy
 with static IPs) and `CONNECTOR_EGRESS_IPS` (the IPs to show customers) on the backend. The
@@ -55,4 +55,4 @@ connector form then lists those IPs.
   (interactive user consent).
 - Tested against simulated identity providers only; each real tenant (SuccessFactors, Entra ID,
   Salesforce, Workday) must be tried once with the customer before go-live.
-- Single sign-on into Meldra itself (SAML 2.0 / OIDC) is a separate item (PLT-09).
+- Single sign-on into meldra itself (SAML 2.0 / OIDC) is a separate item (PLT-09).

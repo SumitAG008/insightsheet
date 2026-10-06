@@ -16,7 +16,7 @@ A well-shaped extract maps faster and loads cleaner. This article explains what 
 
 ## What to export
 
-Export everything you plan to migrate, one tab per kind of data. Put the employee ID on every employee tab, so Meldra can join them.
+Export everything you plan to migrate, one tab per kind of data. Put the employee ID on every employee tab, so meldra can join them.
 
 | Tab | Shape | Typical columns |
 |---|---|---|
@@ -32,15 +32,15 @@ Export everything you plan to migrate, one tab per kind of data. Put the employe
 | Payroll results | One row per period and wage type | Pay period start and end, pay date, run type, amount |
 | Organisation lists | One row per code | Codes and names for legal entities, business units, divisions, departments, locations, jobs and cost centers |
 
-> **Tip:** Keep the codes in your organisation lists the same as the codes used in job history. If job history uses a code that is missing from a list, Meldra creates the org record and logs it.
+> **Tip:** Keep the codes in your organisation lists the same as the codes used in job history. If job history uses a code that is missing from a list, meldra creates the org record and logs it.
 
 ### Data with no standard target
 
-Some tabs have no standard Employee Central import file here, such as dependents. Meldra carries them as-is in a separate `custom` folder, so nothing is lost. This applies to tabs with several rows per employee and no effective date, and to tabs with no employee ID or org code.
+Some tabs have no standard Employee Central import file here, such as dependents. meldra carries them as-is in a separate `custom` folder, so nothing is lost. This applies to tabs with several rows per employee and no effective date, and to tabs with no employee ID or org code.
 
 ## You do not need to clean the extract first
 
-Meldra fixes common problems for you and logs every change. For example:
+meldra fixes common problems for you and logs every change. For example:
 
 - mixed date formats;
 - Male/M/F style values;
@@ -57,7 +57,7 @@ See [Cleanse and translate values](/help/cleanse-and-translate-values) for the f
 1. Open **Migration** from the navigation bar. You start on **Upload extract**.
 2. Check **Source system**. Choose from the list or type your system's name. The AI uses it as a hint when mapping.
 3. Drag your files onto the upload area, or select **Choose files**.
-4. Wait for the files to be read. Meldra maps the columns and opens **Map fields**.
+4. Wait for the files to be read. meldra maps the columns and opens **Map fields**.
 
 Your loaded tabs are listed under **Loaded tabs** on the **Upload extract** step, with row and column counts. Remove a tab with the bin icon next to it.
 

@@ -15,7 +15,7 @@ Quick question: How many hours does your team at {{Company_Name}} spend every mo
 
 Most CPA and accounting leaders we speak with tell us monthly slide prep takes 10+ hours per client manager.
 
-We built **InsightSheet (by Meldra.ai)** to solve this:
+We built **InsightSheet (by meldra.ai)** to solve this:
 - ⚡ **Excel to Board-Ready PPT in 5 Seconds:** Drag and drop client trial balances or P&L sheets to generate styled slide decks automatically.
 - 🔒 **Zero Data Retention Liability:** Processed 100% in-memory (RAM) and deleted immediately—zero client data is stored on our servers, ensuring total compliance with CPA privacy standards.
 
@@ -26,7 +26,7 @@ Would you be open to a 5-minute video demo this week to see it in action?
 Best regards,
 
 **Sumit Agaria**  
-Founder, Meldra AI | InsightSheet  
+Founder, meldra AI | InsightSheet  
 https://meldra.ai | sumitagaria@gmail.com
 
 ---
@@ -52,7 +52,7 @@ Do you have 10 minutes open this Thursday for a quick walkthrough?
 Best,
 
 **Sumit Agaria**  
-Founder, Meldra AI | https://meldra.ai
+Founder, meldra AI | https://meldra.ai
 
 ---
 

@@ -72,8 +72,8 @@ class ExcelToPPTService:
 
             try:
                 cp = prs.core_properties
-                cp.author = author_name or "Meldra"
-                cp.last_modified_by = last_modified_by or (author_name or "Meldra")
+                cp.author = author_name or "meldra"
+                cp.last_modified_by = last_modified_by or (author_name or "meldra")
                 now = datetime.utcnow()
                 cp.created = now
                 cp.modified = now

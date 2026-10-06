@@ -1,6 +1,6 @@
 # Why developer.meldra.ai Is Not Working
 
-**developer.meldra.ai** is the planned API portal for the Meldra API (document conversion, ZIP Cleaner, etc.). It is **not yet deployed or configured**, so the URL does not resolve or load.
+**developer.meldra.ai** is the planned API portal for the meldra API (document conversion, ZIP Cleaner, etc.). It is **not yet deployed or configured**, so the URL does not resolve or load.
 
 ## What’s needed for it to work
 
@@ -22,7 +22,7 @@ Until these exist, `developer.meldra.ai` will not resolve (e.g. `DNS_PROBE_FINIS
 
 - **developer.meldra.ai (portal)**  
   - A separate app (e.g. Vercel project) with:
-    - Docs for the Meldra API
+    - Docs for the meldra API
     - API key signup/management
     - A simple “test” or “try it” flow
 
@@ -33,11 +33,11 @@ Until these exist, `developer.meldra.ai` will not resolve (e.g. `DNS_PROBE_FINIS
 ### 3. In-app vs developer.meldra.ai
 
 - **Document Converter (PDF/DOC/PPT)** and **ZIP Cleaner** work **in-app** without developer.meldra.ai or an API key. They use the Railway backend.
-- **developer.meldra.ai** is for **programmatic** use: external apps calling the Meldra API with a paid API key. Until the portal and (optionally) api.developer.meldra.ai are deployed, that use is not available.
+- **developer.meldra.ai** is for **programmatic** use: external apps calling the meldra API with a paid API key. Until the portal and (optionally) api.developer.meldra.ai are deployed, that use is not available.
 
 ## What to do in the meantime
 
 1. **API docs on the main site:** Use **/developers** on meldra.ai or insight.meldra.ai (e.g. `https://insight.meldra.ai/developers`). This is the developer/API portal; no separate developer.meldra.ai subdomain needed for docs.
 2. Use **Document Converter** and **ZIP Cleaner** in the app; no API key required.
-3. For API access: contact **support@meldra.ai** for a paid Meldra API key.
+3. For API access: contact **support@meldra.ai** for a paid meldra API key.
 4. When you’re want a separate **developer.meldra.ai** subdomain: add the DNS records above and point it to the same /developers content or a dedicated portal as in `MELDRA_DEVELOPER_API.md`.

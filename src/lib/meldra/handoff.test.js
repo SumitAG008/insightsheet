@@ -3,7 +3,7 @@ import { accepts, peekHandoff, setHandoff, takeHandoff } from './handoff';
 
 const file = (name, type = '') => ({ name, type });
 
-describe('Ask Meldra handoff', () => {
+describe('Ask meldra handoff', () => {
   it('is delivered once, only to the page it was meant for (any letter case)', () => {
     setHandoff({ path: '/FileToPPT', toolTitle: 'Excel to PowerPoint', files: [file('sales.xlsx')], instruction: '' });
     expect(peekHandoff('/Reconciliation')).toBeNull();

@@ -2,10 +2,10 @@
 Real source systems for the multi-source test.
 
 1. API (live, on the internet): the npm registry search API. Nothing to set up; the
-   test connects to it from the Meldra UI. This script only reads it once to learn
+   test connects to it from the meldra UI. This script only reads it once to learn
    real package names so the other systems refer to the same packages.
 2. Database: a real PostgreSQL server with an IT-finance schema (software usage per
-   team, licence invoices), and a read-only user for Meldra.
+   team, licence invoices), and a read-only user for meldra.
 3. Spreadsheet: team budgets as an Excel workbook (team, department, budget).
 
 Everything is deterministic given the package names, so the test can compute every

@@ -25,7 +25,7 @@ Open **Migration** from the navigation bar. The steps run across the top of the 
 | 3. **Cleanse & validate** | Review automatic fixes, errors, reconciliation totals and value translations. See [Cleanse and translate values](/help/cleanse-and-translate-values). |
 | 4. **Load order & export** | Preview each file in load order and download the ZIP and review workbook. See [Export and load into SuccessFactors](/help/export-and-load-into-successfactors). |
 
-After you upload, Meldra opens **Map fields** for you. From there, select the **Next** button at the bottom of each step, for example **Next: Cleanse & validate**. Once an extract is loaded you can also select any step at the top.
+After you upload, meldra opens **Map fields** for you. From there, select the **Next** button at the bottom of each step, for example **Next: Cleanse & validate**. Once an extract is loaded you can also select any step at the top.
 
 The buttons at the top right of the page are:
 
@@ -43,8 +43,8 @@ A data migration is usually rehearsed several times before go-live. Each run of 
 |---|---|
 | Reading the extract, matching columns by rules, cleansing, validation, building files | In your browser |
 | Keeping your work between visits | In this browser's storage, until you select **Start over** or sign out |
-| AI mapping of tabs and columns | Meldra's AI service. Receives tab and column names only, never values. |
-| **Translate values with AI** | Meldra's AI service, only when you select it. Receives the distinct values listed for translation only. |
+| AI mapping of tabs and columns | meldra's AI service. Receives tab and column names only, never values. |
+| **Translate values with AI** | meldra's AI service, only when you select it. Receives the distinct values listed for translation only. |
 
 > **Note:** If the AI is unavailable, the rule-based mapping still works on its own. The AI only adds tab identification and hard-to-name columns.
 

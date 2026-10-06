@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { LEGAL_STRINGS, defaultLanguage, translate } from './i18n';
 import { countryForRegion, daysFromToday, fmtDate, fmtMoney } from './format';
 import { NAV, visibleNav } from '../navigation';
-import { LEGAL_PUBLIC } from './launch';
+import { LEGAL_PUBLIC, isLegalOperator } from './launch';
 import { SOLUTIONS } from '../solutions';
 import { PUBLIC_PAGES } from '../seo';
 
@@ -49,6 +49,8 @@ describe('meldra Legal in the menu', () => {
     expect(NAV.some((e) => e.id === 'legal')).toBe(true);
     expect(visibleNav({}).some((e) => e.id === 'legal')).toBe(false);
     expect(visibleNav({ legal: true }).some((e) => e.id === 'legal')).toBe(true);
+    expect(isLegalOperator(' SumitAgaria@gmail.com ')).toBe(true);
+    expect(isLegalOperator('someone@firm.example')).toBe(false);
   });
 });
 

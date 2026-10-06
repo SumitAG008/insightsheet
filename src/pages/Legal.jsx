@@ -73,7 +73,11 @@ export default function Legal() {
       const data = await legalApi.bootstrap();
       setBoot({ loading: false, data, locked: false, error: null });
     } catch (e) {
-      setBoot({ loading: false, data: null, locked: e.status === 403, error: e.status === 403 ? null : e.message });
+      const error =
+        e.status === 404
+          ? 'The meldra server has not been updated with meldra Legal yet. Redeploy the backend (Railway) from main, then reload this page.'
+          : e.message;
+      setBoot({ loading: false, data: null, locked: e.status === 403, error: e.status === 403 ? null : error });
     }
   }, []);
 

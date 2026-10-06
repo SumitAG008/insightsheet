@@ -71,7 +71,7 @@ def scrape_books_to_scrape_csv(
         context.close()
         browser.close()
 
-    with open(output_csv_path, "w", newline="", encoding="utf-8") as f:
+    with open(output_csv_path, "w", newline="", encoding="utf-8-sig") as f:  # BOM so Excel reads £ and ₹ correctly
         w = csv.writer(f)
         w.writerow(["title", "price_gbp", "availability", "rating", "product_url"])
         for r in rows:

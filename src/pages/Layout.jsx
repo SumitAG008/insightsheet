@@ -194,7 +194,7 @@ export default function Layout({ children, currentPageName }) {
     }
   }, [user?.email, location.search]);
 
-  const canAccessAgenticWorkflows = (user?.email || '').toLowerCase().trim() === 'sumitagaraia@gmail.com';
+  const canAccessAgenticWorkflows = (user?.email || '').toLowerCase().trim() === 'sumitagaria@gmail.com';
 
 
   const logLogin = async (email) => {

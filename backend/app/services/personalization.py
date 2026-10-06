@@ -50,14 +50,13 @@ TOOLS: Tuple[Tool, ...] = (
          ("pdf to word", "word to pdf", "pdf to excel", "excel to pdf", "docx", "convert document", "pdf to image")),
     Tool("ocr", "OCR Converter", "/OCRConverter", "Read text from scanned documents and images",
          ("ocr", "scan to text", "image to text", "scanned pdf", "extract text", "read text from image")),
-    Tool("file_analyzer", "File Analyzer", "/FileAnalyzer", "AI summary and insights for a spreadsheet",
-         ("analyse", "analyze", "insights", "summary", "profile data", "understand spreadsheet")),
+    Tool("workbench", "Workbench", "/workbench", "Check a spreadsheet for problems, fix them and download a clean copy",
+         ("analyse", "analyze", "insights", "summary", "profile data", "understand spreadsheet", "data quality",
+          "clean data", "standardise", "standardize", "dedupe", "duplicates", "fix formats", "data cleaning")),
     Tool("pl_builder", "P&L Builder", "/PLBuilder", "Build a profit and loss statement from a prompt or a trial balance",
          ("p&l", "profit and loss", "income statement", "trial balance", "financial statement", "pnl")),
     Tool("reconciliation", "Reconciliation", "/Reconciliation", "Match two files and find the differences, e.g. bank vs ledger",
          ("reconcile", "bank reconciliation", "bank rec", "match", "compare files", "ledger", "differences")),
-    Tool("auto_standardize", "Auto Standardize", "/AutoStandardize", "Clean and standardise messy spreadsheet data",
-         ("clean data", "standardise", "standardize", "dedupe", "duplicates", "fix formats", "data cleaning")),
     Tool("unified_reporting", "Unified Reporting", "/UnifiedReporting", "Combine exports from several systems and ask questions across them",
          ("report", "dashboard", "combine data", "multiple sources", "cross system", "kpi", "bi", "join files")),
     Tool("migration", "Migration", "/Migration", "Map and validate data for moving between systems (SAP, SuccessFactors, Workday)",
@@ -79,6 +78,9 @@ TOOLS_BY_ID = {t.id: t for t in TOOLS}
 TOOLS_BY_PATH = {t.path.lower(): t for t in TOOLS}
 # Other URLs the app uses for the same tools.
 TOOLS_BY_PATH["/unified-reporting"] = TOOLS_BY_ID["unified_reporting"]
+# The Workbench replaced these two pages; their old addresses redirect to it.
+TOOLS_BY_PATH["/fileanalyzer"] = TOOLS_BY_ID["workbench"]
+TOOLS_BY_PATH["/autostandardize"] = TOOLS_BY_ID["workbench"]
 
 HALF_LIFE_DAYS = 14.0  # a use two weeks ago counts half as much as one today
 SESSION_GAP = timedelta(minutes=30)

@@ -16,6 +16,12 @@ describe('main menu', () => {
     expect(new Set(paths).size).toBe(paths.length);
   });
 
+  it('makes Workbench one page, so the menu and page names match', () => {
+    const workbench = NAV.find((e) => e.id === 'workbench');
+    expect(workbench.items).toBeUndefined();
+    expect(workbench.to).toBe('/workbench');
+  });
+
   it('hides Automations without access', () => {
     expect(visibleNav({}).some((e) => e.id === 'automations')).toBe(false);
     expect(visibleNav({ agenticWorkflows: true }).some((e) => e.id === 'automations')).toBe(true);
@@ -27,6 +33,7 @@ describe('main menu', () => {
     expect(isEntryActive(byId.solutions, '/solutions/law-firms')).toBe(true);
     expect(isEntryActive(byId.home, '/dashboard')).toBe(true);
     expect(isEntryActive(byId.workbench, '/migration')).toBe(false);
+    expect(isEntryActive(byId.workbench, '/Workbench')).toBe(true);
   });
 
   it('links Solutions menu items to listed sectors', () => {

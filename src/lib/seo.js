@@ -116,7 +116,7 @@ const APP_TITLES = {
   '/pdfdocconverter': 'Document converter',
   '/ocrconverter': 'OCR',
   '/pdfeditor': 'PDF tools and editor',
-  '/fileanalyzer': 'File analysis',
+  '/workbench': 'Workbench',
   '/reconciliation': 'Reconciliation',
   '/unifiedreporting': 'Unified reporting',
   '/migration': 'Migration',

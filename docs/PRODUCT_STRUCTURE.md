@@ -22,7 +22,7 @@ Ask meldra (Ctrl/⌘ + K) works on every page, so there is no separate AI menu. 
 | Entry | Job | Contains today | Was |
 |---|---|---|---|
 | Home | Start here | Ask meldra prompt box, suggested tools, spreadsheet workspace | Dashboard |
-| Workbench | Make one spreadsheet trustworthy | One page: 1 Upload · 2 Check quality (score, problems in plain words, each tied to its fix) · 3 Fix and download (preview, clean Excel copy) | File Analyzer + Auto-Standardize (old addresses redirect here) |
+| Workbench | Make one spreadsheet trustworthy | One page: 1 Upload · 2 Get work done (one-click totals by any column, monthly totals, top rows, one sheet per group, questions answered, a PowerPoint; Excel downloads) · 3 Check quality (score, problems in plain words, each tied to its fix) · 4 Fix and download (preview, clean Excel copy) | File Analyzer + Auto-Standardize (old addresses redirect here) |
 | Unified Reporting | Connect sources and report | Reports and questions, Database connection, Web data, Data model | Unified Reporting + Data & Schema |
 | Migration | Move data between systems | SAP SuccessFactors migration | Migration |
 | Documents | Files in, files out | PDF tools, Document converter, OCR, Invoice extraction, Excel to PowerPoint, Rename files | File Conversion (+ Invoice extraction, which had no menu entry) |

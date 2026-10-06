@@ -1,5 +1,6 @@
 // Workbench: one spreadsheet, three steps on one page.
-// 1 Upload · 2 Check quality (runs as soon as a file is chosen) · 3 Fix and download.
+// 1 Upload · 2 Get work done (one-click totals, monthly totals, top rows, a sheet per group,
+// questions, a PowerPoint) · 3 Check quality (runs as soon as a file is chosen) · 4 Fix and download.
 // Replaces the separate File Analyzer and Auto-Standardize pages; their old addresses redirect here.
 import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
@@ -12,6 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
+import QuickWork from '@/components/workbench/QuickWork';
+import { profileColumns, readRows } from '@/lib/workbenchActions';
 import {
   ACCEPT, ACCEPT_RE, FIXES, FIX_KEYS, aiSummary, formatBytes, missingShare, qualityLabel, recommendedFixes, sheetFindings,
 } from '@/lib/workbench';
@@ -92,6 +95,8 @@ export default function Workbench() {
   const [downloading, setDownloading] = useState(false);
   const [fixError, setFixError] = useState('');
   const [showColumns, setShowColumns] = useState(false);
+  const [data, setData] = useState(null); // { rows, columns } read in the browser for step 2
+  const [readError, setReadError] = useState('');
 
   const sheet = analysis?.sheets?.[sheetIdx] || null;
   const findings = sheetFindings(sheet);
@@ -118,6 +123,11 @@ export default function Workbench() {
     setFixError('');
     setSheetIdx(0);
     setChecking(true);
+    setData(null);
+    setReadError('');
+    readRows(file)
+      .then(({ rows }) => !cancelled && setData({ rows, columns: profileColumns(rows) }))
+      .catch(() => !cancelled && setReadError('This file could not be opened in the browser for quick work.'));
     backendApi.files
       .analyzeFile(file)
       .then((res) => {
@@ -141,6 +151,7 @@ export default function Workbench() {
     setAnalysis(null);
     setPreview(null);
     setCheckError('');
+    setData(null);
     if (inputRef.current) inputRef.current.value = '';
   };
 
@@ -185,15 +196,18 @@ export default function Workbench() {
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">Workbench</h1>
         </div>
         <p className="text-slate-600 dark:text-slate-400 max-w-3xl">
-          Check a spreadsheet for problems, fix them, and download a clean copy, all in one place. meldra shows exactly
-          what is wrong and which fix solves it, so you can trust the totals you report.
+          Drop in a spreadsheet and get the work done here: totals by any column, monthly figures, top rows, one sheet
+          per team or region, answers to questions and a PowerPoint, plus a quality check and a clean copy. No other
+          tools needed.
         </p>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
           <Step n={1} title="Upload" active={!file} done={!!file} />
           <span className="hidden sm:block h-px w-8 bg-slate-300 dark:bg-slate-700" />
-          <Step n={2} title="Check quality" active={!!file && !analysis} done={!!analysis} />
+          <Step n={2} title="Get work done" active={!!data} />
           <span className="hidden sm:block h-px w-8 bg-slate-300 dark:bg-slate-700" />
-          <Step n={3} title="Fix and download" active={!!analysis} />
+          <Step n={3} title="Check quality" active={!!file && !analysis} done={!!analysis} />
+          <span className="hidden sm:block h-px w-8 bg-slate-300 dark:bg-slate-700" />
+          <Step n={4} title="Fix and download" active={!!analysis} />
         </div>
       </header>
 
@@ -265,11 +279,39 @@ export default function Workbench() {
         )}
       </section>
 
-      {/* 2. Check quality */}
-      {file && (
+      {/* 2. Get work done */}
+      {file && (data || readError) && (
         <section>
           <SectionTitle
             n={2}
+            title="Get work done"
+            subtitle="One click, done in seconds. Totals, monthly figures and splits are worked out in your browser and download as Excel."
+          />
+          {readError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{readError}</AlertDescription>
+            </Alert>
+          ) : data.rows.length === 0 ? (
+            <Alert>
+              <AlertDescription>The file has no rows to work with.</AlertDescription>
+            </Alert>
+          ) : (
+            <QuickWork
+              key={`${file.name}-${file.size}-${file.lastModified}`}
+              file={file}
+              rows={data.rows}
+              columns={data.columns}
+              duplicateRows={Number(analysis?.sheets?.[0]?.duplicate_rows || 0)}
+            />
+          )}
+        </section>
+      )}
+
+      {/* 3. Check quality */}
+      {file && (
+        <section>
+          <SectionTitle
+            n={3}
             title="Check quality"
             subtitle="What is in the file, what is wrong with it, and how much it matters."
           />
@@ -354,7 +396,7 @@ export default function Workbench() {
                           <div className="shrink-0 text-sm sm:text-right sm:max-w-[240px]">
                             {f.fix ? (
                               <span className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-400 font-medium">
-                                <Wrench className="h-4 w-4" /> Fix in step 3: {FIXES[f.fix].label}
+                                <Wrench className="h-4 w-4" /> Fix in step 4: {FIXES[f.fix].label}
                               </span>
                             ) : (
                               <span className="inline-flex items-start gap-1 text-slate-600 dark:text-slate-400">
@@ -454,11 +496,11 @@ export default function Workbench() {
         </section>
       )}
 
-      {/* 3. Fix and download */}
+      {/* 4. Fix and download */}
       {sheet && (
         <section>
           <SectionTitle
-            n={3}
+            n={4}
             title="Fix and download"
             subtitle="The fixes for the problems above are already ticked. Preview the effect, then download a clean Excel copy. Your original file is not changed."
           />

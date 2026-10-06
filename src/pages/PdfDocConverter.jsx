@@ -100,7 +100,7 @@ export default function PdfDocConverter() {
       const m = err.message || '';
       if (m === 'NOT_LOGGED_IN') setError('You are not logged in. Please log in to use Document Converter.');
       else if (m === 'SESSION_EXPIRED') setError('Your session may have expired. Please log in again.');
-      else if (m === 'FILE_TOO_LARGE') setError('File is too large for your plan. Free: 10MB. Premium: 500MB.');
+      else if (m === 'FILE_TOO_LARGE') setError('File is too large for your plan. Free: 10MB. Pro and Team: 100MB. Business: 200MB.');
       else if (m === 'CONVERTER_NOT_AVAILABLE') setError('Converter is temporarily unavailable. Please refresh and try again.');
       else setError(m || 'Conversion failed.');
     } finally {
@@ -160,7 +160,7 @@ export default function PdfDocConverter() {
           </label>
 
           <p className="text-slate-400 text-sm mt-4">
-            File limits: Free 10MB, Premium 500MB.
+            File limits: Free 10MB, Pro and Team 100MB, Business 200MB.
           </p>
 
           {mode === 'pdf2doc' && (

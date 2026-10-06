@@ -131,7 +131,7 @@ export default function FilenameCleaner() {
     const maxSize = maxUploadMb(subscription);
     
     if (fileSizeMB > maxSize) {
-      alert(`File size (${fileSizeMB.toFixed(1)}MB) exceeds your ${maxSize}MB limit.\n\n${maxSize === 10 ? 'Upgrade to Premium for files up to 500MB!' : ''}`);
+      alert(`File size (${fileSizeMB.toFixed(1)}MB) exceeds your ${maxSize}MB limit.\n\n${maxSize === 10 ? 'Upgrade to Pro for files up to 100MB.' : ''}`);
       e.target.value = '';
       return;
     }
@@ -287,8 +287,8 @@ export default function FilenameCleaner() {
             <br />
             <span className="text-sm">
               {subscription?.plan === 'premium' 
-                ? 'You can process ZIP files up to 500MB with your Premium plan.'
-                : 'Free plan limited to 10MB ZIP files. Upgrade to Premium for unlimited file size!'}
+                ? `You can process ZIP files up to ${uploadLimitLabel(maxUploadMb(subscription))} on your plan.`
+                : 'Free plan limited to 10MB ZIP files. Upgrade to Pro for ZIP files up to 100MB.'}
             </span>
           </AlertDescription>
         </Alert>

@@ -123,7 +123,7 @@ export default function FileToPPT() {
     const maxSize = maxUploadMb(subscription);
 
     if (fileSizeMB > maxSize) {
-      setError(`File size (${fileSizeMB.toFixed(1)}MB) exceeds your ${maxSize}MB limit. ${maxSize === 10 ? 'Upgrade to Premium for files up to 500MB!' : ''}`);
+      setError(`File size (${fileSizeMB.toFixed(1)}MB) exceeds your ${maxSize}MB limit. ${maxSize === 10 ? 'Upgrade to Pro for files up to 100MB.' : ''}`);
       e.target.value = ''; // Clear file input
       return;
     }
@@ -369,8 +369,8 @@ export default function FileToPPT() {
             <br />
             <span className="text-sm text-slate-900 dark:text-slate-200 font-bold">
               {subscription?.plan === 'premium'
-                ? 'You can convert files up to 500MB with your Premium plan.'
-                : 'Free plan limited to 10MB files. Upgrade to Premium for larger file conversions!'}
+                ? `You can convert files up to ${uploadLimitLabel(maxSize)} on your plan.`
+                : 'Free plan limited to 10MB files. Upgrade to Pro for files up to 100MB.'}
             </span>
           </AlertDescription>
         </Alert>

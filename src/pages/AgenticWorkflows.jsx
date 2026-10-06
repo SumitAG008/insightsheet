@@ -148,7 +148,6 @@ export default function AgenticWorkflows() {
 
     const insightsResponse = await backendApi.llm.invoke(analysisPrompt, {
       addContext: false,
-      model: 'gpt-4o-mini',
       max_tokens: 900,
     });
 
@@ -230,7 +229,6 @@ export default function AgenticWorkflows() {
 
     const reportResponse = await backendApi.llm.invoke(reportPrompt, {
       addContext: false,
-      model: 'gpt-4o-mini',
       max_tokens: 900,
     });
 

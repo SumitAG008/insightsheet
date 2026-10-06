@@ -80,8 +80,8 @@ from app.utils.auth import (
 )
 from app.services.account_erasure import erase_account
 from app.services.ai_service import (
-    invoke_llm, generate_image, generate_formula, analyze_data, suggest_chart_type,
-    generate_transform, explain_sql, explain_ai_error
+    invoke_llm, generate_formula, analyze_data, suggest_chart_type,
+    generate_transform, explain_sql, explain_ai_error, assistant_model
 )
 from app.services.unified_reporting_service import build_report, plan_report, write_insight
 from app.services.api_connector_service import ConnectorError, allow_call, egress_info, fetch_records, public_presets, safe_summary
@@ -332,7 +332,7 @@ def _is_disallowed_support_question(message: str) -> bool:
         "migration", "sqlalchemy",
         "deploy", "deployment", "railway", "docker", "kubernetes",
         "log", "logs", "traceback", "stack trace",
-        "openai_api_key", "api key secret", "environment variable",
+        "openai_api_key", "anthropic_api_key", "api key secret", "environment variable",
         "source code", "codebase", "github", "commit",
     ]
     return any(s in m for s in disallowed_markers)
@@ -3466,7 +3466,7 @@ async def support_chat(
         llm_out = await invoke_llm(
             prompt=prompt,
             add_context=False,
-            model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4-turbo-preview"),
+            model=assistant_model(),
             max_tokens=800,
             return_usage=True,
         )
@@ -3573,7 +3573,7 @@ def support_chat_with_file(
         llm_out = run_coro(invoke_llm(
             prompt=prompt,
             add_context=False,
-            model=os.getenv("AI_ASSISTANT_MODEL", "gpt-4-turbo-preview"),
+            model=assistant_model(),
             max_tokens=900,
             return_usage=True,
         ))
@@ -4171,7 +4171,7 @@ async def invoke_llm_endpoint(
                 prompt=request.prompt,
                 add_context=request.add_context_from_internet,
                 response_schema=request.response_json_schema,
-                model=request.model or os.getenv("AI_ASSISTANT_MODEL", "gpt-4o-mini"),
+                model=request.model or assistant_model(),
                 max_tokens=int(request.max_tokens) if request.max_tokens is not None else int(os.getenv("AI_ASSISTANT_MAX_TOKENS", "1200") or "1200"),
                 return_usage=True,
             )
@@ -4298,35 +4298,8 @@ async def generate_image_endpoint(
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Generate image using DALL-E"""
-    try:
-        # Check subscription
-        subscription = _get_or_create_subscription(db, current_user["email"])
-
-        if not _is_paid(subscription):
-            raise HTTPException(
-                status_code=403,
-                detail="Image generation is a Premium feature"
-            )
-
-        # Generate image
-        image_url = await generate_image(request.prompt, request.size)
-
-        # Log activity
-        activity = UserActivity(
-            user_email=current_user["email"],
-            activity_type="image_generation"
-        )
-        db.add(activity)
-        db.commit()
-
-        return {"image_url": image_url}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Image generation error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    """Image generation was an OpenAI (DALL-E) feature; Claude does not generate images."""
+    raise HTTPException(status_code=501, detail="Image generation is not available.")
 
 
 @app.post("/api/ai/formula")

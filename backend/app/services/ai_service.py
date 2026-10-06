@@ -1,191 +1,198 @@
 """
-AI/LLM Service for InsightSheet-lite
-ZERO DATA STORAGE - All prompts and responses are ephemeral
+AI/LLM Service for meldra, on Anthropic's Claude API.
+ZERO DATA STORAGE - all prompts and responses are ephemeral: sent to Anthropic, never stored here.
+
+Settings (environment):
+  ANTHROPIC_API_KEY             required
+  AI_ASSISTANT_MODEL            Claude model id (default claude-opus-5-5); non-Claude names are ignored
+  AI_ASSISTANT_EFFORT           low | medium | high | xhigh | max (default medium)
+  AI_ASSISTANT_MAX_TOKENS       optional cap on tokens per answer (thinking included)
+  AI_ASSISTANT_MAX_PROMPT_CHARS optional cap on prompt length (default 400000)
 """
-import asyncio
-import functools
-import openai
-import os
-from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Dict, Any, List
 import json
+import logging
+import os
+import re
+from typing import Any, Dict, List, Optional
+
+import anthropic
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+DEFAULT_MODEL = "claude-opus-5-5"
+EFFORT_LEVELS = ("low", "medium", "high", "xhigh", "max")
+# Models that take output_config.effort, and those that accept server-side refusal fallbacks.
+_EFFORT_MODELS = {
+    "claude-fable-5-1", "claude-fable-5", "claude-opus-5-5", "claude-opus-5", "claude-opus-4-8",
+    "claude-opus-4-7", "claude-opus-4-6", "claude-sonnet-5-5", "claude-sonnet-5", "claude-sonnet-4-6",
+}
+_FALLBACK_MODELS = {"claude-fable-5-1", "claude-opus-5-5", "claude-opus-5", "claude-sonnet-5-5"}
+_FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
-# The OpenAI client blocks while it waits for an answer, so calls run on these threads and
-# the server keeps serving other requests. They mostly wait on the network, so allow many.
-_ai_threads = ThreadPoolExecutor(
-    max_workers=max(4, int(os.getenv("AI_MAX_CONCURRENT_CALLS", "32") or 32)),
-    thread_name_prefix="openai",
+SYSTEM_PROMPT = (
+    "You are the data analysis assistant inside meldra, a data and automation platform. "
+    "Give concise, actionable answers about the user's data: patterns, trends and recommendations. "
+    "Use the numbers you were given and say when the data is not enough to answer. "
+    "Be professional and plain-spoken."
+)
+JSON_INSTRUCTION = (
+    " Reply with a single JSON object and nothing else: no markdown fences, no text before or after it."
 )
 
+_client: Optional[anthropic.AsyncAnthropic] = None
 
-async def _call_openai(fn, **kwargs):
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(_ai_threads, functools.partial(fn, **kwargs))
+
+def _get_client() -> anthropic.AsyncAnthropic:
+    """One shared async client (reads ANTHROPIC_API_KEY); created on first use."""
+    global _client
+    if _client is None:
+        _client = anthropic.AsyncAnthropic(max_retries=2, timeout=180.0)
+    return _client
 
 
 def assistant_model() -> str:
-    """The model configured for AI features (same setting the AI Assistant uses)."""
-    return (os.getenv("AI_ASSISTANT_MODEL") or "gpt-4o-mini").strip() or "gpt-4o-mini"
+    """The Claude model configured for AI features."""
+    configured = (os.getenv("AI_ASSISTANT_MODEL") or "").strip()
+    return configured if configured.startswith("claude-") else DEFAULT_MODEL
+
+
+def _resolve_model(model: Optional[str]) -> str:
+    # Older callers and the web app may still pass OpenAI names such as gpt-4o-mini; only a
+    # Claude model id is honoured, anything else uses the configured model.
+    m = (model or "").strip()
+    return m if m.startswith("claude-") else assistant_model()
+
+
+def _effort() -> str:
+    e = (os.getenv("AI_ASSISTANT_EFFORT") or "medium").strip().lower()
+    return e if e in EFFORT_LEVELS else "medium"
 
 
 def explain_ai_error(e: Exception) -> str:
     """A short, safe reason for an AI failure that can be shown to the user."""
-    msg = str(e).lower()
-    if "api key" in msg or "api_key" in msg or "401" in msg or "authentication" in msg:
-        return "the OpenAI API key on the server is missing or invalid"
-    if "model" in msg and ("not found" in msg or "does not exist" in msg or "access" in msg):
+    cause = e.__cause__ if isinstance(e, AIServiceError) and e.__cause__ else e
+    if isinstance(cause, anthropic.AuthenticationError):
+        return "the Anthropic API key on the server is missing or invalid"
+    if isinstance(cause, anthropic.PermissionDeniedError):
+        return "the Anthropic API key is not allowed to use this model"
+    if isinstance(cause, anthropic.NotFoundError):
         return "the configured AI model is not available to this API key"
-    if "rate limit" in msg or "quota" in msg or "429" in msg:
-        return "the OpenAI rate limit or quota was reached"
-    if "timeout" in msg or "timed out" in msg:
+    if isinstance(cause, anthropic.RateLimitError):
+        return "the Anthropic rate limit or spend limit was reached"
+    if isinstance(cause, anthropic.APITimeoutError):
         return "the AI service took too long to respond"
+    if isinstance(cause, anthropic.APIConnectionError):
+        return "the AI service could not be reached"
+    msg = str(e).lower()
+    if "model" in msg and ("not found" in msg or "not_found" in msg or "does not exist" in msg):
+        return "the configured AI model is not available to this API key"
+    if "api key" in msg or "api_key" in msg or "auth" in msg or "401" in msg:
+        return "the Anthropic API key on the server is missing or invalid"
+    if "declined" in msg:
+        return "the AI declined this request"
     return "the AI service returned an error"
+
+
+class AIServiceError(Exception):
+    """An AI call failed; str() is safe to log, explain_ai_error() is safe to show."""
+
+
+def _parse_json(text: str) -> Any:
+    """The JSON object in a reply, tolerating markdown fences or a sentence around it."""
+    t = (text or "").strip()
+    fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", t, re.S)
+    if fence:
+        t = fence.group(1)
+    try:
+        return json.loads(t)
+    except json.JSONDecodeError:
+        start, end = t.find("{"), t.rfind("}")
+        if start != -1 and end > start:
+            return json.loads(t[start:end + 1])
+        raise
 
 
 async def invoke_llm(
     prompt: str,
     add_context: bool = False,
     response_schema: Optional[Dict[str, Any]] = None,
-    model: str = "gpt-4-turbo-preview",
-    max_tokens: int = 2000,
+    model: Optional[str] = None,
+    max_tokens: int = 16000,
     return_usage: bool = False,
 ) -> Any:
     """
-    Invoke OpenAI LLM for data analysis
+    Ask Claude. Returns text, or a parsed JSON object when response_schema is given.
+    With return_usage, returns {"content", "usage": {prompt_tokens, completion_tokens, total_tokens}, "model"}.
 
-    ZERO DATA STORAGE:
-    - Prompt sent to OpenAI but NOT stored locally
-    - Response returned but NOT stored locally
-    - All data is ephemeral
-
-    Args:
-        prompt: User's prompt/question
-        add_context: Add internet context (future feature)
-        response_schema: Expected JSON response schema
-        model: OpenAI model to use
-        max_tokens: Maximum tokens in response
-
-    Returns:
-        str or dict: LLM response (text or JSON)
+    ZERO DATA STORAGE: the prompt goes to Anthropic for this one request and is not stored here.
+    `add_context` is accepted for compatibility and unused.
     """
+    effective_model = _resolve_model(model)
+    # Thinking tokens count toward max_tokens, so leave room beyond the visible answer; a
+    # small cap would cut the answer off mid-thought.
+    effective_max_tokens = max(int(max_tokens or 0), 16000)
     try:
-        effective_model = (model or os.getenv("AI_ASSISTANT_MODEL") or "gpt-4o-mini").strip() or "gpt-4o-mini"
-        try:
-            env_max_tokens = int((os.getenv("AI_ASSISTANT_MAX_TOKENS") or "").strip() or "0")
-        except Exception:
-            env_max_tokens = 0
-        effective_max_tokens = max_tokens if isinstance(max_tokens, int) and max_tokens > 0 else 2000
-        if env_max_tokens > 0:
-            effective_max_tokens = min(effective_max_tokens, env_max_tokens)
+        env_cap = int((os.getenv("AI_ASSISTANT_MAX_TOKENS") or "").strip() or "0")
+    except ValueError:
+        env_cap = 0
+    if env_cap > 0:
+        effective_max_tokens = min(effective_max_tokens, max(env_cap, 4000))
 
-        # Defensive prompt cap to reduce TPM/rate-limit errors.
-        # Approx: 1 token ~ 4 chars in English, so 60k chars can be ~15k tokens.
-        # Keep well below typical TPM limits.
-        prompt_text = prompt or ""
-        max_prompt_chars = int((os.getenv("AI_ASSISTANT_MAX_PROMPT_CHARS") or "24000").strip() or "24000")
-        if max_prompt_chars > 0 and len(prompt_text) > max_prompt_chars:
-            prompt_text = prompt_text[:max_prompt_chars] + "\n\n[Context trimmed to fit token budget.]"
+    prompt_text = prompt or ""
+    max_prompt_chars = int((os.getenv("AI_ASSISTANT_MAX_PROMPT_CHARS") or "400000").strip() or "400000")
+    if max_prompt_chars > 0 and len(prompt_text) > max_prompt_chars:
+        logger.warning("AI prompt of %s characters trimmed to %s", len(prompt_text), max_prompt_chars)
+        prompt_text = prompt_text[:max_prompt_chars] + "\n\n[Context trimmed to fit the size limit.]"
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a data analysis assistant for InsightSheet-lite. "
-                    "Provide concise, actionable insights. "
-                    "Focus on patterns, trends, and recommendations. "
-                    "Be professional but conversational."
-                )
-            },
-            {
-                "role": "user",
-                "content": prompt_text
-            }
-        ]
+    request: Dict[str, Any] = {
+        "model": effective_model,
+        "max_tokens": effective_max_tokens,
+        "system": SYSTEM_PROMPT + (JSON_INSTRUCTION if response_schema else ""),
+        "messages": [{"role": "user", "content": prompt_text}],
+    }
+    if effective_model in _EFFORT_MODELS:
+        request["output_config"] = {"effort": _effort()}
 
-        def _extract_usage(resp: Any) -> Dict[str, int]:
-            usage = getattr(resp, "usage", None)
-            if not usage:
-                return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-            return {
-                "prompt_tokens": int(getattr(usage, "prompt_tokens", 0) or 0),
-                "completion_tokens": int(getattr(usage, "completion_tokens", 0) or 0),
-                "total_tokens": int(getattr(usage, "total_tokens", 0) or 0),
-            }
-
-        # JSON response mode
-        if response_schema:
-            response = await _call_openai(
-                openai.chat.completions.create,
-                model=effective_model,
-                messages=messages,
-                response_format={"type": "json_object"},
-                max_tokens=effective_max_tokens
+    try:
+        if effective_model in _FALLBACK_MODELS:
+            # On a safety decline, the API reruns the request on a fallback model it chooses.
+            response = await _get_client().beta.messages.create(
+                **request, betas=[_FALLBACK_BETA], fallbacks="default"
             )
-            content = response.choices[0].message.content
-            if not content:
-                raise Exception("OpenAI returned empty response")
-            try:
-                parsed = json.loads(content)
-                if return_usage:
-                    return {"content": parsed, "usage": _extract_usage(response), "model": effective_model}
-                return parsed
-            except json.JSONDecodeError as e:
-                raise Exception(f"Failed to parse JSON response from OpenAI: {str(e)}. Content: {content[:200]}")
-
-        # Text response mode
         else:
-            response = await _call_openai(
-                openai.chat.completions.create,
-                model=effective_model,
-                messages=messages,
-                max_tokens=effective_max_tokens
-            )
-            text = response.choices[0].message.content
-            if return_usage:
-                return {"content": text, "usage": _extract_usage(response), "model": effective_model}
-            return text
+            response = await _get_client().messages.create(**request)
+    except anthropic.APIError as e:
+        raise AIServiceError(f"Claude API error: {e}") from e
 
-    except Exception as e:
-        raise Exception(f"OpenAI Error: {str(e)}")
+    if response.stop_reason == "refusal":
+        raise AIServiceError("The AI declined this request.")
+    text = "".join(getattr(b, "text", "") for b in response.content if b.type == "text").strip()
+    if not text:
+        raise AIServiceError(f"Claude returned no answer (stop reason: {response.stop_reason}).")
+
+    usage = {
+        "prompt_tokens": int(getattr(response.usage, "input_tokens", 0) or 0),
+        "completion_tokens": int(getattr(response.usage, "output_tokens", 0) or 0),
+    }
+    usage["total_tokens"] = usage["prompt_tokens"] + usage["completion_tokens"]
+
+    content: Any = text
+    if response_schema:
+        try:
+            content = _parse_json(text)
+        except (json.JSONDecodeError, ValueError) as e:
+            raise AIServiceError(f"Claude did not return valid JSON: {e}. Start: {text[:200]}") from e
+
+    if return_usage:
+        return {"content": content, "usage": usage, "model": response.model}
+    return content
 
 
-async def generate_image(
-    prompt: str,
-    size: str = "1024x1024",
-    model: str = "dall-e-3"
-) -> str:
-    """
-    Generate image using DALL-E
-
-    ZERO DATA STORAGE:
-    - Returns temporary URL only
-    - Images NOT stored locally
-
-    Args:
-        prompt: Image description
-        size: Image size (1024x1024, 1792x1024, 1024x1792)
-        model: DALL-E model
-
-    Returns:
-        str: Temporary image URL
-    """
-    try:
-        response = await _call_openai(
-            openai.images.generate,
-            model=model,
-            prompt=prompt,
-            size=size,
-            n=1
-        )
-        return response.data[0].url
-
-    except Exception as e:
-        raise Exception(f"DALL-E Error: {str(e)}")
+async def generate_image(prompt: str, size: str = "1024x1024", model: Optional[str] = None) -> str:
+    """Image generation was an OpenAI (DALL-E) feature; Claude does not generate images."""
+    raise AIServiceError("Image generation is not available: meldra's AI provider (Claude) does not generate images.")
 
 
 async def generate_formula(

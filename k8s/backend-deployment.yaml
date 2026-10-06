@@ -54,11 +54,11 @@ spec:
             secretKeyRef:
               name: insightsheet-secrets
               key: JWT_SECRET_KEY
-        - name: OPENAI_API_KEY
+        - name: ANTHROPIC_API_KEY
           valueFrom:
             secretKeyRef:
               name: insightsheet-secrets
-              key: OPENAI_API_KEY
+              key: ANTHROPIC_API_KEY
         - name: ENVIRONMENT
           valueFrom:
             configMapKeyRef:

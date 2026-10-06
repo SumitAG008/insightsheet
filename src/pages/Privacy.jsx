@@ -21,7 +21,7 @@ export default function Privacy() {
             Your privacy is our top priority
           </p>
           <p className="text-sm text-slate-500 mt-2">
-            Last Updated: {new Date().toLocaleDateString()}
+            Last Updated: 6 October 2026
           </p>
         </div>
 
@@ -110,15 +110,15 @@ export default function Privacy() {
             <div className="space-y-3 text-slate-700">
               <p className="leading-relaxed">
                 AI features (AI Assistant, Smart Formulas, Unified Reporting, Migration mapping, invoice extraction) send
-                the text needed to answer to our AI provider, OpenAI: your question and, for features that read a file,
+                the text needed to answer to our AI provider, Anthropic (Claude): your question and, for features that read a file,
                 the relevant part of it (for example column names and sample rows).
               </p>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-2">
                 <p className="font-semibold text-amber-900">Important:</p>
                 <ul className="list-disc list-inside space-y-1 text-amber-800">
-                  <li>Only AI features send data to OpenAI; file conversions and the filename cleaner do not</li>
-                  <li>OpenAI does not use data sent through its API to train its models</li>
-                  <li>OpenAI may keep requests for up to 30 days to detect abuse, then deletes them</li>
+                  <li>Only AI features send data to Anthropic; file conversions, charts and the filename cleaner do not</li>
+                  <li>Anthropic does not use data sent through its commercial API to train its models</li>
+                  <li>Anthropic keeps requests only for a limited time under its data retention policy, mainly to detect misuse, then deletes them</li>
                   <li>Avoid AI features for data you must not share with a service provider</li>
                   <li>Data is encrypted in transit</li>
                 </ul>
@@ -136,7 +136,7 @@ export default function Privacy() {
                 <li><strong>Neon:</strong> our database (account, billing and the records listed above)</li>
                 <li><strong>Vercel:</strong> serves the website</li>
                 <li><strong>Resend:</strong> sends sign-in codes and account e-mails</li>
-                <li><strong>OpenAI:</strong> AI features only, as described above</li>
+                <li><strong>Anthropic:</strong> AI features only (Claude), as described above</li>
                 <li><strong>OCR.space:</strong> only if enabled, to read text from an image our own OCR could not read</li>
               </ul>
               <p className="leading-relaxed">

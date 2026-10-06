@@ -12,6 +12,7 @@ import io
 import json
 import logging
 from typing import Dict, Any, Optional, List, BinaryIO
+from app.services.standardize_service import text_variants
 import re
 
 from app.services.ai_service import invoke_llm
@@ -252,6 +253,9 @@ class FileAnalyzerService:
                 'error': str(e)
             }
 
+        # Empty cells come through as "" from the table reader; count them as missing.
+        df = df.replace(r"^\s*$", None, regex=True)
+
         # Column analysis
         column_analysis = []
         numeric_columns = []
@@ -298,6 +302,10 @@ class FileAnalyzerService:
                 'unique_count': unique_count,
                 'sample_values': sample_values
             }
+            variants = text_variants(df[col].tolist()) if df[col].dtype == object else {}
+            if variants:
+                col_info['inconsistent_values'] = [[k, v] for k, v in list(variants.items())[:5]]
+                col_info['inconsistent_count'] = int(df[col].isin(list(variants)).sum())
 
             # Determine type
             try:
@@ -323,14 +331,19 @@ class FileAnalyzerService:
                 categorical_columns.append(col)
 
             # Check if date (suppress "Could not infer format" UserWarning from dateutil)
-            try:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore", UserWarning)
-                    pd.to_datetime(df[col], errors='raise')
-                col_info['type'] = 'date'
-                date_columns.append(col)
-            except Exception:
-                pass
+            # Only text or date cells can be dates: pandas would read plain numbers as times since 1970.
+            filled = df[col].dropna()
+            if col_info['type'] != 'numeric' and len(filled) and not filled.map(lambda v: isinstance(v, (int, float))).any():
+                try:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", UserWarning)
+                        pd.to_datetime(filled, errors='raise')
+                    if col in categorical_columns:
+                        categorical_columns.remove(col)
+                    col_info['type'] = 'date'
+                    date_columns.append(col)
+                except Exception:
+                    pass
 
             column_analysis.append(col_info)
 

@@ -5,7 +5,7 @@
 //   - list layout (Course, Score...): a total or average per category, and a monthly line if dated.
 // Pure functions apart from readWorkbook, so they are unit-tested. Nothing is sent to the server.
 import * as XLSX from 'xlsx';
-import { aggregationFor, profileColumns, toDate, toNumber } from '@/lib/workbenchActions';
+import { aggregationFor, groupingOrder, profileColumns, toDate, toNumber } from '@/lib/workbenchActions';
 
 export { aggregationFor };
 
@@ -42,7 +42,7 @@ export async function readWorkbook(file) {
     const raw = XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: null, raw: true, blankrows: false });
     const { headers, rows } = tableFromRows(raw);
     const objects = rows.map((r) => Object.fromEntries(headers.map((h, i) => [h, r[i]])));
-    const sheet = { name, headers, rows: objects, columns: profileColumns(objects) };
+    const sheet = { name, headers, rows: objects, columns: profileColumns(objects, headers) };
     if (!objects.length) sheet.note = 'No table of data on this tab (it may hold only charts, notes or headings).';
     return sheet;
   });
@@ -86,7 +86,11 @@ export function chartsForSheet(sheet) {
   if (first && first.kind !== 'number' && numeric.length >= 2 && numeric.length >= (cols.length - 1) * 0.6) {
     const headerPeriods = share(numeric, (c) => isPeriod(c.name)) >= 0.6;
     const labels = rows.map((r) => r[first.key]);
-    const labelPeriods = share(labels.filter((v) => !blank(v)), isPeriod) >= 0.6;
+    const filledLabels = labels.filter((v) => !blank(v));
+    // Time down the side only when each period appears once; a long table (Month, Department,
+    // Budget...) repeats its months and is charted as a list below.
+    const uniquePeriods = new Set(filledLabels.map((v) => periodLabel(v))).size === filledLabels.length;
+    const labelPeriods = uniquePeriods && share(filledLabels, isPeriod) >= 0.6;
 
     if (headerPeriods) {
       // P&L style: each line item over the periods across the top.
@@ -97,7 +101,7 @@ export function chartsForSheet(sheet) {
       const { kept, dropped } = topByMagnitude(all, MAX_SERIES);
       charts.push({
         id: `${sheet.name}:items-over-periods`,
-        title: `${first.name} over ${numeric[0].name}–${numeric.at(-1).name}`,
+        title: `${/^Column\d+$/.test(first.name) ? 'Line items' : first.name} over ${numeric[0].name}–${numeric.at(-1).name}`,
         kind: numeric.length >= 3 ? 'line' : 'bar',
         x: numeric.map((c) => c.name),
         series: kept,
@@ -123,36 +127,54 @@ export function chartsForSheet(sheet) {
 
   // List layout: a number per category, and per month when there is a date.
   const nums = cols.filter((c) => c.kind === 'number' && !/(^|\b)(id|code|no)\b/i.test(c.name));
-  const cats = cols.filter((c) => c.kind === 'category').sort((a, b) => a.distinct - b.distinct);
-  const labelCol = cats[0] || (first && first.kind === 'text' && first.distinct === rows.length && rows.length <= MAX_BARS ? first : null);
+  const cats = groupingOrder(cols);
   const dateCol = cols.find((c) => c.kind === 'date');
 
-  if (labelCol && nums[0]) {
+  // A number per category for the two best groupings (by Line and by Product, say).
+  if (nums[0]) {
     const how = aggregationFor(nums[0].name);
-    const groups = new Map();
-    for (const r of rows) {
-      const k = blank(r[labelCol.key]) ? '(blank)' : String(r[labelCol.key]).trim();
-      const v = toNumber(r[nums[0].key]);
-      const g = groups.get(k) || { sum: 0, n: 0 };
-      if (v !== null) {
-        g.sum += v;
-        g.n += 1;
+    for (const labelCol of cats.slice(0, 2)) {
+      const groups = new Map();
+      for (const r of rows) {
+        const k = blank(r[labelCol.key]) ? '(blank)' : String(r[labelCol.key]).trim();
+        const v = toNumber(r[nums[0].key]);
+        const g = groups.get(k) || { sum: 0, n: 0 };
+        if (v !== null) {
+          g.sum += v;
+          g.n += 1;
+        }
+        groups.set(k, g);
       }
-      groups.set(k, g);
+      const points = [...groups.entries()]
+        .map(([k, g]) => [k, g.n ? round2(how === 'average' ? g.sum / g.n : g.sum) : null])
+        .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
+      const shown = points.slice(0, MAX_BARS);
+      charts.push({
+        id: `${sheet.name}:by-${labelCol.key}`,
+        title: `${how === 'average' ? 'Average' : 'Total'} ${nums[0].name} by ${labelCol.name}`,
+        kind: 'bar',
+        x: shown.map((p) => p[0]),
+        series: [{ name: `${how === 'average' ? 'Average' : 'Total'} ${nums[0].name}`, values: shown.map((p) => p[1]) }],
+        note: points.length > MAX_BARS ? `The largest ${MAX_BARS} of ${points.length} are shown.` : null,
+      });
     }
-    const points = [...groups.entries()]
-      .map(([k, g]) => [k, g.n ? round2(how === 'average' ? g.sum / g.n : g.sum) : null])
-      .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0));
-    const shown = points.slice(0, MAX_BARS);
-    charts.push({
-      id: `${sheet.name}:by-${labelCol.key}`,
-      title: `${how === 'average' ? 'Average' : 'Total'} ${nums[0].name} by ${labelCol.name}`,
-      kind: 'bar',
-      x: shown.map((p) => p[0]),
-      series: [{ name: `${how === 'average' ? 'Average' : 'Total'} ${nums[0].name}`, values: shown.map((p) => p[1]) }],
-      note: points.length > MAX_BARS ? `The largest ${MAX_BARS} of ${points.length} are shown.` : null,
-    });
-  } else if (labelCol) {
+    // A short list of named rows (Client, Total owed) with no categories: one bar per row.
+    if (!cats.length && first && first.kind === 'text' && first.distinct === rows.length && rows.length <= MAX_BARS) {
+      const points = rows
+        .map((r) => [String(r[first.key]).trim(), toNumber(r[nums[0].key])])
+        .filter((p) => p[1] !== null)
+        .sort((a, b) => b[1] - a[1]);
+      charts.push({
+        id: `${sheet.name}:by-${first.key}`,
+        title: `${nums[0].name} by ${first.name}`,
+        kind: 'bar',
+        x: points.map((p) => p[0]),
+        series: [{ name: nums[0].name, values: points.map((p) => p[1]) }],
+        note: null,
+      });
+    }
+  } else if (cats[0]) {
+    const labelCol = cats[0];
     const counts = new Map();
     rows.forEach((r) => {
       const k = blank(r[labelCol.key]) ? '(blank)' : String(r[labelCol.key]).trim();

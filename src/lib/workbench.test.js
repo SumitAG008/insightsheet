@@ -16,7 +16,7 @@ const sheet = (over = {}) => ({
 describe('workbench findings', () => {
   it('finds nothing in a clean sheet', () => {
     expect(sheetFindings(sheet())).toEqual([]);
-    expect(recommendedFixes([])).toEqual({ dedupeRows: false, parseNumbers: false, parseDates: false, normalizeHeaders: false });
+    expect(recommendedFixes([])).toEqual({ dedupeRows: false, parseNumbers: false, parseDates: false, normalizeHeaders: false, unifyText: false });
   });
 
   it('ties duplicates, text numbers and text dates to the fix that solves them', () => {
@@ -30,7 +30,7 @@ describe('workbench findings', () => {
     expect(f[0]).toMatchObject({ id: 'duplicates', severity: 'high', fix: 'dedupeRows' });
     expect(f.find((x) => x.id === 'numbers-as-text')).toMatchObject({ fix: 'parseNumbers' });
     expect(f.find((x) => x.id === 'dates-as-text')).toMatchObject({ fix: 'parseDates' });
-    expect(recommendedFixes(f)).toEqual({ dedupeRows: true, parseNumbers: true, parseDates: true, normalizeHeaders: false });
+    expect(recommendedFixes(f)).toEqual({ dedupeRows: true, parseNumbers: true, parseDates: true, normalizeHeaders: false, unifyText: false });
   });
 
   it('asks for a review where no automatic fix is safe', () => {
@@ -78,5 +78,16 @@ describe('workbench real-world cases', () => {
   it('hides the AI description when the AI could not write one', () => {
     expect(aiSummary({ ai_summary: { summary: 'Unable to generate AI summary' } })).toBeNull();
     expect(aiSummary({ ai_summary: { summary: 'Staff list with salaries.' } }).summary).toBe('Staff list with salaries.');
+  });
+
+  it('offers to make spellings consistent when the same value is spelt two ways', () => {
+    const f = sheetFindings(
+      sheet({
+        columns: [{ name: 'Region', type: 'categorical', null_count: 0, null_percentage: 0, sample_values: ['North'], inconsistent_count: 3, inconsistent_values: [[' north ', 'North']] }],
+      }),
+    );
+    expect(f[0]).toMatchObject({ id: 'variants', fix: 'unifyText', title: '3 values are spelt differently in "Region"' });
+    expect(f[0].detail).toContain('" north " and "North"');
+    expect(recommendedFixes(f).unifyText).toBe(true);
   });
 });

@@ -6141,6 +6141,8 @@ def standardize_preview(
     normalize_headers: bool = Form(True),
     parse_numbers: bool = Form(True),
     parse_dates: bool = Form(True),
+    unify_text: bool = Form(False),
+    sheet: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -6162,6 +6164,8 @@ def standardize_preview(
             normalize_headers=bool(normalize_headers),
             parse_numbers=bool(parse_numbers),
             parse_dates=bool(parse_dates),
+            unify_text=bool(unify_text),
+            sheet=(sheet or None),
         )
         _out, summary = svc.standardize(file.filename or "uploaded_file", content, options=opts)
         summary["note"] = "Preview only. Run Standardize to download the standardized workbook."
@@ -6181,6 +6185,8 @@ def standardize_download(
     normalize_headers: bool = Form(True),
     parse_numbers: bool = Form(True),
     parse_dates: bool = Form(True),
+    unify_text: bool = Form(False),
+    sheet: Optional[str] = Form(None),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -6206,6 +6212,8 @@ def standardize_download(
             normalize_headers=bool(normalize_headers),
             parse_numbers=bool(parse_numbers),
             parse_dates=bool(parse_dates),
+            unify_text=bool(unify_text),
+            sheet=(sheet or None),
         )
         out_bytes, summary = svc.standardize(file.filename or "uploaded_file", content, options=opts)
 

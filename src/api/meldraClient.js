@@ -509,6 +509,12 @@ export const backendApi = {
       if (options && typeof options.parseDates === 'boolean') {
         formData.append('parse_dates', String(options.parseDates));
       }
+      if (options && typeof options.unifyText === 'boolean') {
+        formData.append('unify_text', String(options.unifyText));
+      }
+      if (options && options.sheet) {
+        formData.append('sheet', String(options.sheet));
+      }
 
       const response = await apiCall('/api/files/standardize-preview', {
         method: 'POST',
@@ -537,6 +543,12 @@ export const backendApi = {
       }
       if (options && typeof options.parseDates === 'boolean') {
         formData.append('parse_dates', String(options.parseDates));
+      }
+      if (options && typeof options.unifyText === 'boolean') {
+        formData.append('unify_text', String(options.unifyText));
+      }
+      if (options && options.sheet) {
+        formData.append('sheet', String(options.sheet));
       }
 
       const response = await apiCall('/api/files/standardize', {

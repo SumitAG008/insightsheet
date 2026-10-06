@@ -57,6 +57,7 @@ import UnifiedReporting from "./UnifiedReporting";
 import Migration from "./Migration";
 
 import Solutions from "./Solutions";
+import Showcase from "./Showcase";
 
 import DevelopersBlog from "./DevelopersBlog";
 import BlogPost from "./BlogPost";
@@ -197,7 +198,7 @@ function PagesContent() {
     const currentPage = _getCurrentPage(location.pathname);
 
     // Routes without layout (Landing, Pricing, Login/Register/ForgotPassword/ResetPassword/VerifyEmail, Blog)
-    const noLayoutRoutes = ['/', '/pricing', '/developers', '/faq', '/help', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
+    const noLayoutRoutes = ['/', '/pricing', '/showcase', '/developers', '/faq', '/help', '/login', '/register', '/forgot-password', '/reset-password', '/verify-email'];
     const isNoLayoutRoute = noLayoutRoutes.some(route => {
         const path = location.pathname.toLowerCase();
         const routeLower = route.toLowerCase();
@@ -211,6 +212,7 @@ function PagesContent() {
                 <Route path="/" element={<Landing />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/Pricing" element={<Pricing />} />
+                <Route path="/showcase" element={<Showcase />} />
                 <Route path="/developers" element={<Developers />} />
                 <Route path="/Developers" element={<Developers />} />
                 <Route path="/faq" element={<Faq />} />

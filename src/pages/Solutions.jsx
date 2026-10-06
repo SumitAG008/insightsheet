@@ -1,9 +1,10 @@
 import PropTypes from 'prop-types';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowRight, Briefcase } from 'lucide-react';
+import { ArrowRight, Briefcase, FileSpreadsheet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SOLUTIONS, SOLUTIONS_BY_ID, STATUS_LABELS } from '@/lib/solutions';
+import { SAMPLES } from '@/lib/showcase';
 
 const STATUS_STYLES = {
   available: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
@@ -78,6 +79,7 @@ SectorTabs.propTypes = { active: PropTypes.string };
 export default function Solutions() {
   const { sector: sectorId } = useParams();
   const sector = sectorId ? SOLUTIONS_BY_ID[sectorId] : null;
+  const sample = sector ? SAMPLES.find((x) => x.solution === sector.id) : null;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
@@ -94,6 +96,21 @@ export default function Solutions() {
       <SectorTabs active={sector?.id} />
 
       {sectorId && !sector && <p className="text-slate-600 dark:text-slate-400">That sector isn&apos;t listed. Choose one above.</p>}
+
+      {sample && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/70 dark:bg-blue-950/30 px-4 py-3">
+          <FileSpreadsheet className="h-5 w-5 text-blue-700 dark:text-blue-300 shrink-0" />
+          <p className="text-sm text-slate-800 dark:text-slate-200 flex-1 min-w-[220px]">
+            <span className="font-semibold">Try it on sample data:</span> {sample.company} (fictional). {sample.summary}
+          </p>
+          <Link to={`/workbench?sample=${sample.id}`} className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 dark:text-blue-300">
+            Open in Workbench <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link to={`/showcase#${sample.id}`} className="text-sm text-blue-700 dark:text-blue-300 underline underline-offset-2">
+            Demo script
+          </Link>
+        </div>
+      )}
 
       {sector ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

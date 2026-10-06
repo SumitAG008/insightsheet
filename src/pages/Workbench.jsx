@@ -7,6 +7,7 @@ import PropTypes from 'prop-types';
 import {
   AlertTriangle, BarChart3, CheckCircle2, ChevronDown, Download, Eye, FileSpreadsheet, Loader2, RefreshCw, Table2, Upload, Wrench, X,
 } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { backendApi } from '@/api/meldraClient';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import QuickWork from '@/components/workbench/QuickWork';
 import ChartGallery from '@/components/workbench/ChartGallery';
 import { chartsForWorkbook, readWorkbook } from '@/lib/workbookCharts';
+import { COMPLEX_CASES, SAMPLES, fetchSample } from '@/lib/showcase';
 import {
   ACCEPT, ACCEPT_RE, FIXES, FIX_KEYS, aiSummary, formatBytes, missingShare, qualityLabel, recommendedFixes, sheetFindings,
 } from '@/lib/workbench';
@@ -100,6 +102,8 @@ export default function Workbench() {
   const [tabIdx, setTabIdx] = useState(0);
   const [showCharts, setShowCharts] = useState(false);
   const [readError, setReadError] = useState('');
+  const [loadingSample, setLoadingSample] = useState('');
+  const [searchParams] = useSearchParams();
 
   const sheet = analysis?.sheets?.[sheetIdx] || null;
   const findings = sheetFindings(sheet);
@@ -118,6 +122,25 @@ export default function Workbench() {
     setFile(f);
   };
 
+  const trySample = async (id, path) => {
+    setLoadingSample(id);
+    try {
+      choose(await fetchSample(path));
+    } catch (e) {
+      toast.error(e?.message || 'The sample could not be loaded.');
+    } finally {
+      setLoadingSample('');
+    }
+  };
+
+  // /workbench?sample=law-firm opens that sample straight away (links from Showcase and Solutions).
+  useEffect(() => {
+    const id = searchParams.get('sample');
+    const sample = SAMPLES.find((x) => x.id === id) || COMPLEX_CASES.find((x) => x.id === id && x.tool === 'workbench');
+    if (sample) trySample(sample.id, sample.file || sample.files[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   // Every new file is checked straight away; no extra button.
   useEffect(() => {
     if (!file) return undefined;
@@ -135,7 +158,9 @@ export default function Workbench() {
       .then((sheets) => {
         if (cancelled) return;
         setBook(sheets);
-        setTabIdx(Math.max(0, sheets.findIndex((t) => t.rows.length > 0)));
+        // Start on the first real table: numbers in it, not a cover or read-me tab of notes.
+        const withNumbers = sheets.findIndex((t) => t.columns.some((c) => c.kind === 'number'));
+        setTabIdx(withNumbers >= 0 ? withNumbers : Math.max(0, sheets.findIndex((t) => t.rows.length > 0)));
       })
       .catch(() => !cancelled && setReadError('This file could not be opened in the browser for quick work.'));
     backendApi.files
@@ -144,7 +169,9 @@ export default function Workbench() {
         if (cancelled) return;
         setAnalysis(res);
         // Start on the first tab that has data, not a cover or chart-only tab.
-        const firstData = Math.max(0, (res?.sheets || []).findIndex((t) => !t.empty));
+        const tabs = res?.sheets || [];
+        const numeric = tabs.findIndex((t) => !t.empty && (t.numeric_columns || []).length > 0);
+        const firstData = numeric >= 0 ? numeric : Math.max(0, tabs.findIndex((t) => !t.empty));
         setSheetIdx(firstData);
         setFixes(recommendedFixes(sheetFindings(res?.sheets?.[firstData])));
       })
@@ -157,7 +184,7 @@ export default function Workbench() {
 
   useEffect(() => {
     setPreview(null);
-  }, [fixes]);
+  }, [fixes, sheetIdx]);
 
   const reset = () => {
     setFile(null);
@@ -169,7 +196,7 @@ export default function Workbench() {
     if (inputRef.current) inputRef.current.value = '';
   };
 
-  const options = (timeoutMs) => ({ ...fixes, timeoutMs });
+  const options = (timeoutMs) => ({ ...fixes, sheet: sheet?.name, timeoutMs });
   const anyFix = FIX_KEYS.some((k) => fixes[k]);
 
   const runPreview = async () => {
@@ -190,7 +217,8 @@ export default function Workbench() {
     try {
       const blob = await backendApi.files.standardize(file, options(120000));
       if (!blob || !blob.size) throw new Error('The clean file came back empty.');
-      downloadBlob(blob, `${file.name.replace(/\.(csv|xlsx|xls)$/i, '')}_clean.xlsx`);
+      const tabPart = analysis?.sheets?.length > 1 ? `_${sheet.name.replace(/[^\w-]+/g, '-')}` : '';
+      downloadBlob(blob, `${file.name.replace(/\.(csv|xlsx|xls)$/i, '')}${tabPart}_clean.xlsx`);
       toast.success('Clean file downloaded');
     } catch (e) {
       setFixError(e?.message || 'The clean file could not be made.');
@@ -273,7 +301,25 @@ export default function Workbench() {
               Excel (.xlsx, .xls) or CSV. Your file is processed in memory and not stored.
             </p>
           </div>
-        ) : (
+        ) : null}
+        {!file && (
+          <div className="mt-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              <span className="font-semibold text-slate-900 dark:text-slate-100">No spreadsheet to hand?</span> Open a sample from a
+              fictional company and see the whole page work.{' '}
+              <Link to="/showcase" className="text-blue-700 dark:text-blue-400 underline underline-offset-2">What each sample shows</Link>
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[...SAMPLES.map((x) => ({ id: x.id, label: x.sector, path: x.file })), { id: 'messy-pack', label: 'A messy workbook', path: COMPLEX_CASES[0].files[0] }].map((x) => (
+                <Button key={x.id} type="button" variant="outline" size="sm" disabled={!!loadingSample} onClick={() => trySample(x.id, x.path)}>
+                  {loadingSample === x.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                  {x.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+        {file && (
           <Card>
             <CardContent className="flex flex-wrap items-center gap-4 py-4">
               <FileSpreadsheet className="h-9 w-9 text-emerald-600 shrink-0" />
@@ -578,7 +624,8 @@ export default function Workbench() {
           {analysis.sheets.length > 1 && (
             <Alert className="mb-4">
               <AlertDescription>
-                The clean copy is made from the first tab, &ldquo;{analysis.sheets[0].name}&rdquo;. The other tabs are not included yet.
+                The clean copy is made from the tab you are viewing, &ldquo;{sheet.name}&rdquo;. Choose another tab in step 3
+                to clean that one instead.
               </AlertDescription>
             </Alert>
           )}
@@ -627,10 +674,11 @@ export default function Workbench() {
               )}
 
               {preview && (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <Stat label="Rows" value={`${Number(preview.rows_before).toLocaleString()} → ${Number(preview.rows_after).toLocaleString()}`} />
                   <Stat label="Columns" value={`${preview.cols_before} → ${preview.cols_after}`} />
                   <Stat label="Duplicates removed" value={Number(preview.duplicate_rows_removed || 0).toLocaleString()} />
+                  <Stat label="Spellings made consistent" value={Number(preview.text_values_unified || 0).toLocaleString()} />
                 </div>
               )}
             </CardContent>

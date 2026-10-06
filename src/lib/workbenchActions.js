@@ -52,20 +52,41 @@ const share = (values, test) => {
   return filled.length ? filled.filter(test).length / filled.length : 0;
 };
 
-/** Each column's name and kind: number, date, category (few repeated values) or text. */
-export function profileColumns(rows) {
+// Numbers that label rather than measure: a year, a year of study, a level. They group rows
+// (enrolment by Year) but adding them up means nothing.
+const LABEL_NUMBER = /^(year|years|fy|financial year|academic year|year of study|study year|month|quarter|week|period|level|stage|rank|grade|tier)$/i;
+const isYear = (v) => Number.isInteger(v) && v >= 1900 && v <= 2100;
+
+/**
+ * Each column's name and kind: number, date, category (few repeated values) or text. Pass the
+ * headers to keep their order: object keys that look like numbers ("2024") always come first.
+ */
+export function profileColumns(rows, headers) {
   if (!rows?.length) return [];
-  const names = Object.keys(rows[0]);
+  const names = headers?.length ? headers : Object.keys(rows[0]);
   return names.map((name) => {
     const values = rows.map((r) => r[name]);
     const filled = values.filter((v) => v != null && String(v).trim() !== '');
     const distinct = new Set(filled.map((v) => String(v).trim())).size;
     let kind = 'text';
+    const groupable = distinct >= 2 && distinct <= MAX_GROUPS && distinct <= Math.max(2, filled.length * 0.6);
     if (share(values, (v) => toDate(v) !== null) >= 0.8) kind = 'date';
-    else if (share(values, (v) => toNumber(v) !== null) >= 0.8) kind = 'number';
-    else if (distinct >= 2 && distinct <= MAX_GROUPS && distinct <= Math.max(2, filled.length * 0.6)) kind = 'category';
-    return { name: name.trim() || name, key: name, kind, distinct };
+    else if (share(values, (v) => toNumber(v) !== null) >= 0.8) {
+      const label = LABEL_NUMBER.test(String(name).trim()) || (filled.length > 0 && filled.every((v) => isYear(toNumber(v))));
+      kind = label ? (groupable ? 'category' : 'text') : 'number';
+    } else if (groupable) kind = 'category';
+    return { name: String(name).trim() || name, key: name, kind, distinct };
   });
+}
+
+/**
+ * Categories in the order worth grouping by: fewest values first, but a two-value column
+ * (Yes/No, Active/Leaver) only after the richer ones, because "by Status" says less than "by Region".
+ */
+export function groupingOrder(columns) {
+  return columns
+    .filter((c) => c.kind === 'category')
+    .sort((a, b) => (a.distinct < 3) - (b.distinct < 3) || a.distinct - b.distinct);
 }
 
 /** Read the first sheet with data into plain row objects. */
@@ -83,9 +104,9 @@ export async function readRows(file) {
  * Types: total (sum, count and average of a number by a category), monthly (sum by month),
  * top (largest rows by a number) and split (one sheet per category value).
  */
-export function suggestActions(columns, limit = 6) {
+export function suggestActions(columns, limit = 7) {
   const nums = columns.filter((c) => c.kind === 'number' && !/(^|\b)(id|code|number|no)\b/i.test(c.name));
-  const cats = columns.filter((c) => c.kind === 'category').sort((a, b) => a.distinct - b.distinct);
+  const cats = groupingOrder(columns);
   const dates = columns.filter((c) => c.kind === 'date');
   const out = [];
   for (const cat of cats.slice(0, 2)) {
@@ -102,8 +123,8 @@ export function suggestActions(columns, limit = 6) {
   if (dates[0] && nums[0]) {
     out.push({ id: `monthly:${dates[0].key}:${nums[0].key}`, type: 'monthly', label: `${nums[0].name} by month of ${dates[0].name}`, params: { date: dates[0].key, value: nums[0].key } });
   }
-  if (nums[0]) out.push({ id: `top:${nums[0].key}`, type: 'top', label: `Top 10 rows by ${nums[0].name}`, params: { value: nums[0].key, n: 10 } });
   if (cats[0]) out.push({ id: `split:${cats[0].key}`, type: 'split', label: `One sheet per ${cats[0].name}`, params: { by: cats[0].key } });
+  if (nums[0]) out.push({ id: `top:${nums[0].key}`, type: 'top', label: `Top 10 rows by ${nums[0].name}`, params: { value: nums[0].key, n: 10 } });
   if (!nums.length && cats[0]) {
     out.unshift({ id: `count:${cats[0].key}`, type: 'total', label: `Count rows by ${cats[0].name}`, params: { by: cats[0].key, value: null } });
   }

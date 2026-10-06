@@ -8,7 +8,8 @@ export const ACCEPT_RE = /\.(xlsx|xls|csv)$/i;
 export const FIXES = {
   dedupeRows: { label: 'Remove duplicate rows', example: 'Two identical rows become one' },
   parseNumbers: { label: 'Turn text into numbers', example: '"(1,234.50)" becomes -1234.5' },
-  parseDates: { label: 'Turn text into dates', example: '"03/10/2026" becomes a real date' },
+  parseDates: { label: 'Turn text into dates', example: '"03/10/2026" becomes 3 October 2026' },
+  unifyText: { label: 'Make spellings consistent', example: '" north " and "north" become "North"' },
   normalizeHeaders: { label: 'Tidy column names', example: '" Invoice Date" becomes "invoice_date"' },
 };
 export const FIX_KEYS = Object.keys(FIXES);
@@ -104,6 +105,19 @@ export function sheetFindings(sheet) {
       title: `Dates stored as text: ${list(datesAsText)}`,
       detail: 'These cannot be sorted or filtered by date until they are real dates.',
       fix: 'parseDates',
+    });
+  }
+
+  const variants = columns.filter((c) => Number(c.inconsistent_count) > 0);
+  if (variants.length) {
+    const count = variants.reduce((n, c) => n + Number(c.inconsistent_count), 0);
+    const [from, to] = variants[0].inconsistent_values?.[0] || [];
+    out.push({
+      id: 'variants',
+      severity: 'medium',
+      title: `${plural(count, 'value is', 'values are')} spelt differently in ${list(variants.map((c) => c.name))}`,
+      detail: `${from != null ? `"${from}" and "${to}"` : 'Values that differ only in capitals or spaces'} are counted as separate groups in totals.`,
+      fix: 'unifyText',
     });
   }
 

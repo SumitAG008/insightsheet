@@ -1,0 +1,177 @@
+{
+  "law-firm-hartwell-lane.xlsx": {
+    "time_entries_rows": 4975,
+    "value_by_practice_area": {
+      "Corporate": 375185.0,
+      "Employment": 475967.5,
+      "Litigation": 247460.0,
+      "Private Client": 409920.0,
+      "Real Estate": 431462.5
+    },
+    "billable_hours_share": 84.2,
+    "realisation_by_practice_area": {
+      "Corporate": 89.7,
+      "Employment": 78.4,
+      "Litigation": 84.6,
+      "Private Client": 88.2,
+      "Real Estate": 74.7
+    },
+    "unpaid_total": 299846.66,
+    "over_90_days_total": 43334.62,
+    "net_profit_by_month": {
+      "Apr-26": 103157.27,
+      "May-26": 111953.77,
+      "Jun-26": 96265.56,
+      "Jul-26": 110768.65,
+      "Aug-26": 96246.71,
+      "Sep-26": 92102.27
+    }
+  },
+  "finance-northbridge-group.xlsx": {
+    "revenue_total": 23517840.13,
+    "ebitda_total": 4048366.3,
+    "ebitda_margin": 17.2,
+    "budget_by_department": {
+      "Finance": 481080.0,
+      "Marketing": 658320.0,
+      "Operations": 1114080.0,
+      "People": 367140.0,
+      "Sales": 772260.0,
+      "Technology": 936840.0
+    },
+    "variance_by_department": {
+      "Finance": -10045.98,
+      "Marketing": -19354.85,
+      "Operations": -4769.7,
+      "People": -903.92,
+      "Sales": -19448.99,
+      "Technology": 38433.48
+    },
+    "sales_by_region": {
+      "Europe": 1061805.63,
+      "North America": 872186.25,
+      "UK & Ireland": 1707118.39
+    },
+    "sales_invoices_rows": 191
+  },
+  "university-ashford.xlsx": {
+    "students_rows": 900,
+    "average_attendance_by_faculty": {
+      "Arts & Humanities": 78.6,
+      "Business": 84.11,
+      "Computing": 83.89,
+      "Engineering": 87.82,
+      "Health Sciences": 91.92,
+      "Law": 87.03
+    },
+    "withdrawal_rate": 4.6,
+    "withdrawal_rate_low_attendance": 28.6,
+    "enrolment_2026": {
+      "Business": 3131,
+      "Engineering": 2876,
+      "Health Sciences": 3428,
+      "Arts & Humanities": 1368,
+      "Computing": 2951,
+      "Law": 1140
+    },
+    "average_agree_by_faculty": {
+      "Arts & Humanities": 77.95,
+      "Business": 80.7,
+      "Computing": 80.6,
+      "Engineering": 80.43,
+      "Health Sciences": 79.77,
+      "Law": 78.7
+    }
+  },
+  "insurance-kingsmere-claims.xlsx": {
+    "claims_rows": 640,
+    "incurred_by_line": {
+      "Liability": 4652733.56,
+      "Marine": 2673604.69,
+      "Motor": 2141901.91,
+      "Property": 4273679.8
+    },
+    "loss_ratio_by_line": {
+      "Motor": 62.3,
+      "Property": 55.2,
+      "Liability": 47.1,
+      "Marine": 71.0
+    },
+    "open_reserve_total": 4086434.36
+  },
+  "manufacturing-corran-precision.xlsx": {
+    "production_rows": 528,
+    "units_by_line": {
+      "Line A": 65379,
+      "Line B": 60569,
+      "Line C": 70739,
+      "Line D": 45253
+    },
+    "scrap_rate_by_line": {
+      "Line A": 1.68,
+      "Line B": 1.7,
+      "Line C": 4.01,
+      "Line D": 1.63
+    },
+    "downtime_by_line": {
+      "Line A": 3819,
+      "Line B": 3606,
+      "Line C": 3755,
+      "Line D": 8624
+    },
+    "skus_to_reorder": 12
+  },
+  "hr-fernhill-people.xlsx": {
+    "employees_rows": 125,
+    "salary_by_department": {
+      "Customer Success": 879249.3,
+      "Engineering": 2292112.47,
+      "Finance": 661456.92,
+      "Operations": 1025455.49,
+      "People": 444259.5,
+      "Sales": 1367257.66
+    },
+    "active_headcount": 103,
+    "gross_pay_total": 2840627.38
+  },
+  "complex/messy-management-pack.xlsx": {
+    "regional_sales_rows": 152,
+    "duplicates": 2,
+    "credit_notes": 4
+  },
+  "complex/bank-vs-cash-book": {
+    "cash_book_rows": 181,
+    "bank_rows": 177,
+    "planted": {
+      "in_ledger_not_bank": [
+        "PAY-26175",
+        "PAY-26176",
+        "PAY-26177",
+        "PAY-26178",
+        "PAY-26179",
+        "PAY-26180"
+      ],
+      "in_bank_not_ledger": [
+        "BANK-CHG-0926",
+        "INT-0926",
+        "DD-INSURE-09"
+      ],
+      "amount_mismatch": [
+        "PAY-26015",
+        "PAY-26078",
+        "PAY-26124"
+      ],
+      "rounding": [
+        "PAY-26031",
+        "PAY-26032"
+      ],
+      "duplicate_in_ledger": [
+        "PAY-26061"
+      ]
+    }
+  },
+  "complex/intercompany": {
+    "uk_rows": 40,
+    "de_rows": 40
+  }
+}

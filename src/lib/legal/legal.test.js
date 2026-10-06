@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { LEGAL_STRINGS, defaultLanguage, translate } from './i18n';
 import { countryForRegion, daysFromToday, fmtDate, fmtMoney } from './format';
 import { NAV, visibleNav } from '../navigation';
+import { LEGAL_PUBLIC } from './launch';
+import { SOLUTIONS } from '../solutions';
+import { PUBLIC_PAGES } from '../seo';
 
 describe('meldra Legal strings', () => {
   it('has a Hindi string for every English one', () => {
@@ -46,5 +49,14 @@ describe('meldra Legal in the menu', () => {
     expect(NAV.some((e) => e.id === 'legal')).toBe(true);
     expect(visibleNav({}).some((e) => e.id === 'legal')).toBe(false);
     expect(visibleNav({ legal: true }).some((e) => e.id === 'legal')).toBe(true);
+  });
+});
+
+describe('meldra Legal before launch', () => {
+  it('leaves no public trace while the launch switch is off', () => {
+    expect(LEGAL_PUBLIC).toBe(false);
+    const paths = SOLUTIONS.flatMap((s) => s.useCases.map((u) => u.to));
+    expect(paths).not.toContain('/legal-diary');
+    expect(Object.keys(PUBLIC_PAGES)).not.toContain('/legal-diary');
   });
 });

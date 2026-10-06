@@ -3,7 +3,8 @@
 // small screens, so lawyers can run their day from the meldra phone app; the same screens work on the web.
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import PropTypes from 'prop-types';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { LEGAL_PUBLIC } from '@/lib/legal/launch';
 import { BarChart3, CalendarCheck, Briefcase, ListChecks, MoreHorizontal, Scale, Search } from 'lucide-react';
 import { legalApi } from '@/lib/legal/api';
 import { defaultLanguage, translate } from '@/lib/legal/i18n';
@@ -121,7 +122,7 @@ export default function Legal() {
   }, [data, effectiveLang, setLang]);
 
   if (boot.loading) return <div className="py-20 text-center text-slate-500">{translate(effectiveLang || 'en', 'loading')}</div>;
-  if (boot.locked) return <Locked lang={effectiveLang || 'en'} />;
+  if (boot.locked) return LEGAL_PUBLIC ? <Locked lang={effectiveLang || 'en'} /> : <Navigate to="/Dashboard" replace />;
   if (boot.error || !ctx)
     return (
       <div className="py-20 text-center">

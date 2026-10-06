@@ -68,6 +68,7 @@ import Terms from "./Terms";
 import Faq from "./Faq";
 import Legal from "./Legal";
 import LegalProduct from "./LegalProduct";
+import { LEGAL_PUBLIC } from "@/lib/legal/launch";
 
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
@@ -217,7 +218,7 @@ function PagesContent() {
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/Pricing" element={<Pricing />} />
                 <Route path="/showcase" element={<Showcase />} />
-                <Route path="/legal-diary" element={<LegalProduct />} />
+                <Route path="/legal-diary" element={LEGAL_PUBLIC ? <LegalProduct /> : <Navigate to="/" replace />} />
                 <Route path="/developers" element={<Developers />} />
                 <Route path="/Developers" element={<Developers />} />
                 <Route path="/faq" element={<Faq />} />
@@ -348,7 +349,7 @@ function PagesContent() {
                 <Route path="/Solutions" element={<ProtectedRoute><Solutions /></ProtectedRoute>} />
                 <Route path="/solutions/:sector" element={<ProtectedRoute><Solutions /></ProtectedRoute>} />
 
-                {/* meldra Legal: licensed add-on; the page itself shows "request access" without the licence. */}
+                {/* meldra Legal: licensed add-on. Without the licence the page sends people to their dashboard (or shows "request access" once launched). */}
                 <Route path="/legal" element={<ProtectedRoute><Legal /></ProtectedRoute>} />
                 <Route path="/Legal" element={<ProtectedRoute><Legal /></ProtectedRoute>} />
             </Routes>

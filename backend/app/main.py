@@ -1036,6 +1036,10 @@ app.include_router(organizations_router)
 from app.routes.metrics import router as metrics_router  # noqa: E402
 app.include_router(metrics_router)
 
+# Reconciliation v2: multi-pass matching, open items carried forward, Claude explanations
+from app.routes.recon import router as recon_router  # noqa: E402
+app.include_router(recon_router)
+
 # meldra Legal: matter and hearing diary (licensed add-on, hidden unless the account has it)
 from app.routes.legal import router as legal_router  # noqa: E402
 app.include_router(legal_router)

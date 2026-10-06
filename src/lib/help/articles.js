@@ -10,6 +10,21 @@ export const CATEGORIES = [
     description: 'What meldra Insight does, how to sign up and how your data is handled.',
   },
   {
+    id: 'ai-assistant',
+    name: 'AI assistant',
+    description: 'Ask meldra in your own words, chat with your files and automate repeat work.',
+  },
+  {
+    id: 'spreadsheets-and-analysis',
+    name: 'Spreadsheets and analysis',
+    description: 'Analyse, clean and reconcile spreadsheets, build P&L statements and turn workbooks into slides.',
+  },
+  {
+    id: 'pdf-and-documents',
+    name: 'PDF and documents',
+    description: 'Convert, edit and read PDFs, extract invoices and tidy file names.',
+  },
+  {
     id: 'unified-reporting',
     name: 'Unified Reporting',
     description: 'Combine exports, databases and APIs, ask questions in plain English and build dashboards.',
@@ -20,9 +35,14 @@ export const CATEGORIES = [
     description: 'Turn a legacy HR extract into load-ready SAP SuccessFactors files, cycle after cycle.',
   },
   {
+    id: 'data-and-integrations',
+    name: 'Data and integrations',
+    description: 'Design data models, connect databases and websites, and use the meldra API.',
+  },
+  {
     id: 'account-and-billing',
     name: 'Account and billing',
-    description: 'Plans, limits, usage, and team and organisation licences.',
+    description: 'Plans, limits, usage, settings, sign-in security, and team and organisation licences.',
   },
 ];
 

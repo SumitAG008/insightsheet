@@ -1,13 +1,15 @@
 // components/subscription/SubscriptionChecker.jsx - Enhanced with strict file size enforcement
 import React, { useState, useEffect } from 'react';
 import { meldraAi } from '@/api/meldraClient';
-import { AlertCircle, Crown, Zap, Lock } from 'lucide-react';
+import { AlertCircle, BookOpen, Crown, Zap, Lock } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { guideFor } from '@/lib/help/pageGuides';
 import { createPageUrl } from '@/utils';
 
 export default function SubscriptionChecker({ children }) {
+  const guide = guideFor(useLocation().pathname);
   const [user, setUser] = useState(null);
   const [subscription, setSubscription] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -156,6 +158,13 @@ export default function SubscriptionChecker({ children }) {
               </div>
             </div>
 
+            <div className="flex items-center gap-2">
+            {guide && (
+              <Link to={guide} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 hover:border-blue-500 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                <BookOpen className="h-3.5 w-3.5" />
+                How to use this tool
+              </Link>
+            )}
             {/* Upgrade Button (only for free users) */}
             {plan !== 'premium' && (
               <Link to={createPageUrl('Pricing')}>
@@ -165,6 +174,7 @@ export default function SubscriptionChecker({ children }) {
                 </Button>
               </Link>
             )}
+            </div>
           </div>
         </div>
       </div>

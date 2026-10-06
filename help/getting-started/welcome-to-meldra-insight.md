@@ -41,7 +41,7 @@ Every new account starts on the Free plan. See [Plans and limits](/help/plans-an
 
 - **Unified Reporting** and **Migration** have their own links in the navigation bar at the top of the page.
 - The other tools are grouped in the menus along the same bar.
-- Your account menu is at the top right (it shows your email address). It contains **Help Guide**, **Plan and usage**, **Settings**, **Security** and **Logout**.
+- Your account menu is at the top right (it shows your email address). It contains **Onboarding**, **Help Center**, **Plan and usage**, **Settings**, **Security** and **Logout**.
 
 ## Next steps
 

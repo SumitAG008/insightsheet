@@ -7,11 +7,15 @@ This folder holds the customer help articles for meldra Insight. Each Markdown f
 | Folder | Category name (exact) |
 |---|---|
 | `getting-started/` | `Getting started` |
+| `ai-assistant/` | `AI assistant` |
+| `spreadsheets-and-analysis/` | `Spreadsheets and analysis` |
+| `pdf-and-documents/` | `PDF and documents` |
 | `unified-reporting/` | `Unified Reporting` |
 | `migration/` | `Migration` |
+| `data-and-integrations/` | `Data and integrations` |
 | `account-and-billing/` | `Account and billing` |
 
-Put each article in the folder that matches its `category`. This README is not an article and has no frontmatter.
+Put each article in the folder that matches its `category`. A new category also needs an entry in `CATEGORIES` in `src/lib/help/articles.js`. To link an app page to its guide (the "How to use this tool" button), add it to `src/lib/help/pageGuides.js`. This README is not an article and has no frontmatter.
 
 ## Frontmatter
 
@@ -31,7 +35,7 @@ updated: 2026-10-05
 |---|---|
 | `title` | Task-based, sentence case. Shown as the page heading. |
 | `summary` | One sentence. Shown in lists and search results. |
-| `category` | One of the four category names above, spelled exactly. |
+| `category` | One of the category names above, spelled exactly. |
 | `order` | Position inside the category: 1, 2, 3… No duplicates within a category. |
 | `updated` | Date of the last real content change, as `YYYY-MM-DD`. Update it every time you change the article. |
 

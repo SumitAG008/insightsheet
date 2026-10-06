@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ARTICLES } from './content';
 import { CATEGORIES } from './articles';
+import { PAGE_GUIDES, guideFor } from './pageGuides';
 
 const files = import.meta.glob('/help/**/*.md', { query: '?raw', import: 'default', eager: true });
 
@@ -28,5 +29,12 @@ describe('help centre content', () => {
         expect(slugs.has(slug), `${a.slug} links to /help/${slug}`).toBe(true);
       }
     }
+  });
+
+  it('has a guide for every app page that links to one', () => {
+    const slugs = new Set(ARTICLES.map((a) => a.slug));
+    for (const [page, slug] of Object.entries(PAGE_GUIDES)) expect(slugs.has(slug), `${page} -> ${slug}`).toBe(true);
+    expect(guideFor('/Reconciliation/')).toBe('/help/reconcile-two-files');
+    expect(guideFor('/login')).toBeNull();
   });
 });

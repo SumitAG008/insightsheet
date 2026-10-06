@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  AlertTriangle, ArrowLeft, ArrowRight, ArrowRightLeft, BarChart3, BookOpen, ChevronRight, CreditCard, Info, Lightbulb, Rocket, Search,
+  AlertTriangle, ArrowLeft, ArrowRight, ArrowRightLeft, BarChart3, BookOpen, ChevronRight, CreditCard, Database, FileSpreadsheet, FileText, Info, Lightbulb, Rocket, Search, Sparkles,
 } from 'lucide-react';
 import Logo from '@/components/branding/Logo';
 import { ARTICLES } from '@/lib/help/content';
@@ -13,6 +13,10 @@ import { PRODUCT } from '@/lib/seo';
 
 const CATEGORY_ICONS = {
   'getting-started': Rocket,
+  'ai-assistant': Sparkles,
+  'spreadsheets-and-analysis': FileSpreadsheet,
+  'pdf-and-documents': FileText,
+  'data-and-integrations': Database,
   'unified-reporting': BarChart3,
   migration: ArrowRightLeft,
   'account-and-billing': CreditCard,

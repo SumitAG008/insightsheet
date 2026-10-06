@@ -24,14 +24,11 @@ export default function OCRConverter() {
   const [extracting, setExtracting] = useState(false);
   const [ocrDone, setOcrDone] = useState(false);
   const [text, setText] = useState('');
-  const [layout, setLayout] = useState(null);
-  const [imageWidth, setImageWidth] = useState(null);
-  const [imageHeight, setImageHeight] = useState(null);
-  const [tables, setTables] = useState(null);
   const [pages, setPages] = useState(null);
   const [ocrLang, setOcrLang] = useState('eng');
-  const [exportMode, setExportMode] = useState('layout'); // 'form' | 'layout' — layout = match image positions
-  const [preserveImage, setPreserveImage] = useState(false); // PDF: use original image (exact copy)
+  const [originalPages, setOriginalPages] = useState(null); // OCR result as read, to find what was changed
+  const [editView, setEditView] = useState('lines'); // 'lines' = line by line on the original layout | 'text' = plain text
+  const [preserveImage, setPreserveImage] = useState(true); // PDF: keep the original page, write the corrections onto it
   const [exporting, setExporting] = useState(null); // 'doc' | 'pdf' | null
   const [error, setError] = useState('');
   const [user, setUser] = useState(null);
@@ -78,7 +75,7 @@ export default function OCRConverter() {
     }
     const sizeMB = f.size / (1024 * 1024);
     if (sizeMB > maxSizeMB) {
-      setError(`File size (${sizeMB.toFixed(1)}MB) exceeds your ${maxSizeMB}MB limit.`);
+      setError(`This file is ${sizeMB.toFixed(1)}MB; your plan allows up to ${maxSizeMB}MB per file. Try a smaller scan (lower resolution or fewer pages) or upgrade.`);
       e.target.value = '';
       return;
     }
@@ -87,11 +84,8 @@ export default function OCRConverter() {
     setFormData(null);
     setError('');
     setText('');
-    setLayout(null);
-    setImageWidth(null);
-    setImageHeight(null);
-    setTables(null);
     setPages(null);
+    setOriginalPages(null);
     setOcrDone(false);
   };
 
@@ -102,11 +96,15 @@ export default function OCRConverter() {
     try {
       const res = await backendApi.files.ocrExtract(file, ocrLang);
       setText(res.text ?? '');
-      setLayout(res.layout ?? null);
-      setImageWidth(res.image_width ?? null);
-      setImageHeight(res.image_height ?? null);
-      setTables(res.tables ?? null);
-      setPages(res.pages ?? null);
+      // One shape for PDFs and images: a list of pages, each with its lines and their positions.
+      const list = Array.isArray(res.pages) && res.pages.length
+        ? res.pages
+        : (res.layout && res.image_width && res.image_height
+          ? [{ page: 1, text: res.text, layout: res.layout, image_width: res.image_width, image_height: res.image_height, tables: res.tables }]
+          : null);
+      setPages(list);
+      setOriginalPages(list ? JSON.parse(JSON.stringify(list)) : null);
+      setEditView(list && list.some((p) => (p.layout || []).length) ? 'lines' : 'text');
       setOcrDone(true);
     } catch (err) {
       setError(err.message || 'OCR extraction failed. Ensure the backend has Tesseract installed.');
@@ -158,43 +156,59 @@ export default function OCRConverter() {
     downloadBlob(new Blob([rows.map((r) => r.map(q).join(',')).join('\n')], { type: 'text/csv' }), `${baseName()}_data.csv`);
   };
 
+  const linesText = () => (pages || []).map((p) => (p.layout || []).map((l) => l.text).join('\n')).join('\n\n');
+
+  const setLine = (pi, li, value) => {
+    setPages((ps) => ps.map((p, i) => (i !== pi ? p : { ...p, layout: p.layout.map((l, j) => (j === li ? { ...l, text: value } : l)) })));
+  };
+
+  // Lines whose text differs from what OCR read, with their position, for writing onto the original.
+  const changedLines = () => {
+    const out = [];
+    (pages || []).forEach((p, pi) => (p.layout || []).forEach((l, li) => {
+      const before = originalPages?.[pi]?.layout?.[li]?.text ?? '';
+      if (l.text !== before) {
+        out.push({
+          page: pi, left: l.left, top: l.top, width: l.width, height: l.height,
+          image_width: p.image_width, image_height: p.image_height, original: before, text: l.text,
+        });
+      }
+    }));
+    return out;
+  };
+  const changedCount = editView === 'lines' ? changedLines().length : 0;
+
   const handleSave = () => {
-    sessionStorage.setItem(SAVE_KEY, JSON.stringify({ t: text }));
+    sessionStorage.setItem(SAVE_KEY, JSON.stringify({ t: editView === 'lines' ? linesText() : text }));
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
+
+  const readFileBase64 = () => new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const s = r.result;
+      res(typeof s === 'string' && s.includes(',') ? s.split(',')[1] : (s || ''));
+    };
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
 
   const handleExport = async (format) => {
     setExporting(format);
     setError('');
     try {
-      const payload = {
-        text,
-        format,
-        title: (file?.name || 'OCR').replace(/\.[^/.]+$/, '') || 'OCR Document',
-      };
-      if (exportMode === 'layout' && pages && Array.isArray(pages) && pages.length > 0) {
-        payload.pages = pages;
-        payload.mode = 'layout';
-      }
-      if (format === 'pdf' && preserveImage && file) {
-        const base64 = await new Promise((res, rej) => {
-          const r = new FileReader();
-          r.onload = () => {
-            const s = r.result;
-            res(typeof s === 'string' && s.includes(',') ? s.split(',')[1] : (s || ''));
-          };
-          r.onerror = rej;
-          r.readAsDataURL(file);
-        });
-        payload.preserve_image = true;
-        payload.image_base64 = base64;
-      } else if (exportMode === 'layout' && layout && imageWidth && imageHeight) {
-        payload.layout = layout;
-        payload.image_width = imageWidth;
-        payload.image_height = imageHeight;
-        if (tables) payload.tables = tables;
-        payload.mode = 'layout';
+      const title = (file?.name || 'OCR').replace(/\.[^/.]+$/, '') || 'OCR Document';
+      let payload;
+      if (editView === 'lines' && pages?.length) {
+        if (format === 'pdf' && preserveImage && file) {
+          // The original page itself, with each corrected line replaced in place.
+          payload = { text: '', format, title, preserve_image: true, image_base64: await readFileBase64(), line_edits: changedLines() };
+        } else {
+          payload = { text: linesText(), format, title, mode: 'layout', pages };
+        }
+      } else {
+        payload = { text, format, title };
       }
       const blob = await backendApi.files.ocrExport(payload);
       const ext = format === 'doc' ? '.docx' : '.pdf';
@@ -212,11 +226,8 @@ export default function OCRConverter() {
     setFillResult(null);
     setFormData(null);
     setText('');
-    setLayout(null);
-    setImageWidth(null);
-    setImageHeight(null);
-    setTables(null);
     setPages(null);
+    setOriginalPages(null);
     setOcrDone(false);
     setError('');
     sessionStorage.removeItem(SAVE_KEY);
@@ -269,6 +280,12 @@ export default function OCRConverter() {
           </AlertDescription>
         </Alert>
 
+        {!file && error && (
+          <Alert className="mb-4 bg-red-500/10 border-red-500/30">
+            <AlertCircle className="h-4 w-4 text-red-400" />
+            <AlertDescription className="text-red-700 dark:text-red-300 font-semibold">{error}</AlertDescription>
+          </Alert>
+        )}
         {!file && (
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-12 mb-6">
             <label className="flex flex-col items-center justify-center cursor-pointer">
@@ -412,7 +429,7 @@ export default function OCRConverter() {
         {file && ocrDone && (
           <div className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-white font-semibold">Editable text — edit, then Save or Download</p>
+              <p className="text-white font-semibold">Correct the text, then download as Word or PDF</p>
               <Button onClick={handleReset} variant="outline" size="sm">New file</Button>
             </div>
             {error && (
@@ -421,45 +438,78 @@ export default function OCRConverter() {
                 <AlertDescription className="text-red-300">{error}</AlertDescription>
               </Alert>
             )}
-            <Textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Extracted text will appear here. You can edit and fill in any corrections."
-              className="min-h-[220px] mb-4 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
-            />
-            <div className="flex flex-wrap items-center gap-4 mb-4">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="export-mode" className="text-slate-200 text-sm font-medium shrink-0">Export as</Label>
-                <Select value={exportMode} onValueChange={setExportMode}>
-                  <SelectTrigger id="export-mode" className="w-[220px] bg-slate-800/50 border-slate-600 text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="layout">Layout (match image)</SelectItem>
-                    <SelectItem value="form">Form (sections, tables, fields)</SelectItem>
-                  </SelectContent>
-                </Select>
+            {pages?.length ? (
+              <div className="flex flex-wrap items-center gap-2 mb-3" role="tablist" aria-label="How to edit">
+                {[['lines', 'Line by line (keeps the original layout)'], ['text', 'Plain text']].map(([id, label]) => (
+                  <Button key={id} size="sm" role="tab" aria-selected={editView === id} onClick={() => setEditView(id)}
+                    variant={editView === id ? 'default' : 'outline'}
+                    className={editView === id ? 'bg-emerald-600 hover:bg-emerald-700 text-white' : 'bg-transparent border-slate-500 text-slate-200 hover:bg-slate-700 hover:text-white'}>
+                    {label}
+                  </Button>
+                ))}
+                {editView === 'lines' && changedCount > 0 && (
+                  <>
+                    <span className="text-amber-300 text-sm">{changedCount} line{changedCount === 1 ? '' : 's'} changed</span>
+                    <Button size="sm" variant="ghost" className="text-slate-300" onClick={() => setPages(JSON.parse(JSON.stringify(originalPages)))}>
+                      Undo all
+                    </Button>
+                  </>
+                )}
               </div>
-              <span className="text-slate-400 text-sm">
-                {exportMode === 'layout' ? 'Same format as the original so filled & signed forms stay acceptable.' : 'Flow structure: sections, labels, tables.'}
+            ) : null}
+            {editView === 'lines' && pages?.length ? (
+              <div className="max-h-[480px] overflow-auto rounded-lg border border-slate-700 bg-slate-950/60 p-3 mb-4 space-y-4">
+                {pages.map((p, pi) => (
+                  <div key={pi}>
+                    {pages.length > 1 && <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-1">Page {pi + 1}</p>}
+                    {(p.layout || []).length === 0 && <p className="text-sm text-slate-500">No text found on this page.</p>}
+                    <div className="space-y-1">
+                      {(p.layout || []).map((l, li) => {
+                        const changed = l.text !== (originalPages?.[pi]?.layout?.[li]?.text ?? '');
+                        return (
+                          <input key={li} value={l.text} onChange={(e) => setLine(pi, li, e.target.value)}
+                            aria-label={`Page ${pi + 1}, line ${li + 1}`}
+                            className={`w-full rounded px-2 py-1 text-sm bg-slate-800/60 text-white border outline-none focus:border-emerald-400 ${changed ? 'border-amber-400' : 'border-transparent'}`} />
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                placeholder="Extracted text will appear here. You can edit and fill in any corrections."
+                className="min-h-[220px] mb-4 bg-slate-800/50 border-slate-600 text-white placeholder:text-slate-500"
+              />
+            )}
+            <div className="flex flex-wrap items-center gap-3 mb-4 text-sm">
+              {editView === 'lines' && pages?.length ? (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="preserve-image"
+                    checked={preserveImage}
+                    onCheckedChange={(v) => setPreserveImage(!!v)}
+                    className="border-slate-500 data-[state=checked]:bg-emerald-600"
+                  />
+                  <Label htmlFor="preserve-image" className="text-slate-200 cursor-pointer">
+                    PDF: keep the original page and write my changes onto it (recommended)
+                  </Label>
+                </div>
+              ) : (
+                <span className="text-slate-400">Word and PDF are rebuilt from this text, with headings, labels and tables.</span>
+              )}
+              <span className="text-slate-400 w-full">
+                Changed lines replace the old words in place (the old words are removed, not hidden). Clear a line to delete it.
+                Word keeps your changes in the same positions. To sign, open the PDF in the <Link to="/pdfeditor" className="underline text-emerald-300">PDF Editor</Link>.
               </span>
-              <div className="flex items-center gap-2 ml-4">
-                <Checkbox
-                  id="preserve-image"
-                  checked={preserveImage}
-                  onCheckedChange={(v) => setPreserveImage(!!v)}
-                  className="border-slate-500 data-[state=checked]:bg-emerald-600"
-                />
-                <Label htmlFor="preserve-image" className="text-slate-300 text-sm cursor-pointer">
-                  Exact copy (PDF looks like the original image)
-                </Label>
-              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
                 onClick={handleSave}
                 variant="outline"
-                className="border-slate-500 text-slate-300 hover:bg-slate-700"
+                className="bg-transparent border-slate-500 text-slate-200 hover:bg-slate-700 hover:text-white"
               >
                 {saved ? <><CheckCircle className="w-4 h-4 mr-2 text-emerald-400" /> Saved</> : <><Save className="w-4 h-4 mr-2" /> Save</>}
               </Button>

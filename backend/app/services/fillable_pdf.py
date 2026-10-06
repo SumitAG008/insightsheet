@@ -20,6 +20,7 @@ forms, statements and letters.
 
 Nothing is stored; everything happens in memory.
 """
+import base64
 import io
 import logging
 import re
@@ -93,7 +94,7 @@ class Word:
 @dataclass
 class Field:
     rect: fitz.Rect
-    kind: str  # text, multiline, checkbox
+    kind: str  # text, multiline, checkbox (signature once written)
     label: str = ""
     source: str = ""  # line, box, colon, dots, checkbox
     page: int = 0
@@ -699,6 +700,16 @@ def _unique(name: str, used: Dict[str, int]) -> str:
     return base if used[base] == 1 else f"{base}_{used[base]}"
 
 
+_SIGNATURE_LABEL = re.compile(r"\b(sign(ature)?|signed|hastakshar)\b|हस्ताक्षर", re.I)
+
+
+def _is_signature_blank(f: "Field") -> bool:
+    """A single-line blank captioned "Signature" (not a filled-in value, not a multi-line box)."""
+    label = f.label or ""
+    return (f.kind == "text" and not f.cover and not f.value and bool(_SIGNATURE_LABEL.search(label))
+            and not re.search(r"\bdate\b|दिनांक", label, re.I))
+
+
 def make_fillable_pdf(data: bytes, filename: str = "", ocr_lang: Optional[str] = None, max_pages: int = 25) -> Tuple[bytes, Dict[str, Any]]:
     """Return (fillable PDF bytes, report)."""
     lang = _normalize_ocr_lang(ocr_lang)
@@ -710,7 +721,7 @@ def make_fillable_pdf(data: bytes, filename: str = "", ocr_lang: Optional[str] =
             raise FillableError(f"This document has {len(doc)} pages; the limit is {max_pages}.")
         used: Dict[str, int] = {}
         report = {"pages": len(doc), "scanned_pages": 0, "fields": 0, "checkboxes": 0,
-                  "already_fillable_fields": 0, "field_list": []}
+                  "already_fillable_fields": 0, "signatures": 0, "field_list": []}
         for pno in range(len(doc)):
             page = doc[pno]
             g = read_page(page, lang)
@@ -732,6 +743,12 @@ def make_fillable_pdf(data: bytes, filename: str = "", ocr_lang: Optional[str] =
                     wdg.field_type = fitz.PDF_WIDGET_TYPE_CHECKBOX
                     wdg.field_value = False
                     report["checkboxes"] += 1
+                elif _is_signature_blank(f):
+                    # A real signature field: Acrobat, a DSC token or an eSign app can sign it digitally,
+                    # and meldra's editor places a drawn signature there.
+                    wdg.field_type = fitz.PDF_WIDGET_TYPE_SIGNATURE
+                    f.kind = "signature"
+                    report["signatures"] += 1
                 else:
                     wdg.field_type = fitz.PDF_WIDGET_TYPE_TEXT
                     wdg.text_font = "Helv"
@@ -746,7 +763,12 @@ def make_fillable_pdf(data: bytes, filename: str = "", ocr_lang: Optional[str] =
                         # Narrow blanks shrink the text to fit (size 0 = automatic).
                         wdg.text_fontsize = 0 if f.rect.width < 100 else max(7.0, min(11.0, f.rect.height * 0.62))
                     report["fields"] += 1
-                page.add_widget(wdg)
+                added = page.add_widget(wdg)
+                if f.kind == "signature" and added is not None:
+                    # Empty appearance: MuPDF's default is an orange "SIGN" tag, which other readers would print.
+                    kind, ref = doc.xref_get_key(added.xref, "AP/N")
+                    if kind == "xref":
+                        doc.update_stream(int(ref.split()[0]), b" ")
                 report["field_list"].append({"name": f.name, "label": f.label, "page": f.page, "type": f.kind})
         out = doc.tobytes(garbage=3, deflate=True, encryption=fitz.PDF_ENCRYPT_NONE)
         return out, report
@@ -927,10 +949,83 @@ def _frac_rect(page: fitz.Page, item: Dict[str, Any]) -> fitz.Rect:
     return r
 
 
+MAX_IMAGE_BYTES = 2 * 1024 * 1024
+
+
+def _signature_image(value: Any) -> Optional[bytes]:
+    """A placed signature or stamp: a PNG/JPEG data URL from the editor, checked by actually decoding it."""
+    m = re.fullmatch(r"data:image/(?:png|jpe?g);base64,([A-Za-z0-9+/=\s]+)", str(value or ""))
+    if not m:
+        return None
+    try:
+        raw = base64.b64decode(m.group(1), validate=False)
+        if not raw or len(raw) > MAX_IMAGE_BYTES:
+            return None
+        with Image.open(io.BytesIO(raw)) as im:
+            im.verify()
+        return raw
+    except Exception:
+        return None
+
+
+def _matching_size(original: str, width_pt: float, height_pt: float) -> float:
+    """
+    Font size for a replaced line: the size at which the old words fill the old line's width, so the
+    new text looks like the rest of the page (OCR line heights differ between scans and digital PDFs).
+    """
+    size = height_pt * 0.8
+    try:
+        unit = fitz.get_text_length(original.strip(), fontname="helv", fontsize=1) if original.strip() else 0
+        if unit > 0:
+            size = min(max(width_pt / unit, height_pt * 0.55), height_pt * 1.05)
+    except Exception:
+        pass
+    return max(6.0, min(36.0, size))
+
+
+def replace_lines(pdf_bytes: bytes, lines: List[Dict[str, Any]], max_pages: int = 200) -> bytes:
+    """
+    Write corrected OCR lines onto the original pages: each changed line is removed (a real redaction,
+    so the old words are gone from the file) and the new text is written in the same place at about
+    the same size. Lines come in the OCR's own coordinates: left/top/width/height on a page measured
+    image_width x image_height; "original" is the line's text before the change.
+    """
+    if not isinstance(lines, list) or len(lines) > 5000:
+        raise FillableError("Invalid edits.")
+    doc = open_as_pdf(pdf_bytes, "document.pdf")
+    try:
+        sizes = [(p.rect.width, p.rect.height) for p in doc]
+    finally:
+        doc.close()
+    items: List[Dict[str, Any]] = []
+    for ln in lines:
+        if not isinstance(ln, dict):
+            continue
+        try:
+            pno = int(ln.get("page", 0))
+            iw, ih = float(ln["image_width"]), float(ln["image_height"])
+            left, top = float(ln["left"]), float(ln["top"])
+            width, height = float(ln["width"]), float(ln["height"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not 0 <= pno < len(sizes) or iw <= 0 or ih <= 0 or width <= 0 or height <= 0:
+            continue
+        pad_x, pad_y = height * 0.5, height * 0.12  # OCR boxes can stop short of a final full stop
+        x, y = (left - pad_x) / iw, (top - pad_y) / ih
+        w, h = (width + 2 * pad_x) / iw, (height + 2 * pad_y) / ih
+        items.append({"type": "whiteout", "page": pno, "x": x, "y": y, "w": w, "h": h})
+        text = str(ln.get("text") or "")
+        if text.strip():
+            size = _matching_size(str(ln.get("original") or ""), width / iw * sizes[pno][0], height / ih * sizes[pno][1])
+            items.append({"type": "text", "page": pno, "x": left / iw, "y": y, "w": w, "h": h,
+                          "text": text, "size": size, "color": ln.get("color") or "#000000"})
+    return apply_edits(pdf_bytes, {"items": items}, max_pages)
+
+
 def apply_edits(pdf_bytes: bytes, edits: Dict[str, Any], max_pages: int = 200) -> bytes:
     """
     Write the editor's changes into the PDF: values of form fields, text placed anywhere, white-out
-    boxes and tick/cross marks. With "flatten" the result is a plain PDF (what you see, nothing
+    boxes, tick/cross marks and signature images. With "flatten" the result is a plain PDF (what you see, nothing
     editable); otherwise fields stay fillable.
     """
     doc = open_as_pdf(pdf_bytes, "document.pdf")
@@ -1016,6 +1111,11 @@ def apply_edits(pdf_bytes: bytes, edits: Dict[str, Any], max_pages: int = 200) -
                 else:
                     page.draw_line(fitz.Point(x0, y0), fitz.Point(x0 + s, y0 + s), color=color, width=max(1.0, s / 8))
                     page.draw_line(fitz.Point(x0 + s, y0), fitz.Point(x0, y0 + s), color=color, width=max(1.0, s / 8))
+
+            elif kind == "image":
+                img = _signature_image(item.get("data"))
+                if img and r.width > 1 and r.height > 1:
+                    page.insert_image(r, stream=img, keep_proportion=True, overlay=True)
 
         if edits.get("flatten"):
             doc.bake(annots=True, widgets=True)

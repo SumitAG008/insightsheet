@@ -96,7 +96,8 @@ from app.services.ocr_service import (
     extract_with_layout_ocrspace,
     pdf_from_image,
 )
-from app.services.fillable_pdf import FillableError, SUPPORTED_LABEL, apply_edits, extract_form_data, make_fillable_pdf
+from app.services.fillable_pdf import FillableError, SUPPORTED_LABEL, apply_edits, extract_form_data, make_fillable_pdf, replace_lines
+from app.services.pdf_sign import MAX_CERT_BYTES, SigningError, sign_pdf_with_certificate
 from app.services.file_analyzer import FileAnalyzerService
 from app.services.pl_builder import PLBuilderService
 from app.services.universal_excel_processor import UniversalExcelProcessor
@@ -4626,7 +4627,8 @@ async def make_fillable(
         "X-Fillable-Checkboxes": str(report["checkboxes"]),
         "X-Fillable-Pages": str(report["pages"]),
         "X-Fillable-Scanned-Pages": str(report["scanned_pages"]),
-        "Access-Control-Expose-Headers": "X-Fillable-Fields, X-Fillable-Checkboxes, X-Fillable-Pages, X-Fillable-Scanned-Pages, Content-Disposition",
+        "X-Fillable-Signatures": str(report["signatures"]),
+        "Access-Control-Expose-Headers": "X-Fillable-Fields, X-Fillable-Checkboxes, X-Fillable-Pages, X-Fillable-Scanned-Pages, X-Fillable-Signatures, Content-Disposition",
     }
     return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf", headers=headers)
 
@@ -4657,6 +4659,51 @@ async def pdf_apply_edits(
     db.commit()
     return StreamingResponse(io.BytesIO(pdf), media_type="application/pdf",
                              headers={"Content-Disposition": 'attachment; filename="edited.pdf"'})
+
+
+@app.post("/api/files/pdf-sign-certificate")
+async def pdf_sign_certificate(
+    file: UploadFile = File(...),
+    certificate: UploadFile = File(...),
+    password: str = Form(""),
+    field_name: Optional[str] = Form(None),
+    place: Optional[str] = Form(None),
+    reason: Optional[str] = Form(None),
+    location: Optional[str] = Form(None),
+    invisible: bool = Form(False),
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Digitally sign a PDF with the user's own .pfx/.p12 certificate. The certificate and password are
+    used for this request only: never stored, never logged. Sign last; later changes break the signature.
+    """
+    subscription = _get_or_create_subscription(db, current_user["email"])
+    data = await _read_form_upload(file, subscription)
+    pfx = await certificate.read(MAX_CERT_BYTES + 1)
+    placement = None
+    if place:
+        try:
+            placement = json.loads(place)
+            if not isinstance(placement, dict):
+                raise ValueError
+        except ValueError:
+            raise HTTPException(status_code=400, detail="The signature position could not be read.")
+    try:
+        signed = await asyncio.wait_for(
+            asyncio.to_thread(sign_pdf_with_certificate, data, pfx, password, field_name, placement, reason or "", location or "", invisible),
+            FILLABLE_TIMEOUT_SECONDS,
+        )
+    except SigningError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=503, detail="Signing took too long. Please try again.")
+    db.add(FileProcessingHistory(user_email=current_user["email"], processing_type="pdf_sign_certificate",
+                                 original_filename=_file_kind(file.filename), file_size_mb=len(data) / (1024 * 1024),
+                                 status="success"))
+    db.commit()
+    return StreamingResponse(io.BytesIO(signed), media_type="application/pdf",
+                             headers={"Content-Disposition": 'attachment; filename="signed.pdf"'})
 
 
 @app.post("/api/files/extract-form-data")
@@ -4694,6 +4741,9 @@ class OCRExportRequest(BaseModel):
     # Exact copy: use original image as full PDF page (looks exactly like input). PDF only.
     preserve_image: Optional[bool] = False
     image_base64: Optional[str] = None  # required when preserve_image=True
+    # Corrected lines written onto the original page (with preserve_image): page (0-based), left, top,
+    # width, height, image_width, image_height, original (old text), text (new text; empty deletes).
+    line_edits: Optional[list] = None
 
 
 @app.post("/api/files/ocr-export")
@@ -4704,7 +4754,8 @@ async def ocr_export(
 ):
     """
     Edited OCR text -> Word (.docx) or PDF. Layout mode keeps the original positions; "exact copy"
-    (PDF + preserve_image) returns the original page itself as a fillable PDF. Nothing is stored.
+    (PDF + preserve_image) returns the original page itself as a fillable PDF, with any corrected
+    lines (line_edits) written onto it in place. Nothing is stored.
     """
     fmt = (req.format or "").strip().lower()
     if fmt not in ("doc", "docx", "pdf"):
@@ -4720,6 +4771,8 @@ async def ocr_export(
             except Exception:
                 raise HTTPException(status_code=400, detail="The original file could not be read")
             pdf, _ = make_fillable_pdf(original, "original", None, FILLABLE_MAX_PAGES)
+            if req.line_edits:
+                pdf = replace_lines(pdf, req.line_edits, FILLABLE_MAX_PAGES)
             return pdf, "application/pdf"
         if fmt == "pdf":
             if layout_mode and req.pages:

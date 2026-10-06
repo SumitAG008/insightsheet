@@ -84,6 +84,8 @@ def test_digital_form_gets_a_field_on_every_blank_and_nowhere_else():
     # Fields never cover printed text (typed blanks such as "______" are where fields belong).
     words = [w for w in doc[0].get_text("words") if not set(w[4]) <= set("_.")]
     for w in widgets:
+        if w.field_type == fitz.PDF_WIDGET_TYPE_SIGNATURE:
+            continue  # MuPDF itself draws a "SIGN" tag inside empty signature fields
         for x0, y0, x1, y1, *_ in words:
             inter = w.rect & fitz.Rect(x0, y0, x1, y1)
             assert inter.is_empty or inter.get_area() < 0.25 * fitz.Rect(x0, y0, x1, y1).get_area()
@@ -94,7 +96,7 @@ def test_edit_restrictions_are_removed_but_open_passwords_are_refused():
     locked = src.tobytes(encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw="owner-secret", user_pw="", permissions=fitz.PDF_PERM_PRINT)
     pdf, report = make_fillable_pdf(locked, "locked.pdf")
     out = fitz.open(stream=pdf, filetype="pdf")
-    assert not out.is_encrypted and report["fields"] == len(EXPECTED_TEXT)
+    assert not out.is_encrypted and report["fields"] + report["signatures"] == len(EXPECTED_TEXT)
 
     with_password = src.tobytes(encryption=fitz.PDF_ENCRYPT_AES_256, owner_pw="o-secret", user_pw="u-secret")
     with pytest.raises(FillableError, match="password"):
@@ -155,7 +157,8 @@ def client():
 def test_endpoints_make_fillable_extract_and_export(client):
     r = client.post("/api/files/make-fillable", files={"file": ("Claim Form.pdf", _form_pdf(), "application/pdf")})
     assert r.status_code == 200, r.text
-    assert r.content[:5] == b"%PDF-" and int(r.headers["x-fillable-fields"]) == len(EXPECTED_TEXT)
+    assert r.content[:5] == b"%PDF-" and int(r.headers["x-fillable-fields"]) == len(EXPECTED_TEXT) - 1
+    assert int(r.headers["x-fillable-signatures"]) == 1  # "Patient Signature" is a real signature field
     assert "Claim_Form_fillable.pdf" in r.headers["content-disposition"]
 
     bad = client.post("/api/files/make-fillable", files={"file": ("x.txt", b"plain text", "text/plain")})
@@ -263,3 +266,100 @@ def test_editor_download_endpoint(client):
     assert r.status_code == 200 and r.content[:5] == b"%PDF-"
     assert client.post("/api/files/pdf-apply-edits", files={"file": ("doc.pdf", pdf, "application/pdf")},
                        data={"edits": "{not json"}).status_code == 400
+
+
+def _self_signed_pfx(password: bytes = b"secret") -> bytes:
+    import datetime
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.primitives.serialization import BestAvailableEncryption, pkcs12
+    from cryptography.x509.oid import NameOID
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Asha Verma")])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cert = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(key.public_key())
+            .serial_number(x509.random_serial_number()).not_valid_before(now - datetime.timedelta(days=1))
+            .not_valid_after(now + datetime.timedelta(days=30)).sign(key, hashes.SHA256()))
+    return pkcs12.serialize_key_and_certificates(b"signer", key, cert, None, BestAvailableEncryption(password))
+
+
+def test_signature_blank_becomes_a_real_signature_field():
+    pdf, report = make_fillable_pdf(_form_pdf(), "form.pdf")
+    assert report["signatures"] == 1
+    sig = [w for w in fitz.open(stream=pdf, filetype="pdf")[0].widgets() if w.field_type == fitz.PDF_WIDGET_TYPE_SIGNATURE]
+    assert [w.field_name for w in sig] == ["Patient_Signature"]
+
+
+def test_certificate_signature_is_valid_and_wrong_password_is_explained():
+    pytest.importorskip("pyhanko")
+    from pyhanko.pdf_utils.reader import PdfFileReader
+
+    from app.services.pdf_sign import SigningError, sign_pdf_with_certificate
+
+    pdf, _ = make_fillable_pdf(_form_pdf(), "form.pdf")
+    pfx = _self_signed_pfx()
+    signed = sign_pdf_with_certificate(pdf, pfx, "secret", reason="Consent", location="Mumbai")
+    sigs = PdfFileReader(io.BytesIO(signed)).embedded_signatures
+    assert len(sigs) == 1 and sigs[0].field_name == "Patient_Signature"  # signed into the form's own field
+    from pyhanko.sign.validation import validate_pdf_signature
+    status = validate_pdf_signature(sigs[0])
+    assert status.intact and status.valid  # untouched since signing (the test certificate is not trusted, which is fine)
+
+    with pytest.raises(SigningError, match="password"):
+        sign_pdf_with_certificate(pdf, pfx, "wrong")
+
+    # No signature field: a visible signature where the user put it.
+    plain = fitz.open()
+    plain.new_page().insert_text((72, 72), "Letter")
+    placed = sign_pdf_with_certificate(plain.tobytes(), pfx, "secret", place={"page": 0, "x": 0.5, "y": 0.8, "w": 0.3, "h": 0.06})
+    assert PdfFileReader(io.BytesIO(placed)).embedded_signatures[0].sig_field.get("/Rect")
+
+
+def test_signature_image_and_corrected_lines_are_written_onto_the_original():
+    from PIL import Image
+
+    from app.services.fillable_pdf import apply_edits, replace_lines
+
+    buf = io.BytesIO()
+    Image.new("RGB", (240, 80), (20, 20, 120)).save(buf, "PNG")
+    png = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
+    pdf, _ = make_fillable_pdf(_form_pdf(), "form.pdf")
+    out = apply_edits(pdf, {"items": [
+        {"type": "image", "page": 0, "x": 0.1, "y": 0.8, "w": 0.3, "h": 0.06, "data": png},
+        {"type": "image", "page": 0, "x": 0.1, "y": 0.8, "w": 0.3, "h": 0.06, "data": "data:image/png;base64,bm90IGFuIGltYWdl"},
+        {"type": "image", "page": 0, "x": 0.1, "y": 0.8, "w": 0.3, "h": 0.06, "data": "https://example.com/x.png"},
+    ]})
+    assert len(fitz.open(stream=out, filetype="pdf")[0].get_images()) == 1  # only the real image
+
+    page = fitz.open(stream=_form_pdf(), filetype="pdf")[0]
+    hit = page.search_for("PATIENT REGISTRATION FORM")[0]
+    W, H = page.rect.width, page.rect.height
+    line = {"page": 0, "image_width": W, "image_height": H, "left": hit.x0, "top": hit.y0, "width": hit.width,
+            "height": hit.height, "original": "PATIENT REGISTRATION FORM", "text": "PATIENT ADMISSION FORM"}
+    text = fitz.open(stream=replace_lines(_form_pdf(), [line]), filetype="pdf")[0].get_text()
+    assert "PATIENT ADMISSION FORM" in text and "REGISTRATION" not in text
+    assert "Patient Name" in text  # the rest of the page is untouched
+
+
+def test_endpoints_sign_and_export_with_corrections(client):
+    pytest.importorskip("pyhanko")
+    pdf, _ = make_fillable_pdf(_form_pdf(), "form.pdf")
+    ok = client.post("/api/files/pdf-sign-certificate", files={"file": ("f.pdf", pdf, "application/pdf"),
+                     "certificate": ("me.pfx", _self_signed_pfx(), "application/x-pkcs12")}, data={"password": "secret"})
+    assert ok.status_code == 200 and b"/ByteRange" in ok.content
+    bad = client.post("/api/files/pdf-sign-certificate", files={"file": ("f.pdf", pdf, "application/pdf"),
+                      "certificate": ("me.pfx", _self_signed_pfx(), "application/x-pkcs12")}, data={"password": "nope"})
+    assert bad.status_code == 400 and "password" in bad.json()["detail"]
+
+    page = fitz.open(stream=_form_pdf(), filetype="pdf")[0]
+    hit = page.search_for("Address:")[0]
+    edit = {"page": 0, "image_width": page.rect.width, "image_height": page.rect.height, "left": hit.x0, "top": hit.y0,
+            "width": hit.width, "height": hit.height, "original": "Address:", "text": "Home address:"}
+    r = client.post("/api/files/ocr-export", json={"text": "", "format": "pdf", "preserve_image": True, "line_edits": [edit],
+                                                   "image_base64": base64.b64encode(_form_pdf()).decode()})
+    assert r.status_code == 200
+    out = fitz.open(stream=r.content, filetype="pdf")
+    assert "Home address:" in out[0].get_text() and out.is_form_pdf  # corrected and still fillable

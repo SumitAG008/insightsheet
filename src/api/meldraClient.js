@@ -834,6 +834,7 @@ export const backendApi = {
       if (payload.preserve_image && payload.image_base64) {
         body.preserve_image = true;
         body.image_base64 = payload.image_base64;
+        if (Array.isArray(payload.line_edits) && payload.line_edits.length) body.line_edits = payload.line_edits;
       }
       const response = await apiCall('/api/files/ocr-export', {
         method: 'POST',
@@ -863,7 +864,27 @@ export const backendApi = {
         checkboxes: num('X-Fillable-Checkboxes'),
         pages: num('X-Fillable-Pages'),
         scannedPages: num('X-Fillable-Scanned-Pages'),
+        signatures: num('X-Fillable-Signatures'),
       };
+    },
+
+    /** Digitally sign a PDF with the user's own .pfx/.p12 certificate. Nothing is stored. */
+    pdfSignCertificate: async (pdfBlob, { certificate, password, fieldName, place, reason, location, invisible }) => {
+      const formData = new FormData();
+      formData.append('file', pdfBlob, 'document.pdf');
+      formData.append('certificate', certificate);
+      formData.append('password', password || '');
+      if (fieldName) formData.append('field_name', fieldName);
+      if (place) formData.append('place', JSON.stringify(place));
+      if (reason) formData.append('reason', reason);
+      if (location) formData.append('location', location);
+      if (invisible) formData.append('invisible', 'true');
+      const response = await apiCall('/api/files/pdf-sign-certificate', { method: 'POST', body: formData, timeoutMs: 300000 });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `The PDF could not be signed (${response.status}).`);
+      }
+      return response.blob();
     },
 
     /** The PDF editor's download: field values, added text, white-out and marks written into the PDF. */

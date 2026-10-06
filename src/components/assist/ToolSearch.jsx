@@ -13,7 +13,7 @@ import AskMeldra from './AskMeldra';
 // A request in a sentence goes to Ask meldra first; a few words go to the best tool.
 const ASK = '__ask_meldra';
 const isSentence = (q) => q.trim().split(/\s+/).length >= 4;
-const STARTERS = ['excel_to_ppt', 'filename_cleaner', 'pdf_doc_converter', 'reconciliation', 'file_analyzer', 'unified_reporting'].map((id) => TOOLS_BY_ID[id]);
+const STARTERS = ['excel_to_ppt', 'filename_cleaner', 'pdf_doc_converter', 'reconciliation', 'workbench', 'unified_reporting'].map((id) => TOOLS_BY_ID[id]);
 
 export default function ToolSearch({ open, onOpenChange }) {
   const navigate = useNavigate();

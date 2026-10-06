@@ -204,114 +204,6 @@ export const backendApi = {
       return response.json();
     },
 
-    standardizePreview: async (file, options = {}) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (options && typeof options.dedupeRows === 'boolean') {
-        formData.append('dedupe_rows', String(options.dedupeRows));
-      }
-      if (options && typeof options.normalizeHeaders === 'boolean') {
-        formData.append('normalize_headers', String(options.normalizeHeaders));
-      }
-      if (options && typeof options.parseNumbers === 'boolean') {
-        formData.append('parse_numbers', String(options.parseNumbers));
-      }
-      if (options && typeof options.parseDates === 'boolean') {
-        formData.append('parse_dates', String(options.parseDates));
-      }
-
-      const response = await apiCall('/api/files/standardize-preview', {
-        method: 'POST',
-        body: formData,
-        timeoutMs: options.timeoutMs || 60000,
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.detail || `Standardize preview failed: ${response.status}`);
-      }
-      return response.json();
-    },
-
-    standardize: async (file, options = {}) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      if (options && typeof options.dedupeRows === 'boolean') {
-        formData.append('dedupe_rows', String(options.dedupeRows));
-      }
-      if (options && typeof options.normalizeHeaders === 'boolean') {
-        formData.append('normalize_headers', String(options.normalizeHeaders));
-      }
-      if (options && typeof options.parseNumbers === 'boolean') {
-        formData.append('parse_numbers', String(options.parseNumbers));
-      }
-      if (options && typeof options.parseDates === 'boolean') {
-        formData.append('parse_dates', String(options.parseDates));
-      }
-
-      const response = await apiCall('/api/files/standardize', {
-        method: 'POST',
-        body: formData,
-        timeoutMs: options.timeoutMs || 90000,
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.detail || `Standardize failed: ${response.status}`);
-      }
-      return response.blob();
-    },
-
-    reconcilePreview: async (leftFile, rightFile, params, options = {}) => {
-      const formData = new FormData();
-      formData.append('left_file', leftFile);
-      formData.append('right_file', rightFile);
-      formData.append('left_key_col', params.leftKeyCol);
-      formData.append('right_key_col', params.rightKeyCol);
-      formData.append('left_amount_col', params.leftAmountCol);
-      formData.append('right_amount_col', params.rightAmountCol);
-      if (params && typeof params.tolerance !== 'undefined') {
-        formData.append('tolerance', String(params.tolerance));
-      }
-
-      const response = await apiCall('/api/files/reconcile-preview', {
-        method: 'POST',
-        body: formData,
-        timeoutMs: options.timeoutMs || 60000,
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.detail || `Reconcile preview failed: ${response.status}`);
-      }
-      return response.json();
-    },
-
-    reconcile: async (leftFile, rightFile, params, options = {}) => {
-      const formData = new FormData();
-      formData.append('left_file', leftFile);
-      formData.append('right_file', rightFile);
-      formData.append('left_key_col', params.leftKeyCol);
-      formData.append('right_key_col', params.rightKeyCol);
-      formData.append('left_amount_col', params.leftAmountCol);
-      formData.append('right_amount_col', params.rightAmountCol);
-      if (params && typeof params.tolerance !== 'undefined') {
-        formData.append('tolerance', String(params.tolerance));
-      }
-
-      const response = await apiCall('/api/files/reconcile', {
-        method: 'POST',
-        body: formData,
-        timeoutMs: options.timeoutMs || 120000,
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.detail || `Reconcile failed: ${response.status}`);
-      }
-      return response.blob();
-    },
-
     login: async (email, password) => {
       try {
         const response = await apiCall('/api/auth/login', {
@@ -601,6 +493,115 @@ export const backendApi = {
 
   // File Processing
   files: {
+    // Clean-up (Workbench) and two-file reconciliation.
+    standardizePreview: async (file, options = {}) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (options && typeof options.dedupeRows === 'boolean') {
+        formData.append('dedupe_rows', String(options.dedupeRows));
+      }
+      if (options && typeof options.normalizeHeaders === 'boolean') {
+        formData.append('normalize_headers', String(options.normalizeHeaders));
+      }
+      if (options && typeof options.parseNumbers === 'boolean') {
+        formData.append('parse_numbers', String(options.parseNumbers));
+      }
+      if (options && typeof options.parseDates === 'boolean') {
+        formData.append('parse_dates', String(options.parseDates));
+      }
+
+      const response = await apiCall('/api/files/standardize-preview', {
+        method: 'POST',
+        body: formData,
+        timeoutMs: options.timeoutMs || 60000,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Standardize preview failed: ${response.status}`);
+      }
+      return response.json();
+    },
+
+    standardize: async (file, options = {}) => {
+      const formData = new FormData();
+      formData.append('file', file);
+      if (options && typeof options.dedupeRows === 'boolean') {
+        formData.append('dedupe_rows', String(options.dedupeRows));
+      }
+      if (options && typeof options.normalizeHeaders === 'boolean') {
+        formData.append('normalize_headers', String(options.normalizeHeaders));
+      }
+      if (options && typeof options.parseNumbers === 'boolean') {
+        formData.append('parse_numbers', String(options.parseNumbers));
+      }
+      if (options && typeof options.parseDates === 'boolean') {
+        formData.append('parse_dates', String(options.parseDates));
+      }
+
+      const response = await apiCall('/api/files/standardize', {
+        method: 'POST',
+        body: formData,
+        timeoutMs: options.timeoutMs || 90000,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Standardize failed: ${response.status}`);
+      }
+      return response.blob();
+    },
+
+    reconcilePreview: async (leftFile, rightFile, params, options = {}) => {
+      const formData = new FormData();
+      formData.append('left_file', leftFile);
+      formData.append('right_file', rightFile);
+      formData.append('left_key_col', params.leftKeyCol);
+      formData.append('right_key_col', params.rightKeyCol);
+      formData.append('left_amount_col', params.leftAmountCol);
+      formData.append('right_amount_col', params.rightAmountCol);
+      if (params && typeof params.tolerance !== 'undefined') {
+        formData.append('tolerance', String(params.tolerance));
+      }
+
+      const response = await apiCall('/api/files/reconcile-preview', {
+        method: 'POST',
+        body: formData,
+        timeoutMs: options.timeoutMs || 60000,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Reconcile preview failed: ${response.status}`);
+      }
+      return response.json();
+    },
+
+    reconcile: async (leftFile, rightFile, params, options = {}) => {
+      const formData = new FormData();
+      formData.append('left_file', leftFile);
+      formData.append('right_file', rightFile);
+      formData.append('left_key_col', params.leftKeyCol);
+      formData.append('right_key_col', params.rightKeyCol);
+      formData.append('left_amount_col', params.leftAmountCol);
+      formData.append('right_amount_col', params.rightAmountCol);
+      if (params && typeof params.tolerance !== 'undefined') {
+        formData.append('tolerance', String(params.tolerance));
+      }
+
+      const response = await apiCall('/api/files/reconcile', {
+        method: 'POST',
+        body: formData,
+        timeoutMs: options.timeoutMs || 120000,
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.detail || `Reconcile failed: ${response.status}`);
+      }
+      return response.blob();
+    },
+
     upload: async (file, folder = 'uploads') => {
       const formData = new FormData();
       formData.append('file', file);

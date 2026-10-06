@@ -6,15 +6,7 @@
 
 export const NAV = [
   { id: 'home', label: 'Home', icon: 'Home', to: '/Dashboard' },
-  {
-    id: 'workbench',
-    label: 'Workbench',
-    icon: 'Table2',
-    items: [
-      { label: 'Profile a file', description: 'Structure, quality and insights for one spreadsheet', icon: 'BarChart3', to: '/FileAnalyzer' },
-      { label: 'Clean and standardise', description: 'Dates, names, codes and duplicates', icon: 'Sparkles', to: '/AutoStandardize' },
-    ],
-  },
+  { id: 'workbench', label: 'Workbench', icon: 'Table2', to: '/workbench' },
   {
     id: 'unified_reporting',
     label: 'Unified Reporting',

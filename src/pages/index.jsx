@@ -43,11 +43,10 @@ import DataModelCreator from "./DataModelCreator";
 
 import PLBuilder from "./PLBuilder";
 
-import FileAnalyzer from "./FileAnalyzer";
+import Workbench from "./Workbench";
 import Reviews from "./Reviews";
 import DatabaseConnection from "./DatabaseConnection";
 import Settings from "./Settings";
-import AutoStandardize from "./AutoStandardize";
 import Reconciliation from "./Reconciliation";
 import PlaywrightConnector from "./PlaywrightConnector";
 import InvoiceExtractor from "./InvoiceExtractor";
@@ -68,7 +67,7 @@ import Terms from "./Terms";
 import Faq from "./Faq";
 
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { descriptionFor, titleFor } from '@/lib/seo';
 import ProtectedRoute from '../components/auth/ProtectedRoute';
 
@@ -119,7 +118,7 @@ const PAGES = {
 
     PLBuilder: PLBuilder,
 
-    FileAnalyzer: FileAnalyzer,
+    Workbench: Workbench,
 
     Reviews: Reviews,
 
@@ -295,8 +294,11 @@ function PagesContent() {
                 <Route path="/PdfDocConverter" element={<ProtectedRoute><PdfDocConverter /></ProtectedRoute>} />
                 <Route path="/pdfdocconverter" element={<ProtectedRoute><PdfDocConverter /></ProtectedRoute>} />
 
-                <Route path="/FileAnalyzer" element={<ProtectedRoute><FileAnalyzer /></ProtectedRoute>} />
-                <Route path="/fileanalyzer" element={<ProtectedRoute><FileAnalyzer /></ProtectedRoute>} />
+                <Route path="/workbench" element={<ProtectedRoute><Workbench /></ProtectedRoute>} />
+                <Route path="/Workbench" element={<ProtectedRoute><Workbench /></ProtectedRoute>} />
+                {/* The Workbench replaced File Analyzer and Auto-Standardize; old links land on it. */}
+                <Route path="/FileAnalyzer" element={<Navigate to="/workbench" replace />} />
+                <Route path="/fileanalyzer" element={<Navigate to="/workbench" replace />} />
 
                 <Route path="/PLBuilder" element={<ProtectedRoute><PLBuilder /></ProtectedRoute>} />
                 <Route path="/plbuilder" element={<ProtectedRoute><PLBuilder /></ProtectedRoute>} />
@@ -313,8 +315,8 @@ function PagesContent() {
                 <Route path="/Settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
 
-                <Route path="/AutoStandardize" element={<ProtectedRoute><AutoStandardize /></ProtectedRoute>} />
-                <Route path="/autostandardize" element={<ProtectedRoute><AutoStandardize /></ProtectedRoute>} />
+                <Route path="/AutoStandardize" element={<Navigate to="/workbench" replace />} />
+                <Route path="/autostandardize" element={<Navigate to="/workbench" replace />} />
 
                 <Route path="/Reconciliation" element={<ProtectedRoute><Reconciliation /></ProtectedRoute>} />
                 <Route path="/reconciliation" element={<ProtectedRoute><Reconciliation /></ProtectedRoute>} />

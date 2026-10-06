@@ -22,7 +22,7 @@ Ask meldra (Ctrl/⌘ + K) works on every page, so there is no separate AI menu. 
 | Entry | Job | Contains today | Was |
 |---|---|---|---|
 | Home | Start here | Ask meldra prompt box, suggested tools, spreadsheet workspace | Dashboard |
-| Workbench | Work on one file | Profile a file, Clean and standardise | File Analysis (part) |
+| Workbench | Make one spreadsheet trustworthy | One page: 1 Upload · 2 Check quality (score, problems in plain words, each tied to its fix) · 3 Fix and download (preview, clean Excel copy) | File Analyzer + Auto-Standardize (old addresses redirect here) |
 | Unified Reporting | Connect sources and report | Reports and questions, Database connection, Web data, Data model | Unified Reporting + Data & Schema |
 | Migration | Move data between systems | SAP SuccessFactors migration | Migration |
 | Documents | Files in, files out | PDF tools, Document converter, OCR, Invoice extraction, Excel to PowerPoint, Rename files | File Conversion (+ Invoice extraction, which had no menu entry) |
@@ -54,7 +54,7 @@ meldra does not give legal advice; the law firm pack covers a firm's operations,
 
 ## What comes next, in order
 
-1. **Workbench as one page**: merge the Dashboard's spreadsheet panels (grid, cleaning, transform, formula, validator, filter, charts), File Analyzer and Auto Standardize into tabs: Profile · Clean · Transform · Validate · Chart · Export. Home then keeps only the prompt box, recent jobs, templates and alerts.
+1. **Workbench, next**: bring the Home page's spreadsheet panels (grid, transform, formula, validator, filter, charts) in as a fourth step, "Work with the data", and add a change log sheet to the clean file listing every cell that changed.
 2. **Transform by example and saved recipes** (roadmap Phase 1): fix two or three rows, meldra learns the rule and shows it in plain words; every step is saved to rerun on next month's file.
 3. **Rebuild reconciliation**: several keys, fuzzy and date-window matching, one-to-many, saved rules, exceptions queue, sign-off and an audit pack. This serves Finance and the law firm client account check.
 4. **Automations**: one prompt to a whole job with one approval (Phase 2), then schedules and triggers with emailed results (Phase 4), then monitored pipelines (Phase 5).

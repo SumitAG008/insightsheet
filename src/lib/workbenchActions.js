@@ -40,6 +40,13 @@ export function toDate(v) {
   return null;
 }
 
+// Sum amounts; average measures where a total means nothing (scores, rates, prices, ages).
+export function aggregationFor(columnName) {
+  return /(score|rate|ratio|%|percent|age|rating|grade|mark|price|avg|average|mean|margin|temperature|attendance)/i.test(columnName)
+    ? 'average'
+    : 'total';
+}
+
 const share = (values, test) => {
   const filled = values.filter((v) => v != null && String(v).trim() !== '');
   return filled.length ? filled.filter(test).length / filled.length : 0;
@@ -83,7 +90,13 @@ export function suggestActions(columns, limit = 6) {
   const out = [];
   for (const cat of cats.slice(0, 2)) {
     for (const num of nums.slice(0, 2)) {
-      out.push({ id: `total:${cat.key}:${num.key}`, type: 'total', label: `Total ${num.name} by ${cat.name}`, params: { by: cat.key, value: num.key } });
+      const how = aggregationFor(num.name);
+      out.push({
+        id: `total:${cat.key}:${num.key}`,
+        type: 'total',
+        label: `${how === 'average' ? 'Average' : 'Total'} ${num.name} by ${cat.name}`,
+        params: { by: cat.key, value: num.key, how },
+      });
     }
   }
   if (dates[0] && nums[0]) {
@@ -120,7 +133,9 @@ export function runAction(rows, action) {
       }
       groups.set(k, g);
     }
-    const sorted = [...groups.entries()].sort((a, b) => (params.value ? b[1].sum - a[1].sum : b[1].count - a[1].count));
+    const avg = params.how === 'average';
+    const measure = (g) => (!params.value ? g.count : avg ? (g.n ? g.sum / g.n : 0) : g.sum);
+    const sorted = [...groups.entries()].sort((a, b) => measure(b[1]) - measure(a[1]));
     if (!params.value) {
       return {
         title: action.label,
@@ -137,7 +152,7 @@ export function runAction(rows, action) {
         ...sorted.map(([k, g]) => [k, g.count, round2(g.sum), g.n ? round2(g.sum / g.n) : null, total ? `${round2((g.sum / total) * 100)}%` : '']),
         ['Total', rows.length, round2(total), rows.length ? round2(total / rows.length) : null, '100%'],
       ],
-      chart: sorted.map(([k, g]) => ({ label: k, value: round2(g.sum) })),
+      chart: sorted.map(([k, g]) => ({ label: k, value: round2(measure(g)) })),
     };
   }
   if (type === 'monthly') {

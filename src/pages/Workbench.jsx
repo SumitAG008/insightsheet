@@ -2,10 +2,10 @@
 // 1 Upload · 2 Get work done (one-click totals, monthly totals, top rows, a sheet per group,
 // questions, a PowerPoint) · 3 Check quality (runs as soon as a file is chosen) · 4 Fix and download.
 // Replaces the separate File Analyzer and Auto-Standardize pages; their old addresses redirect here.
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import {
-  AlertTriangle, CheckCircle2, ChevronDown, Download, Eye, FileSpreadsheet, Loader2, RefreshCw, Table2, Upload, Wrench, X,
+  AlertTriangle, BarChart3, CheckCircle2, ChevronDown, Download, Eye, FileSpreadsheet, Loader2, RefreshCw, Table2, Upload, Wrench, X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { backendApi } from '@/api/meldraClient';
@@ -14,7 +14,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import QuickWork from '@/components/workbench/QuickWork';
-import { profileColumns, readRows } from '@/lib/workbenchActions';
+import ChartGallery from '@/components/workbench/ChartGallery';
+import { chartsForWorkbook, readWorkbook } from '@/lib/workbookCharts';
 import {
   ACCEPT, ACCEPT_RE, FIXES, FIX_KEYS, aiSummary, formatBytes, missingShare, qualityLabel, recommendedFixes, sheetFindings,
 } from '@/lib/workbench';
@@ -95,7 +96,9 @@ export default function Workbench() {
   const [downloading, setDownloading] = useState(false);
   const [fixError, setFixError] = useState('');
   const [showColumns, setShowColumns] = useState(false);
-  const [data, setData] = useState(null); // { rows, columns } read in the browser for step 2
+  const [book, setBook] = useState(null); // every tab, read in the browser for step 2
+  const [tabIdx, setTabIdx] = useState(0);
+  const [showCharts, setShowCharts] = useState(false);
   const [readError, setReadError] = useState('');
 
   const sheet = analysis?.sheets?.[sheetIdx] || null;
@@ -103,6 +106,8 @@ export default function Workbench() {
   const score = sheet?.data_quality_score ?? analysis?.overall_summary?.overall_data_quality_score ?? null;
   const quality = qualityLabel(score);
   const ai = aiSummary(sheet);
+  const tab = book?.[tabIdx] || null;
+  const chartResults = useMemo(() => (showCharts && book ? chartsForWorkbook(book) : null), [showCharts, book]);
 
   const choose = (f) => {
     if (!f) return;
@@ -123,17 +128,25 @@ export default function Workbench() {
     setFixError('');
     setSheetIdx(0);
     setChecking(true);
-    setData(null);
+    setBook(null);
+    setShowCharts(false);
     setReadError('');
-    readRows(file)
-      .then(({ rows }) => !cancelled && setData({ rows, columns: profileColumns(rows) }))
+    readWorkbook(file)
+      .then((sheets) => {
+        if (cancelled) return;
+        setBook(sheets);
+        setTabIdx(Math.max(0, sheets.findIndex((t) => t.rows.length > 0)));
+      })
       .catch(() => !cancelled && setReadError('This file could not be opened in the browser for quick work.'));
     backendApi.files
       .analyzeFile(file)
       .then((res) => {
         if (cancelled) return;
         setAnalysis(res);
-        setFixes(recommendedFixes(sheetFindings(res?.sheets?.[0])));
+        // Start on the first tab that has data, not a cover or chart-only tab.
+        const firstData = Math.max(0, (res?.sheets || []).findIndex((t) => !t.empty));
+        setSheetIdx(firstData);
+        setFixes(recommendedFixes(sheetFindings(res?.sheets?.[firstData])));
       })
       .catch((e) => !cancelled && setCheckError(e?.message || 'The file could not be checked.'))
       .finally(() => !cancelled && setChecking(false));
@@ -151,7 +164,8 @@ export default function Workbench() {
     setAnalysis(null);
     setPreview(null);
     setCheckError('');
-    setData(null);
+    setBook(null);
+    setShowCharts(false);
     if (inputRef.current) inputRef.current.value = '';
   };
 
@@ -203,7 +217,7 @@ export default function Workbench() {
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
           <Step n={1} title="Upload" active={!file} done={!!file} />
           <span className="hidden sm:block h-px w-8 bg-slate-300 dark:bg-slate-700" />
-          <Step n={2} title="Get work done" active={!!data} />
+          <Step n={2} title="Get work done" active={!!book} />
           <span className="hidden sm:block h-px w-8 bg-slate-300 dark:bg-slate-700" />
           <Step n={3} title="Check quality" active={!!file && !analysis} done={!!analysis} />
           <span className="hidden sm:block h-px w-8 bg-slate-300 dark:bg-slate-700" />
@@ -280,29 +294,78 @@ export default function Workbench() {
       </section>
 
       {/* 2. Get work done */}
-      {file && (data || readError) && (
+      {file && (book || readError) && (
         <section>
           <SectionTitle
             n={2}
             title="Get work done"
-            subtitle="One click, done in seconds. Totals, monthly figures and splits are worked out in your browser and download as Excel."
+            subtitle="One click, done in seconds. Totals, charts, monthly figures and splits are worked out in your browser and download as Excel or PowerPoint."
           />
           {readError ? (
             <Alert variant="destructive">
               <AlertDescription>{readError}</AlertDescription>
             </Alert>
-          ) : data.rows.length === 0 ? (
-            <Alert>
-              <AlertDescription>The file has no rows to work with.</AlertDescription>
-            </Alert>
           ) : (
-            <QuickWork
-              key={`${file.name}-${file.size}-${file.lastModified}`}
-              file={file}
-              rows={data.rows}
-              columns={data.columns}
-              duplicateRows={Number(analysis?.sheets?.[0]?.duplicate_rows || 0)}
-            />
+            <div className="space-y-5">
+              {book.some((t) => t.rows.length > 0) && (
+                <Card>
+                  <CardContent className="py-5 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="font-semibold text-slate-900 dark:text-slate-100">{book.length > 1 ? 'Charts for every tab' : 'Charts'}</h3>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {book.length > 1 ? `This workbook has ${book.length} tabs. Make the right chart for each one in one click` : 'Make the right charts for this data in one click'}, then download them as a PowerPoint with editable charts.
+                        </p>
+                      </div>
+                      {!showCharts && (
+                        <Button onClick={() => setShowCharts(true)}>
+                          <BarChart3 className="mr-2 h-4 w-4" />
+                          {book.length > 1 ? 'Make charts for every tab' : 'Make charts'}
+                        </Button>
+                      )}
+                    </div>
+                    {chartResults && <ChartGallery results={chartResults} fileName={file.name} />}
+                  </CardContent>
+                </Card>
+              )}
+
+              {book.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Tab to work on">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300 mr-1">Work on tab:</span>
+                  {book.map((t, i) => (
+                    <button
+                      key={t.name}
+                      type="button"
+                      role="tab"
+                      aria-selected={i === tabIdx}
+                      onClick={() => setTabIdx(i)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium border ${
+                        i === tabIdx
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {t.name}
+                      <span className="ml-1 opacity-70">({t.rows.length.toLocaleString()} rows)</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!tab || tab.rows.length === 0 ? (
+                <Alert>
+                  <AlertDescription>{tab?.note || 'The file has no rows to work with.'}</AlertDescription>
+                </Alert>
+              ) : (
+                <QuickWork
+                  key={`${file.name}-${file.size}-${file.lastModified}-${tab.name}`}
+                  file={file}
+                  rows={tab.rows}
+                  columns={tab.columns}
+                  duplicateRows={Number((analysis?.sheets || []).find((t) => t.name === tab.name)?.duplicate_rows || 0)}
+                />
+              )}
+            </div>
           )}
         </section>
       )}
@@ -357,6 +420,12 @@ export default function Workbench() {
                 </div>
               )}
 
+              {sheet.empty ? (
+                <Alert>
+                  <AlertDescription>{sheet.note}</AlertDescription>
+                </Alert>
+              ) : (
+              <>
               <div className="grid gap-4 md:grid-cols-[minmax(0,260px)_1fr]">
                 <div className={`rounded-2xl border p-5 flex flex-col justify-center ${quality ? TONES[quality.tone] : TONES.warn}`}>
                   <div className="text-xs font-semibold uppercase tracking-wide opacity-80">Quality score</div>
@@ -491,19 +560,28 @@ export default function Workbench() {
                   )}
                 </CardContent>
               </Card>
+              </>
+              )}
             </div>
           )}
         </section>
       )}
 
       {/* 4. Fix and download */}
-      {sheet && (
+      {sheet && !sheet.empty && (
         <section>
           <SectionTitle
             n={4}
             title="Fix and download"
             subtitle="The fixes for the problems above are already ticked. Preview the effect, then download a clean Excel copy. Your original file is not changed."
           />
+          {analysis.sheets.length > 1 && (
+            <Alert className="mb-4">
+              <AlertDescription>
+                The clean copy is made from the first tab, &ldquo;{analysis.sheets[0].name}&rdquo;. The other tabs are not included yet.
+              </AlertDescription>
+            </Alert>
+          )}
           <Card>
             <CardContent className="py-5 space-y-5">
               <div className="grid gap-3 md:grid-cols-2">

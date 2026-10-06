@@ -61,6 +61,51 @@ def _to_number(series: "pd.Series") -> "pd.Series":
     numbers = pd.to_numeric(cleaned.where(series.notna()), errors='coerce')
     return numbers.where(~negative, -numbers)
 
+def _is_blank(v: Any) -> bool:
+    return v is None or (isinstance(v, str) and not v.strip())
+
+
+def _table_from_rows(raw: List[List[Any]], max_rows: int):
+    """Headers and data rows from a tab's raw cells.
+
+    The header is the first row that is about as wide as the table, so a title, a note or blank
+    rows above the table are skipped. Fully blank rows and blank trailing columns are dropped.
+    """
+    rows = [r for r in raw if any(not _is_blank(v) for v in r)]
+    if not rows:
+        return [], []
+    width = max(max((i + 1 for i, v in enumerate(r) if not _is_blank(v)), default=0) for r in rows)
+    rows = [list(r[:width]) + [None] * (width - len(r[:width])) for r in rows]
+    filled = [sum(not _is_blank(v) for v in r) for r in rows[:15]]
+    target = max(2, int(max(filled) * 0.6 + 0.999)) if max(filled) > 1 else 1
+    head_idx = next((i for i, n in enumerate(filled) if n >= target), 0)
+    headers = [str(v).strip() if not _is_blank(v) else f"Column{i + 1}" for i, v in enumerate(rows[head_idx])]
+    data = [[v if v is not None else "" for v in r] for r in rows[head_idx + 1:head_idx + 1 + max_rows]]
+    return headers, data
+
+
+def _empty_sheet_result(sheet_data: Dict, note: str) -> Dict[str, Any]:
+    """The result for a tab with nothing to analyse, shaped like a normal one."""
+    return {
+        'name': sheet_data.get('name'),
+        'row_count': len(sheet_data.get('rows') or []),
+        'column_count': len(sheet_data.get('headers') or []),
+        'columns': [],
+        'numeric_columns': [],
+        'categorical_columns': [],
+        'date_columns': [],
+        'text_columns': [],
+        'quality_issues': [],
+        'duplicate_rows': 0,
+        'outliers': {'by_column': [], 'total_count': 0},
+        'data_quality_score': None,
+        'ai_summary': None,
+        'data_preview': [],
+        'empty': True,
+        'note': note,
+    }
+
+
 class FileAnalyzerService:
     """Service to analyze Excel files and generate insights"""
 
@@ -103,7 +148,11 @@ class FileAnalyzerService:
             # Analyze each sheet
             analysis_results = []
             for sheet_data in sheets_data:
-                analysis = await self._analyze_sheet(sheet_data, filename)
+                try:
+                    analysis = await self._analyze_sheet(sheet_data, filename)
+                except Exception as e:  # one bad tab must not fail the whole file
+                    logger.warning(f"Sheet '{sheet_data.get('name')}' could not be analysed: {e}")
+                    analysis = _empty_sheet_result(sheet_data, f"This tab could not be analysed: {e}")
                 analysis_results.append(analysis)
 
             # Generate overall summary
@@ -129,23 +178,14 @@ class FileAnalyzerService:
 
         for sheet_name in workbook.sheetnames:
             worksheet = workbook[sheet_name]
-            data = []
-
-            # Read rows (limit for performance)
+            raw = []
+            # Read rows (limit for performance; extra room for titles and blank rows above the table)
             for idx, row in enumerate(worksheet.iter_rows(values_only=True), 1):
-                if idx > max_rows + 1:  # +1 for header
+                if idx > max_rows + 50:
                     break
-                if idx == 1:
-                    headers = [str(cell) if cell is not None else f"Column{i+1}"
-                              for i, cell in enumerate(row)]
-                else:
-                    data.append([cell if cell is not None else "" for cell in row])
-
-            sheets_data.append({
-                'name': sheet_name,
-                'headers': headers,
-                'rows': data[:max_rows]
-            })
+                raw.append(list(row))
+            headers, rows = _table_from_rows(raw, max_rows)
+            sheets_data.append({'name': sheet_name, 'headers': headers, 'rows': rows})
 
         return sheets_data
 
@@ -156,12 +196,11 @@ class FileAnalyzerService:
         for sheet_name in workbook.sheet_names():
             sheet = workbook.sheet_by_name(sheet_name)
 
-            headers = [str(sheet.cell_value(0, col)) for col in range(sheet.ncols)]
-            rows = []
-
-            for row_idx in range(1, min(sheet.nrows, max_rows + 1)):
-                row = [sheet.cell_value(row_idx, col) for col in range(sheet.ncols)]
-                rows.append(row)
+            raw = [
+                [sheet.cell_value(r, c) for c in range(sheet.ncols)]
+                for r in range(min(sheet.nrows, max_rows + 50))
+            ]
+            headers, rows = _table_from_rows(raw, max_rows)
 
             sheets_data.append({
                 'name': sheet_name,
@@ -197,6 +236,9 @@ class FileAnalyzerService:
         # Basic statistics
         row_count = len(sheet_data['rows'])
         col_count = len(sheet_data['headers'])
+        if row_count == 0 or col_count == 0:
+            # A chart-only tab, a blank tab or headers with no rows: nothing to analyse.
+            return _empty_sheet_result(sheet_data, "This tab has no table of data (it may hold only charts or headings).")
 
         # Create DataFrame for analysis
         try:

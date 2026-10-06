@@ -11,6 +11,16 @@ const staff = [
   { 'Employee ID': 'E006', Name: 'Fay', ' Department': 'Finance', Salary: '45,900', 'Start Date': '30/01/2021' },
 ];
 
+describe('averages where totals mean nothing', () => {
+  it('suggests and charts the average score, not the sum', () => {
+    const rows = [{ Course: 'Maths', Score: 80 }, { Course: 'Maths', Score: 60 }, { Course: 'Physics', Score: 90 }, { Course: 'Physics', Score: 50 }, { Course: 'Art', Score: 75 }];
+    const action = suggestActions(profileColumns(rows)).find((a) => a.type === 'total');
+    expect(action.label).toBe('Average Score by Course');
+    const r = runAction(rows, action);
+    expect(r.chart).toEqual([{ label: 'Art', value: 75 }, { label: 'Maths', value: 70 }, { label: 'Physics', value: 70 }]);
+  });
+});
+
 describe('reading values', () => {
   it('reads numbers written as text', () => {
     expect(toNumber('52,000')).toBe(52000);

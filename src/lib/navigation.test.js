@@ -4,9 +4,9 @@ import { SOLUTIONS } from './solutions';
 import { renewalNotice } from './renewal';
 
 describe('main menu', () => {
-  it('has the seven entries in order, then licensed add-ons', () => {
+  it('has the six entries in order, then licensed add-ons', () => {
     expect(NAV.map((e) => e.id)).toEqual([
-      'home', 'workbench', 'unified_reporting', 'migration', 'documents', 'solutions', 'automations', 'legal',
+      'home', 'workbench', 'unified_reporting', 'migration', 'documents', 'solutions', 'legal',
     ]);
   });
 
@@ -22,9 +22,8 @@ describe('main menu', () => {
     expect(workbench.to).toBe('/workbench');
   });
 
-  it('hides Automations without access', () => {
-    expect(visibleNav({}).some((e) => e.id === 'automations')).toBe(false);
-    expect(visibleNav({ agenticWorkflows: true }).some((e) => e.id === 'automations')).toBe(true);
+  it('keeps Automations out of the menu, even for accounts with access', () => {
+    expect(visibleNav({ agenticWorkflows: true }).some((e) => e.id === 'automations')).toBe(false);
   });
 
   it('highlights the entry that owns the page, ignoring case', () => {

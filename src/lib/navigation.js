@@ -1,7 +1,8 @@
 // The signed-in app's main menu: one list used by the desktop bar and the mobile menu.
-// Seven entries, each with one job (docs/PRODUCT_STRUCTURE.md):
-//   Home · Workbench · Unified Reporting · Migration · Documents · Solutions · Automations
+// Six entries, each with one job (docs/PRODUCT_STRUCTURE.md):
+//   Home · Workbench · Unified Reporting · Migration · Documents · Solutions
 // plus licensed add-ons that only appear for accounts that bought them (Legal).
+// Automations (Agentic Workflows) is out of the menu until it is rebuilt as Recipes; /AgenticWorkflows still opens.
 // Ask meldra (Ctrl/⌘ + K) is available on every page, so there is no separate AI menu.
 // Icons are lucide-react names, resolved in Layout.jsx, so this file stays plain data for tests.
 
@@ -44,7 +45,6 @@ export const NAV = [
       { label: 'All solutions', description: 'Insurance, universities, manufacturing', icon: 'Briefcase', to: '/solutions' },
     ],
   },
-  { id: 'automations', label: 'Automations', icon: 'Workflow', to: '/AgenticWorkflows', beta: true, restricted: 'agenticWorkflows' },
   // meldra Legal: matter and hearing diary, a paid add-on. Hidden unless the account has the licence.
   { id: 'legal', label: 'Legal', icon: 'Scale', to: '/legal', restricted: 'legal' },
 ];
